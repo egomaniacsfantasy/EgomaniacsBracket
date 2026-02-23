@@ -290,8 +290,8 @@ body {
 .eg-round-col {
   min-width: 0;
   position: relative;
-  display: grid;
-  grid-template-rows: auto 1fr;
+  display: flex;
+  flex-direction: column;
   overflow: hidden;
 }
 
@@ -308,18 +308,12 @@ body {
 
 .eg-games-lane {
   position: relative;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  gap: 12px;
+  display: block;
   height: var(--lane-height, 560px);
   border-left: 1px solid rgba(74, 193, 100, 0.45);
   padding-left: 8px;
-  margin-top: 8px;
-  margin-bottom: 8px;
+  margin-top: 6px;
   overflow: hidden;
-  align-self: center;
-  width: 100%;
 }
 
 .region-inverted .eg-games-lane {
@@ -334,8 +328,11 @@ body {
 }
 
 .eg-game-node {
-  position: relative;
-  width: 100%;
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: calc(((var(--slot) + 0.5) / var(--count)) * 100%);
+  transform: translateY(-50%);
   z-index: 1;
 }
 
@@ -365,7 +362,7 @@ body {
   background: rgba(14, 11, 6, 0.7);
   transition: transform 180ms ease, border-color 180ms ease, box-shadow 180ms ease;
   position: relative;
-  min-height: calc(8px + var(--rows, 2) * 20px);
+  min-height: 66px;
   overflow: hidden;
 }
 
@@ -499,6 +496,52 @@ body {
   overflow: hidden;
   text-overflow: clip;
   max-width: 100%;
+}
+
+.eg-compact-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 4px;
+}
+
+.eg-compact-chip {
+  width: 100%;
+  border: 1px solid rgba(171, 138, 69, 0.24);
+  border-radius: 7px;
+  background: rgba(34, 23, 10, 0.72);
+  color: var(--text);
+  display: grid;
+  grid-template-columns: 14px 12px minmax(0, 1fr);
+  align-items: center;
+  gap: 4px;
+  padding: 3px 4px;
+  font-family: inherit;
+  cursor: pointer;
+}
+
+.eg-compact-chip:disabled {
+  opacity: 0.9;
+  cursor: default;
+}
+
+.eg-compact-chip.selected {
+  border-color: rgba(237, 193, 102, 0.9);
+  background: linear-gradient(90deg, rgba(95, 58, 15, 0.56) 0%, rgba(35, 24, 12, 0.8) 100%);
+}
+
+.chip-seed {
+  font-size: 0.55rem;
+  color: var(--text-soft);
+  text-align: center;
+  font-weight: 700;
+}
+
+.chip-prob {
+  font-size: 0.56rem;
+  font-weight: 700;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: clip;
 }
 
 .eg-team-row.compact .team-odds {

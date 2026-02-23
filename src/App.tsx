@@ -421,9 +421,13 @@ function RegionBracket({
       <div className="eg-round-grid bracket-grid">
         {rounds.map((round) => {
           const roundGames = gamesByRegionAndRound(games, region, round);
-          const rowCounts = roundGames.map((g) => Math.max(2, (gameWinProbs[g.id] || []).length));
-          const totalRows = rowCounts.reduce((sum, n) => sum + n, 0);
-          const laneHeight = Math.max(260, totalRows * 22 + Math.max(0, roundGames.length - 1) * 18 + 18);
+          const laneHeightByRound: Record<string, number> = {
+            R64: 680,
+            R32: 680,
+            S16: 680,
+            E8: 680,
+          };
+          const laneHeight = laneHeightByRound[round] ?? 680;
           const laneVars = {
             "--lane-height": `${laneHeight}px`,
           } as CSSProperties;
@@ -431,10 +435,10 @@ function RegionBracket({
             <div key={`${region}-${round}`} className={`eg-round-col lane-${round.toLowerCase()}`}>
               <p className="eg-round-label">{gameRoundLabel[round]}</p>
               <div className="eg-games-lane" style={laneVars}>
-                {roundGames.map((game) => {
-                  const rows = Math.max(2, (gameWinProbs[game.id] || []).length);
+                {roundGames.map((game, idx) => {
                   const slotVars = {
-                    "--rows": rows,
+                    "--slot": idx,
+                    "--count": roundGames.length,
                   } as CSSProperties;
                   return (
                     <div key={game.id} className="eg-game-node" style={slotVars}>
@@ -476,29 +480,56 @@ function GameCard({
     <article className={`eg-game-card round-${game.round.toLowerCase()}`}>
       <div className="eg-game-list">
         {rows.length > 0 ? (
-          rows.map((candidate) => {
-            const team = candidate.team!;
-            const canPick =
-              game.teamAId !== null &&
-              game.teamBId !== null &&
-              (team.id === game.teamAId || team.id === game.teamBId);
-            return (
-              <TeamRow
-                key={`${game.id}-${team.id}`}
-                label={team.name}
-                seed={team.seed}
-                teamName={team.name}
-                logoSrc={teamLogoUrl(team)}
-                prob={candidate.prob}
-              selected={game.winnerId === team.id}
-              freshPick={Boolean(lastPickedKey === `${game.id}:${team.id}`)}
-              disabled={!canPick}
-              tooltip={`Chance to advance from this game: ${(candidate.prob * 100).toFixed(1)}%`}
-              compact={game.round !== "R64"}
-              onPick={() => onPick(game, canPick ? team.id : null)}
-            />
-          );
-          })
+          game.round === "R64" ? (
+            rows.map((candidate) => {
+              const team = candidate.team!;
+              const canPick =
+                game.teamAId !== null &&
+                game.teamBId !== null &&
+                (team.id === game.teamAId || team.id === game.teamBId);
+              return (
+                <TeamRow
+                  key={`${game.id}-${team.id}`}
+                  label={team.name}
+                  seed={team.seed}
+                  teamName={team.name}
+                  logoSrc={teamLogoUrl(team)}
+                  prob={candidate.prob}
+                  selected={game.winnerId === team.id}
+                  freshPick={Boolean(lastPickedKey === `${game.id}:${team.id}`)}
+                  disabled={!canPick}
+                  tooltip={`Chance to advance from this game: ${(candidate.prob * 100).toFixed(1)}%`}
+                  compact={false}
+                  onPick={() => onPick(game, canPick ? team.id : null)}
+                />
+              );
+            })
+          ) : (
+            <div className="eg-compact-grid">
+              {rows.map((candidate) => {
+                const team = candidate.team!;
+                const canPick =
+                  game.teamAId !== null &&
+                  game.teamBId !== null &&
+                  (team.id === game.teamAId || team.id === game.teamBId);
+                const selected = game.winnerId === team.id;
+                return (
+                  <button
+                    key={`${game.id}-${team.id}`}
+                    type="button"
+                    className={`eg-compact-chip ${selected ? "selected" : ""}`}
+                    disabled={!canPick}
+                    onClick={() => onPick(game, canPick ? team.id : null)}
+                    title={`Chance to advance from this game: ${(candidate.prob * 100).toFixed(1)}%`}
+                  >
+                    <span className="chip-seed">{team.seed}</span>
+                    <TeamLogo teamName={team.name} src={teamLogoUrl(team)} />
+                    <span className="chip-prob">{(candidate.prob * 100).toFixed(1)}%</span>
+                  </button>
+                );
+              })}
+            </div>
+          )
         ) : (
           <>
             <TeamRow
@@ -511,7 +542,7 @@ function GameCard({
               freshPick={false}
               disabled
               tooltip="Waiting for simulation..."
-              compact={game.round !== "R64"}
+              compact={false}
               onPick={() => {}}
             />
             <TeamRow
@@ -524,7 +555,7 @@ function GameCard({
               freshPick={false}
               disabled
               tooltip="Waiting for simulation..."
-              compact={game.round !== "R64"}
+              compact={false}
               onPick={() => {}}
             />
           </>
