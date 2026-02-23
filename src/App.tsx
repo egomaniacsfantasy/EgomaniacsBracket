@@ -1,8 +1,9 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import "./index.css";
 import { teamsById } from "./data/teams";
 import { regionRounds } from "./data/bracket";
 import { finalRounds, gamesByRegionAndRound, resetRegionPicks, resolveGames, sanitizeLockedPicks, type LockedPicks } from "./lib/bracket";
+import { abbreviationForTeam } from "./lib/abbreviation";
 import { formatOddsDisplay, toImpliedLabel, toOneInX } from "./lib/odds";
 import { generateSimulatedBracket, hashLocks, runSimulation } from "./lib/simulation";
 import { fallbackLogo, teamLogoUrl } from "./lib/logo";
@@ -596,7 +597,6 @@ function GameCard({
                 const { primary, secondary } = formatOddsDisplay(candidate.prob, displayMode);
                 const showLogo = true;
                 const teamLabel = normalizeTeamName(team.name);
-                const chipNameSize = nameSizeClass(teamLabel);
                 const outcome =
                   game.lockedByUser && game.winnerId
                     ? game.winnerId === team.id
@@ -614,9 +614,7 @@ function GameCard({
                   >
                     <span className="chip-seed">{team.seed}</span>
                     {showLogo ? <TeamLogo teamName={team.name} src={teamLogoUrl(team)} /> : null}
-                    <span className={`chip-code ${showLogo ? "" : "no-logo"} ${chipNameSize}`} title={team.name}>
-                      {teamLabel}
-                    </span>
+                    <AdaptiveTeamLabel className={`chip-code ${showLogo ? "" : "no-logo"}`} fullName={teamLabel} />
                     <span className="chip-odds">
                       {outcome ? (
                         <span className={`outcome-badge ${outcome}`}>{outcome === "win" ? "✓" : "✕"}</span>
@@ -711,7 +709,6 @@ function TeamRow({
 }) {
   const formatted = prob !== null ? formatOddsDisplay(prob, displayMode) : { primary: "--" };
   const fullLabel = normalizeTeamName(label);
-  const rowNameSize = nameSizeClass(fullLabel);
 
   return (
     <button
@@ -729,7 +726,7 @@ function TeamRow({
       ) : (
         <span className="team-logo team-logo-placeholder" aria-hidden="true" />
       )}
-      {compact ? null : <span className={`team-name ${rowNameSize}`}>{fullLabel}</span>}
+      {compact ? null : <AdaptiveTeamLabel className="team-name" fullName={fullLabel} />}
       <span className="team-odds-wrap">
         {outcome ? (
           <span className={`outcome-badge ${outcome}`}>{outcome === "win" ? "✓" : "✕"}</span>
@@ -776,12 +773,63 @@ function normalizeTeamName(name: string): string {
   return dictionary[name] ?? name;
 }
 
-function nameSizeClass(name: string): string {
-  const len = name.length;
-  if (len >= 21) return "name-xxs";
-  if (len >= 18) return "name-xs";
-  if (len >= 14) return "name-sm";
-  return "name-base";
+function AdaptiveTeamLabel({ className, fullName }: { className: string; fullName: string }) {
+  const ref = useRef<HTMLSpanElement>(null);
+  const [label, setLabel] = useState(fullName);
+
+  useLayoutEffect(() => {
+    const node = ref.current;
+    if (!node) return undefined;
+
+    const measure = (text: string, font: string): number => {
+      const canvas = document.createElement("canvas");
+      const ctx = canvas.getContext("2d");
+      if (!ctx) return text.length * 8;
+      ctx.font = font;
+      return ctx.measureText(text).width;
+    };
+
+    const recalc = () => {
+      const el = ref.current;
+      if (!el) return;
+      const style = window.getComputedStyle(el);
+      const font = `${style.fontWeight} ${style.fontSize} ${style.fontFamily}`;
+      const maxWidth = el.clientWidth;
+      const full = fullName;
+      const abbreviated = abbreviationForTeam(fullName);
+      const fullWidth = measure(full, font);
+      const abbrevWidth = measure(abbreviated, font);
+
+      let next = full;
+      if (fullWidth > maxWidth + 1) next = abbreviated;
+      if (next === abbreviated && abbrevWidth > maxWidth + 1) {
+        // Last-resort initials if even abbreviation overflows.
+        next = abbreviated
+          .split(/\s+/)
+          .map((part) => part[0] ?? "")
+          .join("")
+          .toUpperCase()
+          .slice(0, 4);
+      }
+      setLabel((prev) => (prev === next ? prev : next));
+    };
+
+    recalc();
+    const observer = new ResizeObserver(recalc);
+    observer.observe(node);
+    window.addEventListener("resize", recalc);
+
+    return () => {
+      observer.disconnect();
+      window.removeEventListener("resize", recalc);
+    };
+  }, [fullName]);
+
+  return (
+    <span ref={ref} className={className} title={fullName}>
+      {label}
+    </span>
+  );
 }
 
 export default App;

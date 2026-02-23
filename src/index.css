@@ -481,30 +481,13 @@ body {
 }
 
 .team-name {
-  font-size: 0.62rem;
+  font-size: 0.66rem;
   font-weight: 600;
   line-height: 1;
   white-space: nowrap;
-  overflow: visible;
-  text-overflow: unset;
+  overflow: hidden;
+  text-overflow: clip;
   min-width: 0;
-}
-
-.team-name.name-base {
-  font-size: 0.68rem;
-}
-
-.team-name.name-sm {
-  font-size: 0.63rem;
-}
-
-.team-name.name-xs {
-  font-size: 0.59rem;
-}
-
-.team-name.name-xxs {
-  font-size: 0.55rem;
-  letter-spacing: -0.003em;
 }
 
 .eg-team-row.compact .team-name {
@@ -579,31 +562,15 @@ body {
 }
 
 .chip-code {
-  font-size: 0.6rem;
+  font-size: 0.64rem;
   font-weight: 700;
   color: rgba(239, 228, 207, 0.88);
   letter-spacing: 0.02em;
   white-space: nowrap;
-  overflow: visible;
-  text-overflow: unset;
+  overflow: hidden;
+  text-overflow: clip;
   line-height: 1;
   min-width: 0;
-}
-
-.chip-code.name-base {
-  font-size: 0.62rem;
-}
-
-.chip-code.name-sm {
-  font-size: 0.58rem;
-}
-
-.chip-code.name-xs {
-  font-size: 0.55rem;
-}
-
-.chip-code.name-xxs {
-  font-size: 0.52rem;
 }
 
 .chip-prob {
