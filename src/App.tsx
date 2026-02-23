@@ -512,12 +512,18 @@ function GameCard({
             {finalistRows.map((candidate) => {
               const team = candidate.team!;
               const selected = game.winnerId === team.id;
+              const outcome =
+                game.lockedByUser && game.winnerId
+                  ? game.winnerId === team.id
+                    ? "win"
+                    : "loss"
+                  : null;
               const { primary, secondary } = formatOddsDisplay(candidate.prob, displayMode);
               return (
                 <button
                   key={`${game.id}-${team.id}-split`}
                   type="button"
-                  className={`eg-title-choice ${selected ? "selected" : ""}`}
+                  className={`eg-title-choice ${selected ? "selected" : ""} ${outcome === "win" ? "result-win" : ""} ${outcome === "loss" ? "result-loss" : ""}`}
                   onClick={() => onPick(game, team.id)}
                   title={`Chance to win title: ${(candidate.prob * 100).toFixed(1)}%`}
                 >
@@ -527,8 +533,14 @@ function GameCard({
                     <span className="title-choice-name">{team.name}</span>
                   </span>
                   <span className="title-choice-odds">
-                    <span className="title-choice-prob">{primary}</span>
-                    {secondary ? <span className="title-choice-sub">{secondary}</span> : null}
+                    {outcome ? (
+                      <span className={`outcome-badge ${outcome}`}>{outcome === "win" ? "✓" : "✕"}</span>
+                    ) : (
+                      <>
+                        <span className="title-choice-prob">{primary}</span>
+                        {secondary ? <span className="title-choice-sub">{secondary}</span> : null}
+                      </>
+                    )}
                   </span>
                 </button>
               );
@@ -543,7 +555,7 @@ function GameCard({
                 game.teamBId !== null &&
                 (team.id === game.teamAId || team.id === game.teamBId);
               return (
-                    <TeamRow
+                <TeamRow
                   key={`${game.id}-${team.id}`}
                   label={team.name}
                   seed={team.seed}
@@ -553,11 +565,18 @@ function GameCard({
                   selected={game.winnerId === team.id}
                   freshPick={Boolean(lastPickedKey === `${game.id}:${team.id}`)}
                   disabled={!canPick}
-                      tooltip={`Chance to advance from this game: ${(candidate.prob * 100).toFixed(1)}%`}
-                      compact={false}
-                      displayMode={displayMode}
-                      onPick={() => onPick(game, canPick ? team.id : null)}
-                    />
+                  outcome={
+                    game.lockedByUser && game.winnerId
+                      ? game.winnerId === team.id
+                        ? "win"
+                        : "loss"
+                      : null
+                  }
+                  tooltip={`Chance to advance from this game: ${(candidate.prob * 100).toFixed(1)}%`}
+                  compact={false}
+                  displayMode={displayMode}
+                  onPick={() => onPick(game, canPick ? team.id : null)}
+                />
               );
             })
           ) : (
@@ -575,11 +594,17 @@ function GameCard({
                 const { primary, secondary } = formatOddsDisplay(candidate.prob, displayMode);
                 const showLogo = true;
                 const teamLabel = compactNameForRound(team.name, game.round);
+                const outcome =
+                  game.lockedByUser && game.winnerId
+                    ? game.winnerId === team.id
+                      ? "win"
+                      : "loss"
+                    : null;
                 return (
                   <button
                     key={`${game.id}-${team.id}`}
                     type="button"
-                    className={`eg-compact-chip ${selected ? "selected" : ""}`}
+                    className={`eg-compact-chip ${selected ? "selected" : ""} ${outcome === "win" ? "result-win" : ""} ${outcome === "loss" ? "result-loss" : ""}`}
                     disabled={!canPick}
                     onClick={() => onPick(game, canPick ? team.id : null)}
                     title={`Chance to advance from this game: ${(candidate.prob * 100).toFixed(1)}%`}
@@ -590,8 +615,14 @@ function GameCard({
                       {teamLabel}
                     </span>
                     <span className="chip-odds">
-                      <span className="chip-prob">{primary}</span>
-                      {secondary ? <span className="chip-sub">{secondary}</span> : null}
+                      {outcome ? (
+                        <span className={`outcome-badge ${outcome}`}>{outcome === "win" ? "✓" : "✕"}</span>
+                      ) : (
+                        <>
+                          <span className="chip-prob">{primary}</span>
+                          {secondary ? <span className="chip-sub">{secondary}</span> : null}
+                        </>
+                      )}
                     </span>
                   </button>
                 );
@@ -609,6 +640,7 @@ function GameCard({
               selected={false}
               freshPick={false}
               disabled
+              outcome={null}
               tooltip="Waiting for simulation..."
               compact={false}
               displayMode={displayMode}
@@ -623,6 +655,7 @@ function GameCard({
               selected={false}
               freshPick={false}
               disabled
+              outcome={null}
               tooltip="Waiting for simulation..."
               compact={false}
               displayMode={displayMode}
@@ -653,6 +686,7 @@ function TeamRow({
   selected,
   freshPick,
   disabled,
+  outcome,
   tooltip,
   compact,
   displayMode,
@@ -666,6 +700,7 @@ function TeamRow({
   selected: boolean;
   freshPick: boolean;
   disabled: boolean;
+  outcome: "win" | "loss" | null;
   tooltip: string;
   compact: boolean;
   displayMode: OddsDisplayMode;
@@ -677,7 +712,7 @@ function TeamRow({
   return (
     <button
       type="button"
-      className={`eg-team-row ${compact ? "compact" : ""} ${selected ? "selected" : ""} ${freshPick ? "fresh-pick" : ""}`}
+      className={`eg-team-row ${compact ? "compact" : ""} ${selected ? "selected" : ""} ${freshPick ? "fresh-pick" : ""} ${outcome === "win" ? "result-win" : ""} ${outcome === "loss" ? "result-loss" : ""}`}
       disabled={disabled}
       onClick={onPick}
       title={tooltip}
@@ -692,8 +727,14 @@ function TeamRow({
       )}
       {compact ? null : <span className={`team-name ${isLongName ? "long-name" : ""}`}>{label}</span>}
       <span className="team-odds-wrap">
-        <span className="team-odds">{formatted.primary}</span>
-        {formatted.secondary ? <span className="team-odds-sub">{formatted.secondary}</span> : null}
+        {outcome ? (
+          <span className={`outcome-badge ${outcome}`}>{outcome === "win" ? "✓" : "✕"}</span>
+        ) : (
+          <>
+            <span className="team-odds">{formatted.primary}</span>
+            {formatted.secondary ? <span className="team-odds-sub">{formatted.secondary}</span> : null}
+          </>
+        )}
       </span>
     </button>
   );

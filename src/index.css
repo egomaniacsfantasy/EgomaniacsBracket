@@ -433,6 +433,20 @@ body {
   background: linear-gradient(90deg, rgba(95, 58, 15, 0.56) 0%, rgba(35, 24, 12, 0.8) 100%);
 }
 
+.eg-team-row.result-win,
+.eg-compact-chip.result-win,
+.eg-title-choice.result-win {
+  border-color: rgba(117, 210, 128, 0.64);
+  background: linear-gradient(90deg, rgba(36, 66, 34, 0.48) 0%, rgba(22, 30, 18, 0.76) 100%);
+}
+
+.eg-team-row.result-loss,
+.eg-compact-chip.result-loss,
+.eg-title-choice.result-loss {
+  border-color: rgba(192, 106, 106, 0.48);
+  background: linear-gradient(90deg, rgba(66, 34, 34, 0.4) 0%, rgba(33, 19, 19, 0.72) 100%);
+}
+
 .eg-team-row.fresh-pick {
   animation: pick-flash 520ms ease-out;
 }
@@ -790,6 +804,31 @@ body {
   font-size: 0.58rem;
   color: var(--text-soft);
   line-height: 1;
+}
+
+.outcome-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 999px;
+  border: 1px solid rgba(171, 138, 69, 0.5);
+  font-size: 0.78rem;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.outcome-badge.win {
+  color: #b2e4ad;
+  border-color: rgba(117, 210, 128, 0.72);
+  background: rgba(22, 53, 24, 0.68);
+}
+
+.outcome-badge.loss {
+  color: #e0a9a9;
+  border-color: rgba(192, 106, 106, 0.62);
+  background: rgba(61, 28, 28, 0.66);
 }
 
 .eg-side-panel {
