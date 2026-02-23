@@ -290,8 +290,8 @@ body {
 .eg-round-col {
   min-width: 0;
   position: relative;
-  display: flex;
-  flex-direction: column;
+  display: grid;
+  grid-template-rows: auto 1fr;
   overflow: hidden;
 }
 
@@ -310,13 +310,16 @@ body {
   position: relative;
   display: flex;
   flex-direction: column;
-  justify-content: space-between;
+  justify-content: center;
   gap: 12px;
   height: var(--lane-height, 560px);
   border-left: 1px solid rgba(74, 193, 100, 0.45);
   padding-left: 8px;
   margin-top: 8px;
+  margin-bottom: 8px;
   overflow: hidden;
+  align-self: center;
+  width: 100%;
 }
 
 .region-inverted .eg-games-lane {
@@ -403,11 +406,12 @@ body {
   margin-bottom: 4px;
   transition: border-color 0.15s ease, background 0.15s ease;
   min-width: 0;
+  overflow: hidden;
 }
 
 .eg-team-row.compact {
-  grid-template-columns: 16px 12px auto;
-  justify-content: space-between;
+  grid-template-columns: 16px 12px minmax(0, 1fr) 52px;
+  justify-content: initial;
 }
 
 .eg-team-row:hover:not(:disabled) {
@@ -479,16 +483,22 @@ body {
   gap: 0;
   flex-shrink: 0;
   min-width: 54px;
+  justify-self: end;
+  overflow: hidden;
 }
 
 .eg-team-row.compact .team-odds-wrap {
-  min-width: 46px;
+  min-width: 52px;
+  justify-content: flex-end;
 }
 
 .team-odds {
   font-size: 0.66rem;
   font-weight: 700;
   white-space: nowrap;
+  overflow: hidden;
+  text-overflow: clip;
+  max-width: 100%;
 }
 
 .eg-team-row.compact .team-odds {
