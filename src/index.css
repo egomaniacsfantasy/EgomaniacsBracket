@@ -276,7 +276,7 @@ body {
 
 .eg-round-grid {
   display: grid;
-  grid-template-columns: minmax(208px, 2.25fr) minmax(170px, 1.8fr) minmax(164px, 1.72fr) minmax(144px, 1.5fr);
+  grid-template-columns: minmax(208px, 2.2fr) minmax(180px, 1.95fr) minmax(184px, 2fr) minmax(180px, 2fr);
   gap: 8px;
   min-height: 840px;
   align-items: start;
@@ -284,7 +284,7 @@ body {
 }
 
 .region-inverted .eg-round-grid {
-  grid-template-columns: minmax(144px, 1.5fr) minmax(164px, 1.72fr) minmax(170px, 1.8fr) minmax(208px, 2.25fr);
+  grid-template-columns: minmax(180px, 2fr) minmax(184px, 2fr) minmax(180px, 1.95fr) minmax(208px, 2.2fr);
 }
 
 .eg-round-col {
@@ -512,7 +512,7 @@ body {
 
 .eg-compact-grid {
   display: grid;
-  gap: 4px;
+  gap: 5px;
   align-items: start;
 }
 
@@ -523,14 +523,15 @@ body {
   background: rgba(34, 23, 10, 0.72);
   color: var(--text);
   display: grid;
-  grid-template-columns: 14px 11px minmax(0, 1fr) 52px;
+  grid-template-columns: 18px 14px minmax(0, 1fr) minmax(58px, auto);
   align-items: center;
-  gap: 4px;
-  padding: 2px 4px;
+  gap: 6px;
+  min-height: 30px;
+  padding: 3px 6px;
   font-family: inherit;
   cursor: pointer;
   min-width: 0;
-  overflow: hidden;
+  overflow: visible;
   text-align: left;
 }
 
@@ -545,32 +546,31 @@ body {
 }
 
 .chip-seed {
-  font-size: 0.53rem;
+  font-size: 0.66rem;
   color: var(--text-soft);
   text-align: center;
   font-weight: 700;
 }
 
 .chip-code {
-  font-size: 0.54rem;
+  font-size: 0.72rem;
   font-weight: 700;
   color: rgba(239, 228, 207, 0.88);
   letter-spacing: 0.02em;
   white-space: nowrap;
   overflow: hidden;
-  text-overflow: clip;
+  text-overflow: ellipsis;
   min-width: 0;
 }
 
 .chip-prob {
-  font-size: 0.53rem;
+  font-size: 0.72rem;
   font-weight: 700;
   white-space: nowrap;
-  overflow: hidden;
-  text-overflow: clip;
+  overflow: visible;
+  text-overflow: unset;
   text-align: right;
-  min-width: 50px;
-  max-width: 52px;
+  min-width: 58px;
   justify-self: end;
 }
 
@@ -583,10 +583,14 @@ body {
 }
 
 .chip-sub {
-  font-size: 0.45rem;
+  font-size: 0.53rem;
   color: var(--text-soft);
   line-height: 1;
   white-space: nowrap;
+}
+
+.chip-code.no-logo {
+  grid-column: 2 / 4;
 }
 
 .eg-team-row.compact .team-odds {
@@ -610,10 +614,10 @@ body {
   margin-top: 8px;
   margin-bottom: 8px;
   padding: 10px;
-  min-height: 230px;
-  max-width: 68%;
-  margin-left: auto;
-  margin-right: auto;
+  min-height: 260px;
+  max-width: 100%;
+  margin-left: 0;
+  margin-right: 0;
   border-color: rgba(117, 210, 128, 0.4);
   box-shadow: 0 0 0 1px rgba(117, 210, 128, 0.18), 0 20px 50px rgba(0, 0, 0, 0.36);
   position: relative;
@@ -623,8 +627,8 @@ body {
 .eg-finals-stage {
   margin-top: 8px;
   display: grid;
-  grid-template-columns: 1fr minmax(260px, 1.25fr) 1fr;
-  gap: 12px;
+  grid-template-columns: minmax(0, 1fr) minmax(420px, 1.45fr) minmax(0, 1fr);
+  gap: 10px;
   align-items: center;
 }
 
@@ -695,7 +699,7 @@ body {
 .eg-title-hero .eg-game-card {
   border-color: rgba(117, 210, 128, 0.55);
   background: rgba(20, 16, 8, 0.78);
-  min-height: 150px;
+  min-height: 170px;
 }
 
 .eg-title-hero .eg-team-row {

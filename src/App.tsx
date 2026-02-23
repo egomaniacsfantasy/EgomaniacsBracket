@@ -203,8 +203,32 @@ function App() {
                 </div>
               </section>
 
+              <section className="eg-bracket-section">
+                <div className="eg-section-head">
+                  <h2>Bottom Half Bracket</h2>
+                  <p>West + Midwest</p>
+                </div>
+                <div className="eg-region-scroll">
+                  <div className="eg-region-grid bracket-style">
+                    {regionSections[1].map((region) => (
+                      <RegionBracket
+                        key={region}
+                        region={region}
+                        games={games}
+                        gameWinProbs={simResult.gameWinProbs}
+                        onPick={onPick}
+                        lastPickedKey={lastPickedKey}
+                        onResetRegion={onResetRegion}
+                        inverted={invertedRegions.has(region)}
+                        displayMode={displayMode}
+                      />
+                    ))}
+                  </div>
+                </div>
+              </section>
+
               <section className="eg-finals-card bracket-finals">
-                <h2>Final Four and Title</h2>
+                <h2>Final Four & Championship</h2>
                 <div className="eg-finals-stage">
                   <div className="eg-semi-col left">
                     <p className="eg-finals-label">Semifinal</p>
@@ -248,30 +272,6 @@ function App() {
                         displayMode={displayMode}
                       />
                     ) : null}
-                  </div>
-                </div>
-              </section>
-
-              <section className="eg-bracket-section">
-                <div className="eg-section-head">
-                  <h2>Bottom Half Bracket</h2>
-                  <p>West + Midwest</p>
-                </div>
-                <div className="eg-region-scroll">
-                  <div className="eg-region-grid bracket-style">
-                    {regionSections[1].map((region) => (
-                      <RegionBracket
-                        key={region}
-                        region={region}
-                        games={games}
-                        gameWinProbs={simResult.gameWinProbs}
-                        onPick={onPick}
-                        lastPickedKey={lastPickedKey}
-                        onResetRegion={onResetRegion}
-                        inverted={invertedRegions.has(region)}
-                        displayMode={displayMode}
-                      />
-                    ))}
                   </div>
                 </div>
               </section>
@@ -438,14 +438,14 @@ function RegionBracket({
                   return (
                     <div key={game.id} className="eg-game-node" style={nodeStyle}>
                       <GameCard
-                      game={game}
-                      gameWinProbs={gameWinProbs}
-                      onPick={onPick}
-                      lastPickedKey={lastPickedKey}
-                      displayMode={displayMode}
-                    />
-                  </div>
-                );
+                        game={game}
+                        gameWinProbs={gameWinProbs}
+                        onPick={onPick}
+                        lastPickedKey={lastPickedKey}
+                        displayMode={displayMode}
+                      />
+                    </div>
+                  );
                 })}
               </div>
             </div>
@@ -495,7 +495,7 @@ function GameCard({
   });
   const useChampSplit = game.round === "CHAMP" && finalistRows.length === 2;
 
-  const compactColumns = getCompactColumns(game.round, rows.length);
+  const compactColumns = getCompactColumns(game.round);
 
   return (
     <article className={`eg-game-card round-${game.round.toLowerCase()}`}>
@@ -566,6 +566,8 @@ function GameCard({
                   (team.id === game.teamAId || team.id === game.teamBId);
                 const selected = game.winnerId === team.id;
                 const { primary, secondary } = formatOddsDisplay(candidate.prob, displayMode);
+                const showLogo = game.round === "R32";
+                const teamLabel = compactNameForRound(team.name, game.round);
                 return (
                   <button
                     key={`${game.id}-${team.id}`}
@@ -576,8 +578,10 @@ function GameCard({
                     title={`Chance to advance from this game: ${(candidate.prob * 100).toFixed(1)}%`}
                   >
                     <span className="chip-seed">{team.seed}</span>
-                    <TeamLogo teamName={team.name} src={teamLogoUrl(team)} />
-                    <span className="chip-code">{toCompactTeamCode(team.name)}</span>
+                    {showLogo ? <TeamLogo teamName={team.name} src={teamLogoUrl(team)} /> : null}
+                    <span className={`chip-code ${showLogo ? "" : "no-logo"}`} title={team.name}>
+                      {teamLabel}
+                    </span>
                     <span className="chip-odds">
                       <span className="chip-prob">{primary}</span>
                       {secondary ? <span className="chip-sub">{secondary}</span> : null}
@@ -624,12 +628,12 @@ function GameCard({
   );
 }
 
-function getCompactColumns(round: ResolvedGame["round"], rowCount: number): number {
+function getCompactColumns(round: ResolvedGame["round"]): number {
   if (round === "R32") return 1;
-  if (round === "S16") return 2;
-  if (round === "E8") return 2;
-  if (round === "F4") return rowCount > 24 ? 4 : 3;
-  if (round === "CHAMP") return rowCount > 40 ? 5 : 4;
+  if (round === "S16") return 1;
+  if (round === "E8") return 1;
+  if (round === "F4") return 3;
+  if (round === "CHAMP") return 3;
   return 2;
 }
 
@@ -703,12 +707,17 @@ function TeamLogo({ teamName, src }: { teamName: string; src: string }) {
   );
 }
 
+function compactNameForRound(name: string, round: ResolvedGame["round"]): string {
+  if (round === "R32" || round === "S16" || round === "E8") return name;
+  return toCompactTeamCode(name);
+}
+
 function toCompactTeamCode(name: string): string {
   const cleaned = name.replace(/[^A-Za-z0-9 ]+/g, " ").trim();
   const tokens = cleaned.split(/\s+/).filter(Boolean);
   if (tokens.length === 0) return "TBD";
-  if (tokens.length === 1) return tokens[0].slice(0, 4).toUpperCase();
-  return tokens.map((token) => token[0]).join("").slice(0, 4).toUpperCase();
+  if (tokens.length === 1) return tokens[0].slice(0, 6);
+  return tokens.map((token) => token[0]).join("").slice(0, 6).toUpperCase();
 }
 
 export default App;
