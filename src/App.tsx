@@ -462,7 +462,7 @@ function GameCard({
       : candidates;
   const probByTeam = new Map(candidates.map((c) => [c.teamId, c.prob]));
   const rows: CandidateRow[] =
-    game.round === "R64" && game.teamAId && game.teamBId
+    game.teamAId && game.teamBId
       ? [game.teamAId, game.teamBId]
           .map((teamId) => {
             const team = teamsById.get(teamId);
