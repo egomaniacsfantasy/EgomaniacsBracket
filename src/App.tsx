@@ -2,7 +2,15 @@ import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import "./index.css";
 import { teamsById } from "./data/teams";
 import { regionRounds } from "./data/bracket";
-import { finalRounds, gamesByRegionAndRound, resetRegionPicks, resolveGames, sanitizeLockedPicks, type LockedPicks } from "./lib/bracket";
+import {
+  finalRounds,
+  gamesByRegionAndRound,
+  possibleWinnersByGame,
+  resetRegionPicks,
+  resolveGames,
+  sanitizeLockedPicks,
+  type LockedPicks,
+} from "./lib/bracket";
 import { abbreviationForTeam } from "./lib/abbreviation";
 import { formatOddsDisplay, toImpliedLabel, toOneInX } from "./lib/odds";
 import { generateSimulatedBracket, hashLocks, runSimulation } from "./lib/simulation";
@@ -51,6 +59,7 @@ function App() {
   const simulationCacheRef = useRef<Map<string, SimulationOutput>>(new Map());
 
   const { games, sanitized } = useMemo(() => resolveGames(lockedPicks), [lockedPicks]);
+  const possibleWinners = useMemo(() => possibleWinnersByGame(sanitized), [sanitized]);
 
   useEffect(() => {
     const key = hashLocks(sanitized, simRuns);
@@ -193,6 +202,7 @@ function App() {
                         region={region}
                         games={games}
                         gameWinProbs={simResult.gameWinProbs}
+                        possibleWinners={possibleWinners}
                         onPick={onPick}
                         lastPickedKey={lastPickedKey}
                         onResetRegion={onResetRegion}
@@ -217,6 +227,7 @@ function App() {
                         region={region}
                         games={games}
                         gameWinProbs={simResult.gameWinProbs}
+                        possibleWinners={possibleWinners}
                         onPick={onPick}
                         lastPickedKey={lastPickedKey}
                         onResetRegion={onResetRegion}
@@ -239,6 +250,7 @@ function App() {
                         key={leftSemi.id}
                         game={leftSemi}
                         gameWinProbs={simResult.gameWinProbs}
+                        possibleWinners={possibleWinners}
                         onPick={onPick}
                         lastPickedKey={lastPickedKey}
                         displayMode={displayMode}
@@ -254,6 +266,7 @@ function App() {
                           key={titleGame.id}
                           game={titleGame}
                           gameWinProbs={simResult.gameWinProbs}
+                          possibleWinners={possibleWinners}
                           onPick={onPick}
                           lastPickedKey={lastPickedKey}
                           displayMode={displayMode}
@@ -270,6 +283,7 @@ function App() {
                         key={rightSemi.id}
                         game={rightSemi}
                         gameWinProbs={simResult.gameWinProbs}
+                        possibleWinners={possibleWinners}
                         onPick={onPick}
                         lastPickedKey={lastPickedKey}
                         displayMode={displayMode}
@@ -378,6 +392,7 @@ function RegionBracket({
   region,
   games,
   gameWinProbs,
+  possibleWinners,
   onPick,
   lastPickedKey,
   onResetRegion,
@@ -387,6 +402,7 @@ function RegionBracket({
   region: Region;
   games: ResolvedGame[];
   gameWinProbs: SimulationOutput["gameWinProbs"];
+  possibleWinners: Record<string, Set<string>>;
   onPick: (game: ResolvedGame, teamId: string | null) => void;
   lastPickedKey: string | null;
   onResetRegion: (region: Region) => void;
@@ -419,6 +435,7 @@ function RegionBracket({
                       <GameCard
                         game={game}
                         gameWinProbs={gameWinProbs}
+                        possibleWinners={possibleWinners}
                         onPick={onPick}
                         lastPickedKey={lastPickedKey}
                         displayMode={displayMode}
@@ -438,12 +455,14 @@ function RegionBracket({
 function GameCard({
   game,
   gameWinProbs,
+  possibleWinners,
   onPick,
   lastPickedKey,
   displayMode,
 }: {
   game: ResolvedGame;
   gameWinProbs: SimulationOutput["gameWinProbs"];
+  possibleWinners: Record<string, Set<string>>;
   onPick: (game: ResolvedGame, teamId: string | null) => void;
   lastPickedKey: string | null;
   displayMode: OddsDisplayMode;
@@ -460,6 +479,8 @@ function GameCard({
           return a.team.seed - b.team.seed;
         })
       : candidates;
+  const possibleForGame = possibleWinners[game.id] ?? new Set<string>();
+  const constrainedCandidates = sortedCandidates.filter((candidate) => possibleForGame.has(candidate.teamId));
   const probByTeam = new Map(candidates.map((c) => [c.teamId, c.prob]));
   const rows: CandidateRow[] =
     game.teamAId && game.teamBId
@@ -470,7 +491,7 @@ function GameCard({
             return { teamId, prob: probByTeam.get(teamId) ?? 0, team };
           })
           .filter((row): row is CandidateRow => row !== null)
-      : sortedCandidates;
+      : constrainedCandidates;
   const finalistRows = rows.filter((candidate) => {
     const team = candidate.team!;
     return (

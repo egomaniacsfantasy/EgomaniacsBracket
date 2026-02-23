@@ -1,29 +1,85 @@
-const ABBR_OVERRIDES: Record<string, string> = {
-  "Saint Mary's": "Saint Mary's",
-  "North Carolina": "UNC",
-  "North Carolina State": "NC State",
-  "San Diego State": "SDSU",
-  "South Dakota State": "SDSU",
-  "Florida Atlantic": "FAU",
-  "Grand Canyon": "GCU",
-  "James Madison": "JMU",
-  "Texas A&M": "Texas A&M",
-  "Texas Tech": "Texas Tech",
-  "Michigan State": "Michigan St.",
-  "Mississippi State": "Mississippi St.",
-  "Morehead State": "Morehead St.",
-  "Washington State": "Washington St.",
-  "Long Beach State": "Long Beach St.",
-  "Western Kentucky": "WKU",
+const ESPN_ABBREVIATIONS_2026: Record<string, string> = {
+  uconn: "CONN",
+  "iowa state": "ISU",
+  illinois: "ILL",
+  auburn: "AUB",
+  "san diego state": "SDSU",
+  byu: "BYU",
+  "washington state": "WSU",
+  "florida atlantic": "FAU",
+  northwestern: "NU",
+  drake: "DRKE",
+  duquesne: "DUQ",
+  uab: "UAB",
+  yale: "YALE",
+  "morehead state": "MORE",
+  "south dakota state": "SDST",
+  stetson: "STET",
+  "north carolina": "UNC",
+  arizona: "ARIZ",
+  baylor: "BAY",
+  alabama: "ALA",
+  "saint mary's": "SMC",
+  clemson: "CLEM",
+  dayton: "DAY",
+  "mississippi state": "MSST",
+  "michigan state": "MSU",
+  nevada: "NEV",
+  "new mexico": "UNM",
+  "grand canyon": "GCU",
+  charleston: "COFC",
+  colgate: "COLG",
+  "long beach state": "LBSU",
+  wagner: "WAG",
+  houston: "HOU",
+  marquette: "MARQ",
+  kentucky: "UK",
+  duke: "DUKE",
+  wisconsin: "WIS",
+  "texas tech": "TTU",
+  florida: "FLA",
+  nebraska: "NEB",
+  "texas a&m": "TA&M",
+  colorado: "COLO",
+  "nc state": "NCSU",
+  vermont: "UVM",
+  "james madison": "JMU",
+  oakland: "OAK",
+  "western kentucky": "WKU",
+  longwood: "LONG",
+  purdue: "PUR",
+  tennessee: "TENN",
+  creighton: "CREI",
+  kansas: "KU",
+  gonzaga: "GONZ",
+  "south carolina": "SC",
+  texas: "TEX",
+  "utah state": "USU",
+  tcu: "TCU",
+  virginia: "UVA",
+  oregon: "ORE",
+  mcneese: "MCN",
+  samford: "SAM",
+  akron: "AKR",
+  "saint peter's": "SPU",
+  "montana state": "MTST",
 };
 
 const STOP_WORDS = new Set(["of", "the", "at", "and"]);
 
+function normalizeName(name: string): string {
+  return name
+    .trim()
+    .toLowerCase()
+    .replace(/\s+/g, " ");
+}
+
 export function abbreviationForTeam(name: string): string {
   const trimmed = name.trim();
   if (!trimmed) return "TBD";
-  const override = ABBR_OVERRIDES[trimmed];
-  if (override) return override;
+
+  const exact = ESPN_ABBREVIATIONS_2026[normalizeName(trimmed)];
+  if (exact) return exact;
 
   const cleaned = trimmed.replace(/[^A-Za-z0-9&.' ]+/g, " ").replace(/\s+/g, " ").trim();
   const words = cleaned.split(" ").filter(Boolean);

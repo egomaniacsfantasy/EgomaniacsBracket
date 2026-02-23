@@ -101,6 +101,31 @@ export const gamesByRegionAndRound = (games: ResolvedGame[], region: Region, rou
 export const finalRounds = (games: ResolvedGame[]): ResolvedGame[] =>
   games.filter((game) => game.round === "F4" || game.round === "CHAMP").sort((a, b) => roundRank[a.round] - roundRank[b.round]);
 
+export const possibleWinnersByGame = (lockedPicks: LockedPicks): Record<string, Set<string>> => {
+  const possible: Record<string, Set<string>> = {};
+
+  for (const template of templatesOrdered) {
+    const entrants = new Set<string>();
+
+    if (template.initialTeamIds) {
+      template.initialTeamIds.forEach((id) => entrants.add(id));
+    } else if (template.sourceGameIds) {
+      template.sourceGameIds.forEach((sourceId) => {
+        (possible[sourceId] ?? new Set<string>()).forEach((id) => entrants.add(id));
+      });
+    }
+
+    const lock = lockedPicks[template.id];
+    if (lock && entrants.has(lock)) {
+      possible[template.id] = new Set([lock]);
+    } else {
+      possible[template.id] = entrants;
+    }
+  }
+
+  return possible;
+};
+
 const ancestorCache = new Map<string, Set<string>>();
 
 const collectAncestors = (gameId: string): Set<string> => {
