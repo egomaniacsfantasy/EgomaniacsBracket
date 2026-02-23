@@ -204,12 +204,12 @@ function App() {
               </section>
 
               <section className="eg-finals-card bracket-finals">
-                <h2>Final Four & Championship</h2>
+                <h2>Final Four and Title</h2>
                 <div className="eg-finals-stage">
                   <div className="eg-semi-col left">
                     <p className="eg-finals-label">Semifinal</p>
                     {leftSemi ? (
-                      <MatchupCard
+                      <GameCard
                         key={leftSemi.id}
                         game={leftSemi}
                         gameWinProbs={simResult.gameWinProbs}
@@ -224,7 +224,7 @@ function App() {
                     <p className="eg-finals-label title">National Championship</p>
                     {titleGame ? (
                       <div className="eg-title-hero">
-                        <MatchupCard
+                        <GameCard
                           key={titleGame.id}
                           game={titleGame}
                           gameWinProbs={simResult.gameWinProbs}
@@ -239,7 +239,7 @@ function App() {
                   <div className="eg-semi-col right">
                     <p className="eg-finals-label">Semifinal</p>
                     {rightSemi ? (
-                      <MatchupCard
+                      <GameCard
                         key={rightSemi.id}
                         game={rightSemi}
                         gameWinProbs={simResult.gameWinProbs}
@@ -437,15 +437,15 @@ function RegionBracket({
                   const nodeStyle = { top: `${topPercent}%` } as React.CSSProperties;
                   return (
                     <div key={game.id} className="eg-game-node" style={nodeStyle}>
-                      <MatchupCard
-                        game={game}
-                        gameWinProbs={gameWinProbs}
-                        onPick={onPick}
-                        lastPickedKey={lastPickedKey}
-                        displayMode={displayMode}
-                      />
-                    </div>
-                  );
+                      <GameCard
+                      game={game}
+                      gameWinProbs={gameWinProbs}
+                      onPick={onPick}
+                      lastPickedKey={lastPickedKey}
+                      displayMode={displayMode}
+                    />
+                  </div>
+                );
                 })}
               </div>
             </div>
@@ -456,7 +456,7 @@ function RegionBracket({
   );
 }
 
-function MatchupCard({
+function GameCard({
   game,
   gameWinProbs,
   onPick,
@@ -469,18 +469,14 @@ function MatchupCard({
   lastPickedKey: string | null;
   displayMode: OddsDisplayMode;
 }) {
-  type CandidateRow = {
-    teamId: string;
-    prob: number;
-    team: NonNullable<ReturnType<typeof teamsById.get>>;
-  };
+  type CandidateRow = { teamId: string; prob: number; team: NonNullable<ReturnType<typeof teamsById.get>> };
 
   const candidates = (gameWinProbs[game.id] || [])
     .map((entry) => ({ ...entry, team: teamsById.get(entry.teamId) }))
     .filter((entry): entry is CandidateRow => Boolean(entry.team));
-  const probByTeam = new Map(candidates.map((item) => [item.teamId, item.prob]));
-  const resolvedRows: CandidateRow[] =
-    game.teamAId && game.teamBId
+  const probByTeam = new Map(candidates.map((c) => [c.teamId, c.prob]));
+  const rows: CandidateRow[] =
+    game.round === "R64" && game.teamAId && game.teamBId
       ? [game.teamAId, game.teamBId]
           .map((teamId) => {
             const team = teamsById.get(teamId);
@@ -488,81 +484,153 @@ function MatchupCard({
             return { teamId, prob: probByTeam.get(teamId) ?? 0, team };
           })
           .filter((row): row is CandidateRow => row !== null)
-      : [];
-  const displayRows: CandidateRow[] = resolvedRows.length === 2 ? resolvedRows : candidates.slice(0, 2);
-  const cardPreset = densityPresetForRound(game.round);
+      : candidates;
+  const finalistRows = rows.filter((candidate) => {
+    const team = candidate.team!;
+    return (
+      game.teamAId !== null &&
+      game.teamBId !== null &&
+      (team.id === game.teamAId || team.id === game.teamBId)
+    );
+  });
+  const useChampSplit = game.round === "CHAMP" && finalistRows.length === 2;
+
+  const compactColumns = getCompactColumns(game.round, rows.length);
 
   return (
-    <article
-      className={`eg-game-card round-${game.round.toLowerCase()} preset-${cardPreset} ${game.lockedByUser ? "is-locked" : "is-open"}`}
-    >
-      {game.lockedByUser ? <span className="eg-lock-pill">Locked</span> : null}
+    <article className={`eg-game-card round-${game.round.toLowerCase()}`}>
       <div className="eg-game-list">
-        {(displayRows.length > 0 ? displayRows : [null, null]).slice(0, 2).map((candidate, index) => {
-          if (!candidate) {
-            return (
-              <TeamRow
-                key={`${game.id}-tbd-${index}`}
-                label="TBD"
-                seed={null}
-                teamName={null}
-                logoSrc={null}
-                prob={null}
-                selected={false}
-                freshPick={false}
-                disabled
-                tooltip="Waiting for simulation..."
-                compact={false}
-                displayMode={displayMode}
-                onPick={() => {}}
-                showLogo={false}
-                round={game.round}
-                lockedByUser={game.lockedByUser}
-              />
-            );
-          }
-
-          const team = candidate.team;
-          const canPick =
-            game.teamAId !== null &&
-            game.teamBId !== null &&
-            (team.id === game.teamAId || team.id === game.teamBId);
-          const selected = game.winnerId === team.id;
-          const eliminated = game.lockedByUser && game.winnerId !== null && game.winnerId !== team.id;
-          return (
+        {useChampSplit ? (
+          <div className="eg-champ-split">
+            {finalistRows.map((candidate) => {
+              const team = candidate.team!;
+              const selected = game.winnerId === team.id;
+              const { primary, secondary } = formatOddsDisplay(candidate.prob, displayMode);
+              return (
+                <button
+                  key={`${game.id}-${team.id}-split`}
+                  type="button"
+                  className={`eg-title-choice ${selected ? "selected" : ""}`}
+                  onClick={() => onPick(game, team.id)}
+                  title={`Chance to win title: ${(candidate.prob * 100).toFixed(1)}%`}
+                >
+                  <span className="title-choice-left">
+                    <span className="chip-seed">{team.seed}</span>
+                    <TeamLogo teamName={team.name} src={teamLogoUrl(team)} />
+                    <span className="title-choice-name">{team.name}</span>
+                  </span>
+                  <span className="title-choice-odds">
+                    <span className="title-choice-prob">{primary}</span>
+                    {secondary ? <span className="title-choice-sub">{secondary}</span> : null}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        ) : rows.length > 0 ? (
+          game.round === "R64" ? (
+            rows.map((candidate) => {
+              const team = candidate.team!;
+              const canPick =
+                game.teamAId !== null &&
+                game.teamBId !== null &&
+                (team.id === game.teamAId || team.id === game.teamBId);
+              return (
+                    <TeamRow
+                  key={`${game.id}-${team.id}`}
+                  label={team.name}
+                  seed={team.seed}
+                  teamName={team.name}
+                  logoSrc={teamLogoUrl(team)}
+                  prob={candidate.prob}
+                  selected={game.winnerId === team.id}
+                  freshPick={Boolean(lastPickedKey === `${game.id}:${team.id}`)}
+                  disabled={!canPick}
+                      tooltip={`Chance to advance from this game: ${(candidate.prob * 100).toFixed(1)}%`}
+                      compact={false}
+                      displayMode={displayMode}
+                      onPick={() => onPick(game, canPick ? team.id : null)}
+                    />
+              );
+            })
+          ) : (
+            <div
+              className={`eg-compact-grid round-${game.round.toLowerCase()}`}
+              style={{ gridTemplateColumns: `repeat(${compactColumns}, minmax(0, 1fr))` }}
+            >
+              {rows.map((candidate) => {
+                const team = candidate.team!;
+                const canPick =
+                  game.teamAId !== null &&
+                  game.teamBId !== null &&
+                  (team.id === game.teamAId || team.id === game.teamBId);
+                const selected = game.winnerId === team.id;
+                const { primary, secondary } = formatOddsDisplay(candidate.prob, displayMode);
+                return (
+                  <button
+                    key={`${game.id}-${team.id}`}
+                    type="button"
+                    className={`eg-compact-chip ${selected ? "selected" : ""}`}
+                    disabled={!canPick}
+                    onClick={() => onPick(game, canPick ? team.id : null)}
+                    title={`Chance to advance from this game: ${(candidate.prob * 100).toFixed(1)}%`}
+                  >
+                    <span className="chip-seed">{team.seed}</span>
+                    <TeamLogo teamName={team.name} src={teamLogoUrl(team)} />
+                    <span className="chip-code">{toCompactTeamCode(team.name)}</span>
+                    <span className="chip-odds">
+                      <span className="chip-prob">{primary}</span>
+                      {secondary ? <span className="chip-sub">{secondary}</span> : null}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          )
+        ) : (
+          <>
             <TeamRow
-              key={`${game.id}-${team.id}`}
-              label={team.name}
-              seed={team.seed}
-              teamName={team.name}
-              logoSrc={teamLogoUrl(team)}
-              prob={candidate.prob}
-              selected={selected}
-              freshPick={Boolean(lastPickedKey === `${game.id}:${team.id}`)}
-              disabled={!canPick}
-              tooltip={`${team.name}: ${(candidate.prob * 100).toFixed(1)}% chance to win this game`}
+              label="TBD"
+              seed={null}
+              teamName={null}
+              logoSrc={null}
+              prob={null}
+              selected={false}
+              freshPick={false}
+              disabled
+              tooltip="Waiting for simulation..."
               compact={false}
               displayMode={displayMode}
-              onPick={() => onPick(game, canPick ? team.id : null)}
-              showLogo={game.round === "R64" || game.round === "R32"}
-              round={game.round}
-              lockedByUser={game.lockedByUser}
-              eliminated={eliminated}
+              onPick={() => {}}
             />
-          );
-        })}
+            <TeamRow
+              label="TBD"
+              seed={null}
+              teamName={null}
+              logoSrc={null}
+              prob={null}
+              selected={false}
+              freshPick={false}
+              disabled
+              tooltip="Waiting for simulation..."
+              compact={false}
+              displayMode={displayMode}
+              onPick={() => {}}
+            />
+          </>
+        )}
       </div>
     </article>
   );
 }
 
-function densityPresetForRound(round: ResolvedGame["round"]): "r64" | "r32" | "s16" | "e8" | "f4" | "champ" {
-  if (round === "R64") return "r64";
-  if (round === "R32") return "r32";
-  if (round === "S16") return "s16";
-  if (round === "E8") return "e8";
-  if (round === "F4") return "f4";
-  return "champ";
+function getCompactColumns(round: ResolvedGame["round"], rowCount: number): number {
+  if (round === "R32") return 1;
+  if (round === "S16") return 2;
+  if (round === "E8") return 2;
+  if (round === "F4") return rowCount > 24 ? 4 : 3;
+  if (round === "CHAMP") return rowCount > 40 ? 5 : 4;
+  return 2;
 }
 
 function TeamRow({
@@ -577,10 +645,6 @@ function TeamRow({
   tooltip,
   compact,
   displayMode,
-  showLogo,
-  round,
-  lockedByUser,
-  eliminated = false,
   onPick,
 }: {
   label: string;
@@ -594,21 +658,15 @@ function TeamRow({
   tooltip: string;
   compact: boolean;
   displayMode: OddsDisplayMode;
-  showLogo: boolean;
-  round: ResolvedGame["round"];
-  lockedByUser: boolean;
-  eliminated?: boolean;
   onPick: () => void;
 }) {
   const formatted = prob !== null ? formatOddsDisplay(prob, displayMode) : { primary: "--" };
-  const canShowFullName = round === "R64" || round === "R32" || round === "CHAMP";
-  const displayName = canShowFullName ? label : shortName(label);
-  const isLongName = displayName.length >= 18;
+  const isLongName = label.length >= 18;
 
   return (
     <button
       type="button"
-      className={`eg-team-row ${compact ? "compact" : ""} ${selected ? "selected" : ""} ${freshPick ? "fresh-pick" : ""} ${lockedByUser ? "in-locked-game" : ""} ${eliminated ? "eliminated" : ""}`}
+      className={`eg-team-row ${compact ? "compact" : ""} ${selected ? "selected" : ""} ${freshPick ? "fresh-pick" : ""}`}
       disabled={disabled}
       onClick={onPick}
       title={tooltip}
@@ -616,12 +674,12 @@ function TeamRow({
       <span className="team-seed" aria-label={seed !== null ? `Seed ${seed}` : "Seed unavailable"}>
         {seed !== null ? seed : "--"}
       </span>
-      {showLogo && teamName && logoSrc ? (
+      {teamName && logoSrc ? (
         <TeamLogo teamName={teamName} src={logoSrc} />
       ) : (
-        <span className="team-logo team-logo-placeholder team-logo-hidden" aria-hidden="true" />
+        <span className="team-logo team-logo-placeholder" aria-hidden="true" />
       )}
-      {compact ? null : <span className={`team-name ${isLongName ? "long-name" : ""}`} title={label}>{displayName}</span>}
+      {compact ? null : <span className={`team-name ${isLongName ? "long-name" : ""}`}>{label}</span>}
       <span className="team-odds-wrap">
         <span className="team-odds">{formatted.primary}</span>
         {formatted.secondary ? <span className="team-odds-sub">{formatted.secondary}</span> : null}
@@ -645,15 +703,12 @@ function TeamLogo({ teamName, src }: { teamName: string; src: string }) {
   );
 }
 
-function shortName(name: string): string {
-  const specials: Record<string, string> = {
-    "Texas A&M": "Texas A&M",
-    "North Carolina": "North Carolina",
-    "Mississippi State": "Mississippi St.",
-    "Florida Atlantic": "Florida Atlantic",
-    "Saint Mary's": "Saint Mary's",
-  };
-  return specials[name] ?? name;
+function toCompactTeamCode(name: string): string {
+  const cleaned = name.replace(/[^A-Za-z0-9 ]+/g, " ").trim();
+  const tokens = cleaned.split(/\s+/).filter(Boolean);
+  if (tokens.length === 0) return "TBD";
+  if (tokens.length === 1) return tokens[0].slice(0, 4).toUpperCase();
+  return tokens.map((token) => token[0]).join("").slice(0, 4).toUpperCase();
 }
 
 export default App;
