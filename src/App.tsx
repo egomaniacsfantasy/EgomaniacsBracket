@@ -51,7 +51,6 @@ function App() {
   const simulationCacheRef = useRef<Map<string, SimulationOutput>>(new Map());
 
   const { games, sanitized } = useMemo(() => resolveGames(lockedPicks), [lockedPicks]);
-  const gamesById = useMemo(() => new Map(games.map((game) => [game.id, game])), [games]);
 
   useEffect(() => {
     const key = hashLocks(sanitized, simRuns);
@@ -199,7 +198,6 @@ function App() {
                         onResetRegion={onResetRegion}
                         inverted={invertedRegions.has(region)}
                         displayMode={displayMode}
-                        gamesById={gamesById}
                       />
                     ))}
                   </div>
@@ -224,7 +222,6 @@ function App() {
                         onResetRegion={onResetRegion}
                         inverted={invertedRegions.has(region)}
                         displayMode={displayMode}
-                        gamesById={gamesById}
                       />
                     ))}
                   </div>
@@ -245,7 +242,6 @@ function App() {
                         onPick={onPick}
                         lastPickedKey={lastPickedKey}
                         displayMode={displayMode}
-                        gamesById={gamesById}
                       />
                     ) : null}
                   </div>
@@ -261,7 +257,6 @@ function App() {
                           onPick={onPick}
                           lastPickedKey={lastPickedKey}
                           displayMode={displayMode}
-                          gamesById={gamesById}
                         />
                       </div>
                     ) : null}
@@ -278,7 +273,6 @@ function App() {
                         onPick={onPick}
                         lastPickedKey={lastPickedKey}
                         displayMode={displayMode}
-                        gamesById={gamesById}
                       />
                     ) : null}
                   </div>
@@ -389,7 +383,6 @@ function RegionBracket({
   onResetRegion,
   inverted,
   displayMode,
-  gamesById,
 }: {
   region: Region;
   games: ResolvedGame[];
@@ -399,7 +392,6 @@ function RegionBracket({
   onResetRegion: (region: Region) => void;
   inverted: boolean;
   displayMode: OddsDisplayMode;
-  gamesById: Map<string, ResolvedGame>;
 }) {
   const rounds = inverted ? [...regionRounds].reverse() : [...regionRounds];
 
@@ -430,7 +422,6 @@ function RegionBracket({
                         onPick={onPick}
                         lastPickedKey={lastPickedKey}
                         displayMode={displayMode}
-                        gamesById={gamesById}
                       />
                     </div>
                   );
@@ -450,14 +441,12 @@ function GameCard({
   onPick,
   lastPickedKey,
   displayMode,
-  gamesById,
 }: {
   game: ResolvedGame;
   gameWinProbs: SimulationOutput["gameWinProbs"];
   onPick: (game: ResolvedGame, teamId: string | null) => void;
   lastPickedKey: string | null;
   displayMode: OddsDisplayMode;
-  gamesById: Map<string, ResolvedGame>;
 }) {
   type CandidateRow = { teamId: string; prob: number; team: NonNullable<ReturnType<typeof teamsById.get>> };
 
@@ -471,9 +460,7 @@ function GameCard({
           return a.team.seed - b.team.seed;
         })
       : candidates;
-  const visibleCandidates = sortedCandidates.filter(
-    (candidate) => candidate.prob > 0 && canAppearInGame(candidate.teamId, game, gamesById)
-  );
+  const visibleCandidates = sortedCandidates.filter((candidate) => candidate.prob > 0);
   const probByTeam = new Map(candidates.map((c) => [c.teamId, c.prob]));
   const rows: CandidateRow[] =
     game.teamAId && game.teamBId
@@ -667,18 +654,6 @@ function GameCard({
       </div>
     </article>
   );
-}
-
-function canAppearInGame(teamId: string, game: ResolvedGame, gamesById: Map<string, ResolvedGame>): boolean {
-  if (game.teamAId && game.teamBId) return teamId === game.teamAId || teamId === game.teamBId;
-  if (!game.sourceGameIds) return false;
-
-  return game.sourceGameIds.some((sourceId) => {
-    const source = gamesById.get(sourceId);
-    if (!source) return false;
-    if (source.winnerId) return source.winnerId === teamId;
-    return source.teamAId === teamId || source.teamBId === teamId;
-  });
 }
 
 function getCompactColumns(round: ResolvedGame["round"]): number {
