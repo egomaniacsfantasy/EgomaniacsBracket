@@ -12,6 +12,32 @@ const gameOrder = [...gameTemplates].sort((a, b) => {
   if (rankA !== rankB) return rankA - rankB;
   return a.slot - b.slot;
 });
+const templateById = new Map(gameTemplates.map((game) => [game.id, game]));
+
+const eligibleTeamsCache = new Map<string, string[]>();
+const eligibleTeamsForGame = (gameId: string): string[] => {
+  const cached = eligibleTeamsCache.get(gameId);
+  if (cached) return cached;
+
+  const template = templateById.get(gameId);
+  if (!template) return [];
+
+  let teamIds: string[] = [];
+  if (template.initialTeamIds) {
+    teamIds = [...template.initialTeamIds];
+  } else if (template.sourceGameIds) {
+    teamIds = template.sourceGameIds.flatMap((sourceId) => eligibleTeamsForGame(sourceId));
+  }
+
+  const unique = Array.from(new Set(teamIds)).sort((a, b) => {
+    const teamA = teamsById.get(a);
+    const teamB = teamsById.get(b);
+    if (teamA && teamB && teamA.seed !== teamB.seed) return teamA.seed - teamB.seed;
+    return a.localeCompare(b);
+  });
+  eligibleTeamsCache.set(gameId, unique);
+  return unique;
+};
 
 const eligibleLock = (
   lockId: string | undefined,
@@ -105,10 +131,10 @@ const normalizeGameWinProbs = (
 
   for (const game of gameTemplates) {
     const byTeam = winCounts.get(game.id) ?? new Map<string, number>();
-    const arr: GameWinProbability[] = [...byTeam.entries()]
-      .map(([teamId, count]) => ({ teamId, prob: count / simRuns }))
-      .filter((row) => row.prob > 0)
-      .sort((a, b) => b.prob - a.prob);
+    const arr: GameWinProbability[] = eligibleTeamsForGame(game.id).map((teamId) => ({
+      teamId,
+      prob: (byTeam.get(teamId) ?? 0) / simRuns,
+    }));
     out[game.id] = arr;
   }
 
