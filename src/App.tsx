@@ -3,7 +3,7 @@ import "./index.css";
 import { teamsById } from "./data/teams";
 import { regionRounds } from "./data/bracket";
 import { buildChalkPicks, finalRounds, gamesByRegionAndRound, resetRegionPicks, resolveGames, sanitizeLockedPicks, type LockedPicks } from "./lib/bracket";
-import { formatOddsDisplay, toImpliedLabel, toOneInX, winProb } from "./lib/odds";
+import { toImpliedLabel, toOneInX } from "./lib/odds";
 import { hashLocks, runSimulation } from "./lib/simulation";
 import { fallbackLogo, teamLogoUrl } from "./lib/logo";
 import type { OddsDisplayMode, Region, ResolvedGame, SimulationOutput } from "./types";
@@ -44,6 +44,7 @@ function App() {
   const [sidePanelOpen, setSidePanelOpen] = useState(false);
   const [simResult, setSimResult] = useState<SimulationOutput>({
     futures: [],
+    gameWinProbs: {},
     likelihoodApprox: 0,
     likelihoodSimulation: 0,
   });
@@ -192,7 +193,7 @@ function App() {
                         key={region}
                         region={region}
                         games={games}
-                        displayMode={displayMode}
+                        gameWinProbs={simResult.gameWinProbs}
                         onPick={onPick}
                         lastPickedKey={lastPickedKey}
                         onResetRegion={onResetRegion}
@@ -212,7 +213,7 @@ function App() {
                       <GameCard
                         key={leftSemi.id}
                         game={leftSemi}
-                        displayMode={displayMode}
+                        gameWinProbs={simResult.gameWinProbs}
                         onPick={onPick}
                         lastPickedKey={lastPickedKey}
                       />
@@ -226,7 +227,7 @@ function App() {
                         <GameCard
                           key={titleGame.id}
                           game={titleGame}
-                          displayMode={displayMode}
+                          gameWinProbs={simResult.gameWinProbs}
                           onPick={onPick}
                           lastPickedKey={lastPickedKey}
                         />
@@ -240,7 +241,7 @@ function App() {
                       <GameCard
                         key={rightSemi.id}
                         game={rightSemi}
-                        displayMode={displayMode}
+                        gameWinProbs={simResult.gameWinProbs}
                         onPick={onPick}
                         lastPickedKey={lastPickedKey}
                       />
@@ -261,7 +262,7 @@ function App() {
                         key={region}
                         region={region}
                         games={games}
-                        displayMode={displayMode}
+                        gameWinProbs={simResult.gameWinProbs}
                         onPick={onPick}
                         lastPickedKey={lastPickedKey}
                         onResetRegion={onResetRegion}
@@ -306,9 +307,12 @@ function App() {
                   <thead>
                     <tr>
                       <th>Team</th>
+                      <th>R32</th>
+                      <th>S16</th>
+                      <th>E8</th>
+                      <th>F4</th>
+                      <th>Title</th>
                       <th>Champ</th>
-                      <th>Region</th>
-                      <th>Side</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -324,9 +328,12 @@ function App() {
                               <span>{team.name}</span>
                             </div>
                           </td>
-                          <OddsCell prob={row.champProb} mode={displayMode} />
-                          <OddsCell prob={row.regionProb} mode={displayMode} />
-                          <OddsCell prob={row.sideProb} mode={displayMode} />
+                          <OddsCell prob={row.round2Prob} />
+                          <OddsCell prob={row.sweet16Prob} />
+                          <OddsCell prob={row.elite8Prob} />
+                          <OddsCell prob={row.final4Prob} />
+                          <OddsCell prob={row.titleGameProb} />
+                          <OddsCell prob={row.champProb} />
                         </tr>
                       );
                     })}
@@ -375,12 +382,10 @@ function App() {
   );
 }
 
-function OddsCell({ prob, mode }: { prob: number; mode: OddsDisplayMode }) {
-  const formatted = formatOddsDisplay(prob, mode);
+function OddsCell({ prob }: { prob: number }) {
   return (
     <td>
-      <p className="odds-primary">{formatted.primary}</p>
-      {formatted.secondary ? <p className="odds-secondary">{formatted.secondary}</p> : null}
+      <p className="odds-primary">{toImpliedLabel(prob)}</p>
     </td>
   );
 }
@@ -388,7 +393,7 @@ function OddsCell({ prob, mode }: { prob: number; mode: OddsDisplayMode }) {
 function RegionBracket({
   region,
   games,
-  displayMode,
+  gameWinProbs,
   onPick,
   lastPickedKey,
   onResetRegion,
@@ -396,7 +401,7 @@ function RegionBracket({
 }: {
   region: Region;
   games: ResolvedGame[];
-  displayMode: OddsDisplayMode;
+  gameWinProbs: SimulationOutput["gameWinProbs"];
   onPick: (game: ResolvedGame, teamId: string | null) => void;
   lastPickedKey: string | null;
   onResetRegion: (region: Region) => void;
@@ -429,7 +434,7 @@ function RegionBracket({
                     <div key={game.id} className="eg-game-node" style={slotVars}>
                       <GameCard
                         game={game}
-                        displayMode={displayMode}
+                        gameWinProbs={gameWinProbs}
                         onPick={onPick}
                         lastPickedKey={lastPickedKey}
                       />
@@ -447,60 +452,75 @@ function RegionBracket({
 
 function GameCard({
   game,
-  displayMode,
+  gameWinProbs,
   onPick,
   lastPickedKey,
 }: {
   game: ResolvedGame;
-  displayMode: OddsDisplayMode;
+  gameWinProbs: SimulationOutput["gameWinProbs"];
   onPick: (game: ResolvedGame, teamId: string | null) => void;
   lastPickedKey: string | null;
 }) {
-  const teamA = game.teamAId ? teamsById.get(game.teamAId) : null;
-  const teamB = game.teamBId ? teamsById.get(game.teamBId) : null;
-
-  const probA = teamA && teamB ? winProb(teamA.rating, teamB.rating) : null;
-  const probB = probA !== null ? 1 - probA : null;
-
-  const tooltipA =
-    teamA && teamB && probA !== null
-      ? `Win prob: ${(probA * 100).toFixed(1)}% (model-based) | Ratings ${teamA.rating} vs ${teamB.rating}`
-      : "Waiting for matchup";
-
-  const tooltipB =
-    teamA && teamB && probB !== null
-      ? `Win prob: ${(probB * 100).toFixed(1)}% (model-based) | Ratings ${teamB.rating} vs ${teamA.rating}`
-      : "Waiting for matchup";
+  const candidates = (gameWinProbs[game.id] || [])
+    .map((entry) => ({ ...entry, team: teamsById.get(entry.teamId) }))
+    .filter((entry) => Boolean(entry.team));
+  const rows = candidates.length > 0 ? candidates : [];
 
   return (
     <article className={`eg-game-card round-${game.round.toLowerCase()}`}>
-      <TeamRow
-        label={teamA ? teamA.name : "TBD"}
-        seed={teamA?.seed ?? null}
-        teamName={teamA?.name ?? null}
-        logoSrc={teamA ? teamLogoUrl(teamA) : null}
-        prob={probA}
-        selected={game.winnerId === teamA?.id}
-        freshPick={Boolean(teamA?.id && lastPickedKey === `${game.id}:${teamA.id}`)}
-        disabled={!teamA || !teamB}
-        tooltip={tooltipA}
-        displayMode={displayMode}
-        onPick={() => onPick(game, teamA?.id ?? null)}
-      />
-
-      <TeamRow
-        label={teamB ? teamB.name : "TBD"}
-        seed={teamB?.seed ?? null}
-        teamName={teamB?.name ?? null}
-        logoSrc={teamB ? teamLogoUrl(teamB) : null}
-        prob={probB}
-        selected={game.winnerId === teamB?.id}
-        freshPick={Boolean(teamB?.id && lastPickedKey === `${game.id}:${teamB.id}`)}
-        disabled={!teamA || !teamB}
-        tooltip={tooltipB}
-        displayMode={displayMode}
-        onPick={() => onPick(game, teamB?.id ?? null)}
-      />
+      <div className="eg-game-list">
+        {rows.length > 0 ? (
+          rows.map((candidate) => {
+            const team = candidate.team!;
+            const canPick =
+              game.teamAId !== null &&
+              game.teamBId !== null &&
+              (team.id === game.teamAId || team.id === game.teamBId);
+            return (
+              <TeamRow
+                key={`${game.id}-${team.id}`}
+                label={team.name}
+                seed={team.seed}
+                teamName={team.name}
+                logoSrc={teamLogoUrl(team)}
+                prob={candidate.prob}
+                selected={game.winnerId === team.id}
+                freshPick={Boolean(lastPickedKey === `${game.id}:${team.id}`)}
+                disabled={!canPick}
+                tooltip={`Chance to advance from this game: ${(candidate.prob * 100).toFixed(1)}%`}
+                onPick={() => onPick(game, canPick ? team.id : null)}
+              />
+            );
+          })
+        ) : (
+          <>
+            <TeamRow
+              label="TBD"
+              seed={null}
+              teamName={null}
+              logoSrc={null}
+              prob={null}
+              selected={false}
+              freshPick={false}
+              disabled
+              tooltip="Waiting for simulation..."
+              onPick={() => {}}
+            />
+            <TeamRow
+              label="TBD"
+              seed={null}
+              teamName={null}
+              logoSrc={null}
+              prob={null}
+              selected={false}
+              freshPick={false}
+              disabled
+              tooltip="Waiting for simulation..."
+              onPick={() => {}}
+            />
+          </>
+        )}
+      </div>
     </article>
   );
 }
@@ -515,7 +535,6 @@ function TeamRow({
   freshPick,
   disabled,
   tooltip,
-  displayMode,
   onPick,
 }: {
   label: string;
@@ -527,10 +546,9 @@ function TeamRow({
   freshPick: boolean;
   disabled: boolean;
   tooltip: string;
-  displayMode: OddsDisplayMode;
   onPick: () => void;
 }) {
-  const formatted = prob !== null ? formatOddsDisplay(prob, displayMode) : { primary: "--" };
+  const percent = prob !== null ? `${(prob * 100).toFixed(1)}%` : "--";
   const isLongName = label.length >= 18;
 
   return (
@@ -553,7 +571,7 @@ function TeamRow({
         {label}
       </span>
       <span className="team-odds-wrap">
-        <span className="team-odds">{formatted.primary}</span>
+        <span className="team-odds">{percent}</span>
       </span>
     </button>
   );

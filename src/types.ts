@@ -34,13 +34,22 @@ export interface ResolvedGame extends GameTemplate {
 
 export interface FuturesRow {
   teamId: string;
+  round2Prob: number;
+  sweet16Prob: number;
+  elite8Prob: number;
+  final4Prob: number;
+  titleGameProb: number;
   champProb: number;
-  regionProb: number;
-  sideProb: number;
+}
+
+export interface GameWinProbability {
+  teamId: string;
+  prob: number;
 }
 
 export interface SimulationOutput {
   futures: FuturesRow[];
+  gameWinProbs: Record<string, GameWinProbability[]>;
   likelihoodSimulation: number;
   likelihoodApprox: number;
 }

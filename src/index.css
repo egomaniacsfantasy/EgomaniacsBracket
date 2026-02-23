@@ -350,6 +350,8 @@ body {
   background: rgba(14, 11, 6, 0.7);
   transition: transform 180ms ease, border-color 180ms ease, box-shadow 180ms ease;
   position: relative;
+  max-height: 152px;
+  overflow: hidden;
 }
 
 .lane-r64 .eg-game-node .eg-game-card {
@@ -360,6 +362,15 @@ body {
   transform: translateY(-1px);
   border-color: rgba(237, 193, 102, 0.34);
   box-shadow: 0 10px 20px rgba(0, 0, 0, 0.24);
+}
+
+.eg-game-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  max-height: 140px;
+  overflow-y: auto;
+  padding-right: 2px;
 }
 
 
@@ -375,7 +386,7 @@ body {
   grid-template-columns: 18px 14px minmax(0, 1fr) auto;
   align-items: center;
   column-gap: 5px;
-  padding: 5px 6px;
+  padding: 4px 6px;
   cursor: pointer;
   margin-bottom: 4px;
   transition: border-color 0.15s ease, background 0.15s ease;
@@ -397,8 +408,8 @@ body {
 }
 
 .eg-team-row:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
+  opacity: 0.88;
+  cursor: default;
 }
 
 .team-logo {
@@ -426,7 +437,7 @@ body {
 }
 
 .team-name {
-  font-size: 0.74rem;
+  font-size: 0.68rem;
   font-weight: 600;
   line-height: 1;
   white-space: nowrap;
@@ -436,7 +447,7 @@ body {
 }
 
 .team-name.long-name {
-  font-size: 0.66rem;
+  font-size: 0.63rem;
   letter-spacing: -0.004em;
 }
 
@@ -450,7 +461,7 @@ body {
 }
 
 .team-odds {
-  font-size: 0.72rem;
+  font-size: 0.66rem;
   font-weight: 700;
   white-space: nowrap;
 }

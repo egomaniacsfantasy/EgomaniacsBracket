@@ -1,6 +1,6 @@
-import { gameTemplates, sideRegions } from "../data/bracket";
+import { gameTemplates } from "../data/bracket";
 import { teams, teamsById } from "../data/teams";
-import type { FuturesRow, Region, Side, SimulationOutput } from "../types";
+import type { FuturesRow, GameWinProbability, SimulationOutput } from "../types";
 import type { LockedPicks } from "./bracket";
 import { getGameWinProb, resolveGames } from "./bracket";
 import { winProb } from "./odds";
@@ -12,9 +12,6 @@ const gameOrder = [...gameTemplates].sort((a, b) => {
   if (rankA !== rankB) return rankA - rankB;
   return a.slot - b.slot;
 });
-
-const sideForRegion = (region: Region): Side =>
-  sideRegions.Left.includes(region) ? "Left" : "Right";
 
 const eligibleLock = (
   lockId: string | undefined,
@@ -84,9 +81,12 @@ const computeApproxLikelihood = (locks: LockedPicks): number => {
 const makeEmptyFutures = (): FuturesRow[] =>
   teams.map((team) => ({
     teamId: team.id,
+    round2Prob: 0,
+    sweet16Prob: 0,
+    elite8Prob: 0,
+    final4Prob: 0,
+    titleGameProb: 0,
     champProb: 0,
-    regionProb: 0,
-    sideProb: 0,
   }));
 
 export const hashLocks = (locks: LockedPicks, simRuns: number): string => {
@@ -97,9 +97,32 @@ export const hashLocks = (locks: LockedPicks, simRuns: number): string => {
   return `${simRuns}::${picks}`;
 };
 
+const normalizeGameWinProbs = (
+  winCounts: Map<string, Map<string, number>>,
+  simRuns: number
+): Record<string, GameWinProbability[]> => {
+  const out: Record<string, GameWinProbability[]> = {};
+
+  for (const game of gameTemplates) {
+    const byTeam = winCounts.get(game.id) ?? new Map<string, number>();
+    const arr: GameWinProbability[] = [...byTeam.entries()]
+      .map(([teamId, count]) => ({ teamId, prob: count / simRuns }))
+      .filter((row) => row.prob > 0)
+      .sort((a, b) => b.prob - a.prob);
+    out[game.id] = arr;
+  }
+
+  return out;
+};
+
 export const runSimulation = (locks: LockedPicks, simRuns: number): SimulationOutput => {
   const rows = makeEmptyFutures();
   const rowMap = new Map(rows.map((row) => [row.teamId, row]));
+  const gameWinCounts = new Map<string, Map<string, number>>();
+
+  for (const game of gameTemplates) {
+    gameWinCounts.set(game.id, new Map<string, number>());
+  }
 
   let lockSuccesses = 0;
 
@@ -109,41 +132,40 @@ export const runSimulation = (locks: LockedPicks, simRuns: number): SimulationOu
 
     if (natural.lockSuccess) lockSuccesses += 1;
 
-    const champId = forced.winners["CHAMP-0"];
-    if (champId) {
-      rowMap.get(champId)!.champProb += 1;
-    }
+    for (const game of gameTemplates) {
+      const winnerId = forced.winners[game.id];
+      if (!winnerId) continue;
 
-    for (const region of ["East", "West", "South", "Midwest"] as Region[]) {
-      const regionWinner = forced.winners[`${region}-E8-0`];
-      if (regionWinner) {
-        rowMap.get(regionWinner)!.regionProb += 1;
-      }
-    }
+      const byTeam = gameWinCounts.get(game.id)!;
+      byTeam.set(winnerId, (byTeam.get(winnerId) ?? 0) + 1);
 
-    const leftWinner = forced.winners["F4-Left-0"];
-    const rightWinner = forced.winners["F4-Right-0"];
-    if (leftWinner) rowMap.get(leftWinner)!.sideProb += 1;
-    if (rightWinner) rowMap.get(rightWinner)!.sideProb += 1;
+      const row = rowMap.get(winnerId);
+      if (!row) continue;
+
+      if (game.round === "R64") row.round2Prob += 1;
+      if (game.round === "R32") row.sweet16Prob += 1;
+      if (game.round === "S16") row.elite8Prob += 1;
+      if (game.round === "E8") row.final4Prob += 1;
+      if (game.round === "F4") row.titleGameProb += 1;
+      if (game.round === "CHAMP") row.champProb += 1;
+    }
   }
 
   rows.forEach((row) => {
+    row.round2Prob /= simRuns;
+    row.sweet16Prob /= simRuns;
+    row.elite8Prob /= simRuns;
+    row.final4Prob /= simRuns;
+    row.titleGameProb /= simRuns;
     row.champProb /= simRuns;
-    row.regionProb /= simRuns;
-    row.sideProb /= simRuns;
   });
 
   const sorted = rows.sort((a, b) => b.champProb - a.champProb);
 
   return {
     futures: sorted,
+    gameWinProbs: normalizeGameWinProbs(gameWinCounts, simRuns),
     likelihoodSimulation: lockSuccesses / simRuns,
     likelihoodApprox: computeApproxLikelihood(locks),
   };
-};
-
-export const sideLabelForTeam = (teamId: string): Side | null => {
-  const team = teamsById.get(teamId);
-  if (!team) return null;
-  return sideForRegion(team.region);
 };
