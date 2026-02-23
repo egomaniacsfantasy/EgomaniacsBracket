@@ -49,6 +49,7 @@ function App() {
   const [isUpdating, setIsUpdating] = useState(false);
   const [lastPickedKey, setLastPickedKey] = useState<string | null>(null);
   const [sidePanelOpen, setSidePanelOpen] = useState(false);
+  const [compactDesktop, setCompactDesktop] = useState(false);
   const [simResult, setSimResult] = useState<SimulationOutput>({
     futures: [],
     gameWinProbs: {},
@@ -60,6 +61,14 @@ function App() {
 
   const { games, sanitized } = useMemo(() => resolveGames(lockedPicks), [lockedPicks]);
   const possibleWinners = useMemo(() => possibleWinnersByGame(sanitized), [sanitized]);
+
+  useEffect(() => {
+    const media = window.matchMedia("(max-width: 1700px)");
+    const apply = () => setCompactDesktop(media.matches);
+    apply();
+    media.addEventListener("change", apply);
+    return () => media.removeEventListener("change", apply);
+  }, []);
 
   useEffect(() => {
     const key = hashLocks(sanitized, simRuns);
@@ -150,7 +159,7 @@ function App() {
   const titleGame = finalGames.find((g) => g.id === "CHAMP-0") ?? null;
 
   return (
-    <div className="eg-shell">
+    <div className={`eg-shell ${compactDesktop ? "compact-desktop" : ""}`}>
       <div className="bg-shape bg-top" aria-hidden="true" />
       <div className="bg-shape bg-bottom" aria-hidden="true" />
 
