@@ -538,6 +538,16 @@ body {
   min-width: 0;
 }
 
+.adaptive-label {
+  transition: opacity 170ms ease, transform 170ms ease;
+  will-change: opacity, transform;
+}
+
+.adaptive-label.is-switching {
+  opacity: 0.28;
+  transform: translateY(1px);
+}
+
 .eg-team-row.compact .team-name {
   display: none;
 }

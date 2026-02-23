@@ -797,6 +797,9 @@ function normalizeTeamName(name: string): string {
 function AdaptiveTeamLabel({ className, fullName }: { className: string; fullName: string }) {
   const ref = useRef<HTMLSpanElement>(null);
   const [label, setLabel] = useState(fullName);
+  const [switching, setSwitching] = useState(false);
+  const labelRef = useRef(fullName);
+  const switchTimerRef = useRef<number | null>(null);
 
   useLayoutEffect(() => {
     const node = ref.current;
@@ -832,7 +835,15 @@ function AdaptiveTeamLabel({ className, fullName }: { className: string; fullNam
           .toUpperCase()
           .slice(0, 4);
       }
-      setLabel((prev) => (prev === next ? prev : next));
+      if (next === labelRef.current) return;
+
+      setSwitching(true);
+      if (switchTimerRef.current !== null) window.clearTimeout(switchTimerRef.current);
+      switchTimerRef.current = window.setTimeout(() => {
+        labelRef.current = next;
+        setLabel(next);
+        window.requestAnimationFrame(() => setSwitching(false));
+      }, 95);
     };
 
     recalc();
@@ -843,11 +854,12 @@ function AdaptiveTeamLabel({ className, fullName }: { className: string; fullNam
     return () => {
       observer.disconnect();
       window.removeEventListener("resize", recalc);
+      if (switchTimerRef.current !== null) window.clearTimeout(switchTimerRef.current);
     };
   }, [fullName]);
 
   return (
-    <span ref={ref} className={className} title={fullName}>
+    <span ref={ref} className={`${className} adaptive-label ${switching ? "is-switching" : ""}`} title={fullName}>
       {label}
     </span>
   );
