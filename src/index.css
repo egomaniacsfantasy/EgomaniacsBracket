@@ -638,6 +638,18 @@ body {
   align-items: start;
 }
 
+.eg-compact-grid.density-md {
+  gap: 6px;
+}
+
+.eg-compact-grid.density-lg {
+  gap: 7px;
+}
+
+.eg-compact-grid.density-xl {
+  gap: 8px;
+}
+
 .eg-compact-chip {
   width: 100%;
   border: 1px solid rgba(171, 138, 69, 0.24);
@@ -657,6 +669,26 @@ body {
   text-align: left;
   position: relative;
   z-index: 2;
+}
+
+.eg-compact-grid.density-md .eg-compact-chip {
+  grid-template-columns: 18px 14px minmax(0, 1fr) minmax(52px, auto);
+  min-height: 36px;
+  padding: 5px 8px;
+}
+
+.eg-compact-grid.density-lg .eg-compact-chip {
+  grid-template-columns: 19px 15px minmax(0, 1fr) minmax(56px, auto);
+  min-height: 44px;
+  padding: 6px 9px;
+  border-radius: 9px;
+}
+
+.eg-compact-grid.density-xl .eg-compact-chip {
+  grid-template-columns: 20px 16px minmax(0, 1fr) minmax(62px, auto);
+  min-height: 54px;
+  padding: 8px 10px;
+  border-radius: 10px;
 }
 
 .eg-compact-chip:disabled {
@@ -688,6 +720,18 @@ body {
   min-width: 0;
 }
 
+.eg-compact-grid.density-md .chip-code {
+  font-size: 0.7rem;
+}
+
+.eg-compact-grid.density-lg .chip-code {
+  font-size: 0.79rem;
+}
+
+.eg-compact-grid.density-xl .chip-code {
+  font-size: 0.9rem;
+}
+
 .chip-prob {
   font-size: 0.62rem;
   font-weight: 700;
@@ -697,6 +741,36 @@ body {
   text-align: right;
   min-width: 44px;
   justify-self: end;
+}
+
+.eg-compact-grid.density-md .chip-prob {
+  font-size: 0.68rem;
+}
+
+.eg-compact-grid.density-lg .chip-prob {
+  font-size: 0.78rem;
+}
+
+.eg-compact-grid.density-xl .chip-prob {
+  font-size: 0.9rem;
+}
+
+.eg-compact-grid.density-lg .chip-seed {
+  font-size: 0.72rem;
+}
+
+.eg-compact-grid.density-xl .chip-seed {
+  font-size: 0.78rem;
+}
+
+.eg-semi-col .eg-game-card.round-f4,
+.eg-title-col .eg-game-card.round-champ {
+  min-height: 188px;
+}
+
+.eg-semi-col .eg-compact-grid.density-xl .eg-compact-chip,
+.eg-title-col .eg-compact-grid.density-xl .eg-compact-chip {
+  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.26);
 }
 
 .chip-odds {

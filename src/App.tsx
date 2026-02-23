@@ -501,8 +501,8 @@ function GameCard({
     );
   });
   const useChampSplit = game.round === "CHAMP" && finalistRows.length === 2;
-
-  const compactColumns = getCompactColumns(game.round);
+  const compactColumns = getCompactColumns(game.round, rows.length);
+  const compactDensity = getCompactDensity(game.round, rows.length);
 
   return (
     <article className={`eg-game-card round-${game.round.toLowerCase()}`}>
@@ -585,7 +585,7 @@ function GameCard({
             })
           ) : (
             <div
-              className={`eg-compact-grid round-${game.round.toLowerCase()}`}
+              className={`eg-compact-grid round-${game.round.toLowerCase()} density-${compactDensity}`}
               style={{ gridTemplateColumns: `repeat(${compactColumns}, minmax(0, 1fr))` }}
             >
               {rows.map((candidate) => {
@@ -676,13 +676,24 @@ function GameCard({
   );
 }
 
-function getCompactColumns(round: ResolvedGame["round"]): number {
+function getCompactColumns(round: ResolvedGame["round"], count: number): number {
   if (round === "R32") return 1;
   if (round === "S16") return 1;
   if (round === "E8") return 1;
-  if (round === "F4") return 3;
-  if (round === "CHAMP") return 3;
+  if (round === "F4" || round === "CHAMP") {
+    if (count <= 2) return 1;
+    if (count <= 8) return 2;
+    return 3;
+  }
   return 2;
+}
+
+function getCompactDensity(round: ResolvedGame["round"], count: number): "sm" | "md" | "lg" | "xl" {
+  if (round !== "F4" && round !== "CHAMP") return "sm";
+  if (count <= 2) return "xl";
+  if (count <= 4) return "lg";
+  if (count <= 8) return "md";
+  return "sm";
 }
 
 function TeamRow({
