@@ -474,6 +474,13 @@ function GameCard({
   const candidates = (gameWinProbs[game.id] || [])
     .map((entry) => ({ ...entry, team: teamsById.get(entry.teamId) }))
     .filter((entry): entry is CandidateRow => Boolean(entry.team));
+  const sortedCandidates =
+    game.round === "F4" || game.round === "CHAMP"
+      ? [...candidates].sort((a, b) => {
+          if (b.prob !== a.prob) return b.prob - a.prob;
+          return a.team.seed - b.team.seed;
+        })
+      : candidates;
   const probByTeam = new Map(candidates.map((c) => [c.teamId, c.prob]));
   const rows: CandidateRow[] =
     game.round === "R64" && game.teamAId && game.teamBId
@@ -484,7 +491,7 @@ function GameCard({
             return { teamId, prob: probByTeam.get(teamId) ?? 0, team };
           })
           .filter((row): row is CandidateRow => row !== null)
-      : candidates;
+      : sortedCandidates;
   const finalistRows = rows.filter((candidate) => {
     const team = candidate.team!;
     return (
@@ -566,7 +573,7 @@ function GameCard({
                   (team.id === game.teamAId || team.id === game.teamBId);
                 const selected = game.winnerId === team.id;
                 const { primary, secondary } = formatOddsDisplay(candidate.prob, displayMode);
-                const showLogo = game.round === "R32";
+                const showLogo = true;
                 const teamLabel = compactNameForRound(team.name, game.round);
                 return (
                   <button
@@ -708,16 +715,48 @@ function TeamLogo({ teamName, src }: { teamName: string; src: string }) {
 }
 
 function compactNameForRound(name: string, round: ResolvedGame["round"]): string {
-  if (round === "R32" || round === "S16" || round === "E8") return name;
-  return toCompactTeamCode(name);
+  const limitsByRound: Record<ResolvedGame["round"], number> = {
+    R64: 18,
+    R32: 16,
+    S16: 13,
+    E8: 12,
+    F4: 11,
+    CHAMP: 11,
+  };
+  const normalized = normalizeTeamName(name);
+  if (normalized.length <= limitsByRound[round]) return normalized;
+  return toCompactTeamCode(normalized);
 }
 
 function toCompactTeamCode(name: string): string {
-  const cleaned = name.replace(/[^A-Za-z0-9 ]+/g, " ").trim();
+  const cleaned = name.replace(/[^A-Za-z0-9&. ]+/g, " ").trim();
   const tokens = cleaned.split(/\s+/).filter(Boolean);
   if (tokens.length === 0) return "TBD";
-  if (tokens.length === 1) return tokens[0].slice(0, 6);
-  return tokens.map((token) => token[0]).join("").slice(0, 6).toUpperCase();
+  if (tokens.length === 1) return tokens[0].slice(0, 10);
+  if (tokens.length === 2) return `${tokens[0]} ${tokens[1].slice(0, 4)}`.trim();
+  return tokens
+    .filter((token) => !["of", "the", "at"].includes(token.toLowerCase()))
+    .map((token) => token[0])
+    .join("")
+    .slice(0, 5)
+    .toUpperCase();
+}
+
+function normalizeTeamName(name: string): string {
+  const dictionary: Record<string, string> = {
+    "James Madison": "James Madison",
+    "Western Kentucky": "Western Kentucky",
+    "Texas A&M": "Texas A&M",
+    "North Carolina State": "NC State",
+    "Florida Atlantic": "Florida Atlantic",
+    "Mississippi State": "Mississippi State",
+    "Morehead State": "Morehead State",
+    "South Dakota State": "South Dakota St.",
+    "Washington State": "Washington State",
+    "San Diego State": "San Diego State",
+    "Saint Mary's": "Saint Mary's",
+  };
+  return dictionary[name] ?? name;
 }
 
 export default App;
