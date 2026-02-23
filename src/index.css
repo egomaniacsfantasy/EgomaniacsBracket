@@ -549,13 +549,57 @@ body {
 }
 
 .adaptive-label {
-  transition: opacity 170ms ease, transform 170ms ease;
-  will-change: opacity, transform;
+  display: block;
+  width: 100%;
+  position: relative;
+  min-width: 0;
 }
 
 .adaptive-label.is-switching {
-  opacity: 0.28;
-  transform: translateY(1px);
+  min-height: 1em;
+}
+
+.adaptive-label-current {
+  display: block;
+}
+
+.adaptive-label-prev,
+.adaptive-label-next {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  white-space: nowrap;
+}
+
+.adaptive-label-prev {
+  animation: label-fade-out 210ms ease forwards;
+}
+
+.adaptive-label-next {
+  animation: label-fade-in 210ms ease forwards;
+}
+
+@keyframes label-fade-out {
+  from {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  to {
+    opacity: 0;
+    transform: translateY(-1px);
+  }
+}
+
+@keyframes label-fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(1px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .eg-team-row.compact .team-name {

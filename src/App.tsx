@@ -768,6 +768,7 @@ function normalizeTeamName(name: string): string {
 function AdaptiveTeamLabel({ className, fullName }: { className: string; fullName: string }) {
   const ref = useRef<HTMLSpanElement>(null);
   const [label, setLabel] = useState(fullName);
+  const [prevLabel, setPrevLabel] = useState(fullName);
   const [switching, setSwitching] = useState(false);
   const labelRef = useRef(fullName);
   const switchTimerRef = useRef<number | null>(null);
@@ -789,7 +790,7 @@ function AdaptiveTeamLabel({ className, fullName }: { className: string; fullNam
       if (!el) return;
       const style = window.getComputedStyle(el);
       const font = `${style.fontWeight} ${style.fontSize} ${style.fontFamily}`;
-      const maxWidth = el.clientWidth;
+      const maxWidth = (el.parentElement as HTMLElement | null)?.clientWidth ?? el.clientWidth;
       const full = fullName;
       const abbreviated = abbreviationForTeam(fullName);
       const fullWidth = measure(full, font);
@@ -808,13 +809,12 @@ function AdaptiveTeamLabel({ className, fullName }: { className: string; fullNam
       }
       if (next === labelRef.current) return;
 
-      setSwitching(true);
       if (switchTimerRef.current !== null) window.clearTimeout(switchTimerRef.current);
-      switchTimerRef.current = window.setTimeout(() => {
-        labelRef.current = next;
-        setLabel(next);
-        window.requestAnimationFrame(() => setSwitching(false));
-      }, 95);
+      setPrevLabel(labelRef.current);
+      labelRef.current = next;
+      setLabel(next);
+      setSwitching(true);
+      switchTimerRef.current = window.setTimeout(() => setSwitching(false), 230);
     };
 
     recalc();
@@ -831,7 +831,14 @@ function AdaptiveTeamLabel({ className, fullName }: { className: string; fullNam
 
   return (
     <span ref={ref} className={`${className} adaptive-label ${switching ? "is-switching" : ""}`} title={fullName}>
-      {label}
+      {switching ? (
+        <>
+          <span className="adaptive-label-prev">{prevLabel}</span>
+          <span className="adaptive-label-next">{label}</span>
+        </>
+      ) : (
+        <span className="adaptive-label-current">{label}</span>
+      )}
     </span>
   );
 }
