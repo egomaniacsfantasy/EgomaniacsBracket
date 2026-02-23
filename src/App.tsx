@@ -595,9 +595,8 @@ function GameCard({
                 const selected = game.winnerId === team.id;
                 const { primary, secondary } = formatOddsDisplay(candidate.prob, displayMode);
                 const showLogo = true;
-                const teamLabel = compactNameForRound(team.name, game.round);
-                const chipNameClass =
-                  teamLabel.length >= 16 ? "very-long" : teamLabel.length >= 12 ? "long" : "";
+                const teamLabel = normalizeTeamName(team.name);
+                const chipNameSize = nameSizeClass(teamLabel);
                 const outcome =
                   game.lockedByUser && game.winnerId
                     ? game.winnerId === team.id
@@ -615,7 +614,7 @@ function GameCard({
                   >
                     <span className="chip-seed">{team.seed}</span>
                     {showLogo ? <TeamLogo teamName={team.name} src={teamLogoUrl(team)} /> : null}
-                    <span className={`chip-code ${showLogo ? "" : "no-logo"} ${chipNameClass}`} title={team.name}>
+                    <span className={`chip-code ${showLogo ? "" : "no-logo"} ${chipNameSize}`} title={team.name}>
                       {teamLabel}
                     </span>
                     <span className="chip-odds">
@@ -711,7 +710,8 @@ function TeamRow({
   onPick: () => void;
 }) {
   const formatted = prob !== null ? formatOddsDisplay(prob, displayMode) : { primary: "--" };
-  const nameClass = label.length >= 20 ? "very-long" : label.length >= 16 ? "long-name" : "";
+  const fullLabel = normalizeTeamName(label);
+  const rowNameSize = nameSizeClass(fullLabel);
 
   return (
     <button
@@ -729,7 +729,7 @@ function TeamRow({
       ) : (
         <span className="team-logo team-logo-placeholder" aria-hidden="true" />
       )}
-      {compact ? null : <span className={`team-name ${nameClass}`}>{label}</span>}
+      {compact ? null : <span className={`team-name ${rowNameSize}`}>{fullLabel}</span>}
       <span className="team-odds-wrap">
         {outcome ? (
           <span className={`outcome-badge ${outcome}`}>{outcome === "win" ? "✓" : "✕"}</span>
@@ -759,34 +759,6 @@ function TeamLogo({ teamName, src }: { teamName: string; src: string }) {
   );
 }
 
-function compactNameForRound(name: string, round: ResolvedGame["round"]): string {
-  const limitsByRound: Record<ResolvedGame["round"], number> = {
-    R64: 18,
-    R32: 16,
-    S16: 13,
-    E8: 12,
-    F4: 11,
-    CHAMP: 11,
-  };
-  const normalized = normalizeTeamName(name);
-  if (normalized.length <= limitsByRound[round]) return normalized;
-  return toCompactTeamCode(normalized);
-}
-
-function toCompactTeamCode(name: string): string {
-  const cleaned = name.replace(/[^A-Za-z0-9&. ]+/g, " ").trim();
-  const tokens = cleaned.split(/\s+/).filter(Boolean);
-  if (tokens.length === 0) return "TBD";
-  if (tokens.length === 1) return tokens[0].slice(0, 10);
-  if (tokens.length === 2) return `${tokens[0]} ${tokens[1].slice(0, 4)}`.trim();
-  return tokens
-    .filter((token) => !["of", "the", "at"].includes(token.toLowerCase()))
-    .map((token) => token[0])
-    .join("")
-    .slice(0, 5)
-    .toUpperCase();
-}
-
 function normalizeTeamName(name: string): string {
   const dictionary: Record<string, string> = {
     "James Madison": "James Madison",
@@ -802,6 +774,14 @@ function normalizeTeamName(name: string): string {
     "Saint Mary's": "Saint Mary's",
   };
   return dictionary[name] ?? name;
+}
+
+function nameSizeClass(name: string): string {
+  const len = name.length;
+  if (len >= 21) return "name-xxs";
+  if (len >= 18) return "name-xs";
+  if (len >= 14) return "name-sm";
+  return "name-base";
 }
 
 export default App;

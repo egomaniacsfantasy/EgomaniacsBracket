@@ -407,15 +407,15 @@ body {
   text-align: left;
   font-family: inherit;
   display: grid;
-  grid-template-columns: 18px 14px minmax(0, 1fr) minmax(56px, auto);
+  grid-template-columns: 16px 12px minmax(0, 1fr) minmax(46px, auto);
   align-items: center;
-  column-gap: 4px;
+  column-gap: 3px;
   padding: 3px 6px;
   cursor: pointer;
   margin-bottom: 4px;
   transition: border-color 0.15s ease, background 0.15s ease;
   min-width: 0;
-  overflow: hidden;
+  overflow: visible;
 }
 
 .eg-team-row.compact {
@@ -481,23 +481,30 @@ body {
 }
 
 .team-name {
-  font-size: 0.76rem;
+  font-size: 0.62rem;
   font-weight: 600;
   line-height: 1;
   white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  overflow: visible;
+  text-overflow: unset;
   min-width: 0;
 }
 
-.team-name.long-name {
-  font-size: 0.72rem;
-  letter-spacing: -0.004em;
+.team-name.name-base {
+  font-size: 0.68rem;
 }
 
-.team-name.very-long {
-  font-size: 0.67rem;
-  letter-spacing: -0.006em;
+.team-name.name-sm {
+  font-size: 0.63rem;
+}
+
+.team-name.name-xs {
+  font-size: 0.59rem;
+}
+
+.team-name.name-xxs {
+  font-size: 0.55rem;
+  letter-spacing: -0.003em;
 }
 
 .eg-team-row.compact .team-name {
@@ -510,7 +517,7 @@ body {
   align-items: flex-end;
   gap: 1px;
   flex-shrink: 0;
-  min-width: 56px;
+  min-width: 46px;
   justify-self: end;
   overflow: visible;
 }
@@ -521,7 +528,7 @@ body {
 }
 
 .team-odds {
-  font-size: 0.72rem;
+  font-size: 0.64rem;
   font-weight: 700;
   white-space: nowrap;
   overflow: visible;
@@ -542,15 +549,15 @@ body {
   background: rgba(34, 23, 10, 0.72);
   color: var(--text);
   display: grid;
-  grid-template-columns: 18px 14px minmax(0, 1fr) minmax(56px, auto);
+  grid-template-columns: 16px 12px minmax(0, 1fr) minmax(46px, auto);
   align-items: center;
-  gap: 4px;
+  gap: 3px;
   min-height: 30px;
   padding: 3px 6px;
   font-family: inherit;
   cursor: pointer;
   min-width: 0;
-  overflow: visible;
+  overflow: hidden;
   text-align: left;
 }
 
@@ -572,32 +579,41 @@ body {
 }
 
 .chip-code {
-  font-size: 0.72rem;
+  font-size: 0.6rem;
   font-weight: 700;
   color: rgba(239, 228, 207, 0.88);
   letter-spacing: 0.02em;
   white-space: nowrap;
-  overflow: hidden;
-  text-overflow: clip;
+  overflow: visible;
+  text-overflow: unset;
+  line-height: 1;
   min-width: 0;
 }
 
-.chip-code.long {
-  font-size: 0.68rem;
+.chip-code.name-base {
+  font-size: 0.62rem;
 }
 
-.chip-code.very-long {
-  font-size: 0.64rem;
+.chip-code.name-sm {
+  font-size: 0.58rem;
+}
+
+.chip-code.name-xs {
+  font-size: 0.55rem;
+}
+
+.chip-code.name-xxs {
+  font-size: 0.52rem;
 }
 
 .chip-prob {
-  font-size: 0.7rem;
+  font-size: 0.62rem;
   font-weight: 700;
   white-space: nowrap;
   overflow: visible;
   text-overflow: unset;
   text-align: right;
-  min-width: 56px;
+  min-width: 46px;
   justify-self: end;
 }
 
@@ -623,7 +639,7 @@ body {
 .lane-r32 .chip-code,
 .lane-s16 .chip-code,
 .lane-e8 .chip-code {
-  font-size: 0.74rem;
+  font-size: 0.6rem;
 }
 
 .eg-team-row.compact .team-odds {
