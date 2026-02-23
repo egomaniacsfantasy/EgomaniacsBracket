@@ -300,7 +300,7 @@ body {
 
 .eg-games-lane {
   position: relative;
-  height: 700px;
+  height: var(--lane-height, 560px);
   border-left: 1px solid rgba(74, 193, 100, 0.45);
   padding-left: 8px;
 }
@@ -350,8 +350,8 @@ body {
   background: rgba(14, 11, 6, 0.7);
   transition: transform 180ms ease, border-color 180ms ease, box-shadow 180ms ease;
   position: relative;
-  max-height: 152px;
-  overflow: hidden;
+  min-height: calc(8px + var(--rows, 2) * 20px);
+  overflow: visible;
 }
 
 .lane-r64 .eg-game-node .eg-game-card {
@@ -368,8 +368,8 @@ body {
   display: flex;
   flex-direction: column;
   gap: 4px;
-  max-height: 140px;
-  overflow-y: auto;
+  max-height: none;
+  overflow: visible;
   padding-right: 2px;
 }
 

@@ -421,14 +421,28 @@ function RegionBracket({
       <div className="eg-round-grid bracket-grid">
         {rounds.map((round) => {
           const roundGames = gamesByRegionAndRound(games, region, round);
+          const maxRows = Math.max(
+            2,
+            ...roundGames.map((g) => {
+              const entries = gameWinProbs[g.id] || [];
+              return Math.max(2, entries.length);
+            })
+          );
+          const slotHeight = 34 + maxRows * 20;
+          const laneHeight = Math.max(260, roundGames.length * slotHeight + Math.max(0, roundGames.length - 1) * 16);
+          const laneVars = {
+            "--lane-height": `${laneHeight}px`,
+          } as CSSProperties;
           return (
             <div key={`${region}-${round}`} className={`eg-round-col lane-${round.toLowerCase()}`}>
               <p className="eg-round-label">{gameRoundLabel[round]}</p>
-              <div className="eg-games-lane">
+              <div className="eg-games-lane" style={laneVars}>
                 {roundGames.map((game, idx) => {
+                  const rows = Math.max(2, (gameWinProbs[game.id] || []).length);
                   const slotVars = {
                     "--slot": idx,
                     "--count": roundGames.length,
+                    "--rows": rows,
                   } as CSSProperties;
                   return (
                     <div key={game.id} className="eg-game-node" style={slotVars}>
