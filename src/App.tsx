@@ -425,16 +425,20 @@ function RegionBracket({
             <div key={`${region}-${round}`} className={`eg-round-col lane-${round.toLowerCase()}`}>
               <p className="eg-round-label">{gameRoundLabel[round]}</p>
               <div className="eg-games-lane">
-                {roundGames.map((game) => (
-                  <div key={game.id} className="eg-game-node">
-                    <GameCard
-                      game={game}
-                      gameWinProbs={gameWinProbs}
-                      onPick={onPick}
-                      lastPickedKey={lastPickedKey}
-                    />
-                  </div>
-                ))}
+                {roundGames.map((game, idx) => {
+                  const topPercent = ((idx + 0.5) / Math.max(1, roundGames.length)) * 100;
+                  const nodeStyle = { top: `${topPercent}%` } as React.CSSProperties;
+                  return (
+                    <div key={game.id} className="eg-game-node" style={nodeStyle}>
+                      <GameCard
+                        game={game}
+                        gameWinProbs={gameWinProbs}
+                        onPick={onPick}
+                        lastPickedKey={lastPickedKey}
+                      />
+                    </div>
+                  );
+                })}
               </div>
             </div>
           );
@@ -552,6 +556,7 @@ function GameCard({
                   >
                     <span className="chip-seed">{team.seed}</span>
                     <TeamLogo teamName={team.name} src={teamLogoUrl(team)} />
+                    <span className="chip-code">{toCompactTeamCode(team.name)}</span>
                     <span className="chip-prob">{(candidate.prob * 100).toFixed(1)}%</span>
                   </button>
                 );
@@ -658,6 +663,14 @@ function TeamLogo({ teamName, src }: { teamName: string; src: string }) {
       onError={() => setFailed(true)}
     />
   );
+}
+
+function toCompactTeamCode(name: string): string {
+  const cleaned = name.replace(/[^A-Za-z0-9 ]+/g, " ").trim();
+  const tokens = cleaned.split(/\s+/).filter(Boolean);
+  if (tokens.length === 0) return "TBD";
+  if (tokens.length === 1) return tokens[0].slice(0, 4).toUpperCase();
+  return tokens.map((token) => token[0]).join("").slice(0, 4).toUpperCase();
 }
 
 export default App;

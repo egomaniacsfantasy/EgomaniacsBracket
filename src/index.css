@@ -331,7 +331,7 @@ body {
   position: absolute;
   left: 0;
   right: 0;
-  top: calc(((var(--slot) + 0.5) / var(--count)) * 100%);
+  top: 50%;
   transform: translateY(-50%);
   z-index: 1;
 }
@@ -363,7 +363,7 @@ body {
   transition: transform 180ms ease, border-color 180ms ease, box-shadow 180ms ease;
   position: relative;
   min-height: 66px;
-  overflow: hidden;
+  overflow: clip;
 }
 
 .lane-r64 .eg-game-node .eg-game-card {
@@ -381,7 +381,7 @@ body {
   flex-direction: column;
   gap: 4px;
   max-height: none;
-  overflow: visible;
+  overflow: hidden;
   padding-right: 2px;
 }
 
@@ -499,9 +499,9 @@ body {
 }
 
 .eg-compact-grid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 3px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
 }
 
 .eg-compact-chip {
@@ -511,12 +511,15 @@ body {
   background: rgba(34, 23, 10, 0.72);
   color: var(--text);
   display: grid;
-  grid-template-columns: 14px 11px auto;
+  grid-template-columns: 14px 11px minmax(0, 1fr) 40px;
   align-items: center;
-  gap: 3px;
+  gap: 4px;
   padding: 3px 4px;
   font-family: inherit;
   cursor: pointer;
+  min-width: 0;
+  overflow: hidden;
+  text-align: left;
 }
 
 .eg-compact-chip:disabled {
@@ -536,13 +539,27 @@ body {
   font-weight: 700;
 }
 
+.chip-code {
+  font-size: 0.58rem;
+  font-weight: 700;
+  color: rgba(239, 228, 207, 0.88);
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: clip;
+  min-width: 0;
+}
+
 .chip-prob {
-  font-size: 0.52rem;
+  font-size: 0.56rem;
   font-weight: 700;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: clip;
-  max-width: 34px;
+  text-align: right;
+  min-width: 38px;
+  max-width: 40px;
+  justify-self: end;
 }
 
 .eg-team-row.compact .team-odds {
@@ -669,7 +686,7 @@ body {
 
 .eg-champ-split {
   height: 100%;
-  min-height: 138px;
+  min-height: 154px;
   display: grid;
   grid-template-rows: 1fr 1fr;
   gap: 6px;
