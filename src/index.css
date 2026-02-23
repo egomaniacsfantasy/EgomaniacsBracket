@@ -372,7 +372,7 @@ body {
   transition: transform 180ms ease, border-color 180ms ease, box-shadow 180ms ease;
   position: relative;
   min-height: 62px;
-  overflow: clip;
+  overflow: visible;
 }
 
 .lane-r64 .eg-game-node .eg-game-card {
@@ -399,6 +399,8 @@ body {
   max-height: none;
   overflow: visible;
   padding-right: 2px;
+  position: relative;
+  z-index: 2;
 }
 
 
@@ -420,6 +422,8 @@ body {
   transition: border-color 0.15s ease, background 0.15s ease;
   min-width: 0;
   overflow: visible;
+  position: relative;
+  z-index: 2;
 }
 
 .eg-team-row.compact {
@@ -479,6 +483,7 @@ body {
   display: inline-flex;
   align-items: center;
   min-width: 0;
+  z-index: 80;
 }
 
 .team-hover-card {
@@ -489,7 +494,7 @@ body {
   display: inline-flex;
   align-items: center;
   gap: 7px;
-  max-width: 240px;
+  max-width: 560px;
   padding: 6px 8px;
   border: 1px solid rgba(117, 210, 128, 0.42);
   border-radius: 9px;
@@ -499,7 +504,8 @@ body {
   opacity: 0;
   pointer-events: none;
   transition: opacity 180ms ease, transform 180ms ease;
-  z-index: 40;
+  z-index: 9999;
+  white-space: nowrap;
 }
 
 .team-hover-anchor:hover .team-hover-card,
@@ -517,9 +523,9 @@ body {
 }
 
 .team-hover-name {
-  font-size: 0.66rem;
-  line-height: 1.2;
-  white-space: normal;
+  font-size: 0.6rem;
+  line-height: 1.1;
+  white-space: nowrap;
 }
 
 .team-seed {
@@ -602,8 +608,10 @@ body {
   font-family: inherit;
   cursor: pointer;
   min-width: 0;
-  overflow: hidden;
+  overflow: visible;
   text-align: left;
+  position: relative;
+  z-index: 2;
 }
 
 .eg-compact-chip:disabled {
