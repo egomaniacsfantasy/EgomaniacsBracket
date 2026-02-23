@@ -276,31 +276,19 @@ body {
 
 .eg-round-grid {
   display: grid;
-  grid-template-columns:
-    clamp(184px, 23vw, 228px)
-    clamp(160px, 20vw, 194px)
-    clamp(158px, 19vw, 192px)
-    clamp(154px, 18vw, 188px);
-  gap: clamp(5px, 0.7vw, 8px);
+  grid-template-columns: minmax(0, 2.25fr) minmax(0, 1.95fr) minmax(0, 1.9fr) minmax(0, 1.85fr);
+  gap: 6px;
   min-height: 840px;
   align-items: start;
   justify-content: space-between;
 }
 
 .eg-layout.panel-open .eg-round-grid {
-  grid-template-columns:
-    clamp(166px, 20vw, 204px)
-    clamp(146px, 17vw, 178px)
-    clamp(144px, 17vw, 176px)
-    clamp(140px, 16vw, 172px);
+  grid-template-columns: minmax(0, 2.12fr) minmax(0, 1.8fr) minmax(0, 1.76fr) minmax(0, 1.72fr);
 }
 
 .region-inverted .eg-round-grid {
-  grid-template-columns:
-    clamp(154px, 18vw, 188px)
-    clamp(158px, 19vw, 192px)
-    clamp(160px, 20vw, 194px)
-    clamp(184px, 23vw, 228px);
+  grid-template-columns: minmax(0, 1.85fr) minmax(0, 1.9fr) minmax(0, 1.95fr) minmax(0, 2.25fr);
 }
 
 .eg-round-col {
@@ -452,29 +440,17 @@ body {
 }
 
 .eg-shell.compact-desktop .eg-round-grid {
-  grid-template-columns:
-    clamp(146px, 19vw, 182px)
-    clamp(128px, 15.5vw, 156px)
-    clamp(126px, 15.5vw, 154px)
-    clamp(122px, 14.5vw, 150px);
+  grid-template-columns: minmax(0, 2.05fr) minmax(0, 1.7fr) minmax(0, 1.66fr) minmax(0, 1.62fr);
   min-height: 742px;
   gap: 4px;
 }
 
 .eg-shell.compact-desktop .eg-layout.panel-open .eg-round-grid {
-  grid-template-columns:
-    clamp(134px, 17.5vw, 166px)
-    clamp(118px, 13.5vw, 144px)
-    clamp(116px, 13.5vw, 142px)
-    clamp(112px, 12.5vw, 138px);
+  grid-template-columns: minmax(0, 1.92fr) minmax(0, 1.56fr) minmax(0, 1.5fr) minmax(0, 1.46fr);
 }
 
 .eg-shell.compact-desktop .region-inverted .eg-round-grid {
-  grid-template-columns:
-    clamp(122px, 14.5vw, 150px)
-    clamp(126px, 15.5vw, 154px)
-    clamp(128px, 15.5vw, 156px)
-    clamp(146px, 19vw, 182px);
+  grid-template-columns: minmax(0, 1.62fr) minmax(0, 1.66fr) minmax(0, 1.7fr) minmax(0, 2.05fr);
 }
 
 .eg-shell.compact-desktop .eg-games-lane {
@@ -548,6 +524,12 @@ body {
 
 .eg-shell.compact-desktop .eg-side-panel {
   padding: 7px;
+}
+
+@media (max-width: 1750px) {
+  .eg-layout.panel-open .eg-region-grid.bracket-style {
+    grid-template-columns: 1fr;
+  }
 }
 
 
@@ -655,10 +637,24 @@ body {
   white-space: nowrap;
 }
 
-.team-hover-anchor:hover .team-hover-card,
-.team-hover-anchor:focus-within .team-hover-card {
+.team-hover-card-portal {
+  position: fixed;
+  left: 0;
+  top: 0;
+  transform: translate(-50%, calc(-100% - 8px));
   opacity: 1;
-  transform: translate(-50%, 0);
+  animation: tooltip-fade-in 170ms ease-out both;
+}
+
+@keyframes tooltip-fade-in {
+  from {
+    opacity: 0;
+    transform: translate(-50%, calc(-100% - 4px));
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, calc(-100% - 8px));
+  }
 }
 
 .team-hover-logo {

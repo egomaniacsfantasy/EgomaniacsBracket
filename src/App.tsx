@@ -1,4 +1,5 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import "./index.css";
 import { teamsById } from "./data/teams";
 import { regionRounds } from "./data/bracket";
@@ -63,7 +64,7 @@ function App() {
   const possibleWinners = useMemo(() => possibleWinnersByGame(sanitized), [sanitized]);
 
   useEffect(() => {
-    const media = window.matchMedia("(max-width: 1700px)");
+    const media = window.matchMedia("(max-width: 1850px)");
     const apply = () => setCompactDesktop(media.matches);
     apply();
     media.addEventListener("change", apply);
@@ -895,13 +896,56 @@ function TeamHoverAnchor({
   logoSrc: string;
   children: React.ReactNode;
 }) {
+  const anchorRef = useRef<HTMLSpanElement | null>(null);
+  const [open, setOpen] = useState(false);
+  const [pos, setPos] = useState({ x: 0, y: 0 });
+
+  const updatePos = () => {
+    const node = anchorRef.current;
+    if (!node) return;
+    const rect = node.getBoundingClientRect();
+    setPos({
+      x: rect.left + rect.width / 2,
+      y: rect.top,
+    });
+  };
+
+  useEffect(() => {
+    if (!open) return;
+    updatePos();
+    const onWindowChange = () => updatePos();
+    window.addEventListener("resize", onWindowChange);
+    window.addEventListener("scroll", onWindowChange, true);
+    return () => {
+      window.removeEventListener("resize", onWindowChange);
+      window.removeEventListener("scroll", onWindowChange, true);
+    };
+  }, [open]);
+
   return (
-    <span className="team-hover-anchor">
+    <span
+      ref={anchorRef}
+      className="team-hover-anchor"
+      onMouseEnter={() => setOpen(true)}
+      onMouseLeave={() => setOpen(false)}
+      onFocus={() => setOpen(true)}
+      onBlur={() => setOpen(false)}
+    >
       {children}
-      <span className="team-hover-card" role="tooltip" aria-label={fullTeamName(teamName)}>
-        <img className="team-hover-logo" src={logoSrc} alt={`${teamName} logo`} loading="lazy" />
-        <span className="team-hover-name">{fullTeamName(teamName)}</span>
-      </span>
+      {open && typeof document !== "undefined"
+        ? createPortal(
+            <span
+              className="team-hover-card team-hover-card-portal"
+              role="tooltip"
+              aria-label={fullTeamName(teamName)}
+              style={{ left: `${pos.x}px`, top: `${pos.y}px` }}
+            >
+              <img className="team-hover-logo" src={logoSrc} alt={`${teamName} logo`} loading="lazy" />
+              <span className="team-hover-name">{fullTeamName(teamName)}</span>
+            </span>,
+            document.body
+          )
+        : null}
     </span>
   );
 }
