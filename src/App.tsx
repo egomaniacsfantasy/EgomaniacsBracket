@@ -421,15 +421,9 @@ function RegionBracket({
       <div className="eg-round-grid bracket-grid">
         {rounds.map((round) => {
           const roundGames = gamesByRegionAndRound(games, region, round);
-          const maxRows = Math.max(
-            2,
-            ...roundGames.map((g) => {
-              const entries = gameWinProbs[g.id] || [];
-              return Math.max(2, entries.length);
-            })
-          );
-          const slotHeight = 34 + maxRows * 20;
-          const laneHeight = Math.max(260, roundGames.length * slotHeight + Math.max(0, roundGames.length - 1) * 16);
+          const rowCounts = roundGames.map((g) => Math.max(2, (gameWinProbs[g.id] || []).length));
+          const totalRows = rowCounts.reduce((sum, n) => sum + n, 0);
+          const laneHeight = Math.max(260, totalRows * 22 + Math.max(0, roundGames.length - 1) * 18 + 18);
           const laneVars = {
             "--lane-height": `${laneHeight}px`,
           } as CSSProperties;
@@ -437,11 +431,9 @@ function RegionBracket({
             <div key={`${region}-${round}`} className={`eg-round-col lane-${round.toLowerCase()}`}>
               <p className="eg-round-label">{gameRoundLabel[round]}</p>
               <div className="eg-games-lane" style={laneVars}>
-                {roundGames.map((game, idx) => {
+                {roundGames.map((game) => {
                   const rows = Math.max(2, (gameWinProbs[game.id] || []).length);
                   const slotVars = {
-                    "--slot": idx,
-                    "--count": roundGames.length,
                     "--rows": rows,
                   } as CSSProperties;
                   return (
@@ -498,13 +490,14 @@ function GameCard({
                 teamName={team.name}
                 logoSrc={teamLogoUrl(team)}
                 prob={candidate.prob}
-                selected={game.winnerId === team.id}
-                freshPick={Boolean(lastPickedKey === `${game.id}:${team.id}`)}
-                disabled={!canPick}
-                tooltip={`Chance to advance from this game: ${(candidate.prob * 100).toFixed(1)}%`}
-                onPick={() => onPick(game, canPick ? team.id : null)}
-              />
-            );
+              selected={game.winnerId === team.id}
+              freshPick={Boolean(lastPickedKey === `${game.id}:${team.id}`)}
+              disabled={!canPick}
+              tooltip={`Chance to advance from this game: ${(candidate.prob * 100).toFixed(1)}%`}
+              compact={game.round !== "R64"}
+              onPick={() => onPick(game, canPick ? team.id : null)}
+            />
+          );
           })
         ) : (
           <>
@@ -518,6 +511,7 @@ function GameCard({
               freshPick={false}
               disabled
               tooltip="Waiting for simulation..."
+              compact={game.round !== "R64"}
               onPick={() => {}}
             />
             <TeamRow
@@ -530,6 +524,7 @@ function GameCard({
               freshPick={false}
               disabled
               tooltip="Waiting for simulation..."
+              compact={game.round !== "R64"}
               onPick={() => {}}
             />
           </>
@@ -549,6 +544,7 @@ function TeamRow({
   freshPick,
   disabled,
   tooltip,
+  compact,
   onPick,
 }: {
   label: string;
@@ -560,6 +556,7 @@ function TeamRow({
   freshPick: boolean;
   disabled: boolean;
   tooltip: string;
+  compact: boolean;
   onPick: () => void;
 }) {
   const percent = prob !== null ? `${(prob * 100).toFixed(1)}%` : "--";
@@ -568,7 +565,7 @@ function TeamRow({
   return (
     <button
       type="button"
-      className={`eg-team-row ${selected ? "selected" : ""} ${freshPick ? "fresh-pick" : ""}`}
+      className={`eg-team-row ${compact ? "compact" : ""} ${selected ? "selected" : ""} ${freshPick ? "fresh-pick" : ""}`}
       disabled={disabled}
       onClick={onPick}
       title={tooltip}
@@ -581,9 +578,7 @@ function TeamRow({
       ) : (
         <span className="team-logo team-logo-placeholder" aria-hidden="true" />
       )}
-      <span className={`team-name ${isLongName ? "long-name" : ""}`}>
-        {label}
-      </span>
+      {compact ? null : <span className={`team-name ${isLongName ? "long-name" : ""}`}>{label}</span>}
       <span className="team-odds-wrap">
         <span className="team-odds">{percent}</span>
       </span>

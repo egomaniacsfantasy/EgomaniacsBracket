@@ -288,6 +288,7 @@ body {
   position: relative;
   display: flex;
   flex-direction: column;
+  overflow: visible;
 }
 
 .eg-round-label {
@@ -296,13 +297,21 @@ body {
   font-size: 0.62rem;
   text-transform: uppercase;
   letter-spacing: 0.04em;
+  white-space: nowrap;
+  position: relative;
+  z-index: 2;
 }
 
 .eg-games-lane {
   position: relative;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 12px;
   height: var(--lane-height, 560px);
   border-left: 1px solid rgba(74, 193, 100, 0.45);
   padding-left: 8px;
+  margin-top: 6px;
 }
 
 .region-inverted .eg-games-lane {
@@ -317,11 +326,8 @@ body {
 }
 
 .eg-game-node {
-  position: absolute;
-  left: 0;
-  right: 0;
-  top: calc(((var(--slot) + 0.5) / var(--count)) * 100%);
-  transform: translateY(-50%);
+  position: relative;
+  width: 100%;
 }
 
 .lane-r32 .eg-game-node::before,
@@ -393,6 +399,11 @@ body {
   min-width: 0;
 }
 
+.eg-team-row.compact {
+  grid-template-columns: 16px 12px auto;
+  justify-content: space-between;
+}
+
 .eg-team-row:hover:not(:disabled) {
   border-color: rgba(237, 193, 102, 0.56);
   background: rgba(53, 35, 16, 0.73);
@@ -451,6 +462,10 @@ body {
   letter-spacing: -0.004em;
 }
 
+.eg-team-row.compact .team-name {
+  display: none;
+}
+
 .team-odds-wrap {
   display: flex;
   flex-direction: row;
@@ -460,10 +475,18 @@ body {
   min-width: 54px;
 }
 
+.eg-team-row.compact .team-odds-wrap {
+  min-width: 46px;
+}
+
 .team-odds {
   font-size: 0.66rem;
   font-weight: 700;
   white-space: nowrap;
+}
+
+.eg-team-row.compact .team-odds {
+  font-size: 0.62rem;
 }
 
 .team-odds-sub {
