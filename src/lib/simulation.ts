@@ -169,3 +169,8 @@ export const runSimulation = (locks: LockedPicks, simRuns: number): SimulationOu
     likelihoodApprox: computeApproxLikelihood(locks),
   };
 };
+
+export const generateSimulatedBracket = (locks: LockedPicks): LockedPicks => {
+  const forced = simulateBracket(locks, true);
+  return { ...forced.winners };
+};

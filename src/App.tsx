@@ -2,9 +2,9 @@ import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react"
 import "./index.css";
 import { teamsById } from "./data/teams";
 import { regionRounds } from "./data/bracket";
-import { buildChalkPicks, finalRounds, gamesByRegionAndRound, resetRegionPicks, resolveGames, sanitizeLockedPicks, type LockedPicks } from "./lib/bracket";
+import { finalRounds, gamesByRegionAndRound, resetRegionPicks, resolveGames, sanitizeLockedPicks, type LockedPicks } from "./lib/bracket";
 import { toImpliedLabel, toOneInX } from "./lib/odds";
-import { hashLocks, runSimulation } from "./lib/simulation";
+import { generateSimulatedBracket, hashLocks, runSimulation } from "./lib/simulation";
 import { fallbackLogo, teamLogoUrl } from "./lib/logo";
 import type { OddsDisplayMode, Region, ResolvedGame, SimulationOutput } from "./types";
 
@@ -131,9 +131,9 @@ function App() {
     setLockedPicks(resetRegionPicks(lockedPicks, region));
   };
 
-  const onChalk = () => {
+  const onModelSim = () => {
     pushUndo(lockedPicks);
-    setLockedPicks(buildChalkPicks({}));
+    setLockedPicks(sanitizeLockedPicks(generateSimulatedBracket(lockedPicks)));
   };
 
   const finalGames = finalRounds(games);
@@ -164,8 +164,8 @@ function App() {
               <button onClick={onResetAll} className="eg-btn">
                 Reset All
               </button>
-              <button onClick={onChalk} className="eg-btn">
-                Chalk Bracket
+              <button onClick={onModelSim} className="eg-btn">
+                Model Sim Bracket
               </button>
               <div className="eg-mode-toggle">
                 {formatModes.map((mode) => (

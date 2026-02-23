@@ -191,8 +191,8 @@ body {
   display: flex;
   flex-direction: column;
   gap: 12px;
-  max-height: calc(100vh - 170px);
-  overflow: auto;
+  max-height: none;
+  overflow: visible;
   padding-right: 4px;
 }
 
@@ -201,6 +201,8 @@ body {
   border-radius: 14px;
   padding: 8px;
   background: rgba(20, 14, 8, 0.5);
+  position: relative;
+  z-index: 1;
 }
 
 .eg-section-head {
@@ -252,6 +254,8 @@ body {
 .eg-region-card {
   padding: 8px;
   min-height: 740px;
+  overflow: hidden;
+  isolation: isolate;
 }
 
 .eg-region-head {
@@ -288,7 +292,7 @@ body {
   position: relative;
   display: flex;
   flex-direction: column;
-  overflow: visible;
+  overflow: hidden;
 }
 
 .eg-round-label {
@@ -311,7 +315,8 @@ body {
   height: var(--lane-height, 560px);
   border-left: 1px solid rgba(74, 193, 100, 0.45);
   padding-left: 8px;
-  margin-top: 6px;
+  margin-top: 8px;
+  overflow: hidden;
 }
 
 .region-inverted .eg-games-lane {
@@ -328,6 +333,7 @@ body {
 .eg-game-node {
   position: relative;
   width: 100%;
+  z-index: 1;
 }
 
 .lane-r32 .eg-game-node::before,
@@ -357,7 +363,7 @@ body {
   transition: transform 180ms ease, border-color 180ms ease, box-shadow 180ms ease;
   position: relative;
   min-height: calc(8px + var(--rows, 2) * 20px);
-  overflow: visible;
+  overflow: hidden;
 }
 
 .lane-r64 .eg-game-node .eg-game-card {
@@ -500,7 +506,8 @@ body {
 }
 
 .eg-finals-card {
-  margin-top: 2px;
+  margin-top: 8px;
+  margin-bottom: 8px;
   padding: 10px;
   min-height: 230px;
   max-width: 68%;
@@ -508,6 +515,8 @@ body {
   margin-right: auto;
   border-color: rgba(117, 210, 128, 0.4);
   box-shadow: 0 0 0 1px rgba(117, 210, 128, 0.18), 0 20px 50px rgba(0, 0, 0, 0.36);
+  position: relative;
+  z-index: 3;
 }
 
 .eg-finals-stage {
