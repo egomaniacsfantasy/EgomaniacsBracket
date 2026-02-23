@@ -460,6 +460,7 @@ function GameCard({
           return a.team.seed - b.team.seed;
         })
       : candidates;
+  const visibleCandidates = sortedCandidates.filter((candidate) => candidate.prob > 0);
   const probByTeam = new Map(candidates.map((c) => [c.teamId, c.prob]));
   const rows: CandidateRow[] =
     game.teamAId && game.teamBId
@@ -470,7 +471,7 @@ function GameCard({
             return { teamId, prob: probByTeam.get(teamId) ?? 0, team };
           })
           .filter((row): row is CandidateRow => row !== null)
-      : sortedCandidates;
+      : visibleCandidates;
   const finalistRows = rows.filter((candidate) => {
     const team = candidate.team!;
     return (
