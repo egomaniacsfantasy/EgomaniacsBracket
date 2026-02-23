@@ -233,7 +233,7 @@ body {
 }
 
 .eg-region-scroll {
-  overflow-x: clip;
+  overflow-x: hidden;
   padding-bottom: 0;
 }
 
@@ -330,7 +330,7 @@ body {
   border-left: 1px solid rgba(74, 193, 100, 0.45);
   padding-left: 10px;
   margin-top: 6px;
-  overflow: visible;
+  overflow: hidden;
 }
 
 .region-inverted .eg-games-lane {
@@ -347,14 +347,14 @@ body {
 .eg-game-node {
   position: absolute;
   left: 0;
-  right: 2px;
+  right: 0;
   top: 50%;
   transform: translateY(-50%);
   z-index: 1;
 }
 
 .region-inverted .eg-game-node {
-  left: 2px;
+  left: 0;
   right: 0;
 }
 
@@ -390,13 +390,13 @@ body {
 
 .lane-r64 .eg-game-node .eg-game-card {
   box-shadow: 0 1px 0 rgba(74, 193, 100, 0.2);
-  width: calc(100% - 4px);
-  margin-right: 4px;
+  width: 100%;
+  margin-right: 0;
 }
 
 .region-inverted .lane-r64 .eg-game-node .eg-game-card {
   margin-right: 0;
-  margin-left: 4px;
+  margin-left: 0;
 }
 
 .eg-game-card:hover {
@@ -430,7 +430,7 @@ body {
 }
 
 .eg-shell.compact-desktop .eg-layout.panel-open {
-  grid-template-columns: minmax(0, 1fr) 264px;
+  grid-template-columns: minmax(0, 1fr) 250px;
 }
 
 .eg-shell.compact-desktop .eg-layout.panel-collapsed {
@@ -443,7 +443,7 @@ body {
 
 .eg-shell.compact-desktop .eg-region-grid,
 .eg-shell.compact-desktop .eg-region-grid.bracket-style {
-  gap: 7px;
+  gap: 6px;
 }
 
 .eg-shell.compact-desktop .eg-region-card {
@@ -453,28 +453,28 @@ body {
 
 .eg-shell.compact-desktop .eg-round-grid {
   grid-template-columns:
-    clamp(154px, 21vw, 192px)
-    clamp(136px, 17vw, 166px)
-    clamp(134px, 17vw, 164px)
-    clamp(130px, 16vw, 160px);
+    clamp(146px, 19vw, 182px)
+    clamp(128px, 15.5vw, 156px)
+    clamp(126px, 15.5vw, 154px)
+    clamp(122px, 14.5vw, 150px);
   min-height: 742px;
-  gap: 5px;
+  gap: 4px;
 }
 
 .eg-shell.compact-desktop .eg-layout.panel-open .eg-round-grid {
   grid-template-columns:
-    clamp(146px, 19vw, 182px)
-    clamp(126px, 15vw, 154px)
-    clamp(124px, 15vw, 152px)
-    clamp(120px, 14vw, 148px);
+    clamp(134px, 17.5vw, 166px)
+    clamp(118px, 13.5vw, 144px)
+    clamp(116px, 13.5vw, 142px)
+    clamp(112px, 12.5vw, 138px);
 }
 
 .eg-shell.compact-desktop .region-inverted .eg-round-grid {
   grid-template-columns:
-    clamp(130px, 16vw, 160px)
-    clamp(134px, 17vw, 164px)
-    clamp(136px, 17vw, 166px)
-    clamp(154px, 21vw, 192px);
+    clamp(122px, 14.5vw, 150px)
+    clamp(126px, 15.5vw, 154px)
+    clamp(128px, 15.5vw, 156px)
+    clamp(146px, 19vw, 182px);
 }
 
 .eg-shell.compact-desktop .eg-games-lane {
@@ -495,6 +495,7 @@ body {
   padding: 3px 5px;
   column-gap: 2px;
   margin-bottom: 3px;
+  overflow: hidden;
 }
 
 .eg-shell.compact-desktop .team-name {
@@ -520,6 +521,7 @@ body {
   min-height: 27px;
   padding: 3px 5px;
   gap: 2px;
+  overflow: hidden;
 }
 
 .eg-shell.compact-desktop .chip-code {
@@ -534,6 +536,14 @@ body {
 .eg-shell.compact-desktop .eg-finals-stage {
   grid-template-columns: minmax(0, 1fr) minmax(360px, 1.3fr) minmax(0, 1fr);
   gap: 8px;
+}
+
+.eg-shell.compact-desktop .eg-layout.panel-open .eg-region-grid.bracket-style {
+  grid-template-columns: 1fr;
+}
+
+.eg-shell.compact-desktop .eg-layout.panel-open .eg-section-head {
+  margin-bottom: 6px;
 }
 
 .eg-shell.compact-desktop .eg-side-panel {
@@ -901,7 +911,7 @@ body {
 
 .eg-semi-col .eg-game-card.round-f4,
 .eg-title-col .eg-game-card.round-champ {
-  min-height: 188px;
+  min-height: 0;
 }
 
 .eg-semi-col .eg-compact-grid.density-xl .eg-compact-chip,
@@ -955,7 +965,7 @@ body {
   margin-top: 8px;
   margin-bottom: 8px;
   padding: 10px;
-  min-height: 260px;
+  min-height: 0;
   max-width: 100%;
   margin-left: 0;
   margin-right: 0;
@@ -1052,7 +1062,7 @@ body {
 .eg-title-hero .eg-game-card {
   border-color: rgba(117, 210, 128, 0.55);
   background: rgba(20, 16, 8, 0.78);
-  min-height: 170px;
+  min-height: 0;
 }
 
 .eg-title-hero .eg-team-row {
@@ -1072,11 +1082,21 @@ body {
 }
 
 .eg-champ-split {
-  height: 100%;
-  min-height: 154px;
+  height: auto;
+  min-height: 0;
   display: grid;
   grid-template-rows: 1fr 1fr;
   gap: 6px;
+}
+
+.eg-champ-split.semifinal .eg-title-choice {
+  min-height: 50px;
+}
+
+.eg-champ-split.championship .eg-title-choice {
+  min-height: 66px;
+  border-radius: 10px;
+  padding: 10px 12px;
 }
 
 .eg-title-choice {
@@ -1120,10 +1140,33 @@ body {
   text-overflow: ellipsis;
 }
 
+.title-choice-name.full-team-name {
+  font-size: 0.97rem;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+}
+
 .title-choice-prob {
   font-size: 0.78rem;
   font-weight: 800;
   white-space: nowrap;
+}
+
+.eg-champ-split.championship .title-choice-prob {
+  font-size: 1rem;
+}
+
+.eg-champ-split.championship .chip-seed {
+  font-size: 0.82rem;
+}
+
+.eg-champ-split.championship .team-logo {
+  width: 18px;
+  height: 18px;
+}
+
+.eg-champ-split.championship .title-choice-sub {
+  font-size: 0.68rem;
 }
 
 .title-choice-odds {

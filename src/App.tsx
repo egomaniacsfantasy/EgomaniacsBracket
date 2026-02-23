@@ -509,15 +509,15 @@ function GameCard({
       (team.id === game.teamAId || team.id === game.teamBId)
     );
   });
-  const useChampSplit = game.round === "CHAMP" && finalistRows.length === 2;
+  const useShowdownSplit = (game.round === "CHAMP" || game.round === "F4") && finalistRows.length === 2;
   const compactColumns = getCompactColumns(game.round, rows.length);
   const compactDensity = getCompactDensity(game.round, rows.length);
 
   return (
     <article className={`eg-game-card round-${game.round.toLowerCase()}`}>
       <div className="eg-game-list">
-        {useChampSplit ? (
-          <div className="eg-champ-split">
+        {useShowdownSplit ? (
+          <div className={`eg-champ-split ${game.round === "CHAMP" ? "championship" : "semifinal"}`}>
             {finalistRows.map((candidate) => {
               const team = candidate.team!;
               const selected = game.winnerId === team.id;
@@ -542,7 +542,9 @@ function GameCard({
                       <TeamLogo teamName={team.name} src={teamLogoUrl(team)} />
                     </TeamHoverAnchor>
                     <TeamHoverAnchor teamName={team.name} logoSrc={teamLogoUrl(team)}>
-                      <span className="title-choice-name">{team.name}</span>
+                      <span className={`title-choice-name ${game.round === "CHAMP" ? "full-team-name" : ""}`}>
+                        {game.round === "CHAMP" ? fullTeamName(team.name) : team.name}
+                      </span>
                     </TeamHoverAnchor>
                   </span>
                   <span className="title-choice-odds">
