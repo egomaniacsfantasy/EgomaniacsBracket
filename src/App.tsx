@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import "./index.css";
 import { teamsById } from "./data/teams";
 import { regionRounds } from "./data/bracket";
@@ -421,36 +421,20 @@ function RegionBracket({
       <div className="eg-round-grid bracket-grid">
         {rounds.map((round) => {
           const roundGames = gamesByRegionAndRound(games, region, round);
-          const laneHeightByRound: Record<string, number> = {
-            R64: 680,
-            R32: 680,
-            S16: 680,
-            E8: 680,
-          };
-          const laneHeight = laneHeightByRound[round] ?? 680;
-          const laneVars = {
-            "--lane-height": `${laneHeight}px`,
-          } as CSSProperties;
           return (
             <div key={`${region}-${round}`} className={`eg-round-col lane-${round.toLowerCase()}`}>
               <p className="eg-round-label">{gameRoundLabel[round]}</p>
-              <div className="eg-games-lane" style={laneVars}>
-                {roundGames.map((game, idx) => {
-                  const slotVars = {
-                    "--slot": idx,
-                    "--count": roundGames.length,
-                  } as CSSProperties;
-                  return (
-                    <div key={game.id} className="eg-game-node" style={slotVars}>
-                      <GameCard
-                        game={game}
-                        gameWinProbs={gameWinProbs}
-                        onPick={onPick}
-                        lastPickedKey={lastPickedKey}
-                      />
-                    </div>
-                  );
-                })}
+              <div className="eg-games-lane">
+                {roundGames.map((game) => (
+                  <div key={game.id} className="eg-game-node">
+                    <GameCard
+                      game={game}
+                      gameWinProbs={gameWinProbs}
+                      onPick={onPick}
+                      lastPickedKey={lastPickedKey}
+                    />
+                  </div>
+                ))}
               </div>
             </div>
           );
@@ -471,15 +455,59 @@ function GameCard({
   onPick: (game: ResolvedGame, teamId: string | null) => void;
   lastPickedKey: string | null;
 }) {
+  type CandidateRow = { teamId: string; prob: number; team: NonNullable<ReturnType<typeof teamsById.get>> };
+
   const candidates = (gameWinProbs[game.id] || [])
     .map((entry) => ({ ...entry, team: teamsById.get(entry.teamId) }))
-    .filter((entry) => Boolean(entry.team));
-  const rows = candidates.length > 0 ? candidates : [];
+    .filter((entry): entry is CandidateRow => Boolean(entry.team));
+  const probByTeam = new Map(candidates.map((c) => [c.teamId, c.prob]));
+  const rows: CandidateRow[] =
+    game.round === "R64" && game.teamAId && game.teamBId
+      ? [game.teamAId, game.teamBId]
+          .map((teamId) => {
+            const team = teamsById.get(teamId);
+            if (!team) return null;
+            return { teamId, prob: probByTeam.get(teamId) ?? 0, team };
+          })
+          .filter((row): row is CandidateRow => row !== null)
+      : candidates;
+  const finalistRows = rows.filter((candidate) => {
+    const team = candidate.team!;
+    return (
+      game.teamAId !== null &&
+      game.teamBId !== null &&
+      (team.id === game.teamAId || team.id === game.teamBId)
+    );
+  });
+  const useChampSplit = game.round === "CHAMP" && finalistRows.length === 2;
 
   return (
     <article className={`eg-game-card round-${game.round.toLowerCase()}`}>
       <div className="eg-game-list">
-        {rows.length > 0 ? (
+        {useChampSplit ? (
+          <div className="eg-champ-split">
+            {finalistRows.map((candidate) => {
+              const team = candidate.team!;
+              const selected = game.winnerId === team.id;
+              return (
+                <button
+                  key={`${game.id}-${team.id}-split`}
+                  type="button"
+                  className={`eg-title-choice ${selected ? "selected" : ""}`}
+                  onClick={() => onPick(game, team.id)}
+                  title={`Chance to win title: ${(candidate.prob * 100).toFixed(1)}%`}
+                >
+                  <span className="title-choice-left">
+                    <span className="chip-seed">{team.seed}</span>
+                    <TeamLogo teamName={team.name} src={teamLogoUrl(team)} />
+                    <span className="title-choice-name">{team.name}</span>
+                  </span>
+                  <span className="title-choice-prob">{(candidate.prob * 100).toFixed(1)}%</span>
+                </button>
+              );
+            })}
+          </div>
+        ) : rows.length > 0 ? (
           game.round === "R64" ? (
             rows.map((candidate) => {
               const team = candidate.team!;

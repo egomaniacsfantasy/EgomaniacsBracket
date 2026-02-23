@@ -60,7 +60,7 @@ body {
 }
 
 .eg-app {
-  max-width: 1560px;
+  max-width: 1880px;
   margin: 0 auto;
   padding: 24px 20px 28px;
   position: relative;
@@ -100,7 +100,7 @@ body {
 }
 
 .eg-layout.panel-open {
-  grid-template-columns: minmax(0, 1fr) 300px;
+  grid-template-columns: minmax(0, 1fr) 280px;
 }
 
 .eg-layout.panel-collapsed {
@@ -276,15 +276,15 @@ body {
 
 .eg-round-grid {
   display: grid;
-  grid-template-columns: minmax(210px, 2.2fr) minmax(108px, 1.1fr) minmax(102px, 1fr) minmax(90px, 0.9fr);
+  grid-template-columns: minmax(252px, 2.6fr) minmax(170px, 1.8fr) minmax(162px, 1.7fr) minmax(152px, 1.6fr);
   gap: 6px;
-  min-height: 720px;
+  min-height: 700px;
   align-items: start;
   justify-content: space-between;
 }
 
 .region-inverted .eg-round-grid {
-  grid-template-columns: minmax(90px, 0.9fr) minmax(102px, 1fr) minmax(108px, 1.1fr) minmax(210px, 2.2fr);
+  grid-template-columns: minmax(152px, 1.6fr) minmax(162px, 1.7fr) minmax(170px, 1.8fr) minmax(252px, 2.6fr);
 }
 
 .eg-round-col {
@@ -309,7 +309,7 @@ body {
 .eg-games-lane {
   position: relative;
   display: block;
-  height: var(--lane-height, 560px);
+  height: var(--lane-height, 680px);
   border-left: 1px solid rgba(74, 193, 100, 0.45);
   padding-left: 8px;
   margin-top: 6px;
@@ -455,7 +455,7 @@ body {
 }
 
 .team-name {
-  font-size: 0.68rem;
+  font-size: 0.74rem;
   font-weight: 600;
   line-height: 1;
   white-space: nowrap;
@@ -465,7 +465,7 @@ body {
 }
 
 .team-name.long-name {
-  font-size: 0.63rem;
+  font-size: 0.69rem;
   letter-spacing: -0.004em;
 }
 
@@ -490,7 +490,7 @@ body {
 }
 
 .team-odds {
-  font-size: 0.66rem;
+  font-size: 0.72rem;
   font-weight: 700;
   white-space: nowrap;
   overflow: hidden;
@@ -501,7 +501,7 @@ body {
 .eg-compact-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 4px;
+  gap: 3px;
 }
 
 .eg-compact-chip {
@@ -511,9 +511,9 @@ body {
   background: rgba(34, 23, 10, 0.72);
   color: var(--text);
   display: grid;
-  grid-template-columns: 14px 12px minmax(0, 1fr);
+  grid-template-columns: 14px 11px auto;
   align-items: center;
-  gap: 4px;
+  gap: 3px;
   padding: 3px 4px;
   font-family: inherit;
   cursor: pointer;
@@ -537,11 +537,12 @@ body {
 }
 
 .chip-prob {
-  font-size: 0.56rem;
+  font-size: 0.52rem;
   font-weight: 700;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: clip;
+  max-width: 34px;
 }
 
 .eg-team-row.compact .team-odds {
@@ -647,6 +648,7 @@ body {
 .eg-title-hero .eg-game-card {
   border-color: rgba(117, 210, 128, 0.55);
   background: rgba(20, 16, 8, 0.78);
+  min-height: 150px;
 }
 
 .eg-title-hero .eg-team-row {
@@ -663,6 +665,61 @@ body {
 
 .eg-title-hero .team-odds {
   font-size: 0.76rem;
+}
+
+.eg-champ-split {
+  height: 100%;
+  min-height: 138px;
+  display: grid;
+  grid-template-rows: 1fr 1fr;
+  gap: 6px;
+}
+
+.eg-title-choice {
+  width: 100%;
+  height: 100%;
+  border: 1px solid rgba(171, 138, 69, 0.34);
+  border-radius: 9px;
+  background: rgba(35, 24, 12, 0.66);
+  color: var(--text);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 8px 10px;
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.eg-title-choice:hover {
+  border-color: rgba(237, 193, 102, 0.56);
+  background: rgba(53, 35, 16, 0.78);
+}
+
+.eg-title-choice.selected {
+  border-color: rgba(237, 193, 102, 0.9);
+  background: linear-gradient(90deg, rgba(95, 58, 15, 0.56) 0%, rgba(35, 24, 12, 0.8) 100%);
+}
+
+.title-choice-left {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-width: 0;
+}
+
+.title-choice-name {
+  font-size: 0.74rem;
+  font-weight: 700;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.title-choice-prob {
+  font-size: 0.78rem;
+  font-weight: 800;
+  white-space: nowrap;
 }
 
 .eg-side-panel {
