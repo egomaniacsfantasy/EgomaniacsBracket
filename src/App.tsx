@@ -7,6 +7,7 @@ import { abbreviationForTeam } from "./lib/abbreviation";
 import { formatOddsDisplay, toImpliedLabel, toOneInX } from "./lib/odds";
 import { generateSimulatedBracket, hashLocks, runSimulation } from "./lib/simulation";
 import { fallbackLogo, teamLogoUrl } from "./lib/logo";
+import { fullTeamName } from "./lib/teamNames";
 import type { OddsDisplayMode, Region, ResolvedGame, SimulationOutput } from "./types";
 
 const DEFAULT_SIM_RUNS = 5000;
@@ -329,9 +330,13 @@ function App() {
                         <tr key={row.teamId}>
                           <td>
                             <div className="team-cell">
-                              <TeamLogo teamName={team.name} src={teamLogoUrl(team)} />
+                              <TeamHoverAnchor teamName={team.name} logoSrc={teamLogoUrl(team)}>
+                                <TeamLogo teamName={team.name} src={teamLogoUrl(team)} />
+                              </TeamHoverAnchor>
                               <span className="seed">{team.seed}</span>
-                              <span>{team.name}</span>
+                              <TeamHoverAnchor teamName={team.name} logoSrc={teamLogoUrl(team)}>
+                                <span>{team.name}</span>
+                              </TeamHoverAnchor>
                             </div>
                           </td>
                           <OddsCell prob={row.round2Prob} displayMode={displayMode} />
@@ -532,8 +537,12 @@ function GameCard({
                 >
                   <span className="title-choice-left">
                     <span className="chip-seed">{team.seed}</span>
-                    <TeamLogo teamName={team.name} src={teamLogoUrl(team)} />
-                    <span className="title-choice-name">{team.name}</span>
+                    <TeamHoverAnchor teamName={team.name} logoSrc={teamLogoUrl(team)}>
+                      <TeamLogo teamName={team.name} src={teamLogoUrl(team)} />
+                    </TeamHoverAnchor>
+                    <TeamHoverAnchor teamName={team.name} logoSrc={teamLogoUrl(team)}>
+                      <span className="title-choice-name">{team.name}</span>
+                    </TeamHoverAnchor>
                   </span>
                   <span className="title-choice-odds">
                     {outcome ? (
@@ -613,8 +622,14 @@ function GameCard({
                     title={`Chance to advance from this game: ${(candidate.prob * 100).toFixed(1)}%`}
                   >
                     <span className="chip-seed">{team.seed}</span>
-                    {showLogo ? <TeamLogo teamName={team.name} src={teamLogoUrl(team)} /> : null}
-                    <AdaptiveTeamLabel className={`chip-code ${showLogo ? "" : "no-logo"}`} fullName={teamLabel} />
+                    {showLogo ? (
+                      <TeamHoverAnchor teamName={team.name} logoSrc={teamLogoUrl(team)}>
+                        <TeamLogo teamName={team.name} src={teamLogoUrl(team)} />
+                      </TeamHoverAnchor>
+                    ) : null}
+                    <TeamHoverAnchor teamName={team.name} logoSrc={teamLogoUrl(team)}>
+                      <AdaptiveTeamLabel className={`chip-code ${showLogo ? "" : "no-logo"}`} fullName={teamLabel} />
+                    </TeamHoverAnchor>
                     <span className="chip-odds">
                       {outcome ? (
                         <span className={`outcome-badge ${outcome}`}>{outcome === "win" ? "✓" : "✕"}</span>
@@ -722,11 +737,17 @@ function TeamRow({
         {seed !== null ? seed : "--"}
       </span>
       {teamName && logoSrc ? (
-        <TeamLogo teamName={teamName} src={logoSrc} />
+        <TeamHoverAnchor teamName={teamName} logoSrc={logoSrc}>
+          <TeamLogo teamName={teamName} src={logoSrc} />
+        </TeamHoverAnchor>
       ) : (
         <span className="team-logo team-logo-placeholder" aria-hidden="true" />
       )}
-      {compact ? null : <AdaptiveTeamLabel className="team-name" fullName={fullLabel} />}
+      {compact ? null : (
+        <TeamHoverAnchor teamName={fullLabel} logoSrc={logoSrc ?? fallbackLogo(fullLabel)}>
+          <AdaptiveTeamLabel className="team-name" fullName={fullLabel} />
+        </TeamHoverAnchor>
+      )}
       <span className="team-odds-wrap">
         {outcome ? (
           <span className={`outcome-badge ${outcome}`}>{outcome === "win" ? "✓" : "✕"}</span>
@@ -828,6 +849,26 @@ function AdaptiveTeamLabel({ className, fullName }: { className: string; fullNam
   return (
     <span ref={ref} className={className} title={fullName}>
       {label}
+    </span>
+  );
+}
+
+function TeamHoverAnchor({
+  teamName,
+  logoSrc,
+  children,
+}: {
+  teamName: string;
+  logoSrc: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <span className="team-hover-anchor">
+      {children}
+      <span className="team-hover-card" role="tooltip" aria-label={fullTeamName(teamName)}>
+        <img className="team-hover-logo" src={logoSrc} alt={`${teamName} logo`} loading="lazy" />
+        <span className="team-hover-name">{fullTeamName(teamName)}</span>
+      </span>
     </span>
   );
 }

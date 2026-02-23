@@ -470,6 +470,54 @@ body {
   opacity: 0.28;
 }
 
+.team-hover-anchor {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  min-width: 0;
+}
+
+.team-hover-card {
+  position: absolute;
+  left: 50%;
+  bottom: calc(100% + 8px);
+  transform: translate(-50%, 6px);
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  max-width: 240px;
+  padding: 6px 8px;
+  border: 1px solid rgba(117, 210, 128, 0.42);
+  border-radius: 9px;
+  background: rgba(10, 18, 14, 0.96);
+  color: rgba(239, 228, 207, 0.96);
+  box-shadow: 0 10px 22px rgba(0, 0, 0, 0.34);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 180ms ease, transform 180ms ease;
+  z-index: 40;
+}
+
+.team-hover-anchor:hover .team-hover-card,
+.team-hover-anchor:focus-within .team-hover-card {
+  opacity: 1;
+  transform: translate(-50%, 0);
+}
+
+.team-hover-logo {
+  width: 16px;
+  height: 16px;
+  border-radius: 3px;
+  object-fit: cover;
+  flex-shrink: 0;
+}
+
+.team-hover-name {
+  font-size: 0.66rem;
+  line-height: 1.2;
+  white-space: normal;
+}
+
 .team-seed {
   min-width: 18px;
   text-align: center;
