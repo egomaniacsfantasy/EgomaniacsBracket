@@ -10,7 +10,7 @@ npm install
 npm run dev
 ```
 
-Open `http://localhost:5173/bracket`.
+Open `http://localhost:5173/`.
 
 ## MVP behavior
 

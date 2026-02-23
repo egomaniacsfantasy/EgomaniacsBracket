@@ -252,7 +252,7 @@ body {
 }
 
 .eg-region-card {
-  padding: 10px;
+  padding: 10px 10px 12px;
   min-height: 860px;
   overflow: hidden;
   isolation: isolate;
@@ -261,8 +261,8 @@ body {
 .eg-region-head {
   display: flex;
   justify-content: space-between;
-  align-items: center;
-  margin-bottom: 6px;
+  align-items: baseline;
+  margin-bottom: 8px;
 }
 
 .eg-region-head h2,
@@ -270,21 +270,29 @@ body {
 .eg-panel-head h3,
 .eg-panel-block h3 {
   margin: 0;
-  font-size: 0.86rem;
-  letter-spacing: 0.02em;
+  font-size: 1.04rem;
+  letter-spacing: 0.01em;
 }
 
 .eg-round-grid {
   display: grid;
-  grid-template-columns: minmax(208px, 2.25fr) minmax(170px, 1.8fr) minmax(164px, 1.72fr) minmax(144px, 1.5fr);
-  gap: 8px;
+  grid-template-columns:
+    clamp(170px, 15vw, 214px)
+    clamp(188px, 17vw, 234px)
+    clamp(206px, 18vw, 256px)
+    clamp(214px, 19vw, 272px);
+  gap: 6px;
   min-height: 840px;
   align-items: start;
   justify-content: space-between;
 }
 
 .region-inverted .eg-round-grid {
-  grid-template-columns: minmax(144px, 1.5fr) minmax(164px, 1.72fr) minmax(170px, 1.8fr) minmax(208px, 2.25fr);
+  grid-template-columns:
+    clamp(214px, 19vw, 272px)
+    clamp(206px, 18vw, 256px)
+    clamp(188px, 17vw, 234px)
+    clamp(170px, 15vw, 214px);
 }
 
 .eg-round-col {
@@ -296,11 +304,12 @@ body {
 }
 
 .eg-round-label {
-  margin: 1px 0 4px;
-  color: var(--text-soft);
-  font-size: 0.62rem;
+  margin: 1px 0 5px;
+  color: rgba(239, 228, 207, 0.74);
+  font-size: 0.75rem;
+  font-weight: 600;
   text-transform: uppercase;
-  letter-spacing: 0.04em;
+  letter-spacing: 0.06em;
   white-space: nowrap;
   position: relative;
   z-index: 2;
@@ -311,7 +320,7 @@ body {
   display: block;
   height: max(var(--lane-height, 840px), 76vh);
   border-left: 1px solid rgba(74, 193, 100, 0.45);
-  padding-left: 10px;
+  padding-left: 7px;
   margin-top: 6px;
   overflow: hidden;
 }
@@ -320,7 +329,7 @@ body {
   border-left: 0;
   border-right: 1px solid rgba(74, 193, 100, 0.45);
   padding-left: 0;
-  padding-right: 10px;
+  padding-right: 7px;
 }
 
 .lane-r64 .eg-games-lane {
@@ -330,14 +339,14 @@ body {
 .eg-game-node {
   position: absolute;
   left: 0;
-  right: 6px;
+  right: 2px;
   top: 50%;
   transform: translateY(-50%);
   z-index: 1;
 }
 
 .region-inverted .eg-game-node {
-  left: 6px;
+  left: 2px;
   right: 0;
 }
 
@@ -362,24 +371,46 @@ body {
 
 .eg-game-card {
   border: 1px solid rgba(171, 138, 69, 0.26);
-  border-radius: 9px;
-  padding: 5px;
+  border-radius: 10px;
+  padding: 4px;
   background: rgba(14, 11, 6, 0.7);
   transition: transform 180ms ease, border-color 180ms ease, box-shadow 180ms ease;
   position: relative;
-  min-height: 62px;
+  min-height: 74px;
   overflow: clip;
+}
+
+.eg-game-card.preset-r64 {
+  min-height: 82px;
+  padding: 6px;
+}
+
+.eg-game-card.preset-r32 {
+  min-height: 78px;
+  padding: 6px;
+}
+
+.eg-game-card.preset-s16,
+.eg-game-card.preset-e8,
+.eg-game-card.preset-f4 {
+  min-height: 78px;
+  padding: 6px;
+}
+
+.eg-game-card.preset-champ {
+  min-height: 88px;
+  padding: 7px;
 }
 
 .lane-r64 .eg-game-node .eg-game-card {
   box-shadow: 0 1px 0 rgba(74, 193, 100, 0.2);
-  width: calc(100% - 10px);
-  margin-right: 10px;
+  width: calc(100% - 6px);
+  margin-right: 6px;
 }
 
 .region-inverted .lane-r64 .eg-game-node .eg-game-card {
   margin-right: 0;
-  margin-left: 10px;
+  margin-left: 6px;
 }
 
 .eg-game-card:hover {
@@ -391,41 +422,56 @@ body {
 .eg-game-list {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 5px;
   max-height: none;
   overflow: visible;
-  padding-right: 2px;
+  padding-right: 1px;
 }
 
+.eg-game-card.is-locked {
+  border-color: rgba(117, 210, 128, 0.66);
+  box-shadow: 0 0 0 1px rgba(117, 210, 128, 0.24), 0 8px 20px rgba(0, 0, 0, 0.28);
+}
+
+.eg-lock-pill {
+  position: absolute;
+  top: -8px;
+  right: 8px;
+  border: 1px solid rgba(117, 210, 128, 0.58);
+  border-radius: 999px;
+  background: rgba(18, 36, 20, 0.92);
+  color: #b9e7b5;
+  font-size: 0.58rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  font-weight: 700;
+  padding: 2px 6px;
+}
 
 .eg-team-row {
   width: 100%;
   border: 1px solid rgba(171, 138, 69, 0.2);
-  border-radius: 8px;
+  border-radius: 7px;
   background: rgba(35, 24, 12, 0.58);
   color: var(--text);
   text-align: left;
   font-family: inherit;
   display: grid;
-  grid-template-columns: 18px 14px minmax(0, 1fr) auto;
+  grid-template-columns: 22px minmax(0, 1fr) 14px minmax(56px, auto);
   align-items: center;
-  column-gap: 5px;
-  padding: 3px 6px;
+  column-gap: 6px;
+  min-height: 32px;
+  padding: 5px 7px;
   cursor: pointer;
-  margin-bottom: 4px;
+  margin-bottom: 0;
   transition: border-color 0.15s ease, background 0.15s ease;
   min-width: 0;
   overflow: hidden;
 }
 
-.eg-team-row.compact {
-  grid-template-columns: 16px 12px minmax(0, 1fr) 52px;
-  justify-content: initial;
-}
-
 .eg-team-row:hover:not(:disabled) {
-  border-color: rgba(237, 193, 102, 0.56);
-  background: rgba(53, 35, 16, 0.73);
+  border-color: rgba(237, 193, 102, 0.72);
+  background: rgba(61, 40, 18, 0.83);
 }
 
 .eg-team-row.selected {
@@ -438,7 +484,7 @@ body {
 }
 
 .eg-team-row:disabled {
-  opacity: 0.88;
+  opacity: 0.9;
   cursor: default;
 }
 
@@ -456,57 +502,53 @@ body {
   opacity: 0.28;
 }
 
+.team-logo-hidden {
+  opacity: 0;
+  pointer-events: none;
+}
+
 .team-seed {
-  min-width: 18px;
+  min-width: 20px;
   text-align: center;
-  font-size: 0.63rem;
+  font-size: 0.74rem;
   line-height: 1;
-  color: var(--text-soft);
+  color: rgba(239, 228, 207, 0.72);
   font-weight: 700;
   flex-shrink: 0;
 }
 
 .team-name {
-  font-size: 0.74rem;
+  font-size: 0.78rem;
   font-weight: 600;
   line-height: 1;
   white-space: nowrap;
   overflow: hidden;
-  text-overflow: clip;
+  text-overflow: ellipsis;
   min-width: 0;
 }
 
 .team-name.long-name {
-  font-size: 0.69rem;
+  font-size: 0.74rem;
   letter-spacing: -0.004em;
-}
-
-.eg-team-row.compact .team-name {
-  display: none;
 }
 
 .team-odds-wrap {
   display: flex;
   flex-direction: column;
   align-items: flex-end;
-  gap: 1px;
+  gap: 2px;
   flex-shrink: 0;
-  min-width: 58px;
+  min-width: 56px;
   justify-self: end;
-  overflow: hidden;
-}
-
-.eg-team-row.compact .team-odds-wrap {
-  min-width: 52px;
-  justify-content: flex-end;
+  overflow: visible;
 }
 
 .team-odds {
-  font-size: 0.72rem;
+  font-size: 0.75rem;
   font-weight: 700;
   white-space: nowrap;
-  overflow: hidden;
-  text-overflow: clip;
+  overflow: visible;
+  text-overflow: unset;
   max-width: 100%;
 }
 
@@ -589,14 +631,17 @@ body {
   white-space: nowrap;
 }
 
-.eg-team-row.compact .team-odds {
-  font-size: 0.62rem;
+.eg-team-row.eliminated {
+  opacity: 0.5;
+}
+
+.eg-team-row.in-locked-game:not(.selected):not(.eliminated) {
+  border-color: rgba(117, 210, 128, 0.24);
 }
 
 .team-odds-sub {
-  display: block;
-  color: var(--text-soft);
-  font-size: 0.54rem;
+  color: rgba(239, 228, 207, 0.66);
+  font-size: 0.58rem;
   line-height: 1;
   white-space: nowrap;
 }
@@ -609,11 +654,11 @@ body {
 .eg-finals-card {
   margin-top: 8px;
   margin-bottom: 8px;
-  padding: 10px;
+  padding: 10px 12px 12px;
   min-height: 230px;
-  max-width: 68%;
-  margin-left: auto;
-  margin-right: auto;
+  max-width: 100%;
+  margin-left: 0;
+  margin-right: 0;
   border-color: rgba(117, 210, 128, 0.4);
   box-shadow: 0 0 0 1px rgba(117, 210, 128, 0.18), 0 20px 50px rgba(0, 0, 0, 0.36);
   position: relative;
@@ -623,8 +668,8 @@ body {
 .eg-finals-stage {
   margin-top: 8px;
   display: grid;
-  grid-template-columns: 1fr minmax(260px, 1.25fr) 1fr;
-  gap: 12px;
+  grid-template-columns: minmax(220px, 1fr) minmax(320px, 1.3fr) minmax(220px, 1fr);
+  gap: 8px;
   align-items: center;
 }
 
@@ -645,7 +690,7 @@ body {
 
 .eg-finals-label {
   margin: 0;
-  font-size: 0.66rem;
+  font-size: 0.74rem;
   letter-spacing: 0.08em;
   text-transform: uppercase;
   color: var(--text-soft);
@@ -653,7 +698,7 @@ body {
 }
 
 .eg-finals-label.title {
-  font-size: 0.74rem;
+  font-size: 0.84rem;
   letter-spacing: 0.12em;
   color: rgba(233, 245, 190, 0.95);
 }
@@ -667,23 +712,23 @@ body {
   content: "";
   position: absolute;
   top: 58%;
-  width: 18px;
+  width: 14px;
   height: 2px;
   background: rgba(117, 210, 128, 0.72);
 }
 
 .eg-title-col::before {
-  left: -14px;
+  left: -10px;
 }
 
 .eg-title-col::after {
-  right: -14px;
+  right: -10px;
 }
 
 .eg-title-hero {
   border: 1px solid rgba(117, 210, 128, 0.45);
   border-radius: 14px;
-  padding: 10px;
+  padding: 8px;
   background:
     radial-gradient(120px 80px at 50% 0%, rgba(128, 219, 112, 0.16), transparent 70%),
     linear-gradient(180deg, rgba(30, 24, 11, 0.93) 0%, rgba(24, 18, 9, 0.97) 100%);
@@ -695,23 +740,23 @@ body {
 .eg-title-hero .eg-game-card {
   border-color: rgba(117, 210, 128, 0.55);
   background: rgba(20, 16, 8, 0.78);
-  min-height: 150px;
+  min-height: 132px;
 }
 
 .eg-title-hero .eg-team-row {
-  min-height: 42px;
+  min-height: 44px;
 }
 
 .eg-title-hero .team-name {
-  font-size: 0.76rem;
+  font-size: 1rem;
 }
 
 .eg-title-hero .team-name.long-name {
-  font-size: 0.68rem;
+  font-size: 0.94rem;
 }
 
 .eg-title-hero .team-odds {
-  font-size: 0.76rem;
+  font-size: 1rem;
 }
 
 .eg-champ-split {
