@@ -661,10 +661,14 @@ body {
 
 .eg-semi-col.left {
   justify-self: end;
+  border-right: 1px solid rgba(171, 138, 69, 0.18);
+  padding-right: 10px;
 }
 
 .eg-semi-col.right {
   justify-self: start;
+  border-left: 1px solid rgba(171, 138, 69, 0.18);
+  padding-left: 10px;
 }
 
 .eg-finals-label {
@@ -680,6 +684,14 @@ body {
   font-size: 0.74rem;
   letter-spacing: 0.12em;
   color: rgba(233, 245, 190, 0.95);
+}
+
+.eg-finals-sub {
+  margin: -3px 0 2px;
+  text-align: center;
+  font-size: 0.66rem;
+  color: rgba(239, 228, 207, 0.66);
+  letter-spacing: 0.04em;
 }
 
 .eg-title-col {

@@ -232,6 +232,7 @@ function App() {
                 <div className="eg-finals-stage">
                   <div className="eg-semi-col left">
                     <p className="eg-finals-label">Semifinal</p>
+                    <p className="eg-finals-sub">South + East</p>
                     {leftSemi ? (
                       <GameCard
                         key={leftSemi.id}
@@ -262,6 +263,7 @@ function App() {
 
                   <div className="eg-semi-col right">
                     <p className="eg-finals-label">Semifinal</p>
+                    <p className="eg-finals-sub">West + Midwest</p>
                     {rightSemi ? (
                       <GameCard
                         key={rightSemi.id}
