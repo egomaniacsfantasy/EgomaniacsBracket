@@ -100,7 +100,7 @@ body {
 }
 
 .eg-layout.panel-open {
-  grid-template-columns: minmax(0, 1fr) 280px;
+  grid-template-columns: minmax(0, 1fr) 300px;
 }
 
 .eg-layout.panel-collapsed {
@@ -283,6 +283,10 @@ body {
   justify-content: space-between;
 }
 
+.eg-layout.panel-open .eg-round-grid {
+  grid-template-columns: minmax(196px, 2.15fr) minmax(168px, 1.85fr) minmax(166px, 1.9fr) minmax(162px, 1.9fr);
+}
+
 .region-inverted .eg-round-grid {
   grid-template-columns: minmax(182px, 2fr) minmax(186px, 2fr) minmax(188px, 1.95fr) minmax(220px, 2.25fr);
 }
@@ -330,14 +334,14 @@ body {
 .eg-game-node {
   position: absolute;
   left: 0;
-  right: 6px;
+  right: 2px;
   top: 50%;
   transform: translateY(-50%);
   z-index: 1;
 }
 
 .region-inverted .eg-game-node {
-  left: 6px;
+  left: 2px;
   right: 0;
 }
 
@@ -373,13 +377,13 @@ body {
 
 .lane-r64 .eg-game-node .eg-game-card {
   box-shadow: 0 1px 0 rgba(74, 193, 100, 0.2);
-  width: calc(100% - 10px);
-  margin-right: 10px;
+  width: calc(100% - 4px);
+  margin-right: 4px;
 }
 
 .region-inverted .lane-r64 .eg-game-node .eg-game-card {
   margin-right: 0;
-  margin-left: 10px;
+  margin-left: 4px;
 }
 
 .eg-game-card:hover {
@@ -558,7 +562,7 @@ body {
   align-items: flex-end;
   gap: 1px;
   flex-shrink: 0;
-  min-width: 46px;
+  min-width: 44px;
   justify-self: end;
   overflow: visible;
 }
@@ -569,7 +573,7 @@ body {
 }
 
 .team-odds {
-  font-size: 0.64rem;
+  font-size: 0.62rem;
   font-weight: 700;
   white-space: nowrap;
   overflow: visible;
@@ -590,7 +594,7 @@ body {
   background: rgba(34, 23, 10, 0.72);
   color: var(--text);
   display: grid;
-  grid-template-columns: 16px 12px minmax(0, 1fr) minmax(46px, auto);
+  grid-template-columns: 16px 12px minmax(0, 1fr) minmax(44px, auto);
   align-items: center;
   gap: 3px;
   min-height: 30px;
@@ -638,7 +642,7 @@ body {
   overflow: visible;
   text-overflow: unset;
   text-align: right;
-  min-width: 46px;
+  min-width: 44px;
   justify-self: end;
 }
 
@@ -990,6 +994,68 @@ body {
   overflow: auto;
   border: 1px solid rgba(171, 138, 69, 0.25);
   border-radius: 10px;
+}
+
+.eg-futures-list {
+  max-height: 360px;
+  overflow-y: auto;
+  overflow-x: hidden;
+  border: 1px solid rgba(171, 138, 69, 0.25);
+  border-radius: 10px;
+  padding: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.eg-future-item {
+  border: 1px solid rgba(171, 138, 69, 0.2);
+  border-radius: 8px;
+  padding: 6px;
+  background: rgba(18, 13, 6, 0.74);
+}
+
+.future-team-name {
+  font-size: 0.72rem;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+}
+
+.future-metric-grid {
+  margin-top: 5px;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 4px;
+}
+
+.future-metric {
+  border: 1px solid rgba(171, 138, 69, 0.18);
+  border-radius: 6px;
+  padding: 3px 4px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.future-metric-label {
+  font-size: 0.56rem;
+  color: var(--text-soft);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  line-height: 1;
+}
+
+.future-metric-value {
+  font-size: 0.66rem;
+  font-weight: 700;
+  line-height: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: clip;
 }
 
 .eg-table {

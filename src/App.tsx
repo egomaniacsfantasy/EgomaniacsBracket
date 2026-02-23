@@ -17,7 +17,6 @@ const formatModes: { id: OddsDisplayMode; label: string }[] = [
   { id: "implied", label: "Implied %" },
 ];
 
-const simRunOptions = [2000, 5000, 10000];
 const regionSections: Region[][] = [
   ["South", "East"],
   ["West", "Midwest"],
@@ -37,7 +36,7 @@ function App() {
   const [lockedPicks, setLockedPicks] = useState<LockedPicks>({});
   const [undoStack, setUndoStack] = useState<LockedPicks[]>([]);
   const [displayMode, setDisplayMode] = useState<OddsDisplayMode>("american");
-  const [simRuns, setSimRuns] = useState<number>(DEFAULT_SIM_RUNS);
+  const [simRuns] = useState<number>(DEFAULT_SIM_RUNS);
   const [sortDesc, setSortDesc] = useState(true);
   const [isUpdating, setIsUpdating] = useState(false);
   const [lastPickedKey, setLastPickedKey] = useState<string | null>(null);
@@ -309,47 +308,43 @@ function App() {
               </div>
 
               {isUpdating ? <p className="eg-updating">Updating…</p> : null}
-              <div className="eg-table-wrap">
-                <table className="eg-table">
-                  <thead>
-                    <tr>
-                      <th>Team</th>
-                      <th>R32</th>
-                      <th>S16</th>
-                      <th>E8</th>
-                      <th>F4</th>
-                      <th>Title</th>
-                      <th>Champ</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {sortedFutures.map((row) => {
-                      const team = teamsById.get(row.teamId);
-                      if (!team) return null;
-                      return (
-                        <tr key={row.teamId}>
-                          <td>
-                            <div className="team-cell">
-                              <TeamHoverAnchor teamName={team.name} logoSrc={teamLogoUrl(team)}>
-                                <TeamLogo teamName={team.name} src={teamLogoUrl(team)} />
-                              </TeamHoverAnchor>
-                              <span className="seed">{team.seed}</span>
-                              <TeamHoverAnchor teamName={team.name} logoSrc={teamLogoUrl(team)}>
-                                <span>{team.name}</span>
-                              </TeamHoverAnchor>
+              <div className="eg-futures-list">
+                {sortedFutures.map((row) => {
+                  const team = teamsById.get(row.teamId);
+                  if (!team) return null;
+                  const metrics: Array<{ label: string; prob: number }> = [
+                    { label: "R32", prob: row.round2Prob },
+                    { label: "S16", prob: row.sweet16Prob },
+                    { label: "E8", prob: row.elite8Prob },
+                    { label: "F4", prob: row.final4Prob },
+                    { label: "Title", prob: row.titleGameProb },
+                    { label: "Champ", prob: row.champProb },
+                  ];
+                  return (
+                    <article key={row.teamId} className="eg-future-item">
+                      <div className="team-cell">
+                        <TeamHoverAnchor teamName={team.name} logoSrc={teamLogoUrl(team)}>
+                          <TeamLogo teamName={team.name} src={teamLogoUrl(team)} />
+                        </TeamHoverAnchor>
+                        <span className="seed">{team.seed}</span>
+                        <TeamHoverAnchor teamName={team.name} logoSrc={teamLogoUrl(team)}>
+                          <span className="future-team-name">{team.name}</span>
+                        </TeamHoverAnchor>
+                      </div>
+                      <div className="future-metric-grid">
+                        {metrics.map((metric) => {
+                          const formatted = formatOddsDisplay(metric.prob, displayMode);
+                          return (
+                            <div key={`${row.teamId}-${metric.label}`} className="future-metric">
+                              <span className="future-metric-label">{metric.label}</span>
+                              <span className="future-metric-value">{formatted.primary}</span>
                             </div>
-                          </td>
-                          <OddsCell prob={row.round2Prob} displayMode={displayMode} />
-                          <OddsCell prob={row.sweet16Prob} displayMode={displayMode} />
-                          <OddsCell prob={row.elite8Prob} displayMode={displayMode} />
-                          <OddsCell prob={row.final4Prob} displayMode={displayMode} />
-                          <OddsCell prob={row.titleGameProb} displayMode={displayMode} />
-                          <OddsCell prob={row.champProb} displayMode={displayMode} />
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
+                          );
+                        })}
+                      </div>
+                    </article>
+                  );
+                })}
               </div>
             </section>
 
@@ -366,20 +361,6 @@ function App() {
 
             <section className="eg-panel-block">
               <h3>Settings</h3>
-              <label className="eg-setting-label" htmlFor="sim-runs">
-                Simulation runs
-              </label>
-              <input
-                id="sim-runs"
-                type="range"
-                min={0}
-                max={2}
-                step={1}
-                value={simRunOptions.indexOf(simRuns)}
-                onChange={(e) => setSimRuns(simRunOptions[Number(e.target.value)])}
-              />
-              <p className="eg-setting-value">{simRuns.toLocaleString()} runs</p>
-
               <p className="eg-setting-label">Side definition</p>
               <p className="eg-setting-value">Left side: East/West, Right side: South/Midwest</p>
 
@@ -390,16 +371,6 @@ function App() {
         </section>
       </main>
     </div>
-  );
-}
-
-function OddsCell({ prob, displayMode }: { prob: number; displayMode: OddsDisplayMode }) {
-  const { primary, secondary } = formatOddsDisplay(prob, displayMode);
-  return (
-    <td>
-      <p className="odds-primary">{primary}</p>
-      {secondary ? <p className="odds-secondary">{secondary}</p> : null}
-    </td>
   );
 }
 
