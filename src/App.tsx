@@ -596,6 +596,8 @@ function GameCard({
                 const { primary, secondary } = formatOddsDisplay(candidate.prob, displayMode);
                 const showLogo = true;
                 const teamLabel = compactNameForRound(team.name, game.round);
+                const chipNameClass =
+                  teamLabel.length >= 16 ? "very-long" : teamLabel.length >= 12 ? "long" : "";
                 const outcome =
                   game.lockedByUser && game.winnerId
                     ? game.winnerId === team.id
@@ -613,7 +615,7 @@ function GameCard({
                   >
                     <span className="chip-seed">{team.seed}</span>
                     {showLogo ? <TeamLogo teamName={team.name} src={teamLogoUrl(team)} /> : null}
-                    <span className={`chip-code ${showLogo ? "" : "no-logo"}`} title={team.name}>
+                    <span className={`chip-code ${showLogo ? "" : "no-logo"} ${chipNameClass}`} title={team.name}>
                       {teamLabel}
                     </span>
                     <span className="chip-odds">
@@ -709,7 +711,7 @@ function TeamRow({
   onPick: () => void;
 }) {
   const formatted = prob !== null ? formatOddsDisplay(prob, displayMode) : { primary: "--" };
-  const isLongName = label.length >= 18;
+  const nameClass = label.length >= 20 ? "very-long" : label.length >= 16 ? "long-name" : "";
 
   return (
     <button
@@ -727,7 +729,7 @@ function TeamRow({
       ) : (
         <span className="team-logo team-logo-placeholder" aria-hidden="true" />
       )}
-      {compact ? null : <span className={`team-name ${isLongName ? "long-name" : ""}`}>{label}</span>}
+      {compact ? null : <span className={`team-name ${nameClass}`}>{label}</span>}
       <span className="team-odds-wrap">
         {outcome ? (
           <span className={`outcome-badge ${outcome}`}>{outcome === "win" ? "✓" : "✕"}</span>

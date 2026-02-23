@@ -4,9 +4,9 @@ export const winProb = (ratingA: number, ratingB: number): number =>
   1 / (1 + Math.pow(10, (ratingB - ratingA) / 400));
 
 export const toAmericanOdds = (prob: number): number => {
-  const p = Math.max(0.001, Math.min(0.999, prob));
-  if (p >= 0.5) return Math.round(-(p / (1 - p)) * 100);
-  return Math.round(((1 - p) / p) * 100);
+  const p = Math.max(0.000999, Math.min(0.999001, prob));
+  const raw = p >= 0.5 ? -(p / (1 - p)) * 100 : ((1 - p) / p) * 100;
+  return Math.max(-100000, Math.min(100000, Math.round(raw)));
 };
 
 export const toDecimalOdds = (prob: number): number => 1 / Math.max(0.001, Math.min(0.999, prob));
