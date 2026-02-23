@@ -276,15 +276,15 @@ body {
 
 .eg-round-grid {
   display: grid;
-  grid-template-columns: minmax(252px, 2.6fr) minmax(170px, 1.8fr) minmax(162px, 1.7fr) minmax(152px, 1.6fr);
-  gap: 6px;
-  min-height: 700px;
+  grid-template-columns: minmax(222px, 2.35fr) minmax(172px, 1.82fr) minmax(166px, 1.74fr) minmax(146px, 1.52fr);
+  gap: 8px;
+  min-height: 760px;
   align-items: start;
   justify-content: space-between;
 }
 
 .region-inverted .eg-round-grid {
-  grid-template-columns: minmax(152px, 1.6fr) minmax(162px, 1.7fr) minmax(170px, 1.8fr) minmax(252px, 2.6fr);
+  grid-template-columns: minmax(146px, 1.52fr) minmax(166px, 1.74fr) minmax(172px, 1.82fr) minmax(222px, 2.35fr);
 }
 
 .eg-round-col {
@@ -309,9 +309,9 @@ body {
 .eg-games-lane {
   position: relative;
   display: block;
-  height: var(--lane-height, 680px);
+  height: max(var(--lane-height, 760px), 72vh);
   border-left: 1px solid rgba(74, 193, 100, 0.45);
-  padding-left: 8px;
+  padding-left: 7px;
   margin-top: 6px;
   overflow: hidden;
 }
@@ -320,7 +320,7 @@ body {
   border-left: 0;
   border-right: 1px solid rgba(74, 193, 100, 0.45);
   padding-left: 0;
-  padding-right: 8px;
+  padding-right: 7px;
 }
 
 .lane-r64 .eg-games-lane {
@@ -330,10 +330,15 @@ body {
 .eg-game-node {
   position: absolute;
   left: 0;
-  right: 0;
+  right: 3px;
   top: 50%;
   transform: translateY(-50%);
   z-index: 1;
+}
+
+.region-inverted .eg-game-node {
+  left: 3px;
+  right: 0;
 }
 
 .lane-r32 .eg-game-node::before,
@@ -368,6 +373,13 @@ body {
 
 .lane-r64 .eg-game-node .eg-game-card {
   box-shadow: 0 1px 0 rgba(74, 193, 100, 0.2);
+  width: calc(100% - 6px);
+  margin-right: 6px;
+}
+
+.region-inverted .lane-r64 .eg-game-node .eg-game-card {
+  margin-right: 0;
+  margin-left: 6px;
 }
 
 .eg-game-card:hover {
@@ -475,11 +487,11 @@ body {
 
 .team-odds-wrap {
   display: flex;
-  flex-direction: row;
+  flex-direction: column;
   align-items: flex-end;
-  gap: 0;
+  gap: 1px;
   flex-shrink: 0;
-  min-width: 54px;
+  min-width: 58px;
   justify-self: end;
   overflow: hidden;
 }
@@ -511,7 +523,7 @@ body {
   background: rgba(34, 23, 10, 0.72);
   color: var(--text);
   display: grid;
-  grid-template-columns: 14px 11px minmax(0, 1fr) 40px;
+  grid-template-columns: 14px 11px minmax(0, 1fr) 52px;
   align-items: center;
   gap: 4px;
   padding: 3px 4px;
@@ -557,9 +569,24 @@ body {
   overflow: hidden;
   text-overflow: clip;
   text-align: right;
-  min-width: 38px;
-  max-width: 40px;
+  min-width: 50px;
+  max-width: 52px;
   justify-self: end;
+}
+
+.chip-odds {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 1px;
+  min-width: 0;
+}
+
+.chip-sub {
+  font-size: 0.48rem;
+  color: var(--text-soft);
+  line-height: 1;
+  white-space: nowrap;
 }
 
 .eg-team-row.compact .team-odds {
@@ -567,8 +594,11 @@ body {
 }
 
 .team-odds-sub {
-  display: none;
+  display: block;
   color: var(--text-soft);
+  font-size: 0.54rem;
+  line-height: 1;
+  white-space: nowrap;
 }
 
 .team-odds-sub::before {
@@ -737,6 +767,19 @@ body {
   font-size: 0.78rem;
   font-weight: 800;
   white-space: nowrap;
+}
+
+.title-choice-odds {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
+}
+
+.title-choice-sub {
+  font-size: 0.58rem;
+  color: var(--text-soft);
+  line-height: 1;
 }
 
 .eg-side-panel {
