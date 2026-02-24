@@ -1106,13 +1106,15 @@ function useCountUp(from: number, to: number, duration = 400, delay = 0): number
 function OnboardingOddsRow({ row, index }: { row: DemoTitleShiftRow; index: number }) {
   const implied = useCountUp(row.before, row.after, 400, index * 50);
   const american = formatOddsDisplay(implied, "american").primary;
+  const delta = row.after - row.before;
+  const hasShift = Math.abs(delta) > 0.01;
   return (
     <div className="odds-table-row">
       <span className="seed">{row.seed}</span>
       <span className="team-name">{row.name}</span>
       <span className="american">{american}</span>
-      <span className={`implied ${row.direction}`}>
-        {pct(implied)} {row.direction === "up" ? "↑" : "↓"}
+      <span className={`implied ${hasShift ? row.direction : ""}`}>
+        {pct(implied)} {hasShift ? (row.direction === "up" ? "↑" : "↓") : ""}
       </span>
     </div>
   );
@@ -1155,6 +1157,15 @@ function OnboardingFlow({
     if (!demoGame.teamAId) return null;
     return runDemoSimulation(demoGame.id, demoGame.teamAId);
   });
+  const baselineRows = useMemo(
+    () =>
+      (baselineResult?.titleOddsShift ?? []).map((row) => ({
+        ...row,
+        after: row.before,
+        direction: "up" as const,
+      })),
+    [baselineResult]
+  );
 
   const transitionToStage = (nextStage: OnboardingStage) => {
     setIsStageTransitioning(true);
@@ -1182,19 +1193,33 @@ function OnboardingFlow({
   };
 
   const handleFirstPick = (winnerId: string) => {
-    if (firstPick || !teamA || !teamB) return;
+    if (!teamA || !teamB || firstPick) return;
     applyPickResult(winnerId, false);
   };
 
-  const handleTryOpposite = () => {
-    if (!firstPick || !teamA || !teamB) return;
-    const opposite = firstPick === teamA.id ? teamB.id : teamA.id;
+  const performFlipTo = (winnerId: string) => {
+    if (!firstPick || !teamA || !teamB || secondPick) return;
     setStage2Resetting(true);
     setStage2PromptVisible(false);
     window.setTimeout(() => {
       setStage2Resetting(false);
-      applyPickResult(opposite, true);
+      applyPickResult(winnerId, true);
     }, 350);
+  };
+
+  const handleTryOpposite = () => {
+    if (!firstPick || !teamA || !teamB) return;
+    performFlipTo(firstPick === teamA.id ? teamB.id : teamA.id);
+  };
+
+  const handleStage2TeamClick = (winnerId: string) => {
+    if (!firstPick) {
+      handleFirstPick(winnerId);
+      return;
+    }
+    if (!secondPick && winnerId !== firstPick) {
+      performFlipTo(winnerId);
+    }
   };
 
   const handleOpenBracket = () => {
@@ -1202,14 +1227,15 @@ function OnboardingFlow({
     window.setTimeout(() => onComplete(dontShowAgain), 560);
   };
 
+  const activePick = stage2Resetting ? null : secondPick ?? firstPick;
   const visibleRows =
     stage2Resetting || stage2Repricing
-      ? baselineResult?.titleOddsShift ?? []
+      ? baselineRows
       : secondPick && simResult2
         ? simResult2.titleOddsShift
         : firstPick && simResult1
           ? simResult1.titleOddsShift
-          : baselineResult?.titleOddsShift ?? [];
+          : baselineRows;
 
   const overlay = (
     <div
@@ -1225,7 +1251,7 @@ function OnboardingFlow({
       <div className={`onboarding-stage ${isStageTransitioning ? "stage-exit" : "stage-enter"}`} key={stage}>
         {stage === 1 ? (
           <section className="onboarding-stage-content stage-hook">
-            <p className="stage-kicker">Odds Gods: The Bracket Lab</p>
+            <p className="stage-kicker">Introducing The Bracket Lab</p>
             <h2 className="stage-title">
               <span className="headline-word" style={{ animationDelay: "0ms" }}>
                 Every
@@ -1241,10 +1267,13 @@ function OnboardingFlow({
               </span>
             </h2>
             <p className="stage-subtitle">
-              Lock a result, and the entire tournament reprices around it, all the way to the
-              championship.
+              Choose an outcome, and the entire tournament reprices around it, every round, every
+              contender, all the way to the championship.
             </p>
-            <button className="cta-show-me" onClick={() => transitionToStage(2)}>
+            <p className="stage-subtitle secondary">
+              Understand the fragility and leverage in your bracket before it counts.
+            </p>
+            <button className="cta-stage1" onClick={() => transitionToStage(2)}>
               Show me how →
             </button>
           </section>
@@ -1256,38 +1285,39 @@ function OnboardingFlow({
               <p className="stage-counter">Step 2 of 3</p>
               <h3>Pick a side. Watch the field reprice.</h3>
               <p>
-                Every pick locks in a result and instantly reshapes title odds for every other
-                contender.
+                Choose Houston or Longwood. Watch how title odds and advancement odds across every
+                round shift instantly for every other contender.
               </p>
             </div>
             <div className="stage-demo">
+              {!firstPick ? <p className="pick-prompt-label">↓ Pick a side</p> : null}
               <p className="stage-label">Round of 64 — South</p>
               {teamA ? (
                 <button
                   type="button"
-                  className={`team-row-active ${(firstPick === teamA.id || secondPick === teamA.id) ? "team-row-locked-win" : ""} ${(firstPick && firstPick !== teamA.id) || (secondPick && secondPick !== teamA.id) ? "team-row-loss" : ""}`}
-                  onClick={() => handleFirstPick(teamA.id)}
+                  className={`team-row-active ${!firstPick ? "pre-pick" : ""} ${activePick === teamA.id ? "team-row-locked-win" : ""} ${activePick && activePick !== teamA.id ? "team-row-loss" : ""}`}
+                  onClick={() => handleStage2TeamClick(teamA.id)}
                 >
                   <span className="seed">{teamA.seed}</span>
                   <TeamLogo teamName={teamA.name} src={teamLogoUrl(teamA)} />
                   <span className="name">{teamA.name}</span>
                   <span className="odds">{formatOddsDisplay(teamAProb, "american").primary}</span>
-                  {(firstPick === teamA.id || secondPick === teamA.id) ? <span className="outcome-badge win">✓</span> : null}
-                  {(firstPick && firstPick !== teamA.id) || (secondPick && secondPick !== teamA.id) ? <span className="outcome-badge loss">✕</span> : null}
+                  {activePick === teamA.id ? <span className="outcome-badge win">✓</span> : null}
+                  {activePick && activePick !== teamA.id ? <span className="outcome-badge loss">✕</span> : null}
                 </button>
               ) : null}
               {teamB ? (
                 <button
                   type="button"
-                  className={`team-row-active ${(firstPick === teamB.id || secondPick === teamB.id) ? "team-row-locked-win" : ""} ${(firstPick && firstPick !== teamB.id) || (secondPick && secondPick !== teamB.id) ? "team-row-loss" : ""}`}
-                  onClick={() => handleFirstPick(teamB.id)}
+                  className={`team-row-active ${!firstPick ? "pre-pick" : ""} ${activePick === teamB.id ? "team-row-locked-win" : ""} ${activePick && activePick !== teamB.id ? "team-row-loss" : ""}`}
+                  onClick={() => handleStage2TeamClick(teamB.id)}
                 >
                   <span className="seed">{teamB.seed}</span>
                   <TeamLogo teamName={teamB.name} src={teamLogoUrl(teamB)} />
                   <span className="name">{teamB.name}</span>
                   <span className="odds">{formatOddsDisplay(teamBProb, "american").primary}</span>
-                  {(firstPick === teamB.id || secondPick === teamB.id) ? <span className="outcome-badge win">✓</span> : null}
-                  {(firstPick && firstPick !== teamB.id) || (secondPick && secondPick !== teamB.id) ? <span className="outcome-badge loss">✕</span> : null}
+                  {activePick === teamB.id ? <span className="outcome-badge win">✓</span> : null}
+                  {activePick && activePick !== teamB.id ? <span className="outcome-badge loss">✕</span> : null}
                 </button>
               ) : null}
               <p className="stage-label odds-header">Title odds — top contenders</p>
@@ -1306,8 +1336,8 @@ function OnboardingFlow({
                 <div className="reversal-prompt">
                   <p>
                     {firstPick === teamA.id
-                      ? "Houston advances — the favorite holds. Now try the other side."
-                      : "Longwood takes it down — every other contender just gained. Now see the other side."}
+                      ? "Houston advances, the favorite holds. Now flip it and see the other side."
+                      : "Longwood wins, the bracket is in chaos. Now see the opposite outcome."}
                   </p>
                   <button className="reversal-link" onClick={handleTryOpposite}>
                     ↩ Try {firstPick === teamA.id ? teamB.name : teamA.name} instead
@@ -1315,7 +1345,7 @@ function OnboardingFlow({
                 </div>
               ) : null}
               {stage2AdvVisible ? (
-                <button className="cta-show-me stage2-advance" onClick={() => transitionToStage(3)}>
+                <button className="cta-advance stage2-advance" onClick={() => transitionToStage(3)}>
                   See your full scenario →
                 </button>
               ) : null}
@@ -1328,7 +1358,8 @@ function OnboardingFlow({
             <p className="stage-counter">Step 3 of 3</p>
             <h3>You&apos;re in. Build your scenario.</h3>
             <p className="stage-subtitle">
-              You&apos;ve seen how one pick moves the whole field. Now build yours.
+              You&apos;ve seen how one result moves the entire field. Now do it for real, every
+              pick reshapes the tournament around it.
             </p>
             <div className="suggestion-box">
               <span className="suggestion-label">Suggested first move</span>

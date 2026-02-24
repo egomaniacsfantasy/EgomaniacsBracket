@@ -1,5 +1,4 @@
 @import url("https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Space+Grotesk:wght@400;500;700&display=swap");
-@import url("https://fonts.googleapis.com/css2?family=Playfair+Display:wght@500;700&family=IBM+Plex+Mono:wght@400;500;600&family=DM+Sans:wght@400;500;700&display=swap");
 
 :root {
   --panel-line: rgba(171, 138, 69, 0.44);
@@ -1544,13 +1543,16 @@ body.og-onboarding-open {
 }
 
 .onboarding-flow {
-  --bg-overlay: rgba(14, 12, 9, 0.92);
+  --bg-overlay: rgba(14, 12, 9, 0.72);
   --bg-surface: rgba(20, 14, 7, 0.95);
   --bg-inset: rgba(16, 12, 7, 0.86);
+  --bg-raised: rgba(28, 22, 14, 0.9);
   --amber-border: rgba(171, 138, 69, 0.62);
+  --amber-dim: rgba(171, 138, 69, 0.35);
   --amber-text: #e7bf72;
   --amber-glow: rgba(184, 125, 24, 0.14);
   --green-win: #4ade80;
+  --green-glow: rgba(74, 222, 128, 0.15);
   --red-loss: #f87171;
   --text-primary: #f0e6d0;
   --text-secondary: rgba(240, 230, 208, 0.74);
@@ -1592,14 +1594,14 @@ body.og-onboarding-open {
 
 .backdrop-bracket {
   background: rgba(0, 0, 0, 0.2);
-  filter: blur(12px) brightness(0.35) saturate(0.6);
+  filter: blur(8px) brightness(0.6) saturate(0.75);
   transform: scale(1.04);
   transition: filter 500ms var(--ease-out-expo);
 }
 
 .backdrop-scrim {
   background:
-    radial-gradient(ellipse 120% 80% at 30% 50%, rgba(13, 11, 8, 0.8) 0%, rgba(13, 11, 8, 0.96) 100%),
+    radial-gradient(ellipse 120% 80% at 30% 50%, rgba(13, 11, 8, 0.52) 0%, rgba(13, 11, 8, 0.78) 100%),
     var(--bg-overlay);
   transition: opacity 400ms ease;
 }
@@ -1658,6 +1660,10 @@ body.og-onboarding-open {
   font-weight: 500;
 }
 
+.stage-subtitle.secondary {
+  margin-top: 0;
+}
+
 .stage-hook {
   min-height: 63vh;
   display: flex;
@@ -1672,10 +1678,10 @@ body.og-onboarding-open {
   animation: word-reveal 500ms var(--ease-out-expo) both;
 }
 
-.cta-show-me {
+.cta-stage1 {
   background: transparent;
-  border: 1px solid var(--amber-border);
-  color: var(--amber-text);
+  border: 1px solid rgba(232, 220, 200, 0.32);
+  color: #e8dcc8;
   border-radius: 14px;
   padding: 14px 26px;
   font-family: "Space Grotesk", sans-serif;
@@ -1685,9 +1691,9 @@ body.og-onboarding-open {
   transition: background 200ms ease, box-shadow 200ms ease;
 }
 
-.cta-show-me:hover {
-  background: var(--amber-glow);
-  box-shadow: 0 0 20px var(--amber-glow);
+.cta-stage1:hover {
+  border-color: rgba(232, 220, 200, 0.6);
+  background: rgba(232, 220, 200, 0.05);
 }
 
 .stage-pick {
@@ -1747,7 +1753,7 @@ body.og-onboarding-open {
   border-radius: 7px;
   background: var(--bg-raised);
   color: var(--text-primary);
-  font-family: "DM Sans", sans-serif;
+  font-family: "Space Grotesk", sans-serif;
   display: grid;
   grid-template-columns: 22px 16px minmax(0, 1fr) auto auto;
   align-items: center;
@@ -1767,6 +1773,10 @@ body.og-onboarding-open {
   transform: translateX(2px);
 }
 
+.team-row-active.pre-pick {
+  animation: card-beckon 2.2s ease-in-out infinite;
+}
+
 .team-row-locked-win {
   border-color: var(--green-win);
   animation: lock-flash 600ms ease-out forwards;
@@ -1780,7 +1790,7 @@ body.og-onboarding-open {
 
 .team-row-active .seed,
 .odds-table-row .seed {
-  font-family: "IBM Plex Mono", monospace;
+  font-family: "Space Grotesk", sans-serif;
   color: var(--text-tertiary);
 }
 
@@ -1789,7 +1799,7 @@ body.og-onboarding-open {
 }
 
 .team-row-active .odds {
-  font-family: "IBM Plex Mono", monospace;
+  font-family: "Space Grotesk", sans-serif;
   font-weight: 600;
 }
 
@@ -1797,8 +1807,17 @@ body.og-onboarding-open {
   margin-top: 10px;
 }
 
+.pick-prompt-label {
+  margin: 0;
+  font-size: 11px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+  animation: label-bob 1.8s ease-in-out infinite;
+}
+
 .odds-value {
-  font-family: "IBM Plex Mono", monospace;
+  font-family: "Space Grotesk", sans-serif;
   color: var(--text-secondary);
 }
 
@@ -1902,7 +1921,7 @@ body.og-onboarding-open {
   border: 0;
   background: transparent;
   color: var(--text-tertiary);
-  font-family: "IBM Plex Mono", monospace;
+  font-family: "Space Grotesk", sans-serif;
   font-size: 13px;
   letter-spacing: 0.08em;
   text-transform: uppercase;
@@ -1937,6 +1956,28 @@ body.og-onboarding-open {
     opacity: 1;
     filter: blur(0);
     transform: translateY(0);
+  }
+}
+
+@keyframes label-bob {
+  0%,
+  100% {
+    transform: translateY(0);
+    opacity: 0.5;
+  }
+  50% {
+    transform: translateY(3px);
+    opacity: 0.8;
+  }
+}
+
+@keyframes card-beckon {
+  0%,
+  100% {
+    box-shadow: 0 0 0 1px rgba(232, 220, 200, 0.15);
+  }
+  50% {
+    box-shadow: 0 0 0 1px rgba(232, 220, 200, 0.45), 0 0 16px rgba(232, 220, 200, 0.08);
   }
 }
 
@@ -2033,7 +2074,7 @@ body.og-onboarding-open {
 .odds-table-row .seed,
 .odds-table-row .american,
 .odds-table-row .implied {
-  font-family: "IBM Plex Mono", monospace;
+  font-family: "Space Grotesk", sans-serif;
   font-size: 0.78rem;
 }
 
@@ -2088,6 +2129,23 @@ body.og-onboarding-open {
 .stage2-advance {
   width: 100%;
   margin-top: 8px;
+}
+
+.cta-advance {
+  width: 100%;
+  background: transparent;
+  border: 1px solid var(--amber-border);
+  color: var(--amber-text);
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  padding: 14px;
+  border-radius: 10px;
+  transition: background 200ms ease, box-shadow 200ms ease;
+}
+
+.cta-advance:hover {
+  background: var(--amber-glow);
+  box-shadow: 0 0 16px var(--amber-glow);
 }
 
 .stage-enter {
