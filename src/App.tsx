@@ -48,7 +48,7 @@ type TourStep = {
   title: string;
   body: string;
   cta?: string;
-  requiresDemoPick?: boolean;
+  requiredClicks?: number;
 };
 
 const TOUR_STEPS: TourStep[] = [
@@ -56,23 +56,21 @@ const TOUR_STEPS: TourStep[] = [
     id: "intro",
     title: "Welcome to Odds Gods",
     body: "The Bracket Lab lets you lock outcomes and instantly see how the full tournament reprices around your scenario.",
-  },
-  {
-    id: "demo-pick",
-    title: "Try the What-If Engine",
-    body: "Pick either side in the live demo below. You’ll instantly see downstream bracket and futures repricing.",
-    cta: "Try it yourself: click Houston or Longwood to continue",
-    requiresDemoPick: true,
+    cta: "Let’s get started.",
   },
   {
     id: "cascade",
-    title: "See the Cascade",
-    body: "One locked result propagates forward: teams are eliminated, paths narrow, and all remaining probabilities update live.",
+    title: "Try the What-If Engine",
+    body: "Pick either side below and watch Round of 32 reprice immediately. This is the core scenario-conditioning behavior.",
+    cta: "Click Houston or Longwood to continue.",
+    requiredClicks: 1,
   },
   {
     id: "futures",
     title: "Open Futures",
     body: "Use Futures to track each team’s path to every stage, from Round of 32 through Champion, under your exact scenario.",
+    cta: "Click once more to see Futures move with your scenario.",
+    requiredClicks: 2,
   },
   {
     id: "done",
@@ -1064,6 +1062,7 @@ function OnboardingOverlay({
 }) {
   const step = steps[Math.max(0, Math.min(stepIndex, steps.length - 1))];
   const [demoWinner, setDemoWinner] = useState<"houston" | "longwood" | null>(null);
+  const [demoClickCount, setDemoClickCount] = useState(0);
 
   const demo = useMemo(() => {
     const lockedUpset = demoWinner === "longwood";
@@ -1074,6 +1073,7 @@ function OnboardingOverlay({
         seed: 1,
         name: "Houston",
         logo: fallbackLogo("Houston"),
+        odds: lockedUpset ? "+100000" : lockedFavorite ? "-100000" : "-3330",
         winProb: lockedUpset ? 0 : lockedFavorite ? 100 : 97.2,
         locked: lockedUpset ? ("loss" as const) : lockedFavorite ? ("win" as const) : null,
       },
@@ -1082,6 +1082,7 @@ function OnboardingOverlay({
         seed: 16,
         name: "Longwood",
         logo: fallbackLogo("Longwood"),
+        odds: lockedUpset ? "-100000" : lockedFavorite ? "+100000" : "+3330",
         winProb: lockedUpset ? 100 : lockedFavorite ? 0 : 2.8,
         locked: lockedUpset ? ("win" as const) : lockedFavorite ? ("loss" as const) : null,
       },
@@ -1124,14 +1125,15 @@ function OnboardingOverlay({
     return { lockedUpset, lockedFavorite, r64, r32, futures };
   }, [demoWinner]);
 
-  const showR64 = true;
+  const showR64 = step.id !== "intro";
   const showR32 = step.id === "cascade" || step.id === "futures" || step.id === "done";
   const showFutures = step.id === "futures" || step.id === "done";
   const showControls = step.id === "done";
   const visibleCols = (showR64 ? 1 : 0) + (showR32 ? 1 : 0) + (showFutures ? 1 : 0);
+  const requiresClicks = step.requiredClicks ?? 0;
 
   const next = () => {
-    if (step.requiresDemoPick && demoWinner === null) return;
+    if (requiresClicks > 0 && demoClickCount < requiresClicks) return;
     if (stepIndex >= steps.length - 1) {
       onClose();
       return;
@@ -1150,25 +1152,30 @@ function OnboardingOverlay({
           <h3>{step.title}</h3>
           <p>{step.body}</p>
           {step.cta ? <p className="eg-tour-cta">{step.cta}</p> : null}
-          {step.requiresDemoPick ? <p className="eg-tour-try">Try it yourself</p> : null}
 
           <div className={`eg-tour-demo cols-${visibleCols}`}>
             {showR64 ? (
               <div className="eg-tour-demo-col panel-r64 scene-enter">
                 <p className="eg-tour-demo-label">Round of 64</p>
+                {requiresClicks > 0 && demoClickCount < requiresClicks ? (
+                  <div className="eg-tour-click-cue">Click a team</div>
+                ) : null}
                 {demo.r64.map((team) => (
                   <button
                     key={team.id}
                     type="button"
                     className={`eg-tour-demo-team ${team.locked === "win" ? "locked-win" : ""} ${team.locked === "loss" ? "locked-loss" : ""}`}
-                    onClick={() => setDemoWinner(team.id as "houston" | "longwood")}
+                    onClick={() => {
+                      setDemoWinner(team.id as "houston" | "longwood");
+                      setDemoClickCount((count) => count + 1);
+                    }}
                   >
                     <span>{team.seed}</span>
                     <span className="eg-tour-demo-team-name">
                       <img className="eg-tour-demo-logo" src={team.logo} alt={`${team.name} logo`} />
                       {team.name}
                     </span>
-                    <span>{team.winProb.toFixed(1)}%</span>
+                    <span className="eg-tour-demo-odds">{team.odds} · {team.winProb.toFixed(1)}%</span>
                     {team.locked ? <span className={`outcome-badge ${team.locked}`}>{team.locked === "win" ? "✓" : "✕"}</span> : null}
                   </button>
                 ))}
@@ -1233,16 +1240,16 @@ function OnboardingOverlay({
               <button type="button" className="eg-mini-btn" onClick={back} disabled={stepIndex === 0}>
                 Back
               </button>
-              <button
-                type="button"
-                className="eg-mini-btn"
-                onClick={next}
-                disabled={Boolean(step.requiresDemoPick && demoWinner === null)}
-              >
-                {stepIndex === steps.length - 1 ? "Done" : "Next"}
-              </button>
+                <button
+                  type="button"
+                  className="eg-mini-btn"
+                  onClick={next}
+                  disabled={Boolean(requiresClicks > 0 && demoClickCount < requiresClicks)}
+                >
+                  {step.id === "intro" ? "Let's get started" : stepIndex === steps.length - 1 ? "Done" : "Next"}
+                </button>
+              </div>
             </div>
-          </div>
         </div>
       </div>
     </div>,
