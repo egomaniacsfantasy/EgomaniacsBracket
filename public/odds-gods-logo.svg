@@ -1,0 +1,64 @@
+<svg width="1024" height="1024" viewBox="0 0 1024 1024" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bg" x1="64" y1="64" x2="960" y2="960" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#2A1C0B"/>
+      <stop offset="0.5" stop-color="#171005"/>
+      <stop offset="1" stop-color="#120A03"/>
+    </linearGradient>
+    <radialGradient id="goldGlow" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(318 258) rotate(32.4) scale(518 312)">
+      <stop stop-color="#C99C4A" stop-opacity="0.5"/>
+      <stop offset="1" stop-color="#C99C4A" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="amberGlow" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(820 210) rotate(133.8) scale(436 252)">
+      <stop stop-color="#B85A12" stop-opacity="0.45"/>
+      <stop offset="1" stop-color="#B85A12" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="strokeGold" x1="143" y1="134" x2="881" y2="890" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#9B7A3E"/>
+      <stop offset="1" stop-color="#5E4721"/>
+    </linearGradient>
+    <linearGradient id="textGold" x1="224" y1="336" x2="786" y2="688" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#F5E4C3"/>
+      <stop offset="0.52" stop-color="#E6CF9C"/>
+      <stop offset="1" stop-color="#CCAA63"/>
+    </linearGradient>
+    <filter id="softShadow" x="96" y="96" width="832" height="832" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+      <feFlood flood-opacity="0" result="BackgroundImageFix"/>
+      <feColorMatrix in="SourceAlpha" type="matrix" values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 127 0" result="hardAlpha"/>
+      <feOffset dy="16"/>
+      <feGaussianBlur stdDeviation="20"/>
+      <feComposite in2="hardAlpha" operator="out"/>
+      <feColorMatrix type="matrix" values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.52 0"/>
+      <feBlend mode="normal" in2="BackgroundImageFix" result="effect1_dropShadow_1_1"/>
+      <feBlend mode="normal" in="SourceGraphic" in2="effect1_dropShadow_1_1" result="shape"/>
+    </filter>
+  </defs>
+
+  <rect width="1024" height="1024" rx="170" fill="#120A03"/>
+  <rect x="0" y="0" width="1024" height="1024" rx="170" fill="url(#bg)"/>
+  <rect x="0" y="0" width="1024" height="1024" rx="170" fill="url(#goldGlow)"/>
+  <rect x="0" y="0" width="1024" height="1024" rx="170" fill="url(#amberGlow)"/>
+
+  <g filter="url(#softShadow)">
+    <rect x="118" y="118" width="788" height="788" rx="112" fill="rgba(20,14,7,0.64)"/>
+    <rect x="118.75" y="118.75" width="786.5" height="786.5" rx="111.25" stroke="url(#strokeGold)" stroke-opacity="0.82" stroke-width="1.5"/>
+  </g>
+
+  <line x1="212" y1="286.5" x2="812" y2="286.5" stroke="#4AC164" stroke-opacity="0.38" stroke-width="1"/>
+  <line x1="212" y1="734.5" x2="812" y2="734.5" stroke="#4AC164" stroke-opacity="0.38" stroke-width="1"/>
+
+  <text x="512" y="238" text-anchor="middle" fill="#BFA67A" fill-opacity="0.9" font-family="'Space Grotesk', 'Avenir Next', sans-serif" font-size="42" letter-spacing="0.14em">
+    EGOMANIACS
+  </text>
+
+  <text x="512" y="494" text-anchor="middle" fill="url(#textGold)" font-family="'Instrument Serif', 'Times New Roman', serif" font-size="168" font-weight="400">
+    Odds
+  </text>
+  <text x="512" y="664" text-anchor="middle" fill="url(#textGold)" font-family="'Instrument Serif', 'Times New Roman', serif" font-size="168" font-weight="400">
+    Gods
+  </text>
+
+  <text x="512" y="790" text-anchor="middle" fill="#D9C79F" fill-opacity="0.72" font-family="'Space Grotesk', 'Avenir Next', sans-serif" font-size="30" letter-spacing="0.08em">
+    BRACKET ODDS LAB
+  </text>
+</svg>

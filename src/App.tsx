@@ -41,6 +41,54 @@ const gameRoundLabel: Record<string, string> = {
   CHAMP: "Championship",
 };
 
+const ONBOARDING_STORAGE_KEY = "oddsgods:onboarding-disabled";
+
+type TourStep = {
+  id: string;
+  selector: string;
+  title: string;
+  body: string;
+};
+
+const TOUR_STEPS: TourStep[] = [
+  {
+    id: "welcome",
+    selector: ".eg-header",
+    title: "Welcome to Odds Gods",
+    body: "This is The Bracket Lab: lock picks and watch the full tournament reprice around your scenario.",
+  },
+  {
+    id: "controls",
+    selector: ".eg-main-actions",
+    title: "Start With Controls",
+    body: "Undo, reset, and odds format are all here so you can test bold paths without losing your flow.",
+  },
+  {
+    id: "pick",
+    selector: ".eg-bracket-section.top-half",
+    title: "Pick Any Matchup",
+    body: "Tap a team to lock a result. That outcome becomes final for this scenario and future rounds update instantly.",
+  },
+  {
+    id: "futures",
+    selector: ".eg-side-toggle",
+    title: "Open Futures",
+    body: "Use the Futures panel to track each team’s path to every stage, from Round of 32 through Champion.",
+  },
+  {
+    id: "finals",
+    selector: ".eg-finals-card",
+    title: "Watch the Endgame",
+    body: "As the field narrows, Final Four and title matchups expand to highlight the contenders that remain.",
+  },
+  {
+    id: "settings",
+    selector: ".eg-panel-block.settings-block",
+    title: "Make It Yours",
+    body: "You can replay this walkthrough anytime from Settings. Now build your bracket.",
+  },
+];
+
 function App() {
   const [lockedPicks, setLockedPicks] = useState<LockedPicks>({});
   const [undoStack, setUndoStack] = useState<LockedPicks[]>([]);
@@ -51,6 +99,16 @@ function App() {
   const [lastPickedKey, setLastPickedKey] = useState<string | null>(null);
   const [sidePanelOpen, setSidePanelOpen] = useState(false);
   const [compactDesktop, setCompactDesktop] = useState(false);
+  const [onboardingDisabled, setOnboardingDisabled] = useState<boolean>(() => {
+    if (typeof window === "undefined") return false;
+    return window.localStorage.getItem(ONBOARDING_STORAGE_KEY) === "1";
+  });
+  const [tourOpen, setTourOpen] = useState<boolean>(() => {
+    if (typeof window === "undefined") return false;
+    return window.localStorage.getItem(ONBOARDING_STORAGE_KEY) !== "1";
+  });
+  const [tourStepIdx, setTourStepIdx] = useState(0);
+  const [tourDontShowAgain, setTourDontShowAgain] = useState(false);
   const [simResult, setSimResult] = useState<SimulationOutput>({
     futures: [],
     gameWinProbs: {},
@@ -159,6 +217,29 @@ function App() {
   const rightSemi = finalGames.find((g) => g.id === "F4-Right-0") ?? null;
   const titleGame = finalGames.find((g) => g.id === "CHAMP-0") ?? null;
 
+  const closeTour = () => {
+    if (tourDontShowAgain) {
+      setOnboardingDisabled(true);
+      if (typeof window !== "undefined") window.localStorage.setItem(ONBOARDING_STORAGE_KEY, "1");
+    }
+    setTourOpen(false);
+  };
+
+  const replayTour = () => {
+    setTourStepIdx(0);
+    setTourDontShowAgain(false);
+    setTourOpen(true);
+  };
+
+  const setAutoShowOnboarding = (enabled: boolean) => {
+    const disabled = !enabled;
+    setOnboardingDisabled(disabled);
+    if (typeof window !== "undefined") {
+      if (disabled) window.localStorage.setItem(ONBOARDING_STORAGE_KEY, "1");
+      else window.localStorage.removeItem(ONBOARDING_STORAGE_KEY);
+    }
+  };
+
   return (
     <div className={`eg-shell ${compactDesktop ? "compact-desktop" : ""}`}>
       <div className="bg-shape bg-top" aria-hidden="true" />
@@ -166,8 +247,8 @@ function App() {
 
       <main className="eg-app">
         <header className="eg-header">
-          <p className="eg-kicker">Egomaniacs Bracket Odds</p>
-          <h1>What Are the Odds?</h1>
+          <p className="eg-kicker">Odds Gods presents</p>
+          <h1>The Bracket Lab</h1>
           <p className="eg-subtitle">
             March Madness what-if odds. Click picks to condition futures in real time.
           </p>
@@ -199,7 +280,7 @@ function App() {
             </div>
 
             <div className="eg-bracket-stack">
-              <section className="eg-bracket-section">
+              <section className="eg-bracket-section top-half">
                 <div className="eg-section-head">
                   <h2>Top Half Bracket</h2>
                   <p>South + East</p>
@@ -383,17 +464,40 @@ function App() {
               <p className="eg-metric-sub">{toOneInX(simResult.likelihoodApprox)}</p>
             </section>
 
-            <section className="eg-panel-block">
+            <section className="eg-panel-block settings-block">
               <h3>Settings</h3>
               <p className="eg-setting-label">Side definition</p>
               <p className="eg-setting-value">Left side: East/West, Right side: South/Midwest</p>
 
               <p className="eg-setting-label">Current lock count</p>
               <p className="eg-setting-value">{Object.keys(sanitized).length} picks</p>
+
+              <p className="eg-setting-label">Onboarding</p>
+              <label className="eg-setting-check">
+                <input
+                  type="checkbox"
+                  checked={!onboardingDisabled}
+                  onChange={(e) => setAutoShowOnboarding(e.currentTarget.checked)}
+                />
+                Show onboarding on first visit
+              </label>
+              <button type="button" className="eg-mini-btn onboarding-replay-btn" onClick={replayTour}>
+                Replay onboarding
+              </button>
             </section>
           </aside>
         </section>
       </main>
+      {tourOpen ? (
+        <OnboardingOverlay
+          steps={TOUR_STEPS}
+          stepIndex={tourStepIdx}
+          onStepChange={setTourStepIdx}
+          dontShowAgain={tourDontShowAgain}
+          onDontShowAgainChange={setTourDontShowAgain}
+          onClose={closeTour}
+        />
+      ) : null}
     </div>
   );
 }
@@ -947,6 +1051,117 @@ function TeamHoverAnchor({
           )
         : null}
     </span>
+  );
+}
+
+function OnboardingOverlay({
+  steps,
+  stepIndex,
+  onStepChange,
+  dontShowAgain,
+  onDontShowAgainChange,
+  onClose,
+}: {
+  steps: TourStep[];
+  stepIndex: number;
+  onStepChange: (next: number) => void;
+  dontShowAgain: boolean;
+  onDontShowAgainChange: (next: boolean) => void;
+  onClose: () => void;
+}) {
+  const step = steps[Math.max(0, Math.min(stepIndex, steps.length - 1))];
+  const [rect, setRect] = useState<DOMRect | null>(null);
+  const [cardPos, setCardPos] = useState({ x: 24, y: 24 });
+  const cardRef = useRef<HTMLDivElement | null>(null);
+
+  useLayoutEffect(() => {
+    const compute = () => {
+      const target = document.querySelector(step.selector);
+      if (!(target instanceof HTMLElement)) {
+        setRect(null);
+        setCardPos({ x: 24, y: 24 });
+        return;
+      }
+      const nextRect = target.getBoundingClientRect();
+      setRect(nextRect);
+
+      const viewportW = window.innerWidth;
+      const viewportH = window.innerHeight;
+      const cardW = Math.min(360, viewportW - 24);
+      const cardH = cardRef.current?.offsetHeight ?? 220;
+      let x = nextRect.right + 14;
+      if (x + cardW > viewportW - 12) x = nextRect.left;
+      if (x + cardW > viewportW - 12) x = viewportW - cardW - 12;
+      if (x < 12) x = 12;
+
+      let y = nextRect.top;
+      if (y + cardH > viewportH - 12) y = viewportH - cardH - 12;
+      if (y < 12) y = 12;
+      setCardPos({ x, y });
+    };
+
+    compute();
+    window.addEventListener("resize", compute);
+    window.addEventListener("scroll", compute, true);
+    return () => {
+      window.removeEventListener("resize", compute);
+      window.removeEventListener("scroll", compute, true);
+    };
+  }, [step.selector, stepIndex]);
+
+  const next = () => {
+    if (stepIndex >= steps.length - 1) {
+      onClose();
+      return;
+    }
+    onStepChange(stepIndex + 1);
+  };
+
+  const back = () => onStepChange(Math.max(0, stepIndex - 1));
+
+  return createPortal(
+    <div className="eg-tour-overlay" role="dialog" aria-modal="true" aria-label="Guided onboarding">
+      <div className="eg-tour-dim" />
+      {rect ? (
+        <div
+          className="eg-tour-highlight"
+          style={{
+            left: `${Math.max(8, rect.left - 8)}px`,
+            top: `${Math.max(8, rect.top - 8)}px`,
+            width: `${Math.min(window.innerWidth - 16, rect.width + 16)}px`,
+            height: `${Math.min(window.innerHeight - 16, rect.height + 16)}px`,
+          }}
+        />
+      ) : null}
+
+      <div ref={cardRef} className="eg-tour-card" style={{ left: `${cardPos.x}px`, top: `${cardPos.y}px` }}>
+        <p className="eg-tour-step">Step {stepIndex + 1} of {steps.length}</p>
+        <h3>{step.title}</h3>
+        <p>{step.body}</p>
+        <label className="eg-tour-check">
+          <input
+            type="checkbox"
+            checked={dontShowAgain}
+            onChange={(e) => onDontShowAgainChange(e.currentTarget.checked)}
+          />
+          Don&apos;t show again
+        </label>
+        <div className="eg-tour-actions">
+          <button type="button" className="eg-mini-btn" onClick={onClose}>
+            Skip
+          </button>
+          <div className="eg-tour-nav">
+            <button type="button" className="eg-mini-btn" onClick={back} disabled={stepIndex === 0}>
+              Back
+            </button>
+            <button type="button" className="eg-mini-btn" onClick={next}>
+              {stepIndex === steps.length - 1 ? "Done" : "Next"}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>,
+    document.body
   );
 }
 
