@@ -6,6 +6,7 @@ import { regionRounds } from "./data/bracket";
 import {
   finalRounds,
   gamesByRegionAndRound,
+  getGameWinProb,
   possibleWinnersByGame,
   resetRegionPicks,
   resolveGames,
@@ -20,6 +21,7 @@ import { fullTeamName } from "./lib/teamNames";
 import type { OddsDisplayMode, Region, ResolvedGame, SimulationOutput } from "./types";
 
 const DEFAULT_SIM_RUNS = 5000;
+const ONBOARDING_STORAGE_KEY = "oddsGods_onboardingDismissed";
 
 const formatModes: { id: OddsDisplayMode; label: string }[] = [
   { id: "american", label: "American" },
@@ -50,6 +52,16 @@ const ROUND_RANK: Record<ResolvedGame["round"], number> = {
   CHAMP: 5,
 };
 
+type OnboardingStage = 1 | 2 | 3 | 4;
+
+type DemoSimulationOutput = {
+  before: SimulationOutput;
+  after: SimulationOutput;
+  gameId: string;
+  winnerId: string;
+  downstreamGameId: string | null;
+};
+
 function App() {
   const [lockedPicks, setLockedPicks] = useState<LockedPicks>({});
   const [undoStack, setUndoStack] = useState<LockedPicks[]>([]);
@@ -60,6 +72,10 @@ function App() {
   const [lastPickedKey, setLastPickedKey] = useState<string | null>(null);
   const [sidePanelOpen, setSidePanelOpen] = useState(false);
   const [compactDesktop, setCompactDesktop] = useState(false);
+  const [onboardingOpen, setOnboardingOpen] = useState(() => {
+    if (typeof window === "undefined") return false;
+    return window.localStorage.getItem(ONBOARDING_STORAGE_KEY) !== "true";
+  });
   const [simResult, setSimResult] = useState<SimulationOutput>({
     futures: [],
     gameWinProbs: {},
@@ -68,6 +84,10 @@ function App() {
   });
 
   const simulationCacheRef = useRef<Map<string, SimulationOutput>>(new Map());
+  const demoGame = useMemo(
+    () => resolveGames({}).games.find((game) => game.id === "South-R64-0") ?? null,
+    []
+  );
 
   const { games, sanitized } = useMemo(() => resolveGames(lockedPicks), [lockedPicks]);
   const possibleWinners = useMemo(() => possibleWinnersByGame(sanitized), [sanitized]);
@@ -192,6 +212,28 @@ function App() {
   const onModelSim = () => {
     pushUndo(lockedPicks);
     setLockedPicks(sanitizeLockedPicks(generateSimulatedBracket(lockedPicks)));
+  };
+
+  const runDemoSimulation = (gameId: string, winnerId: string): DemoSimulationOutput => {
+    const baseLocks: LockedPicks = {};
+    const before = runSimulation(baseLocks, simRuns);
+    const after = runSimulation({ [gameId]: winnerId }, simRuns);
+    const downstreamGameId = getDownstreamGameId(gameId);
+    return { before, after, gameId, winnerId, downstreamGameId };
+  };
+
+  const dismissOnboarding = (dontShowAgain: boolean) => {
+    if (dontShowAgain) {
+      window.localStorage.setItem(ONBOARDING_STORAGE_KEY, "true");
+    }
+    setOnboardingOpen(false);
+  };
+
+  const skipOnboarding = (dontShowAgain: boolean) => {
+    if (dontShowAgain) {
+      window.localStorage.setItem(ONBOARDING_STORAGE_KEY, "true");
+    }
+    setOnboardingOpen(false);
   };
 
   const finalGames = finalRounds(games);
@@ -442,10 +484,22 @@ function App() {
 
               <p className="eg-setting-label">Current lock count</p>
               <p className="eg-setting-value">{Object.keys(sanitized).length} picks</p>
+              <button className="eg-mini-btn onboarding-replay-btn" onClick={() => setOnboardingOpen(true)}>
+                Replay Intro
+              </button>
             </section>
           </aside>
         </section>
       </main>
+
+      {onboardingOpen && demoGame ? (
+        <OnboardingFlow
+          demoGame={demoGame}
+          runDemoSimulation={runDemoSimulation}
+          onComplete={dismissOnboarding}
+          onSkip={skipOnboarding}
+        />
+      ) : null}
     </div>
   );
 }
@@ -895,13 +949,8 @@ function AdaptiveTeamLabel({ className, fullName }: { className: string; fullNam
       let next = full;
       if (fullWidth > maxWidth + 1) next = abbreviated;
       if (next === abbreviated && abbrevWidth > maxWidth + 1) {
-        // Last-resort initials if even abbreviation overflows.
-        next = abbreviated
-          .split(/\s+/)
-          .map((part) => part[0] ?? "")
-          .join("")
-          .toUpperCase()
-          .slice(0, 4);
+        // Keep full abbreviation even in tight layouts; never collapse to 1-letter initials.
+        next = abbreviated;
       }
       if (next === labelRef.current) return;
 
@@ -1000,6 +1049,313 @@ function TeamHoverAnchor({
         : null}
     </span>
   );
+}
+
+function getDownstreamGameId(gameId: string): string | null {
+  const parts = gameId.split("-");
+  if (parts.length !== 3) return null;
+  const [region, round, slotPart] = parts;
+  if (round !== "R64") return null;
+  const slot = Number(slotPart);
+  if (Number.isNaN(slot)) return null;
+  return `${region}-R32-${Math.floor(slot / 2)}`;
+}
+
+function getFutureDeltaRows(
+  before: SimulationOutput,
+  after: SimulationOutput,
+  winnerId: string,
+  loserId: string
+): Array<{ label: string; before: number; after: number }> {
+  const beforeMap = new Map(before.futures.map((row) => [row.teamId, row]));
+  const afterMap = new Map(after.futures.map((row) => [row.teamId, row]));
+  const winner = teamsById.get(winnerId);
+  const loser = teamsById.get(loserId);
+  const winnerBefore = beforeMap.get(winnerId);
+  const winnerAfter = afterMap.get(winnerId);
+  const loserBefore = beforeMap.get(loserId);
+  const loserAfter = afterMap.get(loserId);
+
+  return [
+    {
+      label: `${winner?.name ?? "Picked team"} title`,
+      before: winnerBefore?.titleGameProb ?? 0,
+      after: winnerAfter?.titleGameProb ?? 0,
+    },
+    {
+      label: `${winner?.name ?? "Picked team"} champ`,
+      before: winnerBefore?.champProb ?? 0,
+      after: winnerAfter?.champProb ?? 0,
+    },
+    {
+      label: `${loser?.name ?? "Other team"} champ`,
+      before: loserBefore?.champProb ?? 0,
+      after: loserAfter?.champProb ?? 0,
+    },
+  ];
+}
+
+function pct(prob: number): string {
+  return `${(prob * 100).toFixed(1)}%`;
+}
+
+function useCountUp(target: number, durationMs = 320): number {
+  const [value, setValue] = useState(target);
+  const prevRef = useRef(target);
+
+  useEffect(() => {
+    const start = prevRef.current;
+    const delta = target - start;
+    if (Math.abs(delta) < 1e-6) {
+      prevRef.current = target;
+      return;
+    }
+
+    const startTime = performance.now();
+    let raf = 0;
+    const tick = (time: number) => {
+      const t = Math.min((time - startTime) / durationMs, 1);
+      const eased = 1 - Math.pow(1 - t, 3);
+      setValue(start + delta * eased);
+      if (t < 1) {
+        raf = window.requestAnimationFrame(tick);
+      } else {
+        prevRef.current = target;
+      }
+    };
+    raf = window.requestAnimationFrame(tick);
+    return () => window.cancelAnimationFrame(raf);
+  }, [target, durationMs]);
+
+  return value;
+}
+
+function AnimatedDeltaValue({ from, to }: { from: number; to: number }) {
+  const animated = useCountUp(to, 300);
+  const direction = to >= from ? "up" : "down";
+  return (
+    <span className={`og-delta-value ${direction}`}>
+      <span>{pct(from)}</span>
+      <span className="arrow">{to >= from ? "→" : "↘"}</span>
+      <span>{pct(animated)}</span>
+    </span>
+  );
+}
+
+function OnboardingFlow({
+  demoGame,
+  runDemoSimulation,
+  onComplete,
+  onSkip,
+}: {
+  demoGame: ResolvedGame;
+  runDemoSimulation: (gameId: string, winnerId: string) => DemoSimulationOutput;
+  onComplete: (dontShowAgain: boolean) => void;
+  onSkip: (dontShowAgain: boolean) => void;
+}) {
+  const [stage, setStage] = useState<OnboardingStage>(1);
+  const [dontShowAgain, setDontShowAgain] = useState(false);
+  const [demoPickId, setDemoPickId] = useState<string | null>(null);
+  const [demoResult, setDemoResult] = useState<DemoSimulationOutput | null>(null);
+
+  useEffect(() => {
+    document.body.classList.add("og-onboarding-open");
+    return () => document.body.classList.remove("og-onboarding-open");
+  }, []);
+
+  const teamA = demoGame.teamAId ? teamsById.get(demoGame.teamAId) ?? null : null;
+  const teamB = demoGame.teamBId ? teamsById.get(demoGame.teamBId) ?? null : null;
+  const teamAProb = teamA ? getGameWinProb(demoGame, teamA.id) ?? 0 : 0;
+  const teamBProb = teamB ? getGameWinProb(demoGame, teamB.id) ?? 0 : 0;
+
+  const handlePick = (winnerId: string) => {
+    setDemoPickId(winnerId);
+    const result = runDemoSimulation(demoGame.id, winnerId);
+    setDemoResult(result);
+    window.setTimeout(() => setStage(3), 800);
+  };
+
+  const stageClass = `stage-${stage}`;
+  const pickedTeam = demoPickId ? teamsById.get(demoPickId) ?? null : null;
+  const loserTeam =
+    demoPickId && teamA && teamB ? (demoPickId === teamA.id ? teamB : teamA) : null;
+  const downstreamRows =
+    demoResult?.downstreamGameId && demoResult.after.gameWinProbs[demoResult.downstreamGameId]
+      ? [...demoResult.after.gameWinProbs[demoResult.downstreamGameId]]
+          .sort((a, b) => b.prob - a.prob)
+          .slice(0, 4)
+      : [];
+
+  const futureDeltas =
+    demoResult && pickedTeam && loserTeam
+      ? getFutureDeltaRows(demoResult.before, demoResult.after, pickedTeam.id, loserTeam.id)
+      : [];
+
+  const overlay = (
+    <div className="og-onboarding-root" role="dialog" aria-modal="true" aria-label="Odds Gods onboarding">
+      <div className="og-onboarding-backdrop" />
+      <div className={`og-onboarding-stage ${stageClass}`} key={stage}>
+        {stage === 1 ? (
+          <section className="og-stage og-stage-hook">
+            <p className="og-stage-kicker">Odds Gods: The Bracket Lab</p>
+            <h2 className="og-stage-title">Every pick changes everything.</h2>
+            <p className="og-stage-subtitle">
+              Lock a result, and the entire tournament reprices around it, all the way to the
+              championship.
+            </p>
+            <button className="og-cta-primary" onClick={() => setStage(2)}>
+              Show me how →
+            </button>
+          </section>
+        ) : null}
+
+        {stage === 2 ? (
+          <section className="og-stage og-stage-pick">
+            <div className="og-stage-copy">
+              <p className="og-stage-counter">Step 2 of 4</p>
+              <h3>Make a pick.</h3>
+              <p>Click a team below. Watch what happens next.</p>
+              <p className="og-pulse-pointer">Click Houston or Longwood to continue.</p>
+            </div>
+            <div className="og-stage-demo">
+              <p className="og-stage-label">Round of 64</p>
+              {teamA ? (
+                <button
+                  type="button"
+                  className={`og-demo-row ${demoPickId === teamA.id ? "picked" : ""} ${demoPickId && demoPickId !== teamA.id ? "faded" : ""}`}
+                  onClick={() => handlePick(teamA.id)}
+                >
+                  <span className="seed">{teamA.seed}</span>
+                  <TeamLogo teamName={teamA.name} src={teamLogoUrl(teamA)} />
+                  <span className="name">{teamA.name}</span>
+                  <span className="odds">{formatOddsDisplay(teamAProb, "american").primary}</span>
+                  {demoPickId === teamA.id ? <span className="outcome-badge win">✓</span> : null}
+                  {demoPickId && demoPickId !== teamA.id ? <span className="outcome-badge loss">✕</span> : null}
+                </button>
+              ) : null}
+              {teamB ? (
+                <button
+                  type="button"
+                  className={`og-demo-row ${demoPickId === teamB.id ? "picked" : ""} ${demoPickId && demoPickId !== teamB.id ? "faded" : ""}`}
+                  onClick={() => handlePick(teamB.id)}
+                >
+                  <span className="seed">{teamB.seed}</span>
+                  <TeamLogo teamName={teamB.name} src={teamLogoUrl(teamB)} />
+                  <span className="name">{teamB.name}</span>
+                  <span className="odds">{formatOddsDisplay(teamBProb, "american").primary}</span>
+                  {demoPickId === teamB.id ? <span className="outcome-badge win">✓</span> : null}
+                  {demoPickId && demoPickId !== teamB.id ? <span className="outcome-badge loss">✕</span> : null}
+                </button>
+              ) : null}
+            </div>
+          </section>
+        ) : null}
+
+        {stage === 3 ? (
+          <section className="og-stage og-stage-reprice">
+            <p className="og-stage-counter">Step 3 of 4</p>
+            <h3>Your pick just changed this.</h3>
+            <div className="og-reprice-grid">
+              <article className="og-reprice-card">
+                <p className="og-stage-label">Your lock</p>
+                {pickedTeam ? (
+                  <div className="og-chip">
+                    <span>{pickedTeam.seed}</span>
+                    <TeamLogo teamName={pickedTeam.name} src={teamLogoUrl(pickedTeam)} />
+                    <span>{pickedTeam.name}</span>
+                    <span className="outcome-badge win">✓</span>
+                  </div>
+                ) : null}
+                {loserTeam ? (
+                  <div className="og-chip loss">
+                    <span>{loserTeam.seed}</span>
+                    <TeamLogo teamName={loserTeam.name} src={teamLogoUrl(loserTeam)} />
+                    <span>{loserTeam.name}</span>
+                    <span className="outcome-badge loss">✕</span>
+                  </div>
+                ) : null}
+              </article>
+              <article className="og-reprice-card">
+                <p className="og-stage-label">Round of 32 repricing</p>
+                {downstreamRows.map((row) => {
+                  const team = teamsById.get(row.teamId);
+                  if (!team) return null;
+                  return (
+                    <div key={row.teamId} className="og-chip slim">
+                      <span>{team.seed}</span>
+                      <TeamLogo teamName={team.name} src={teamLogoUrl(team)} />
+                      <span>{team.name}</span>
+                      <span>{formatOddsDisplay(row.prob, "american").primary}</span>
+                    </div>
+                  );
+                })}
+              </article>
+              <article className="og-reprice-card">
+                <p className="og-stage-label">Futures impact</p>
+                {futureDeltas.map((delta) => (
+                  <div key={delta.label} className="og-futures-delta">
+                    <span className="label">{delta.label}</span>
+                    <AnimatedDeltaValue from={delta.before} to={delta.after} />
+                  </div>
+                ))}
+              </article>
+            </div>
+            <p className="og-stage-footer">
+              Every locked result reshapes the odds, all the way to the championship.
+            </p>
+            <div className="og-stage-actions">
+              <button className="og-cta-ghost" onClick={() => setStage(2)}>
+                Back
+              </button>
+              <button className="og-cta-primary" onClick={() => setStage(4)}>
+                Got it — let me explore
+              </button>
+            </div>
+          </section>
+        ) : null}
+
+        {stage === 4 ? (
+          <section className="og-stage og-stage-handoff">
+            <h3>You&apos;re in. Build your scenario.</h3>
+            <div className="og-handoff-list">
+              <div>
+                <span>🔒</span>
+                <p>Lock picks. Click any team to set a result.</p>
+              </div>
+              <div>
+                <span>📊</span>
+                <p>Watch Futures reprice. Every change cascades live.</p>
+              </div>
+              <div>
+                <span>↩️</span>
+                <p>Reset anytime. Your scenario, your control.</p>
+              </div>
+            </div>
+            <button className="og-cta-primary wide" onClick={() => onComplete(dontShowAgain)}>
+              Open the bracket
+            </button>
+            <p className="og-replay-note">Replay this intro from the Help menu.</p>
+          </section>
+        ) : null}
+      </div>
+
+      <div className="og-onboarding-bottom">
+        <label className="og-checkbox">
+          <input
+            type="checkbox"
+            checked={dontShowAgain}
+            onChange={(event) => setDontShowAgain(event.target.checked)}
+          />
+          <span>Don&apos;t show again</span>
+        </label>
+        <button className="og-skip-link" onClick={() => onSkip(dontShowAgain)}>
+          Skip intro
+        </button>
+      </div>
+    </div>
+  );
+
+  return createPortal(overlay, document.body);
 }
 
 export default App;
