@@ -1,6 +1,6 @@
 import { gameTemplates } from "../data/bracket";
 import { teams, teamsById } from "../data/teams";
-import type { FuturesRow, GameWinProbability, SimulationOutput } from "../types";
+import type { FuturesRow, GameWinProbability, ResolvedGame, SimulationOutput } from "../types";
 import type { LockedPicks } from "./bracket";
 import { getGameWinProb, resolveGames } from "./bracket";
 import { winProb } from "./odds";
@@ -125,11 +125,33 @@ export const hashLocks = (locks: LockedPicks, simRuns: number): string => {
 
 const normalizeGameWinProbs = (
   winCounts: Map<string, Map<string, number>>,
-  simRuns: number
+  simRuns: number,
+  resolvedById: Map<string, ResolvedGame>
 ): Record<string, GameWinProbability[]> => {
   const out: Record<string, GameWinProbability[]> = {};
 
   for (const game of gameTemplates) {
+    const resolved = resolvedById.get(game.id);
+    if (resolved?.teamAId && resolved.teamBId) {
+      const { teamAId, teamBId } = resolved;
+      if (resolved.lockedByUser && resolved.winnerId) {
+        out[game.id] = [
+          { teamId: teamAId, prob: resolved.winnerId === teamAId ? 1 : 0 },
+          { teamId: teamBId, prob: resolved.winnerId === teamBId ? 1 : 0 },
+        ];
+        continue;
+      }
+
+      const pA = getGameWinProb(resolved, teamAId);
+      if (pA !== null) {
+        out[game.id] = [
+          { teamId: teamAId, prob: pA },
+          { teamId: teamBId, prob: 1 - pA },
+        ];
+        continue;
+      }
+    }
+
     const byTeam = winCounts.get(game.id) ?? new Map<string, number>();
     const arr: GameWinProbability[] = eligibleTeamsForGame(game.id).map((teamId) => ({
       teamId,
@@ -142,6 +164,8 @@ const normalizeGameWinProbs = (
 };
 
 export const runSimulation = (locks: LockedPicks, simRuns: number): SimulationOutput => {
+  const { games: resolvedGames } = resolveGames(locks);
+  const resolvedById = new Map(resolvedGames.map((game) => [game.id, game]));
   const rows = makeEmptyFutures();
   const rowMap = new Map(rows.map((row) => [row.teamId, row]));
   const gameWinCounts = new Map<string, Map<string, number>>();
@@ -190,7 +214,7 @@ export const runSimulation = (locks: LockedPicks, simRuns: number): SimulationOu
 
   return {
     futures: sorted,
-    gameWinProbs: normalizeGameWinProbs(gameWinCounts, simRuns),
+    gameWinProbs: normalizeGameWinProbs(gameWinCounts, simRuns, resolvedById),
     likelihoodSimulation: lockSuccesses / simRuns,
     likelihoodApprox: computeApproxLikelihood(locks),
   };
