@@ -1335,8 +1335,8 @@ function OnboardingFlow({
                 <div className="reversal-prompt">
                   <p>
                     {firstPick === teamA.id
-                      ? "Houston advances, the favorite holds. Now flip it and see the other side."
-                      : "Longwood wins, the bracket is in chaos. Now see the opposite outcome."}
+                      ? `${teamA.name} advances, the favorite holds. Now flip it and see the other side.`
+                      : `${teamB.name} wins, the bracket is in chaos. Now see the opposite outcome.`}
                   </p>
                   <button className="reversal-link" onClick={handleTryOpposite}>
                     ↩ Try {firstPick === teamA.id ? teamB.name : teamA.name} instead
