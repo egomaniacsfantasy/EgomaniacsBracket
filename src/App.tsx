@@ -50,45 +50,6 @@ const ROUND_RANK: Record<ResolvedGame["round"], number> = {
   CHAMP: 5,
 };
 
-const ONBOARDING_STORAGE_KEY = "oddsgods:onboarding-disabled";
-
-type TourStep = {
-  id: string;
-  title: string;
-  body: string;
-  cta?: string;
-  requiredClicks?: number;
-};
-
-const TOUR_STEPS: TourStep[] = [
-  {
-    id: "intro",
-    title: "Welcome to Odds Gods",
-    body: "The Bracket Lab lets you lock outcomes and instantly see how the full tournament reprices around your scenario.",
-    cta: "Let’s get started.",
-  },
-  {
-    id: "cascade",
-    title: "Try the What-If Engine",
-    body: "Pick either side below and watch Round of 32 reprice immediately. This is the core scenario-conditioning behavior.",
-    cta: "Click Houston or Longwood to continue.",
-    requiredClicks: 1,
-  },
-  {
-    id: "futures",
-    title: "Open Futures",
-    body: "Use Futures to track each team’s path to every stage, from Round of 32 through Champion, under your exact scenario.",
-    cta: "Click once more to see Futures move with your scenario.",
-    requiredClicks: 2,
-  },
-  {
-    id: "done",
-    title: "You’re Ready",
-    body: "Build your bracket, test bold outcomes, and use Undo or Reset anytime to explore a new path.",
-    cta: "You can replay this walkthrough anytime from Settings.",
-  },
-];
-
 function App() {
   const [lockedPicks, setLockedPicks] = useState<LockedPicks>({});
   const [undoStack, setUndoStack] = useState<LockedPicks[]>([]);
@@ -99,16 +60,6 @@ function App() {
   const [lastPickedKey, setLastPickedKey] = useState<string | null>(null);
   const [sidePanelOpen, setSidePanelOpen] = useState(false);
   const [compactDesktop, setCompactDesktop] = useState(false);
-  const [onboardingDisabled, setOnboardingDisabled] = useState<boolean>(() => {
-    if (typeof window === "undefined") return false;
-    return window.localStorage.getItem(ONBOARDING_STORAGE_KEY) === "1";
-  });
-  const [tourOpen, setTourOpen] = useState<boolean>(() => {
-    if (typeof window === "undefined") return false;
-    return window.localStorage.getItem(ONBOARDING_STORAGE_KEY) !== "1";
-  });
-  const [tourStepIdx, setTourStepIdx] = useState(0);
-  const [tourDontShowAgain, setTourDontShowAgain] = useState(false);
   const [simResult, setSimResult] = useState<SimulationOutput>({
     futures: [],
     gameWinProbs: {},
@@ -247,29 +198,6 @@ function App() {
   const leftSemi = finalGames.find((g) => g.id === "F4-Left-0") ?? null;
   const rightSemi = finalGames.find((g) => g.id === "F4-Right-0") ?? null;
   const titleGame = finalGames.find((g) => g.id === "CHAMP-0") ?? null;
-
-  const closeTour = () => {
-    if (tourDontShowAgain) {
-      setOnboardingDisabled(true);
-      if (typeof window !== "undefined") window.localStorage.setItem(ONBOARDING_STORAGE_KEY, "1");
-    }
-    setTourOpen(false);
-  };
-
-  const replayTour = () => {
-    setTourStepIdx(0);
-    setTourDontShowAgain(false);
-    setTourOpen(true);
-  };
-
-  const setAutoShowOnboarding = (enabled: boolean) => {
-    const disabled = !enabled;
-    setOnboardingDisabled(disabled);
-    if (typeof window !== "undefined") {
-      if (disabled) window.localStorage.setItem(ONBOARDING_STORAGE_KEY, "1");
-      else window.localStorage.removeItem(ONBOARDING_STORAGE_KEY);
-    }
-  };
 
   return (
     <div className={`eg-shell ${compactDesktop ? "compact-desktop" : ""}`}>
@@ -514,33 +442,10 @@ function App() {
 
               <p className="eg-setting-label">Current lock count</p>
               <p className="eg-setting-value">{Object.keys(sanitized).length} picks</p>
-
-              <p className="eg-setting-label">Onboarding</p>
-              <label className="eg-setting-check">
-                <input
-                  type="checkbox"
-                  checked={!onboardingDisabled}
-                  onChange={(e) => setAutoShowOnboarding(e.currentTarget.checked)}
-                />
-                Show onboarding on first visit
-              </label>
-              <button type="button" className="eg-mini-btn onboarding-replay-btn" onClick={replayTour}>
-                Replay onboarding
-              </button>
             </section>
           </aside>
         </section>
       </main>
-      {tourOpen ? (
-        <OnboardingOverlay
-          steps={TOUR_STEPS}
-          stepIndex={tourStepIdx}
-          onStepChange={setTourStepIdx}
-          dontShowAgain={tourDontShowAgain}
-          onDontShowAgainChange={setTourDontShowAgain}
-          onClose={closeTour}
-        />
-      ) : null}
     </div>
   );
 }
@@ -1094,220 +999,6 @@ function TeamHoverAnchor({
           )
         : null}
     </span>
-  );
-}
-
-function OnboardingOverlay({
-  steps,
-  stepIndex,
-  onStepChange,
-  dontShowAgain,
-  onDontShowAgainChange,
-  onClose,
-}: {
-  steps: TourStep[];
-  stepIndex: number;
-  onStepChange: (next: number) => void;
-  dontShowAgain: boolean;
-  onDontShowAgainChange: (next: boolean) => void;
-  onClose: () => void;
-}) {
-  const step = steps[Math.max(0, Math.min(stepIndex, steps.length - 1))];
-  const [demoWinner, setDemoWinner] = useState<"houston" | "longwood" | null>(null);
-  const [demoClickCount, setDemoClickCount] = useState(0);
-
-  const demo = useMemo(() => {
-    const lockedUpset = demoWinner === "longwood";
-    const lockedFavorite = demoWinner === "houston";
-    const r64 = [
-      {
-        id: "houston",
-        seed: 1,
-        name: "Houston",
-        logo: fallbackLogo("Houston"),
-        odds: lockedUpset ? "+100000" : lockedFavorite ? "-100000" : "-3330",
-        winProb: lockedUpset ? 0 : lockedFavorite ? 100 : 97.2,
-        locked: lockedUpset ? ("loss" as const) : lockedFavorite ? ("win" as const) : null,
-      },
-      {
-        id: "longwood",
-        seed: 16,
-        name: "Longwood",
-        logo: fallbackLogo("Longwood"),
-        odds: lockedUpset ? "-100000" : lockedFavorite ? "+100000" : "+3330",
-        winProb: lockedUpset ? 100 : lockedFavorite ? 0 : 2.8,
-        locked: lockedUpset ? ("win" as const) : lockedFavorite ? ("loss" as const) : null,
-      },
-    ];
-    const r32 = lockedUpset
-      ? [
-          { seed: 16, name: "Longwood", logo: fallbackLogo("Longwood"), odds: "+3982" },
-          { seed: 8, name: "Nebraska", logo: fallbackLogo("Nebraska"), odds: "-121" },
-          { seed: 9, name: "Texas A&M", logo: fallbackLogo("Texas A&M"), odds: "+121" },
-        ]
-      : lockedFavorite
-        ? [
-            { seed: 1, name: "Houston", logo: fallbackLogo("Houston"), odds: "-483" },
-            { seed: 8, name: "Nebraska", logo: fallbackLogo("Nebraska"), odds: "+894" },
-            { seed: 9, name: "Texas A&M", logo: fallbackLogo("Texas A&M"), odds: "+1406" },
-          ]
-        : [
-            { seed: 1, name: "Houston", logo: fallbackLogo("Houston"), odds: "-483" },
-            { seed: 8, name: "Nebraska", logo: fallbackLogo("Nebraska"), odds: "+894" },
-            { seed: 9, name: "Texas A&M", logo: fallbackLogo("Texas A&M"), odds: "+1406" },
-            { seed: 16, name: "Longwood", logo: fallbackLogo("Longwood"), odds: "+22627" },
-          ];
-    const futures = lockedUpset
-      ? [
-          { label: "Houston title", value: "19.8% → 0.0%", down: true },
-          { label: "Longwood title", value: "0.2% → 0.8%", down: false },
-          { label: "Nebraska S16", value: "10.1% → 53.4%", down: false },
-        ]
-      : lockedFavorite
-        ? [
-            { label: "Houston title", value: "19.8% → 22.6%", down: false },
-            { label: "Longwood title", value: "0.2% → 0.0%", down: true },
-            { label: "Nebraska S16", value: "10.1% → 9.8%", down: true },
-          ]
-      : [
-          { label: "Houston title", value: "19.8%", down: false },
-          { label: "Longwood title", value: "0.2%", down: false },
-          { label: "Nebraska S16", value: "10.1%", down: false },
-        ];
-    return { lockedUpset, lockedFavorite, r64, r32, futures };
-  }, [demoWinner]);
-
-  const showR64 = step.id !== "intro";
-  const showR32 = step.id === "cascade" || step.id === "futures" || step.id === "done";
-  const showFutures = step.id === "futures" || step.id === "done";
-  const showControls = step.id === "done";
-  const visibleCols = (showR64 ? 1 : 0) + (showR32 ? 1 : 0) + (showFutures ? 1 : 0);
-  const requiresClicks = step.requiredClicks ?? 0;
-
-  const next = () => {
-    if (requiresClicks > 0 && demoClickCount < requiresClicks) return;
-    if (stepIndex >= steps.length - 1) {
-      onClose();
-      return;
-    }
-    onStepChange(stepIndex + 1);
-  };
-
-  const back = () => onStepChange(Math.max(0, stepIndex - 1));
-
-  return createPortal(
-    <div className="eg-tour-overlay center-mode" role="dialog" aria-modal="true" aria-label="Guided onboarding">
-      <div className="eg-tour-dim" />
-      <div className="eg-tour-center">
-        <div className="eg-tour-card centered">
-          <p className="eg-tour-step">Step {stepIndex + 1} of {steps.length}</p>
-          <h3>{step.title}</h3>
-          <p>{step.body}</p>
-          {step.cta ? <p className="eg-tour-cta">{step.cta}</p> : null}
-
-          <div className={`eg-tour-demo cols-${visibleCols}`}>
-            {showR64 ? (
-              <div className="eg-tour-demo-col panel-r64 scene-enter">
-                <p className="eg-tour-demo-label">Round of 64</p>
-                {requiresClicks > 0 && demoClickCount < requiresClicks ? (
-                  <div className="eg-tour-click-cue">Click a team</div>
-                ) : null}
-                {demo.r64.map((team) => (
-                  <button
-                    key={team.id}
-                    type="button"
-                    className={`eg-tour-demo-team ${team.locked === "win" ? "locked-win" : ""} ${team.locked === "loss" ? "locked-loss" : ""}`}
-                    onClick={() => {
-                      setDemoWinner(team.id as "houston" | "longwood");
-                      setDemoClickCount((count) => count + 1);
-                    }}
-                  >
-                    <span>{team.seed}</span>
-                    <span className="eg-tour-demo-team-name">
-                      <img className="eg-tour-demo-logo" src={team.logo} alt={`${team.name} logo`} />
-                      {team.name}
-                    </span>
-                    <span className="eg-tour-demo-odds">
-                      {team.locked ? `${team.winProb.toFixed(1)}%` : `${team.odds} · ${team.winProb.toFixed(1)}%`}
-                    </span>
-                    {team.locked ? <span className={`outcome-badge ${team.locked}`}>{team.locked === "win" ? "✓" : "✕"}</span> : null}
-                  </button>
-                ))}
-              </div>
-            ) : null}
-
-            {showR32 ? (
-              <div className="eg-tour-demo-col panel-r32 scene-enter">
-                <p className="eg-tour-demo-label">Round of 32 repricing</p>
-                <div className={`eg-tour-demo-list ${demoWinner ? "is-updated" : ""}`}>
-                  {demo.r32.map((team) => (
-                    <div key={`${team.seed}-${team.name}`} className="eg-tour-demo-chip">
-                      <span>{team.seed}</span>
-                      <span className="eg-tour-demo-team-name">
-                        <img className="eg-tour-demo-logo" src={team.logo} alt={`${team.name} logo`} />
-                        {team.name}
-                      </span>
-                      <span>{team.odds}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            ) : null}
-
-            {showFutures ? (
-              <div className="eg-tour-demo-col panel-futures scene-enter">
-                <p className="eg-tour-demo-label">Futures impact</p>
-                <div className={`eg-tour-demo-futures ${demoWinner ? "is-updated" : ""}`}>
-                  {demo.futures.map((row) => (
-                    <div key={row.label} className={`eg-tour-future-row ${row.down ? "down" : "up"}`}>
-                      <span>{row.label}</span>
-                      <span>{row.value}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            ) : null}
-          </div>
-
-          {showControls ? (
-            <div className="eg-tour-controls-strip scene-enter">
-              <span className="eg-tour-controls-label">Controls you&apos;ll use most:</span>
-              <span className="eg-tour-control-chip">Undo</span>
-              <span className="eg-tour-control-chip">Reset All</span>
-              <span className="eg-tour-control-chip">Futures</span>
-            </div>
-          ) : null}
-
-          <label className="eg-tour-check">
-            <input
-              type="checkbox"
-              checked={dontShowAgain}
-              onChange={(e) => onDontShowAgainChange(e.currentTarget.checked)}
-            />
-            Don&apos;t show again
-          </label>
-          <div className="eg-tour-actions">
-            <button type="button" className="eg-mini-btn" onClick={onClose}>
-              Skip
-            </button>
-            <div className="eg-tour-nav">
-              <button type="button" className="eg-mini-btn" onClick={back} disabled={stepIndex === 0}>
-                Back
-              </button>
-                <button
-                  type="button"
-                  className="eg-mini-btn"
-                  onClick={next}
-                  disabled={Boolean(requiresClicks > 0 && demoClickCount < requiresClicks)}
-                >
-                  {step.id === "intro" ? "Let's get started" : stepIndex === steps.length - 1 ? "Done" : "Next"}
-                </button>
-              </div>
-            </div>
-        </div>
-      </div>
-    </div>,
-    document.body
   );
 }
 
