@@ -225,20 +225,26 @@ function App() {
     const baseLocks: LockedPicks = {};
     const before = runSimulation(baseLocks, simRuns);
     const after = runSimulation({ [gameId]: winnerId }, simRuns);
-    const afterMap = new Map(after.futures.map((row) => [row.teamId, row.champProb]));
-    const titleOddsShift = before.futures
+    const game = before.gameWinProbs[gameId] ? resolveGames(baseLocks).games.find((g) => g.id === gameId) : null;
+    const excludedTeams = new Set<string>();
+    if (game?.teamAId) excludedTeams.add(game.teamAId);
+    if (game?.teamBId) excludedTeams.add(game.teamBId);
+
+    const beforeMap = new Map(before.futures.map((row) => [row.teamId, row.champProb]));
+    const titleOddsShift = after.futures
+      .filter((row) => !excludedTeams.has(row.teamId) && row.champProb > 0)
       .sort((a, b) => b.champProb - a.champProb)
       .slice(0, 5)
       .map((row) => {
         const team = teamsById.get(row.teamId);
-        const next = afterMap.get(row.teamId) ?? 0;
+        const previous = beforeMap.get(row.teamId) ?? 0;
         return {
           teamId: row.teamId,
           name: team?.name ?? row.teamId,
           seed: team?.seed ?? 99,
-          before: row.champProb,
-          after: next,
-          direction: (next >= row.champProb ? "up" : "down") as "up" | "down",
+          before: previous,
+          after: row.champProb,
+          direction: (row.champProb >= previous ? "up" : "down") as "up" | "down",
         };
       });
     return { before, after, titleOddsShift };
