@@ -41,6 +41,15 @@ const gameRoundLabel: Record<string, string> = {
   CHAMP: "Championship",
 };
 
+const ROUND_RANK: Record<ResolvedGame["round"], number> = {
+  R64: 0,
+  R32: 1,
+  S16: 2,
+  E8: 3,
+  F4: 4,
+  CHAMP: 5,
+};
+
 const ONBOARDING_STORAGE_KEY = "oddsgods:onboarding-disabled";
 
 type TourStep = {
@@ -159,6 +168,37 @@ function App() {
     });
     return rows;
   }, [simResult.futures, sortDesc]);
+
+  const teamProgress = useMemo(() => {
+    const progress = new Map<string, { lastWinRank: number; firstLossRank: number }>();
+
+    for (const team of teamsById.values()) {
+      progress.set(team.id, { lastWinRank: -1, firstLossRank: Number.POSITIVE_INFINITY });
+    }
+
+    for (const game of games) {
+      if (!game.lockedByUser || !game.teamAId || !game.teamBId || !game.winnerId) continue;
+      const rank = ROUND_RANK[game.round];
+      const loserId = game.winnerId === game.teamAId ? game.teamBId : game.teamAId;
+
+      const winnerState = progress.get(game.winnerId);
+      if (winnerState) winnerState.lastWinRank = Math.max(winnerState.lastWinRank, rank);
+
+      const loserState = progress.get(loserId);
+      if (loserState) loserState.firstLossRank = Math.min(loserState.firstLossRank, rank);
+    }
+
+    return progress;
+  }, [games]);
+
+  const stageRankByMetric: Record<"R32" | "S16" | "E8" | "F4" | "Title" | "Champ", number> = {
+    R32: ROUND_RANK.R64,
+    S16: ROUND_RANK.R32,
+    E8: ROUND_RANK.S16,
+    F4: ROUND_RANK.E8,
+    Title: ROUND_RANK.F4,
+    Champ: ROUND_RANK.CHAMP,
+  };
 
   const pushUndo = (current: LockedPicks) => {
     setUndoStack((prev) => [...prev, current]);
@@ -408,7 +448,7 @@ function App() {
                 {sortedFutures.map((row) => {
                   const team = teamsById.get(row.teamId);
                   if (!team) return null;
-                  const metrics: Array<{ label: string; prob: number }> = [
+                  const metrics: Array<{ label: "R32" | "S16" | "E8" | "F4" | "Title" | "Champ"; prob: number }> = [
                     { label: "R32", prob: row.round2Prob },
                     { label: "S16", prob: row.sweet16Prob },
                     { label: "E8", prob: row.elite8Prob },
@@ -430,10 +470,22 @@ function App() {
                       <div className="future-metric-grid">
                         {metrics.map((metric) => {
                           const formatted = formatOddsDisplay(metric.prob, displayMode);
+                          const state = teamProgress.get(row.teamId);
+                          const requiredRank = stageRankByMetric[metric.label];
+                          const isAchieved = Boolean(state && state.lastWinRank >= requiredRank);
+                          const isEliminated = Boolean(state && state.firstLossRank <= requiredRank);
                           return (
                             <div key={`${row.teamId}-${metric.label}`} className="future-metric">
                               <span className="future-metric-label">{metric.label}</span>
-                              <span className="future-metric-value">{formatted.primary}</span>
+                              <span className="future-metric-value">
+                                {isAchieved ? (
+                                  <span className="outcome-badge win">✓</span>
+                                ) : isEliminated ? (
+                                  <span className="outcome-badge loss">✕</span>
+                                ) : (
+                                  formatted.primary
+                                )}
+                              </span>
                             </div>
                           );
                         })}
@@ -1175,7 +1227,9 @@ function OnboardingOverlay({
                       <img className="eg-tour-demo-logo" src={team.logo} alt={`${team.name} logo`} />
                       {team.name}
                     </span>
-                    <span className="eg-tour-demo-odds">{team.odds} · {team.winProb.toFixed(1)}%</span>
+                    <span className="eg-tour-demo-odds">
+                      {team.locked ? `${team.winProb.toFixed(1)}%` : `${team.odds} · ${team.winProb.toFixed(1)}%`}
+                    </span>
                     {team.locked ? <span className={`outcome-badge ${team.locked}`}>{team.locked === "win" ? "✓" : "✕"}</span> : null}
                   </button>
                 ))}
