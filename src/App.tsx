@@ -45,47 +45,40 @@ const ONBOARDING_STORAGE_KEY = "oddsgods:onboarding-disabled";
 
 type TourStep = {
   id: string;
-  selector: string;
   title: string;
   body: string;
+  cta?: string;
+  requiresDemoPick?: boolean;
 };
 
 const TOUR_STEPS: TourStep[] = [
   {
-    id: "welcome",
-    selector: ".eg-header",
+    id: "intro",
     title: "Welcome to Odds Gods",
-    body: "This is The Bracket Lab: lock picks and watch the full tournament reprice around your scenario.",
+    body: "The Bracket Lab lets you lock outcomes and instantly see how the full tournament reprices around your scenario.",
   },
   {
-    id: "controls",
-    selector: ".eg-main-actions",
-    title: "Start With Controls",
-    body: "Undo, reset, and odds format are all here so you can test bold paths without losing your flow.",
+    id: "demo-pick",
+    title: "Try the What-If Engine",
+    body: "Pick Longwood over Houston in the live demo below. You’ll see the downstream bracket and odds move immediately.",
+    cta: "Pick Longwood in the demo to continue",
+    requiresDemoPick: true,
   },
   {
-    id: "pick",
-    selector: ".eg-bracket-section.top-half",
-    title: "Pick Any Matchup",
-    body: "Tap a team to lock a result. That outcome becomes final for this scenario and future rounds update instantly.",
+    id: "cascade",
+    title: "See the Cascade",
+    body: "One locked result propagates forward: teams are eliminated, paths narrow, and all remaining probabilities update live.",
   },
   {
     id: "futures",
-    selector: ".eg-side-toggle",
     title: "Open Futures",
-    body: "Use the Futures panel to track each team’s path to every stage, from Round of 32 through Champion.",
+    body: "Use Futures to track each team’s path to every stage, from Round of 32 through Champion, under your exact scenario.",
   },
   {
-    id: "finals",
-    selector: ".eg-finals-card",
-    title: "Watch the Endgame",
-    body: "As the field narrows, Final Four and title matchups expand to highlight the contenders that remain.",
-  },
-  {
-    id: "settings",
-    selector: ".eg-panel-block.settings-block",
-    title: "Make It Yours",
-    body: "You can replay this walkthrough anytime from Settings. Now build your bracket.",
+    id: "done",
+    title: "You’re Ready",
+    body: "Build your bracket, test bold outcomes, and use Undo or Reset anytime to explore a new path.",
+    cta: "You can replay this walkthrough anytime from Settings.",
   },
 ];
 
@@ -1070,46 +1063,42 @@ function OnboardingOverlay({
   onClose: () => void;
 }) {
   const step = steps[Math.max(0, Math.min(stepIndex, steps.length - 1))];
-  const [rect, setRect] = useState<DOMRect | null>(null);
-  const [cardPos, setCardPos] = useState({ x: 24, y: 24 });
-  const cardRef = useRef<HTMLDivElement | null>(null);
+  const [demoWinner, setDemoWinner] = useState<"houston" | "longwood" | null>(null);
 
-  useLayoutEffect(() => {
-    const compute = () => {
-      const target = document.querySelector(step.selector);
-      if (!(target instanceof HTMLElement)) {
-        setRect(null);
-        setCardPos({ x: 24, y: 24 });
-        return;
-      }
-      const nextRect = target.getBoundingClientRect();
-      setRect(nextRect);
-
-      const viewportW = window.innerWidth;
-      const viewportH = window.innerHeight;
-      const cardW = Math.min(360, viewportW - 24);
-      const cardH = cardRef.current?.offsetHeight ?? 220;
-      let x = nextRect.right + 14;
-      if (x + cardW > viewportW - 12) x = nextRect.left;
-      if (x + cardW > viewportW - 12) x = viewportW - cardW - 12;
-      if (x < 12) x = 12;
-
-      let y = nextRect.top;
-      if (y + cardH > viewportH - 12) y = viewportH - cardH - 12;
-      if (y < 12) y = 12;
-      setCardPos({ x, y });
-    };
-
-    compute();
-    window.addEventListener("resize", compute);
-    window.addEventListener("scroll", compute, true);
-    return () => {
-      window.removeEventListener("resize", compute);
-      window.removeEventListener("scroll", compute, true);
-    };
-  }, [step.selector, stepIndex]);
+  const demo = useMemo(() => {
+    const lockedUpset = demoWinner === "longwood";
+    const r64 = [
+      { id: "houston", seed: 1, name: "Houston", winProb: lockedUpset ? 0 : 97.2, locked: lockedUpset ? "loss" : null as "loss" | null },
+      { id: "longwood", seed: 16, name: "Longwood", winProb: lockedUpset ? 100 : 2.8, locked: lockedUpset ? "win" : null as "win" | null },
+    ];
+    const r32 = lockedUpset
+      ? [
+          { seed: 16, name: "Longwood", odds: "+3982" },
+          { seed: 8, name: "Nebraska", odds: "-121" },
+          { seed: 9, name: "Texas A&M", odds: "+121" },
+        ]
+      : [
+          { seed: 1, name: "Houston", odds: "-483" },
+          { seed: 8, name: "Nebraska", odds: "+894" },
+          { seed: 9, name: "Texas A&M", odds: "+1406" },
+          { seed: 16, name: "Longwood", odds: "+22627" },
+        ];
+    const futures = lockedUpset
+      ? [
+          { label: "Houston title", value: "19.8% → 0.0%", down: true },
+          { label: "Longwood title", value: "0.2% → 0.8%", down: false },
+          { label: "Nebraska S16", value: "10.1% → 53.4%", down: false },
+        ]
+      : [
+          { label: "Houston title", value: "19.8%", down: false },
+          { label: "Longwood title", value: "0.2%", down: false },
+          { label: "Nebraska S16", value: "10.1%", down: false },
+        ];
+    return { lockedUpset, r64, r32, futures };
+  }, [demoWinner]);
 
   const next = () => {
+    if (step.requiresDemoPick && demoWinner !== "longwood") return;
     if (stepIndex >= steps.length - 1) {
       onClose();
       return;
@@ -1120,24 +1109,55 @@ function OnboardingOverlay({
   const back = () => onStepChange(Math.max(0, stepIndex - 1));
 
   return createPortal(
-    <div className="eg-tour-overlay" role="dialog" aria-modal="true" aria-label="Guided onboarding">
+    <div className="eg-tour-overlay center-mode" role="dialog" aria-modal="true" aria-label="Guided onboarding">
       <div className="eg-tour-dim" />
-      {rect ? (
-        <div
-          className="eg-tour-highlight"
-          style={{
-            left: `${Math.max(8, rect.left - 8)}px`,
-            top: `${Math.max(8, rect.top - 8)}px`,
-            width: `${Math.min(window.innerWidth - 16, rect.width + 16)}px`,
-            height: `${Math.min(window.innerHeight - 16, rect.height + 16)}px`,
-          }}
-        />
-      ) : null}
-
-      <div ref={cardRef} className="eg-tour-card" style={{ left: `${cardPos.x}px`, top: `${cardPos.y}px` }}>
+      <div className="eg-tour-card centered">
         <p className="eg-tour-step">Step {stepIndex + 1} of {steps.length}</p>
         <h3>{step.title}</h3>
         <p>{step.body}</p>
+        {step.cta ? <p className="eg-tour-cta">{step.cta}</p> : null}
+
+        <div className="eg-tour-demo">
+          <div className="eg-tour-demo-col">
+            <p className="eg-tour-demo-label">Round of 64</p>
+            {demo.r64.map((team) => (
+              <button
+                key={team.id}
+                type="button"
+                className={`eg-tour-demo-team ${team.locked === "win" ? "locked-win" : ""} ${team.locked === "loss" ? "locked-loss" : ""}`}
+                onClick={() => setDemoWinner(team.id as "houston" | "longwood")}
+              >
+                <span>{team.seed}</span>
+                <span>{team.name}</span>
+                <span>{team.winProb.toFixed(1)}%</span>
+              </button>
+            ))}
+          </div>
+          <div className="eg-tour-demo-col">
+            <p className="eg-tour-demo-label">Round of 32 repricing</p>
+            <div className={`eg-tour-demo-list ${demo.lockedUpset ? "is-updated" : ""}`}>
+              {demo.r32.map((team) => (
+                <div key={`${team.seed}-${team.name}`} className="eg-tour-demo-chip">
+                  <span>{team.seed}</span>
+                  <span>{team.name}</span>
+                  <span>{team.odds}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+          <div className="eg-tour-demo-col">
+            <p className="eg-tour-demo-label">Futures impact</p>
+            <div className={`eg-tour-demo-futures ${demo.lockedUpset ? "is-updated" : ""}`}>
+              {demo.futures.map((row) => (
+                <div key={row.label} className={`eg-tour-future-row ${row.down ? "down" : "up"}`}>
+                  <span>{row.label}</span>
+                  <span>{row.value}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+
         <label className="eg-tour-check">
           <input
             type="checkbox"
@@ -1154,7 +1174,12 @@ function OnboardingOverlay({
             <button type="button" className="eg-mini-btn" onClick={back} disabled={stepIndex === 0}>
               Back
             </button>
-            <button type="button" className="eg-mini-btn" onClick={next}>
+            <button
+              type="button"
+              className="eg-mini-btn"
+              onClick={next}
+              disabled={Boolean(step.requiresDemoPick && demoWinner !== "longwood")}
+            >
               {stepIndex === steps.length - 1 ? "Done" : "Next"}
             </button>
           </div>
