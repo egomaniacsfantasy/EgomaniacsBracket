@@ -52,14 +52,21 @@ const ROUND_RANK: Record<ResolvedGame["round"], number> = {
   CHAMP: 5,
 };
 
-type OnboardingStage = 1 | 2 | 3 | 4 | 5;
+type OnboardingStage = 1 | 2 | 3;
+
+type DemoTitleShiftRow = {
+  teamId: string;
+  name: string;
+  seed: number;
+  before: number;
+  after: number;
+  direction: "up" | "down";
+};
 
 type DemoSimulationOutput = {
   before: SimulationOutput;
   after: SimulationOutput;
-  gameId: string;
-  winnerId: string;
-  downstreamGameId: string | null;
+  titleOddsShift: DemoTitleShiftRow[];
 };
 
 function App() {
@@ -218,8 +225,26 @@ function App() {
     const baseLocks: LockedPicks = {};
     const before = runSimulation(baseLocks, simRuns);
     const after = runSimulation({ [gameId]: winnerId }, simRuns);
-    const downstreamGameId = getDownstreamGameId(gameId);
-    return { before, after, gameId, winnerId, downstreamGameId };
+    const game = resolveGames({}).games.find((g) => g.id === gameId) ?? null;
+    const excluded = new Set<string>([game?.teamAId ?? "", game?.teamBId ?? ""]);
+    const afterMap = new Map(after.futures.map((row) => [row.teamId, row.titleGameProb]));
+    const titleOddsShift = before.futures
+      .filter((row) => !excluded.has(row.teamId))
+      .sort((a, b) => b.titleGameProb - a.titleGameProb)
+      .slice(0, 5)
+      .map((row) => {
+        const team = teamsById.get(row.teamId);
+        const next = afterMap.get(row.teamId) ?? 0;
+        return {
+          teamId: row.teamId,
+          name: team?.name ?? row.teamId,
+          seed: team?.seed ?? 99,
+          before: row.titleGameProb,
+          after: next,
+          direction: (next >= row.titleGameProb ? "up" : "down") as "up" | "down",
+        };
+      });
+    return { before, after, titleOddsShift };
   };
 
   const dismissOnboarding = (dontShowAgain: boolean) => {
@@ -1051,106 +1076,46 @@ function TeamHoverAnchor({
   );
 }
 
-function getDownstreamGameId(gameId: string): string | null {
-  const parts = gameId.split("-");
-  if (parts.length !== 3) return null;
-  const [region, round, slotPart] = parts;
-  if (round !== "R64") return null;
-  const slot = Number(slotPart);
-  if (Number.isNaN(slot)) return null;
-  return `${region}-R32-${Math.floor(slot / 2)}`;
-}
-
-function getFutureDeltaRows(
-  before: SimulationOutput,
-  after: SimulationOutput,
-  winnerId: string,
-  loserId: string
-): Array<{ label: string; before: number; after: number; direction: "up" | "down" }> {
-  const beforeMap = new Map(before.futures.map((row) => [row.teamId, row]));
-  const afterMap = new Map(after.futures.map((row) => [row.teamId, row]));
-  const winner = teamsById.get(winnerId);
-  const loser = teamsById.get(loserId);
-  const winnerBefore = beforeMap.get(winnerId);
-  const winnerAfter = afterMap.get(winnerId);
-  const loserBefore = beforeMap.get(loserId);
-  const loserAfter = afterMap.get(loserId);
-
-  return [
-    {
-      label: `${winner?.name ?? "Picked team"} title`,
-      before: winnerBefore?.titleGameProb ?? 0,
-      after: winnerAfter?.titleGameProb ?? 0,
-      direction: (winnerAfter?.titleGameProb ?? 0) >= (winnerBefore?.titleGameProb ?? 0) ? "up" : "down",
-    },
-    {
-      label: `${winner?.name ?? "Picked team"} champ`,
-      before: winnerBefore?.champProb ?? 0,
-      after: winnerAfter?.champProb ?? 0,
-      direction: (winnerAfter?.champProb ?? 0) >= (winnerBefore?.champProb ?? 0) ? "up" : "down",
-    },
-    {
-      label: `${loser?.name ?? "Other team"} champ`,
-      before: loserBefore?.champProb ?? 0,
-      after: loserAfter?.champProb ?? 0,
-      direction: (loserAfter?.champProb ?? 0) >= (loserBefore?.champProb ?? 0) ? "up" : "down",
-    },
-  ];
-}
-
 function pct(prob: number): string {
   return `${(prob * 100).toFixed(1)}%`;
 }
 
-function useCountUp(target: number, durationMs = 320): number {
-  const [value, setValue] = useState(target);
-  const prevRef = useRef(target);
-
+function useCountUp(from: number, to: number, duration = 400, delay = 0): number {
+  const [value, setValue] = useState(from);
   useEffect(() => {
-    const start = prevRef.current;
-    const delta = target - start;
-    if (Math.abs(delta) < 1e-6) {
-      prevRef.current = target;
-      return;
-    }
-
-    const startTime = performance.now();
     let raf = 0;
-    const tick = (time: number) => {
-      const t = Math.min((time - startTime) / durationMs, 1);
-      const eased = 1 - Math.pow(1 - t, 3);
-      setValue(start + delta * eased);
-      if (t < 1) {
-        raf = window.requestAnimationFrame(tick);
-      } else {
-        prevRef.current = target;
-      }
-    };
-    raf = window.requestAnimationFrame(tick);
-    return () => window.cancelAnimationFrame(raf);
-  }, [target, durationMs]);
+    const timer = window.setTimeout(() => {
+      const start = performance.now();
+      const tick = (now: number) => {
+        const t = Math.min((now - start) / duration, 1);
+        const ease = 1 - Math.pow(1 - t, 3);
+        setValue(from + (to - from) * ease);
+        if (t < 1) raf = window.requestAnimationFrame(tick);
+      };
+      raf = window.requestAnimationFrame(tick);
+    }, delay);
 
+    return () => {
+      window.clearTimeout(timer);
+      window.cancelAnimationFrame(raf);
+    };
+  }, [from, to, duration, delay]);
   return value;
 }
 
-function AnimatedDeltaValue({ from, to }: { from: number; to: number }) {
-  const animated = useCountUp(to, 300);
-  const direction = to >= from ? "up" : "down";
+function OnboardingOddsRow({ row, index }: { row: DemoTitleShiftRow; index: number }) {
+  const implied = useCountUp(row.before, row.after, 400, index * 50);
+  const american = formatOddsDisplay(implied, "american").primary;
   return (
-    <span className={`og-delta-value ${direction}`}>
-      <span>{pct(from)}</span>
-      <span className="arrow">{to >= from ? "→" : "↘"}</span>
-      <span>{pct(animated)}</span>
-    </span>
+    <div className="odds-table-row">
+      <span className="seed">{row.seed}</span>
+      <span className="team-name">{row.name}</span>
+      <span className="american">{american}</span>
+      <span className={`implied ${row.direction}`}>
+        {pct(implied)} {row.direction === "up" ? "↑" : "↓"}
+      </span>
+    </div>
   );
-}
-
-function stageProgress(stage: OnboardingStage): number {
-  if (stage === 1) return 0;
-  if (stage === 2) return 20;
-  if (stage === 3) return 60;
-  if (stage === 4) return 80;
-  return 100;
 }
 
 function OnboardingFlow({
@@ -1165,11 +1130,16 @@ function OnboardingFlow({
   onSkip: (dontShowAgain: boolean) => void;
 }) {
   const [stage, setStage] = useState<OnboardingStage>(1);
+  const [isStageTransitioning, setIsStageTransitioning] = useState(false);
   const [dontShowAgain, setDontShowAgain] = useState(false);
-  const [demoPickId, setDemoPickId] = useState<string | null>(null);
-  const [demoResult, setDemoResult] = useState<DemoSimulationOutput | null>(null);
-  const [showRepricePreview, setShowRepricePreview] = useState(false);
-  const [showPreviewCta, setShowPreviewCta] = useState(false);
+  const [firstPick, setFirstPick] = useState<string | null>(null);
+  const [secondPick, setSecondPick] = useState<string | null>(null);
+  const [simResult1, setSimResult1] = useState<DemoSimulationOutput | null>(null);
+  const [simResult2, setSimResult2] = useState<DemoSimulationOutput | null>(null);
+  const [stage2Repricing, setStage2Repricing] = useState(false);
+  const [stage2PromptVisible, setStage2PromptVisible] = useState(false);
+  const [stage2AdvVisible, setStage2AdvVisible] = useState(false);
+  const [stage2Resetting, setStage2Resetting] = useState(false);
   const [exiting, setExiting] = useState(false);
 
   useEffect(() => {
@@ -1181,30 +1151,50 @@ function OnboardingFlow({
   const teamB = demoGame.teamBId ? teamsById.get(demoGame.teamBId) ?? null : null;
   const teamAProb = teamA ? getGameWinProb(demoGame, teamA.id) ?? 0 : 0;
   const teamBProb = teamB ? getGameWinProb(demoGame, teamB.id) ?? 0 : 0;
-  const activeUnderdog =
-    [teamA, teamB].find((team) => team?.name.toLowerCase().includes("longwood")) ?? teamB ?? teamA;
-  const inactiveFavorite = activeUnderdog?.id === teamA?.id ? teamB : teamA;
+  const [baselineResult] = useState<DemoSimulationOutput | null>(() => {
+    if (!demoGame.teamAId) return null;
+    return runDemoSimulation(demoGame.id, demoGame.teamAId);
+  });
 
-  const teaserResult = useMemo(() => {
-    if (!activeUnderdog) return null;
-    return runDemoSimulation(demoGame.id, activeUnderdog.id);
-  }, [activeUnderdog, demoGame.id, runDemoSimulation]);
-
-  const goToStage = (next: OnboardingStage) => {
-    if (next !== 2) {
-      setShowRepricePreview(false);
-      setShowPreviewCta(false);
-    }
-    setStage(next);
+  const transitionToStage = (nextStage: OnboardingStage) => {
+    setIsStageTransitioning(true);
+    window.setTimeout(() => {
+      setStage(nextStage);
+      setIsStageTransitioning(false);
+    }, 180);
   };
 
-  const handlePick = (winnerId: string) => {
-    if (activeUnderdog && winnerId !== activeUnderdog.id) return;
-    setDemoPickId(winnerId);
-    const result = runDemoSimulation(demoGame.id, winnerId);
-    setDemoResult(result);
-    window.setTimeout(() => setShowRepricePreview(true), 400);
-    window.setTimeout(() => setShowPreviewCta(true), 1200);
+  const applyPickResult = (winnerId: string, asSecond = false) => {
+    setStage2Repricing(true);
+    window.setTimeout(() => {
+      const result = runDemoSimulation(demoGame.id, winnerId);
+      if (asSecond) {
+        setSecondPick(winnerId);
+        setSimResult2(result);
+        setStage2AdvVisible(true);
+      } else {
+        setFirstPick(winnerId);
+        setSimResult1(result);
+        setStage2PromptVisible(true);
+      }
+      setStage2Repricing(false);
+    }, 200);
+  };
+
+  const handleFirstPick = (winnerId: string) => {
+    if (firstPick || !teamA || !teamB) return;
+    applyPickResult(winnerId, false);
+  };
+
+  const handleTryOpposite = () => {
+    if (!firstPick || !teamA || !teamB) return;
+    const opposite = firstPick === teamA.id ? teamB.id : teamA.id;
+    setStage2Resetting(true);
+    setStage2PromptVisible(false);
+    window.setTimeout(() => {
+      setStage2Resetting(false);
+      applyPickResult(opposite, true);
+    }, 350);
   };
 
   const handleOpenBracket = () => {
@@ -1212,32 +1202,14 @@ function OnboardingFlow({
     window.setTimeout(() => onComplete(dontShowAgain), 560);
   };
 
-  const pickedTeam = demoPickId ? teamsById.get(demoPickId) ?? null : null;
-  const loserTeam =
-    demoPickId && teamA && teamB ? (demoPickId === teamA.id ? teamB : teamA) : null;
-  const downstreamRows =
-    demoResult?.downstreamGameId && demoResult.after.gameWinProbs[demoResult.downstreamGameId]
-      ? [...demoResult.after.gameWinProbs[demoResult.downstreamGameId]]
-          .sort((a, b) => b.prob - a.prob)
-          .slice(0, 4)
-      : [];
-
-  const futureDeltas =
-    demoResult && pickedTeam && loserTeam
-      ? getFutureDeltaRows(demoResult.before, demoResult.after, pickedTeam.id, loserTeam.id)
-      : [];
-
-  const teaserDeltas =
-    teaserResult && activeUnderdog && inactiveFavorite
-      ? getFutureDeltaRows(teaserResult.before, teaserResult.after, activeUnderdog.id, inactiveFavorite.id)
-      : [];
-
-  const comparisonFrom =
-    teaserResult?.before.gameWinProbs[teaserResult.downstreamGameId ?? ""]?.length ?? 0;
-  const comparisonTo =
-    demoResult?.after.gameWinProbs[demoResult.downstreamGameId ?? ""]?.length ??
-    teaserResult?.after.gameWinProbs[teaserResult.downstreamGameId ?? ""]?.length ??
-    0;
+  const visibleRows =
+    stage2Resetting || stage2Repricing
+      ? baselineResult?.titleOddsShift ?? []
+      : secondPick && simResult2
+        ? simResult2.titleOddsShift
+        : firstPick && simResult1
+          ? simResult1.titleOddsShift
+          : baselineResult?.titleOddsShift ?? [];
 
   const overlay = (
     <div
@@ -1250,9 +1222,7 @@ function OnboardingFlow({
       <div className="backdrop-scrim" />
       <div className="backdrop-grain" />
       <div className="backdrop-glow" />
-      {stage > 1 ? <div className="progress-bar" style={{ width: `${stageProgress(stage)}%` }} /> : null}
-
-      <div className="onboarding-stage" key={stage}>
+      <div className={`onboarding-stage ${isStageTransitioning ? "stage-exit" : "stage-enter"}`} key={stage}>
         {stage === 1 ? (
           <section className="onboarding-stage-content stage-hook">
             <p className="stage-kicker">Odds Gods: The Bracket Lab</p>
@@ -1274,15 +1244,7 @@ function OnboardingFlow({
               Lock a result, and the entire tournament reprices around it, all the way to the
               championship.
             </p>
-            <div className="teaser-chip-grid">
-              {teaserDeltas.slice(0, 3).map((delta, idx) => (
-                <article key={delta.label} className="teaser-chip" style={{ animationDelay: `${700 + idx * 100}ms` }}>
-                  <p className="chip-label">{delta.label}</p>
-                  <p className={`chip-value-${delta.direction}`}>{pct(delta.before)} → {pct(delta.after)}</p>
-                </article>
-              ))}
-            </div>
-            <button className="cta-primary" onClick={() => goToStage(2)}>
+            <button className="cta-show-me" onClick={() => transitionToStage(2)}>
               Show me how →
             </button>
           </section>
@@ -1291,74 +1253,70 @@ function OnboardingFlow({
         {stage === 2 ? (
           <section className="onboarding-stage-content stage-pick">
             <div className="stage-copy">
-              <p className="stage-counter">Step 2 of 5</p>
-              <h3>Make a pick.</h3>
-              <p>What happens when a 16 upsets a 1?</p>
-              <p>This is the shockwave moment. Lock the underdog and watch the repricing start.</p>
-              <div className="odds-legend">
-                <p className="odds-legend-title">How to read odds</p>
-                <p className="odds-legend-row">
-                  <span className="odds-legend-value">-330</span> Favorite
-                </p>
-                <p className="odds-legend-row">
-                  <span className="odds-legend-value">+1200</span> Underdog
-                </p>
-                <p className="odds-legend-row">
-                  <span className="odds-legend-value">100%</span> Implied chance
-                </p>
-              </div>
-              <p className="pick-cue">← {activeUnderdog?.name ?? "Longwood"} is your pick here</p>
+              <p className="stage-counter">Step 2 of 3</p>
+              <h3>Pick a side. Watch the field reprice.</h3>
+              <p>
+                Every pick locks in a result and instantly reshapes title odds for every other
+                contender.
+              </p>
             </div>
             <div className="stage-demo">
               <p className="stage-label">Round of 64 — South</p>
-              {inactiveFavorite ? (
+              {teamA ? (
                 <button
                   type="button"
-                  className="team-row-disabled"
-                  disabled
+                  className={`team-row-active ${(firstPick === teamA.id || secondPick === teamA.id) ? "team-row-locked-win" : ""} ${(firstPick && firstPick !== teamA.id) || (secondPick && secondPick !== teamA.id) ? "team-row-loss" : ""}`}
+                  onClick={() => handleFirstPick(teamA.id)}
                 >
-                  <span className="seed">{inactiveFavorite.seed}</span>
-                  <TeamLogo teamName={inactiveFavorite.name} src={teamLogoUrl(inactiveFavorite)} />
-                  <span className="name">{inactiveFavorite.name}</span>
-                  <span className="odds">
-                    {formatOddsDisplay(inactiveFavorite.id === teamA?.id ? teamAProb : teamBProb, "american").primary}
-                  </span>
-                  {demoPickId ? <span className="outcome-badge loss">✕</span> : null}
+                  <span className="seed">{teamA.seed}</span>
+                  <TeamLogo teamName={teamA.name} src={teamLogoUrl(teamA)} />
+                  <span className="name">{teamA.name}</span>
+                  <span className="odds">{formatOddsDisplay(teamAProb, "american").primary}</span>
+                  {(firstPick === teamA.id || secondPick === teamA.id) ? <span className="outcome-badge win">✓</span> : null}
+                  {(firstPick && firstPick !== teamA.id) || (secondPick && secondPick !== teamA.id) ? <span className="outcome-badge loss">✕</span> : null}
                 </button>
               ) : null}
-              {activeUnderdog ? (
+              {teamB ? (
                 <button
                   type="button"
-                  className={`team-row-active ${demoPickId === activeUnderdog.id ? "team-row-locked-win" : ""}`}
-                  onClick={() => handlePick(activeUnderdog.id)}
+                  className={`team-row-active ${(firstPick === teamB.id || secondPick === teamB.id) ? "team-row-locked-win" : ""} ${(firstPick && firstPick !== teamB.id) || (secondPick && secondPick !== teamB.id) ? "team-row-loss" : ""}`}
+                  onClick={() => handleFirstPick(teamB.id)}
                 >
-                  <span className="seed">{activeUnderdog.seed}</span>
-                  <TeamLogo teamName={activeUnderdog.name} src={teamLogoUrl(activeUnderdog)} />
-                  <span className="name">{activeUnderdog.name}</span>
-                  <span className="odds">
-                    {formatOddsDisplay(activeUnderdog.id === teamA?.id ? teamAProb : teamBProb, "american").primary}
-                  </span>
-                  {demoPickId ? <span className="outcome-badge win">✓</span> : null}
+                  <span className="seed">{teamB.seed}</span>
+                  <TeamLogo teamName={teamB.name} src={teamLogoUrl(teamB)} />
+                  <span className="name">{teamB.name}</span>
+                  <span className="odds">{formatOddsDisplay(teamBProb, "american").primary}</span>
+                  {(firstPick === teamB.id || secondPick === teamB.id) ? <span className="outcome-badge win">✓</span> : null}
+                  {(firstPick && firstPick !== teamB.id) || (secondPick && secondPick !== teamB.id) ? <span className="outcome-badge loss">✕</span> : null}
                 </button>
               ) : null}
-              {showRepricePreview ? (
-                <div className="reprice-preview-panel">
-                  <p className="stage-label">Watch the reprice</p>
-                  {downstreamRows.slice(0, 3).map((row, idx) => {
-                    const team = teamsById.get(row.teamId);
-                    if (!team) return null;
-                    return (
-                      <div key={row.teamId} className="preview-row" style={{ animationDelay: `${idx * 60}ms` }}>
-                        <span>{team.name}</span>
-                        <span className="odds-value">{formatOddsDisplay(row.prob, "american").primary}</span>
-                      </div>
-                    );
-                  })}
+              <p className="stage-label odds-header">Title odds — top contenders</p>
+              <div className="odds-table">
+                <div className="odds-table-head">
+                  <span />
+                  <span />
+                  <span>American</span>
+                  <span>Implied</span>
+                </div>
+                {visibleRows.map((row, idx) => (
+                  <OnboardingOddsRow key={row.teamId} row={row} index={idx} />
+                ))}
+              </div>
+              {stage2PromptVisible && firstPick && !secondPick && teamA && teamB ? (
+                <div className="reversal-prompt">
+                  <p>
+                    {firstPick === teamA.id
+                      ? "Houston advances — the favorite holds. Now try the other side."
+                      : "Longwood takes it down — every other contender just gained. Now see the other side."}
+                  </p>
+                  <button className="reversal-link" onClick={handleTryOpposite}>
+                    ↩ Try {firstPick === teamA.id ? teamB.name : teamA.name} instead
+                  </button>
                 </div>
               ) : null}
-              {showPreviewCta ? (
-                <button className="cta-primary preview-cta" onClick={() => goToStage(3)}>
-                  See the full impact →
+              {stage2AdvVisible ? (
+                <button className="cta-show-me stage2-advance" onClick={() => transitionToStage(3)}>
+                  See your full scenario →
                 </button>
               ) : null}
             </div>
@@ -1366,175 +1324,17 @@ function OnboardingFlow({
         ) : null}
 
         {stage === 3 ? (
-          <section className="onboarding-stage-content stage-reprice">
-            <p className="stage-counter">Step 3 of 5</p>
-            <h3>Your pick just changed this.</h3>
-            <div className="reprice-grid">
-              <article className="reprice-card stage3-col">
-                <p className="stage-label">Your lock</p>
-                {pickedTeam ? (
-                  <div className="reprice-chip">
-                    <span>{pickedTeam.seed}</span>
-                    <TeamLogo teamName={pickedTeam.name} src={teamLogoUrl(pickedTeam)} />
-                    <span>{pickedTeam.name}</span>
-                    <span className="outcome-badge win">✓</span>
-                  </div>
-                ) : null}
-                {loserTeam ? (
-                  <div className="reprice-chip loss">
-                    <span>{loserTeam.seed}</span>
-                    <TeamLogo teamName={loserTeam.name} src={teamLogoUrl(loserTeam)} />
-                    <span>{loserTeam.name}</span>
-                    <span className="outcome-badge loss">✕</span>
-                  </div>
-                ) : null}
-                <p className="callout-quote">A 16-seed win reshapes every downstream path.</p>
-              </article>
-              <div className="col-divider" />
-              <article className="reprice-card stage3-col">
-                <p className="stage-label">Round of 32 repricing</p>
-                {downstreamRows.map((row) => {
-                  const team = teamsById.get(row.teamId);
-                  if (!team) return null;
-                  return (
-                    <div key={row.teamId} className="reprice-chip slim">
-                      <span>{team.seed}</span>
-                      <TeamLogo teamName={team.name} src={teamLogoUrl(team)} />
-                      <span>{team.name}</span>
-                      <span className="odds-value">{formatOddsDisplay(row.prob, "american").primary}</span>
-                    </div>
-                  );
-                })}
-              </article>
-              <div className="col-divider" />
-              <article className="reprice-card stage3-col">
-                <p className="stage-label">Title odds</p>
-                {futureDeltas.map((delta, idx) => (
-                  <div key={delta.label} className="futures-delta" style={{ animationDelay: `${idx * 60}ms` }}>
-                    <span className="label">{delta.label}</span>
-                    <AnimatedDeltaValue from={delta.before} to={delta.after} />
-                  </div>
-                ))}
-              </article>
-            </div>
-            <p className="stage-footer">
-              Every locked result reshapes the odds, all the way to the championship.
-            </p>
-            <div className="stage-actions">
-              <button className="cta-ghost" onClick={() => goToStage(2)}>
-                Back
-              </button>
-              <button className="cta-primary" onClick={() => goToStage(4)}>
-                Got it — let me explore
-              </button>
-            </div>
-          </section>
-        ) : null}
-
-        {stage === 4 ? (
-          <section className="onboarding-stage-content stage-diagram">
-            <p className="stage-counter">Step 4 of 5</p>
-            <h3>Path dependency, visualized.</h3>
-            <p className="stage-subtitle">
-              One lock collapses branches, reprices feeders, and changes who can even appear later.
-            </p>
-            <div className="path-grid">
-              <div className="path-col">
-                <p className="stage-label">Round 64</p>
-                {inactiveFavorite ? (
-                  <div className="reprice-chip loss">
-                    <span>{inactiveFavorite.seed}</span>
-                    <TeamLogo teamName={inactiveFavorite.name} src={teamLogoUrl(inactiveFavorite)} />
-                    <span>{inactiveFavorite.name}</span>
-                    <span className="outcome-badge loss">✕</span>
-                  </div>
-                ) : null}
-                {activeUnderdog ? (
-                  <div className="reprice-chip">
-                    <span>{activeUnderdog.seed}</span>
-                    <TeamLogo teamName={activeUnderdog.name} src={teamLogoUrl(activeUnderdog)} />
-                    <span>{activeUnderdog.name}</span>
-                    <span className="outcome-badge win">✓</span>
-                  </div>
-                ) : null}
-              </div>
-              <svg className="path-svg" viewBox="0 0 140 140" aria-hidden="true">
-                <path d="M4 30 C42 30, 42 30, 72 68" className="path-line" />
-                <path d="M4 100 C42 100, 42 100, 72 68" className="path-line constraint-path" />
-                <path d="M72 68 C100 68, 100 68, 136 68" className="path-line constraint-path" />
-              </svg>
-              <div className="path-col">
-                <p className="stage-label">Round 32</p>
-                <div className="reprice-chip slim">
-                  <span>8</span>
-                  <span />
-                  <span>Nebraska / Texas A&amp;M</span>
-                  <span className="odds-value">live</span>
-                </div>
-              </div>
-              <div className="path-col">
-                <p className="stage-label">Sweet 16</p>
-                <div className="uncertain-slot">
-                  <span>?</span>
-                  <small>{comparisonTo || 2} possible teams</small>
-                </div>
-              </div>
-            </div>
-            <div className="comparison-grid">
-              <article>
-                <p className="stage-label">Without a lock</p>
-                <p>{comparisonFrom || 4} possible teams</p>
-              </article>
-              <article className="comparison-locked">
-                <p className="stage-label">With your lock</p>
-                <p>{comparisonTo || 2} possible teams</p>
-              </article>
-            </div>
-            <div className="stage-actions">
-              <button className="cta-ghost" onClick={() => goToStage(3)}>
-                Back
-              </button>
-              <button className="cta-primary" onClick={() => goToStage(5)}>
-                Continue →
-              </button>
-            </div>
-          </section>
-        ) : null}
-
-        {stage === 5 ? (
           <section className="onboarding-stage-content stage-handoff">
-            <p className="stage-counter">Step 5 of 5</p>
+            <p className="stage-counter">Step 3 of 3</p>
             <h3>You&apos;re in. Build your scenario.</h3>
-            <div className="feature-list">
-              <div className="feature-row">
-                <span className="feature-icon" aria-hidden="true">
-                  <svg viewBox="0 0 24 24" width="16" height="16">
-                    <path d="M7 11V8a5 5 0 1 1 10 0v3" fill="none" stroke="currentColor" strokeWidth="1.8" />
-                    <rect x="5" y="11" width="14" height="10" rx="2" fill="none" stroke="currentColor" strokeWidth="1.8" />
-                  </svg>
-                </span>
-                <p>Lock picks. Click any team to set a result.</p>
-              </div>
-              <div className="feature-row">
-                <span className="feature-icon" aria-hidden="true">
-                  <svg viewBox="0 0 24 24" width="16" height="16">
-                    <path d="M4 18h16M6 15l3-4 3 2 4-6" fill="none" stroke="currentColor" strokeWidth="1.8" />
-                  </svg>
-                </span>
-                <p>Watch Futures reprice. Every change cascades live.</p>
-              </div>
-              <div className="feature-row">
-                <span className="feature-icon" aria-hidden="true">
-                  <svg viewBox="0 0 24 24" width="16" height="16">
-                    <path d="M5 12a7 7 0 1 0 2-5" fill="none" stroke="currentColor" strokeWidth="1.8" />
-                    <path d="M5 6v4h4" fill="none" stroke="currentColor" strokeWidth="1.8" />
-                  </svg>
-                </span>
-                <p>Reset anytime. Your scenario, your control.</p>
-              </div>
-            </div>
+            <p className="stage-subtitle">
+              You&apos;ve seen how one pick moves the whole field. Now build yours.
+            </p>
             <div className="suggestion-box">
-              <p>Pick a 1-seed to lose in Round 1. Then open Futures and watch title odds redistribute.</p>
+              <span className="suggestion-label">Suggested first move</span>
+              <p className="suggestion-body">
+                Pick any 1-seed to lose in Round 1. Open Futures. Watch title odds redistribute.
+              </p>
             </div>
             <button className="cta-open-bracket" onClick={handleOpenBracket}>
               Open the bracket
