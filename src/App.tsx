@@ -225,12 +225,9 @@ function App() {
     const baseLocks: LockedPicks = {};
     const before = runSimulation(baseLocks, simRuns);
     const after = runSimulation({ [gameId]: winnerId }, simRuns);
-    const game = resolveGames({}).games.find((g) => g.id === gameId) ?? null;
-    const excluded = new Set<string>([game?.teamAId ?? "", game?.teamBId ?? ""]);
-    const afterMap = new Map(after.futures.map((row) => [row.teamId, row.titleGameProb]));
+    const afterMap = new Map(after.futures.map((row) => [row.teamId, row.champProb]));
     const titleOddsShift = before.futures
-      .filter((row) => !excluded.has(row.teamId))
-      .sort((a, b) => b.titleGameProb - a.titleGameProb)
+      .sort((a, b) => b.champProb - a.champProb)
       .slice(0, 5)
       .map((row) => {
         const team = teamsById.get(row.teamId);
@@ -239,9 +236,9 @@ function App() {
           teamId: row.teamId,
           name: team?.name ?? row.teamId,
           seed: team?.seed ?? 99,
-          before: row.titleGameProb,
+          before: row.champProb,
           after: next,
-          direction: (next >= row.titleGameProb ? "up" : "down") as "up" | "down",
+          direction: (next >= row.champProb ? "up" : "down") as "up" | "down",
         };
       });
     return { before, after, titleOddsShift };
@@ -1198,7 +1195,7 @@ function OnboardingFlow({
   };
 
   const performFlipTo = (winnerId: string) => {
-    if (!firstPick || !teamA || !teamB || secondPick) return;
+    if (!firstPick || !teamA || !teamB) return;
     setStage2Resetting(true);
     setStage2PromptVisible(false);
     window.setTimeout(() => {
@@ -1217,7 +1214,7 @@ function OnboardingFlow({
       handleFirstPick(winnerId);
       return;
     }
-    if (!secondPick && winnerId !== firstPick) {
+    if (winnerId !== activePick) {
       performFlipTo(winnerId);
     }
   };
@@ -1251,7 +1248,10 @@ function OnboardingFlow({
       <div className={`onboarding-stage ${isStageTransitioning ? "stage-exit" : "stage-enter"}`} key={stage}>
         {stage === 1 ? (
           <section className="onboarding-stage-content stage-hook">
-            <p className="stage-kicker">Introducing The Bracket Lab</p>
+            <p className="stage-kicker">
+              <span className="kicker-intro">Introducing</span>{" "}
+              <span className="kicker-brand">The Bracket Lab</span>
+            </p>
             <h2 className="stage-title">
               <span className="headline-word" style={{ animationDelay: "0ms" }}>
                 Every
@@ -1285,8 +1285,7 @@ function OnboardingFlow({
               <p className="stage-counter">Step 2 of 3</p>
               <h3>Pick a side. Watch the field reprice.</h3>
               <p>
-                Choose Houston or Longwood. Watch how title odds and advancement odds across every
-                round shift instantly for every other contender.
+                Pick either side and watch contender title odds reprice in real time.
               </p>
             </div>
             <div className="stage-demo">
@@ -1368,7 +1367,7 @@ function OnboardingFlow({
               </p>
             </div>
             <button className="cta-open-bracket" onClick={handleOpenBracket}>
-              Open the bracket
+              Enter The Bracket Lab
             </button>
             <p className="replay-note">Replay this intro from the Help menu.</p>
             <label className="dont-show-inline">

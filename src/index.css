@@ -1564,6 +1564,8 @@ body.og-onboarding-open {
   z-index: 2147483647;
   color: var(--text-primary);
   font-family: "Space Grotesk", sans-serif;
+  display: grid;
+  place-items: center;
 }
 
 .onboarding-flow.is-exiting .backdrop-bracket {
@@ -1624,7 +1626,7 @@ body.og-onboarding-open {
   position: relative;
   z-index: 10;
   width: min(1160px, 94vw);
-  margin: 3vh auto 0;
+  margin: 0 auto;
   border: 1px solid var(--amber-border);
   border-radius: 18px;
   background: linear-gradient(120deg, rgba(29, 21, 10, 0.92) 0%, rgba(18, 13, 6, 0.94) 100%);
@@ -1642,6 +1644,16 @@ body.og-onboarding-open {
   text-transform: uppercase;
   color: var(--text-secondary);
   font-family: "Space Grotesk", sans-serif;
+}
+
+.kicker-intro {
+  font-weight: 500;
+  font-size: 0.88rem;
+}
+
+.kicker-brand {
+  font-weight: 700;
+  font-size: 0.92rem;
 }
 
 .stage-title {
@@ -1684,8 +1696,9 @@ body.og-onboarding-open {
   color: #e8dcc8;
   border-radius: 14px;
   padding: 14px 26px;
-  font-family: "Space Grotesk", sans-serif;
-  font-weight: 700;
+  font-family: "Instrument Serif", serif;
+  font-weight: 400;
+  font-size: 1.06rem;
   letter-spacing: 0.04em;
   cursor: pointer;
   transition: background 200ms ease, box-shadow 200ms ease;
@@ -1870,20 +1883,24 @@ body.og-onboarding-open {
 .cta-open-bracket {
   background: var(--amber-border);
   color: #0d0b08;
-  font-weight: 700;
+  font-family: "Instrument Serif", serif;
+  font-weight: 400;
   letter-spacing: 0.05em;
-  font-size: 16px;
+  font-size: 1.16rem;
   padding: 18px 32px;
   border: none;
   width: 100%;
   margin-top: 14px;
-  transition: box-shadow 250ms, transform 150ms;
+  border-radius: 12px;
+  box-shadow: 0 10px 26px rgba(0, 0, 0, 0.33), inset 0 1px 0 rgba(255, 255, 255, 0.2);
+  transition: filter 200ms, transform 150ms, box-shadow 220ms;
   cursor: pointer;
 }
 
 .cta-open-bracket:hover {
   filter: brightness(1.1);
   transform: translateY(-1px);
+  box-shadow: 0 14px 30px rgba(0, 0, 0, 0.38), inset 0 1px 0 rgba(255, 255, 255, 0.26);
 }
 
 .cta-open-bracket:active {
@@ -2123,7 +2140,8 @@ body.og-onboarding-open {
   text-decoration: underline;
   text-underline-offset: 2px;
   padding: 0;
-  font: inherit;
+  font-family: "Instrument Serif", serif;
+  font-size: 1rem;
 }
 
 .stage2-advance {
@@ -2136,7 +2154,9 @@ body.og-onboarding-open {
   background: transparent;
   border: 1px solid var(--amber-border);
   color: var(--amber-text);
-  font-weight: 600;
+  font-family: "Instrument Serif", serif;
+  font-weight: 400;
+  font-size: 1.05rem;
   letter-spacing: 0.04em;
   padding: 14px;
   border-radius: 10px;
