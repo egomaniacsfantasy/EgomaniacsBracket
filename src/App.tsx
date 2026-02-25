@@ -793,15 +793,17 @@ function GameCard({
   const candidates = (gameWinProbs[game.id] || [])
     .map((entry) => ({ ...entry, team: teamsById.get(entry.teamId) }))
     .filter((entry): entry is CandidateRow => Boolean(entry.team));
-  const sortedCandidates =
-    game.round === "F4" || game.round === "CHAMP"
-      ? [...candidates].sort((a, b) => {
+  const possibleForGame = possibleWinners[game.id] ?? new Set<string>();
+  const constrainedCandidatesUnsorted = candidates.filter((candidate) =>
+    possibleForGame.has(candidate.teamId)
+  );
+  const constrainedCandidates =
+    constrainedCandidatesUnsorted.length > 2
+      ? [...constrainedCandidatesUnsorted].sort((a, b) => {
           if (b.prob !== a.prob) return b.prob - a.prob;
           return a.team.seed - b.team.seed;
         })
-      : candidates;
-  const possibleForGame = possibleWinners[game.id] ?? new Set<string>();
-  const constrainedCandidates = sortedCandidates.filter((candidate) => possibleForGame.has(candidate.teamId));
+      : constrainedCandidatesUnsorted;
   const probByTeam = new Map(candidates.map((c) => [c.teamId, c.prob]));
   const rows: CandidateRow[] =
     game.teamAId && game.teamBId
