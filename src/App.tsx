@@ -1468,14 +1468,9 @@ function OnboardingFlow({
   const [stage, setStage] = useState<OnboardingStage>(1);
   const [isStageTransitioning, setIsStageTransitioning] = useState(false);
   const [dontShowAgain, setDontShowAgain] = useState(false);
+  const [activePick, setActivePick] = useState<string | null>(null);
   const [firstPick, setFirstPick] = useState<string | null>(null);
-  const [secondPick, setSecondPick] = useState<string | null>(null);
-  const [simResult1, setSimResult1] = useState<DemoSimulationOutput | null>(null);
-  const [simResult2, setSimResult2] = useState<DemoSimulationOutput | null>(null);
-  const [stage2Repricing, setStage2Repricing] = useState(false);
-  const [stage2PromptVisible, setStage2PromptVisible] = useState(false);
-  const [stage2AdvVisible, setStage2AdvVisible] = useState(false);
-  const [stage2Resetting, setStage2Resetting] = useState(false);
+  const [seenWinners, setSeenWinners] = useState<string[]>([]);
   const [exiting, setExiting] = useState(false);
 
   useEffect(() => {
@@ -1491,6 +1486,12 @@ function OnboardingFlow({
     if (!demoGame.teamAId) return null;
     return runDemoSimulation(demoGame.id, demoGame.teamAId);
   });
+  const demoResultByWinner = useMemo(() => {
+    const map = new Map<string, DemoSimulationOutput>();
+    if (teamA?.id) map.set(teamA.id, runDemoSimulation(demoGame.id, teamA.id));
+    if (teamB?.id) map.set(teamB.id, runDemoSimulation(demoGame.id, teamB.id));
+    return map;
+  }, [demoGame.id, runDemoSimulation, teamA?.id, teamB?.id]);
   const baselineRows = useMemo(
     () =>
       (baselineResult?.titleOddsShift ?? []).map((row) => ({
@@ -1509,51 +1510,23 @@ function OnboardingFlow({
     }, 180);
   };
 
-  const applyPickResult = (winnerId: string, asSecond = false) => {
-    setStage2Repricing(true);
-    window.setTimeout(() => {
-      const result = runDemoSimulation(demoGame.id, winnerId);
-      if (asSecond) {
-        setSecondPick(winnerId);
-        setSimResult2(result);
-        setStage2AdvVisible(true);
-      } else {
-        setFirstPick(winnerId);
-        setSimResult1(result);
-        setStage2PromptVisible(true);
-      }
-      setStage2Repricing(false);
-    }, 200);
-  };
-
-  const handleFirstPick = (winnerId: string) => {
-    if (!teamA || !teamB || firstPick) return;
-    applyPickResult(winnerId, false);
-  };
-
-  const performFlipTo = (winnerId: string) => {
-    if (!firstPick || !teamA || !teamB) return;
-    setStage2Resetting(true);
-    setStage2PromptVisible(false);
-    window.setTimeout(() => {
-      setStage2Resetting(false);
-      applyPickResult(winnerId, true);
-    }, 350);
+  const commitStage2Pick = (winnerId: string) => {
+    if (!winnerId) return;
+    if (!firstPick) {
+      setFirstPick(winnerId);
+    }
+    setSeenWinners((prev) => (prev.includes(winnerId) ? prev : [...prev, winnerId]));
+    setActivePick(winnerId);
   };
 
   const handleTryOpposite = () => {
     if (!firstPick || !teamA || !teamB) return;
-    performFlipTo(firstPick === teamA.id ? teamB.id : teamA.id);
+    commitStage2Pick(firstPick === teamA.id ? teamB.id : teamA.id);
   };
 
   const handleStage2TeamClick = (winnerId: string) => {
-    if (!firstPick) {
-      handleFirstPick(winnerId);
-      return;
-    }
-    if (winnerId !== activePick) {
-      performFlipTo(winnerId);
-    }
+    if (!teamA || !teamB) return;
+    commitStage2Pick(winnerId);
   };
 
   const handleOpenBracket = () => {
@@ -1561,15 +1534,23 @@ function OnboardingFlow({
     window.setTimeout(() => onComplete(dontShowAgain), 560);
   };
 
-  const activePick = stage2Resetting ? null : secondPick ?? firstPick;
-  const visibleRows =
-    stage2Resetting || stage2Repricing
-      ? baselineRows
-      : secondPick && simResult2
-        ? simResult2.titleOddsShift
-        : firstPick && simResult1
-          ? simResult1.titleOddsShift
-          : baselineRows;
+  const hasFirstPick = Boolean(firstPick);
+  const hasSeenBothOutcomes =
+    teamA?.id && teamB?.id ? seenWinners.includes(teamA.id) && seenWinners.includes(teamB.id) : false;
+  const oppositeWinnerId =
+    activePick && teamA?.id && teamB?.id ? (activePick === teamA.id ? teamB.id : teamA.id) : null;
+  const oppositeWinnerName =
+    oppositeWinnerId && teamA?.id && teamB?.id
+      ? oppositeWinnerId === teamA.id
+        ? teamA.name
+        : teamB.name
+      : null;
+
+  const visibleRows = activePick
+    ? (demoResultByWinner.get(activePick)?.titleOddsShift ?? baselineRows).filter(
+        (row) => row.after > 0.0001
+      )
+    : baselineRows;
 
   const overlay = (
     <div
@@ -1626,12 +1607,12 @@ function OnboardingFlow({
               </p>
             </div>
             <div className="stage-demo">
-              {!firstPick ? <p className="pick-prompt-label">↓ Pick a side</p> : null}
+              {!hasFirstPick ? <p className="pick-prompt-label">↓ Pick a side</p> : null}
               <p className="stage-label">Round of 64 — South</p>
               {teamA ? (
                 <button
                   type="button"
-                  className={`team-row-active ${!firstPick ? "pre-pick" : ""} ${activePick === teamA.id ? "team-row-locked-win" : ""} ${activePick && activePick !== teamA.id ? "team-row-loss" : ""}`}
+                  className={`team-row-active ${!hasFirstPick ? "pre-pick" : ""} ${activePick === teamA.id ? "team-row-locked-win" : ""} ${activePick && activePick !== teamA.id ? "team-row-loss" : ""}`}
                   onClick={() => handleStage2TeamClick(teamA.id)}
                 >
                   <span className="seed">{teamA.seed}</span>
@@ -1645,7 +1626,7 @@ function OnboardingFlow({
               {teamB ? (
                 <button
                   type="button"
-                  className={`team-row-active ${!firstPick ? "pre-pick" : ""} ${activePick === teamB.id ? "team-row-locked-win" : ""} ${activePick && activePick !== teamB.id ? "team-row-loss" : ""}`}
+                  className={`team-row-active ${!hasFirstPick ? "pre-pick" : ""} ${activePick === teamB.id ? "team-row-locked-win" : ""} ${activePick && activePick !== teamB.id ? "team-row-loss" : ""}`}
                   onClick={() => handleStage2TeamClick(teamB.id)}
                 >
                   <span className="seed">{teamB.seed}</span>
@@ -1668,23 +1649,31 @@ function OnboardingFlow({
                   <OnboardingOddsRow key={row.teamId} row={row} index={idx} />
                 ))}
               </div>
-              {stage2PromptVisible && firstPick && !secondPick && teamA && teamB ? (
-                <div className="reversal-prompt">
-                  <p>
-                    {firstPick === teamA.id
-                      ? `${teamA.name} advances, the favorite holds. Now flip it and see the other side.`
-                      : `${teamB.name} wins, the bracket is in chaos. Now see the opposite outcome.`}
-                  </p>
-                  <button className="reversal-link" onClick={handleTryOpposite}>
-                    ↩ Try {firstPick === teamA.id ? teamB.name : teamA.name} instead
+              <div
+                className={`stage2-footer-block ${hasFirstPick ? "is-visible" : ""} ${hasSeenBothOutcomes ? "has-advance" : ""}`}
+              >
+                {hasFirstPick && activePick && oppositeWinnerName ? (
+                  <div className="reversal-prompt">
+                    <p>
+                      {activePick === teamA?.id
+                        ? `${teamA.name} advances, the favorite holds. Now flip it and see the other side.`
+                        : `${teamB?.name ?? "The underdog"} wins, the bracket is in chaos. Now see the opposite outcome.`}
+                    </p>
+                    <button className="reversal-link" onClick={handleTryOpposite}>
+                      ↩ Try {oppositeWinnerName} instead
+                    </button>
+                  </div>
+                ) : (
+                  <div className="reversal-prompt placeholder" aria-hidden="true" />
+                )}
+                {hasSeenBothOutcomes ? (
+                  <button className="cta-advance stage2-advance" onClick={() => transitionToStage(3)}>
+                    See your full scenario →
                   </button>
-                </div>
-              ) : null}
-              {stage2AdvVisible ? (
-                <button className="cta-advance stage2-advance" onClick={() => transitionToStage(3)}>
-                  See your full scenario →
-                </button>
-              ) : null}
+                ) : (
+                  <div className="stage2-advance placeholder" aria-hidden="true" />
+                )}
+              </div>
             </div>
           </section>
         ) : null}

@@ -2142,15 +2142,34 @@ body.og-onboarding-open {
 }
 
 .reversal-prompt {
-  margin-top: 8px;
   border-top: 1px solid rgba(171, 138, 69, 0.24);
   padding-top: 8px;
+  opacity: 0;
+  transform: translateY(6px);
+  transition: opacity 220ms ease, transform 220ms ease;
 }
 
 .reversal-prompt p {
   margin: 0 0 6px;
   color: var(--text-secondary);
   font-size: 0.88rem;
+}
+
+.stage2-footer-block {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-height: 116px;
+}
+
+.stage2-footer-block.is-visible .reversal-prompt:not(.placeholder) {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.reversal-prompt.placeholder {
+  border-top-color: transparent;
+  pointer-events: none;
 }
 
 .reversal-link {
@@ -2167,7 +2186,19 @@ body.og-onboarding-open {
 
 .stage2-advance {
   width: 100%;
-  margin-top: 8px;
+  opacity: 0;
+  transform: translateY(6px);
+  transition: opacity 220ms ease, transform 220ms ease;
+}
+
+.stage2-footer-block.has-advance .stage2-advance:not(.placeholder) {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.stage2-advance.placeholder {
+  height: 54px;
+  pointer-events: none;
 }
 
 .cta-advance {
