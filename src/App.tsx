@@ -519,7 +519,7 @@ function App() {
       <main className="eg-app">
         <nav className="og-top-nav" aria-label="Odds Gods tools">
           <a className="og-top-nav-brand" href={LANDING_URL}>
-            <img className="og-top-nav-logo" src="/logo-icon.png" alt="Odds Gods" />
+            <img className="og-top-nav-logo" src="/logo-icon.png?v=20260225" alt="Odds Gods" />
             <span className="odds">ODDS</span> <span className="gods">GODS</span>
           </a>
           <div className="og-top-nav-tabs">
