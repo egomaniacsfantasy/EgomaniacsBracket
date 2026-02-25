@@ -2215,6 +2215,17 @@ body.og-onboarding-open {
   }
 }
 
+@media (max-width: 980px) {
+  .og-top-nav {
+    margin: -22px -14px 12px;
+    padding: 10px 14px;
+  }
+
+  .og-top-nav-link {
+    font-size: 0.82rem;
+  }
+}
+
 /* Odds Gods visual-system alignment overrides */
 :root {
   --bg-base: #0e0c09;
@@ -2265,6 +2276,58 @@ body {
 .eg-app {
   position: relative;
   z-index: 10;
+}
+
+.og-top-nav {
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  margin: -24px -20px 16px;
+  padding: 12px 24px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  background: rgba(14, 12, 9, 0.9);
+  backdrop-filter: blur(10px);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.og-top-nav-brand {
+  font-family: "Instrument Serif", serif;
+  font-size: 1.05rem;
+  letter-spacing: 0.06em;
+  color: var(--text-primary);
+}
+
+.og-top-nav-brand .odds {
+  font-weight: 400;
+}
+
+.og-top-nav-brand .gods {
+  color: #d7aa59;
+  font-weight: 700;
+}
+
+.og-top-nav-tabs {
+  display: inline-flex;
+  gap: 18px;
+  align-items: center;
+}
+
+.og-top-nav-link {
+  font-family: "Space Grotesk", sans-serif;
+  font-size: 0.95rem;
+  color: var(--text-dim);
+  text-decoration: none;
+  transition: color 160ms ease;
+}
+
+.og-top-nav-link:hover {
+  color: var(--text-primary);
+}
+
+.og-top-nav-link.active {
+  color: var(--text-primary);
 }
 
 .eg-main-panel {
