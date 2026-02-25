@@ -28,6 +28,8 @@ import type { OddsDisplayMode, Region, ResolvedGame, SimulationOutput } from "./
 const DEFAULT_SIM_RUNS = 5000;
 const ONBOARDING_STORAGE_KEY = "oddsGods_onboardingDismissed";
 const STAGGERED_SIM_DELAY_MS = 5000;
+const MIN_STAGGERED_SIM_DELAY_MS = 1000;
+const MAX_STAGGERED_SIM_DELAY_MS = 5000;
 
 const formatModes: { id: OddsDisplayMode; label: string }[] = [
   { id: "american", label: "American" },
@@ -86,6 +88,9 @@ function App() {
   const [sidePanelOpen, setSidePanelOpen] = useState(false);
   const [compactDesktop, setCompactDesktop] = useState(false);
   const [staggeredSimRunning, setStaggeredSimRunning] = useState(false);
+  const [staggeredSimPaused, setStaggeredSimPaused] = useState(false);
+  const [staggeredSimDelayMs, setStaggeredSimDelayMs] = useState(STAGGERED_SIM_DELAY_MS);
+  const [showStaggeredControls, setShowStaggeredControls] = useState(false);
   const [onboardingOpen, setOnboardingOpen] = useState(() => {
     if (typeof window === "undefined") return false;
     return window.localStorage.getItem(ONBOARDING_STORAGE_KEY) !== "true";
@@ -99,6 +104,8 @@ function App() {
 
   const simulationCacheRef = useRef<Map<string, SimulationOutput>>(new Map());
   const staggeredTimeoutRef = useRef<number | null>(null);
+  const staggeredStepsRef = useRef<Array<{ gameId: string; winnerId: string }>>([]);
+  const staggeredIndexRef = useRef(0);
   const demoGame = useMemo(
     () => resolveGames({}).games.find((game) => game.id === "South-R64-0") ?? null,
     []
@@ -324,6 +331,9 @@ function App() {
       staggeredTimeoutRef.current = null;
     }
     setStaggeredSimRunning(false);
+    setStaggeredSimPaused(false);
+    staggeredStepsRef.current = [];
+    staggeredIndexRef.current = 0;
   };
 
   const onPick = (game: ResolvedGame, teamId: string | null) => {
@@ -372,27 +382,64 @@ function App() {
 
   const onModelSimStaggered = () => {
     cancelStaggeredSim();
+    setShowStaggeredControls(true);
     const baseLocks = { ...lockedPicks };
     const steps = generateSimulatedBracketSteps(baseLocks, ["South", "West", "East", "Midwest"]);
     if (steps.length === 0) return;
 
     pushUndo(baseLocks);
     setStaggeredSimRunning(true);
+    setStaggeredSimPaused(false);
+    staggeredStepsRef.current = steps;
+    staggeredIndexRef.current = 0;
 
-    let index = 0;
     const advance = () => {
-      if (index >= steps.length) {
-        setStaggeredSimRunning(false);
+      if (staggeredSimPaused) {
         staggeredTimeoutRef.current = null;
         return;
       }
-      const step = steps[index];
+
+      if (staggeredIndexRef.current >= staggeredStepsRef.current.length) {
+        setStaggeredSimRunning(false);
+        setStaggeredSimPaused(false);
+        staggeredTimeoutRef.current = null;
+        return;
+      }
+      const step = staggeredStepsRef.current[staggeredIndexRef.current];
+      setLastPickedKey(`${step.gameId}:${step.winnerId}`);
       setLockedPicks((prev) => sanitizeLockedPicks({ ...prev, [step.gameId]: step.winnerId }));
-      index += 1;
-      staggeredTimeoutRef.current = window.setTimeout(advance, STAGGERED_SIM_DELAY_MS);
+      staggeredIndexRef.current += 1;
+      staggeredTimeoutRef.current = window.setTimeout(advance, staggeredSimDelayMs);
     };
 
     advance();
+  };
+
+  const onToggleStaggeredPause = () => {
+    if (!staggeredSimRunning) return;
+    if (!staggeredSimPaused) {
+      if (staggeredTimeoutRef.current !== null) {
+        window.clearTimeout(staggeredTimeoutRef.current);
+        staggeredTimeoutRef.current = null;
+      }
+      setStaggeredSimPaused(true);
+      return;
+    }
+
+    setStaggeredSimPaused(false);
+    const resume = () => {
+      if (staggeredIndexRef.current >= staggeredStepsRef.current.length) {
+        setStaggeredSimRunning(false);
+        setStaggeredSimPaused(false);
+        return;
+      }
+      const step = staggeredStepsRef.current[staggeredIndexRef.current];
+      setLastPickedKey(`${step.gameId}:${step.winnerId}`);
+      setLockedPicks((prev) => sanitizeLockedPicks({ ...prev, [step.gameId]: step.winnerId }));
+      staggeredIndexRef.current += 1;
+      staggeredTimeoutRef.current = window.setTimeout(resume, staggeredSimDelayMs);
+    };
+    staggeredTimeoutRef.current = window.setTimeout(resume, staggeredSimDelayMs);
   };
 
   const runDemoSimulation = (gameId: string, winnerId: string): DemoSimulationOutput => {
@@ -485,6 +532,29 @@ function App() {
               <button onClick={onModelSimStaggered} className="eg-btn" disabled={staggeredSimRunning}>
                 {staggeredSimRunning ? "Staggered Sim Running..." : "Staggered Sim Bracket"}
               </button>
+              {staggeredSimRunning ? (
+                <button onClick={onToggleStaggeredPause} className="eg-btn">
+                  {staggeredSimPaused ? "Resume Staggered Sim" : "Pause Staggered Sim"}
+                </button>
+              ) : null}
+              {(showStaggeredControls || staggeredSimRunning) ? (
+                <div className="eg-stagger-controls">
+                  <label htmlFor="stagger-delay" className="eg-stagger-label">
+                    Stagger Delay: {(staggeredSimDelayMs / 1000).toFixed(1)}s
+                  </label>
+                  <input
+                    id="stagger-delay"
+                    type="range"
+                    min={MIN_STAGGERED_SIM_DELAY_MS}
+                    max={MAX_STAGGERED_SIM_DELAY_MS}
+                    step={250}
+                    value={staggeredSimDelayMs}
+                    onChange={(event) => setStaggeredSimDelayMs(Number(event.target.value))}
+                    disabled={staggeredSimRunning && !staggeredSimPaused}
+                    className="eg-stagger-slider"
+                  />
+                </div>
+              ) : null}
               <div className="eg-mode-toggle">
                 {formatModes.map((mode) => (
                   <button
@@ -904,7 +974,7 @@ function GameCard({
                 <button
                   key={`${game.id}-${team.id}-split`}
                   type="button"
-                  className={`eg-title-choice ${selected ? "selected" : ""} ${outcome === "win" ? "result-win" : ""} ${outcome === "loss" ? "result-loss" : ""}`}
+                  className={`eg-title-choice ${selected ? "selected" : ""} ${lastPickedKey === `${game.id}:${team.id}` ? "fresh-pick" : ""} ${outcome === "win" ? "result-win" : ""} ${outcome === "loss" ? "result-loss" : ""}`}
                   onClick={() => onPick(game, team.id)}
                   title={`Chance to win title: ${(candidate.prob * 100).toFixed(1)}%`}
                 >
@@ -991,7 +1061,7 @@ function GameCard({
                   <button
                     key={`${game.id}-${team.id}`}
                     type="button"
-                    className={`eg-compact-chip ${selected ? "selected" : ""} ${outcome === "win" ? "result-win" : ""} ${outcome === "loss" ? "result-loss" : ""}`}
+                    className={`eg-compact-chip ${selected ? "selected" : ""} ${lastPickedKey === `${game.id}:${team.id}` ? "fresh-pick" : ""} ${outcome === "win" ? "result-win" : ""} ${outcome === "loss" ? "result-loss" : ""}`}
                     disabled={!canPick}
                     onClick={() => onPick(game, canPick ? team.id : null)}
                     title={`Chance to advance from this game: ${(candidate.prob * 100).toFixed(1)}%`}
