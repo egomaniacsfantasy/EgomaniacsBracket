@@ -3,6 +3,7 @@ import { teams, teamsById } from "../data/teams";
 import type { FuturesRow, GameWinProbability, ResolvedGame, SimulationOutput } from "../types";
 import type { LockedPicks } from "./bracket";
 import { getGameWinProb, resolveGames } from "./bracket";
+import { getMatchupWinProbForRound } from "./matchupProbabilities";
 import { winProb } from "./odds";
 
 const rounds = ["R64", "R32", "S16", "E8", "F4", "CHAMP"] as const;
@@ -49,10 +50,16 @@ const eligibleLock = (
   return null;
 };
 
-const sampleWinner = (teamAId: string, teamBId: string): string => {
+const sampleWinner = (
+  teamAId: string,
+  teamBId: string,
+  round: (typeof rounds)[number]
+): string => {
   const teamA = teamsById.get(teamAId)!;
   const teamB = teamsById.get(teamBId)!;
-  const pA = winProb(teamA.rating, teamB.rating);
+  const modelProb =
+    getMatchupWinProbForRound(teamA.name, teamB.name, round) ?? winProb(teamA.rating, teamB.rating);
+  const pA = Math.max(0.000001, Math.min(0.999999, modelProb));
   return Math.random() < pA ? teamAId : teamBId;
 };
 
@@ -77,7 +84,7 @@ const simulateBracket = (locks: LockedPicks, forceLocks: boolean): { winners: Re
       continue;
     }
 
-    const naturalWinner = sampleWinner(teamAId, teamBId);
+    const naturalWinner = sampleWinner(teamAId, teamBId, game.round);
     const lock = eligibleLock(locks[game.id], teamAId, teamBId);
 
     if (lock && naturalWinner !== lock) {

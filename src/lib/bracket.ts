@@ -1,5 +1,6 @@
 import { gameTemplates, regionOrder, roundOrder } from "../data/bracket";
 import { teamsById } from "../data/teams";
+import { getMatchupWinProbForRound } from "./matchupProbabilities";
 import { winProb } from "./odds";
 import type { Region, ResolvedGame, Round } from "../types";
 
@@ -67,7 +68,9 @@ export const getGameWinProb = (game: ResolvedGame, teamId: string): number | nul
   const teamB = teamsById.get(game.teamBId);
   if (!teamA || !teamB) return null;
 
-  const aProb = winProb(teamA.rating, teamB.rating);
+  const modelProb =
+    getMatchupWinProbForRound(teamA.name, teamB.name, game.round) ?? winProb(teamA.rating, teamB.rating);
+  const aProb = Math.max(0.000001, Math.min(0.999999, modelProb));
   if (teamId === teamA.id) return aProb;
   if (teamId === teamB.id) return 1 - aProb;
   return null;
@@ -79,12 +82,9 @@ export const buildChalkPicks = (base: LockedPicks): LockedPicks => {
 
   for (const game of games) {
     if (!game.teamAId || !game.teamBId) continue;
-    const teamA = teamsById.get(game.teamAId);
-    const teamB = teamsById.get(game.teamBId);
-    if (!teamA || !teamB) continue;
-
-    const aProb = winProb(teamA.rating, teamB.rating);
-    chalk[game.id] = aProb >= 0.5 ? teamA.id : teamB.id;
+    const aProb = getGameWinProb(game, game.teamAId);
+    if (aProb === null) continue;
+    chalk[game.id] = aProb >= 0.5 ? game.teamAId : game.teamBId;
 
     const sanitized = resolveGames(chalk).sanitized;
     Object.keys(chalk).forEach((key) => {
