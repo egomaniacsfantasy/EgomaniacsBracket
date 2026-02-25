@@ -27,7 +27,7 @@ import type { OddsDisplayMode, Region, ResolvedGame, SimulationOutput } from "./
 
 const DEFAULT_SIM_RUNS = 5000;
 const ONBOARDING_STORAGE_KEY = "oddsGods_onboardingDismissed";
-const STAGGERED_SIM_DELAY_MS = 5000;
+const STAGGERED_SIM_DELAY_MS = 2000;
 const MIN_STAGGERED_SIM_DELAY_MS = 1000;
 const MAX_STAGGERED_SIM_DELAY_MS = 5000;
 const LANDING_URL = "https://oddsgods.net";
@@ -109,6 +109,7 @@ function App() {
   const staggeredTimeoutRef = useRef<number | null>(null);
   const staggeredStepsRef = useRef<Array<{ gameId: string; winnerId: string }>>([]);
   const staggeredIndexRef = useRef(0);
+  const staggeredDelayRef = useRef(STAGGERED_SIM_DELAY_MS);
   const demoGame = useMemo(
     () => resolveGames({}).games.find((game) => game.id === "South-R64-0") ?? null,
     []
@@ -116,6 +117,10 @@ function App() {
 
   const { games, sanitized } = useMemo(() => resolveGames(lockedPicks), [lockedPicks]);
   const possibleWinners = useMemo(() => possibleWinnersByGame(sanitized), [sanitized]);
+
+  useEffect(() => {
+    staggeredDelayRef.current = staggeredSimDelayMs;
+  }, [staggeredSimDelayMs]);
 
   useEffect(() => {
     const media = window.matchMedia("(max-width: 1850px)");
@@ -387,7 +392,7 @@ function App() {
     cancelStaggeredSim();
     setShowStaggeredControls(true);
     const baseLocks = { ...lockedPicks };
-    const steps = generateSimulatedBracketSteps(baseLocks, ["South", "West", "East", "Midwest"]);
+    const steps = generateSimulatedBracketSteps(baseLocks, ["South", "East", "West", "Midwest"]);
     if (steps.length === 0) return;
 
     pushUndo(baseLocks);
@@ -412,7 +417,7 @@ function App() {
       setLastPickedKey(`${step.gameId}:${step.winnerId}`);
       setLockedPicks((prev) => sanitizeLockedPicks({ ...prev, [step.gameId]: step.winnerId }));
       staggeredIndexRef.current += 1;
-      staggeredTimeoutRef.current = window.setTimeout(advance, staggeredSimDelayMs);
+      staggeredTimeoutRef.current = window.setTimeout(advance, staggeredDelayRef.current);
     };
 
     advance();
@@ -440,9 +445,9 @@ function App() {
       setLastPickedKey(`${step.gameId}:${step.winnerId}`);
       setLockedPicks((prev) => sanitizeLockedPicks({ ...prev, [step.gameId]: step.winnerId }));
       staggeredIndexRef.current += 1;
-      staggeredTimeoutRef.current = window.setTimeout(resume, staggeredSimDelayMs);
+      staggeredTimeoutRef.current = window.setTimeout(resume, staggeredDelayRef.current);
     };
-    staggeredTimeoutRef.current = window.setTimeout(resume, staggeredSimDelayMs);
+    staggeredTimeoutRef.current = window.setTimeout(resume, staggeredDelayRef.current);
   };
 
   const runDemoSimulation = (gameId: string, winnerId: string): DemoSimulationOutput => {
@@ -548,8 +553,13 @@ function App() {
                 {staggeredSimRunning ? "Staggered Sim Running..." : "Staggered Sim Bracket"}
               </button>
               {staggeredSimRunning ? (
-                <button onClick={onToggleStaggeredPause} className="eg-btn">
-                  {staggeredSimPaused ? "Resume Staggered Sim" : "Pause Staggered Sim"}
+                <button
+                  onClick={onToggleStaggeredPause}
+                  className="eg-btn"
+                  aria-label={staggeredSimPaused ? "Resume staggered simulation" : "Pause staggered simulation"}
+                  title={staggeredSimPaused ? "Resume staggered simulation" : "Pause staggered simulation"}
+                >
+                  {staggeredSimPaused ? "▶" : "⏸"}
                 </button>
               ) : null}
               {(showStaggeredControls || staggeredSimRunning) ? (
@@ -565,7 +575,6 @@ function App() {
                     step={250}
                     value={staggeredSimDelayMs}
                     onChange={(event) => setStaggeredSimDelayMs(Number(event.target.value))}
-                    disabled={staggeredSimRunning && !staggeredSimPaused}
                     className="eg-stagger-slider"
                   />
                 </div>
