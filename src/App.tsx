@@ -269,6 +269,12 @@ function App() {
     return rows;
   }, [simResult.futures, sortDesc]);
 
+  const preTournamentBaseline = useMemo(() => runSimulation({}, simRuns), [simRuns]);
+  const preTournamentFutures = useMemo(
+    () => [...preTournamentBaseline.futures].sort((a, b) => b.champProb - a.champProb),
+    [preTournamentBaseline.futures]
+  );
+
   const teamProgress = useMemo(() => {
     const progress = new Map<string, { lastWinRank: number; firstLossRank: number }>();
 
@@ -610,6 +616,51 @@ function App() {
                                   formatted.primary
                                 )}
                               </span>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </article>
+                  );
+                })}
+              </div>
+            </section>
+
+            <section className="eg-panel-block">
+              <div className="eg-panel-head">
+                <h3>Pre-Tournament Baseline</h3>
+              </div>
+              <p className="eg-metric-label">Static pre-pick advancement odds (never conditioned)</p>
+              <div className="eg-futures-list">
+                {preTournamentFutures.map((row) => {
+                  const team = teamsById.get(row.teamId);
+                  if (!team) return null;
+                  const metrics: Array<{ label: "R32" | "S16" | "E8" | "F4" | "Title" | "Champ"; prob: number }> = [
+                    { label: "R32", prob: row.round2Prob },
+                    { label: "S16", prob: row.sweet16Prob },
+                    { label: "E8", prob: row.elite8Prob },
+                    { label: "F4", prob: row.final4Prob },
+                    { label: "Title", prob: row.titleGameProb },
+                    { label: "Champ", prob: row.champProb },
+                  ];
+                  return (
+                    <article key={`baseline-${row.teamId}`} className="eg-future-item">
+                      <div className="team-cell">
+                        <TeamHoverAnchor teamName={team.name} logoSrc={teamLogoUrl(team)}>
+                          <TeamLogo teamName={team.name} src={teamLogoUrl(team)} />
+                        </TeamHoverAnchor>
+                        <span className="seed">{team.seed}</span>
+                        <TeamHoverAnchor teamName={team.name} logoSrc={teamLogoUrl(team)}>
+                          <span className="future-team-name">{team.name}</span>
+                        </TeamHoverAnchor>
+                      </div>
+                      <div className="future-metric-grid">
+                        {metrics.map((metric) => {
+                          const formatted = formatOddsDisplay(metric.prob, displayMode);
+                          return (
+                            <div key={`baseline-${row.teamId}-${metric.label}`} className="future-metric">
+                              <span className="future-metric-label">{metric.label}</span>
+                              <span className="future-metric-value">{formatted.primary}</span>
                             </div>
                           );
                         })}
