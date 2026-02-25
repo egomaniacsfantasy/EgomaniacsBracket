@@ -30,7 +30,9 @@ const ONBOARDING_STORAGE_KEY = "oddsGods_onboardingDismissed";
 const STAGGERED_SIM_DELAY_MS = 5000;
 const MIN_STAGGERED_SIM_DELAY_MS = 1000;
 const MAX_STAGGERED_SIM_DELAY_MS = 5000;
-const WATO_URL = "https://oddsgods.net";
+const LANDING_URL = "https://oddsgods.net";
+const BRACKET_URL = "https://bracket.oddsgod.net";
+const WATO_URL = "https://oddsgods.net/what-are-the-odds";
 
 const formatModes: { id: OddsDisplayMode; label: string }[] = [
   { id: "american", label: "American" },
@@ -511,11 +513,11 @@ function App() {
 
       <main className="eg-app">
         <nav className="og-top-nav" aria-label="Odds Gods tools">
-          <div className="og-top-nav-brand">
+          <a className="og-top-nav-brand" href={LANDING_URL}>
             <span className="odds">ODDS</span> <span className="gods">GODS</span>
-          </div>
+          </a>
           <div className="og-top-nav-tabs">
-            <a className="og-top-nav-link active" href="/" aria-current="page">
+            <a className="og-top-nav-link active" href={BRACKET_URL} aria-current="page">
               The Bracket Lab
             </a>
             <a className="og-top-nav-link" href={WATO_URL}>
@@ -524,7 +526,6 @@ function App() {
           </div>
         </nav>
         <header className="eg-header">
-          <p className="eg-kicker">Odds Gods presents</p>
           <h1>The Bracket Lab</h1>
           <p className="eg-subtitle">
             March Madness what-if odds. Click picks to condition futures in real time.
