@@ -15,13 +15,19 @@ import {
 } from "./lib/bracket";
 import { abbreviationForTeam } from "./lib/abbreviation";
 import { formatOddsDisplay, toImpliedLabel, toOneInX } from "./lib/odds";
-import { generateSimulatedBracket, hashLocks, runSimulation } from "./lib/simulation";
+import {
+  generateSimulatedBracket,
+  generateSimulatedBracketSteps,
+  hashLocks,
+  runSimulation,
+} from "./lib/simulation";
 import { fallbackLogo, teamLogoUrl } from "./lib/logo";
 import { fullTeamName } from "./lib/teamNames";
 import type { OddsDisplayMode, Region, ResolvedGame, SimulationOutput } from "./types";
 
 const DEFAULT_SIM_RUNS = 5000;
 const ONBOARDING_STORAGE_KEY = "oddsGods_onboardingDismissed";
+const STAGGERED_SIM_DELAY_MS = 5000;
 
 const formatModes: { id: OddsDisplayMode; label: string }[] = [
   { id: "american", label: "American" },
@@ -79,6 +85,7 @@ function App() {
   const [lastPickedKey, setLastPickedKey] = useState<string | null>(null);
   const [sidePanelOpen, setSidePanelOpen] = useState(false);
   const [compactDesktop, setCompactDesktop] = useState(false);
+  const [staggeredSimRunning, setStaggeredSimRunning] = useState(false);
   const [onboardingOpen, setOnboardingOpen] = useState(() => {
     if (typeof window === "undefined") return false;
     return window.localStorage.getItem(ONBOARDING_STORAGE_KEY) !== "true";
@@ -91,6 +98,7 @@ function App() {
   });
 
   const simulationCacheRef = useRef<Map<string, SimulationOutput>>(new Map());
+  const staggeredTimeoutRef = useRef<number | null>(null);
   const demoGame = useMemo(
     () => resolveGames({}).games.find((game) => game.id === "South-R64-0") ?? null,
     []
@@ -310,9 +318,18 @@ function App() {
     setUndoStack((prev) => [...prev, current]);
   };
 
+  const cancelStaggeredSim = () => {
+    if (staggeredTimeoutRef.current !== null) {
+      window.clearTimeout(staggeredTimeoutRef.current);
+      staggeredTimeoutRef.current = null;
+    }
+    setStaggeredSimRunning(false);
+  };
+
   const onPick = (game: ResolvedGame, teamId: string | null) => {
     if (!teamId) return;
     if (teamId !== game.teamAId && teamId !== game.teamBId) return;
+    cancelStaggeredSim();
     pushUndo(lockedPicks);
 
     const next: LockedPicks = { ...lockedPicks };
@@ -327,6 +344,7 @@ function App() {
   };
 
   const onUndo = () => {
+    cancelStaggeredSim();
     if (undoStack.length === 0) return;
     const previous = undoStack[undoStack.length - 1];
     setUndoStack((prev) => prev.slice(0, -1));
@@ -334,19 +352,47 @@ function App() {
   };
 
   const onResetAll = () => {
+    cancelStaggeredSim();
     if (Object.keys(lockedPicks).length === 0) return;
     pushUndo(lockedPicks);
     setLockedPicks({});
   };
 
   const onResetRegion = (region: Region) => {
+    cancelStaggeredSim();
     pushUndo(lockedPicks);
     setLockedPicks(resetRegionPicks(lockedPicks, region));
   };
 
   const onModelSim = () => {
+    cancelStaggeredSim();
     pushUndo(lockedPicks);
     setLockedPicks(sanitizeLockedPicks(generateSimulatedBracket(lockedPicks)));
+  };
+
+  const onModelSimStaggered = () => {
+    cancelStaggeredSim();
+    const baseLocks = { ...lockedPicks };
+    const steps = generateSimulatedBracketSteps(baseLocks, ["South", "West", "East", "Midwest"]);
+    if (steps.length === 0) return;
+
+    pushUndo(baseLocks);
+    setStaggeredSimRunning(true);
+
+    let index = 0;
+    const advance = () => {
+      if (index >= steps.length) {
+        setStaggeredSimRunning(false);
+        staggeredTimeoutRef.current = null;
+        return;
+      }
+      const step = steps[index];
+      setLockedPicks((prev) => sanitizeLockedPicks({ ...prev, [step.gameId]: step.winnerId }));
+      index += 1;
+      staggeredTimeoutRef.current = window.setTimeout(advance, STAGGERED_SIM_DELAY_MS);
+    };
+
+    advance();
   };
 
   const runDemoSimulation = (gameId: string, winnerId: string): DemoSimulationOutput => {
@@ -392,6 +438,15 @@ function App() {
     setOnboardingOpen(false);
   };
 
+  useEffect(
+    () => () => {
+      if (staggeredTimeoutRef.current !== null) {
+        window.clearTimeout(staggeredTimeoutRef.current);
+      }
+    },
+    []
+  );
+
   const finalGames = finalRounds(games);
   const leftSemi = finalGames.find((g) => g.id === "F4-Left-0") ?? null;
   const rightSemi = finalGames.find((g) => g.id === "F4-Right-0") ?? null;
@@ -425,7 +480,10 @@ function App() {
                 Reset All
               </button>
               <button onClick={onModelSim} className="eg-btn">
-                Model Sim Bracket
+                Instant Sim Bracket
+              </button>
+              <button onClick={onModelSimStaggered} className="eg-btn" disabled={staggeredSimRunning}>
+                {staggeredSimRunning ? "Staggered Sim Running..." : "Staggered Sim Bracket"}
               </button>
               <div className="eg-mode-toggle">
                 {formatModes.map((mode) => (

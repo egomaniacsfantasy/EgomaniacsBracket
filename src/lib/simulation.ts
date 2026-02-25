@@ -1,6 +1,6 @@
 import { gameTemplates } from "../data/bracket";
 import { teams, teamsById } from "../data/teams";
-import type { FuturesRow, GameWinProbability, ResolvedGame, SimulationOutput } from "../types";
+import type { FuturesRow, GameWinProbability, Region, ResolvedGame, Round, SimulationOutput } from "../types";
 import type { LockedPicks } from "./bracket";
 import { getGameWinProb, resolveGames } from "./bracket";
 import { getMatchupWinProbForRound } from "./matchupProbabilities";
@@ -230,4 +230,49 @@ export const runSimulation = (locks: LockedPicks, simRuns: number): SimulationOu
 export const generateSimulatedBracket = (locks: LockedPicks): LockedPicks => {
   const forced = simulateBracket(locks, true);
   return { ...forced.winners };
+};
+
+const roundRank: Record<Round, number> = {
+  R64: 0,
+  R32: 1,
+  S16: 2,
+  E8: 3,
+  F4: 4,
+  CHAMP: 5,
+};
+
+const defaultRegionOrder: Region[] = ["South", "West", "East", "Midwest"];
+const regionRank = (region: Region | null, order: Region[]): number => {
+  if (!region) return order.length;
+  const idx = order.indexOf(region);
+  return idx >= 0 ? idx : order.length;
+};
+
+export type SimulatedPickStep = {
+  gameId: string;
+  winnerId: string;
+};
+
+export const generateSimulatedBracketSteps = (
+  locks: LockedPicks,
+  regionOrder: Region[] = defaultRegionOrder
+): SimulatedPickStep[] => {
+  const forced = simulateBracket(locks, true);
+  const orderedGames = [...gameTemplates].sort((a, b) => {
+    const roundDiff = roundRank[a.round] - roundRank[b.round];
+    if (roundDiff !== 0) return roundDiff;
+
+    const regionDiff = regionRank(a.region, regionOrder) - regionRank(b.region, regionOrder);
+    if (regionDiff !== 0) return regionDiff;
+
+    return a.slot - b.slot;
+  });
+
+  return orderedGames
+    .filter((game) => !locks[game.id])
+    .map((game) => {
+      const winnerId = forced.winners[game.id];
+      return winnerId ? { gameId: game.id, winnerId } : null;
+    })
+    .filter((step): step is SimulatedPickStep => step !== null);
 };
