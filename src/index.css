@@ -2324,11 +2324,24 @@ body {
 }
 
 .og-top-nav-brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
   font-family: "Instrument Serif", serif;
-  font-size: 1.05rem;
-  letter-spacing: 0.06em;
-  color: var(--text-primary);
+  font-size: 0.95rem;
+  letter-spacing: 0.13em;
+  color: rgba(240, 230, 208, 0.8);
   text-decoration: none;
+  text-transform: uppercase;
+  line-height: 1;
+}
+
+.og-top-nav-logo {
+  width: 24px;
+  height: 24px;
+  flex: 0 0 24px;
+  object-fit: contain;
+  display: block;
 }
 
 .og-top-nav-brand .odds {
@@ -2336,30 +2349,49 @@ body {
 }
 
 .og-top-nav-brand .gods {
-  color: #d7aa59;
+  color: rgba(240, 230, 208, 0.92);
   font-weight: 700;
 }
 
 .og-top-nav-tabs {
-  display: inline-flex;
+  display: flex;
   gap: 18px;
   align-items: center;
 }
 
 .og-top-nav-link {
-  font-family: "Space Grotesk", sans-serif;
-  font-size: 0.95rem;
-  color: var(--text-dim);
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-family: "IBM Plex Mono", "SFMono-Regular", Menlo, monospace;
+  font-size: 13px;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+  color: rgba(240, 230, 208, 0.65);
   text-decoration: none;
   transition: color 160ms ease;
 }
 
 .og-top-nav-link:hover {
-  color: var(--text-primary);
+  color: rgba(240, 230, 208, 0.92);
 }
 
 .og-top-nav-link.active {
-  color: var(--text-primary);
+  color: rgba(240, 230, 208, 0.92);
+}
+
+.beta-badge {
+  font-family: "IBM Plex Mono", "SFMono-Regular", Menlo, monospace;
+  font-size: 8px;
+  letter-spacing: 0.14em;
+  color: rgba(184, 125, 24, 0.9);
+  border: 1px solid rgba(184, 125, 24, 0.35);
+  border-radius: 3px;
+  padding: 1px 5px;
+  vertical-align: middle;
+  margin-left: 0;
+  position: relative;
+  top: -1px;
 }
 
 .eg-main-panel {
