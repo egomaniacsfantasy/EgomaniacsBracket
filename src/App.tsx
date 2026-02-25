@@ -108,6 +108,128 @@ function App() {
   }, []);
 
   useEffect(() => {
+    const statsCanvas = document.getElementById("bg-stats") as HTMLCanvasElement | null;
+    const lightningCanvas = document.getElementById("bg-lightning") as HTMLCanvasElement | null;
+    const textCanvas = document.getElementById("bg-text") as HTMLCanvasElement | null;
+    if (!statsCanvas || !lightningCanvas || !textCanvas) return;
+
+    const dpr = Math.max(1, window.devicePixelRatio || 1);
+    const statCtx = statsCanvas.getContext("2d");
+    const boltCtx = lightningCanvas.getContext("2d");
+    const textCtx = textCanvas.getContext("2d");
+    if (!statCtx || !boltCtx || !textCtx) return;
+
+    let width = 0;
+    let height = 0;
+    let running = true;
+    let raf = 0;
+    let nextFlash = performance.now() + 12000;
+    let flashAlpha = 0;
+    let flashTrail: Array<{ x: number; y: number }> = [];
+
+    const resize = () => {
+      width = window.innerWidth;
+      height = window.innerHeight;
+      [statsCanvas, lightningCanvas, textCanvas].forEach((canvas) => {
+        canvas.width = Math.floor(width * dpr);
+        canvas.height = Math.floor(height * dpr);
+        canvas.style.width = `${width}px`;
+        canvas.style.height = `${height}px`;
+      });
+      statCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      boltCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      textCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    };
+
+    const randomInt = (min: number, max: number) => Math.floor(Math.random() * (max - min + 1)) + min;
+    const randomFloat = (min: number, max: number) => Math.random() * (max - min) + min;
+
+    const drawStatsLayer = (time: number) => {
+      statCtx.clearRect(0, 0, width, height);
+      statCtx.globalAlpha = 0.14;
+      statCtx.fillStyle = "rgba(236, 209, 132, 0.36)";
+      statCtx.font = "11px 'Space Grotesk', sans-serif";
+      for (let y = 28; y < height; y += 52) {
+        for (let x = 18; x < width; x += 94) {
+          const pulse = 0.5 + 0.5 * Math.sin((time * 0.00045) + x * 0.004 + y * 0.002);
+          statCtx.globalAlpha = 0.08 + pulse * 0.09;
+          statCtx.fillText(`${randomInt(10, 99)}.${randomInt(0, 9)}%`, x, y);
+        }
+      }
+    };
+
+    const drawTextLayer = () => {
+      textCtx.clearRect(0, 0, width, height);
+      textCtx.save();
+      textCtx.globalAlpha = 0.05 + flashAlpha * 0.16;
+      textCtx.fillStyle = "rgba(240, 228, 198, 0.85)";
+      textCtx.font = "700 34px 'Instrument Serif', serif";
+      textCtx.translate(width * 0.58, height * 0.64);
+      textCtx.rotate(-0.06);
+      textCtx.fillText("ODDS GODS", 0, 0);
+      textCtx.font = "500 18px 'Space Grotesk', sans-serif";
+      textCtx.globalAlpha = 0.04 + flashAlpha * 0.1;
+      textCtx.fillText("THE BRACKET LAB", 6, 30);
+      textCtx.restore();
+    };
+
+    const buildLightning = () => {
+      const startX = randomFloat(width * 0.2, width * 0.8);
+      flashTrail = [{ x: startX, y: -40 }];
+      let x = startX;
+      let y = -40;
+      while (y < height * 0.92) {
+        x += randomFloat(-28, 28);
+        y += randomFloat(32, 72);
+        flashTrail.push({ x, y });
+      }
+      flashAlpha = 0.95;
+    };
+
+    const drawLightningLayer = () => {
+      boltCtx.clearRect(0, 0, width, height);
+      if (flashAlpha <= 0 || flashTrail.length < 2) return;
+      boltCtx.save();
+      boltCtx.lineWidth = 1.4;
+      boltCtx.strokeStyle = `rgba(250, 232, 185, ${0.2 + flashAlpha * 0.55})`;
+      boltCtx.shadowColor = "rgba(245, 210, 135, 0.4)";
+      boltCtx.shadowBlur = 18;
+      boltCtx.beginPath();
+      flashTrail.forEach((point, index) => {
+        if (index === 0) boltCtx.moveTo(point.x, point.y);
+        else boltCtx.lineTo(point.x, point.y);
+      });
+      boltCtx.stroke();
+      boltCtx.restore();
+    };
+
+    const frame = (time: number) => {
+      if (!running) return;
+      if (time >= nextFlash) {
+        buildLightning();
+        nextFlash = time + randomInt(10000, 18000);
+      }
+
+      drawStatsLayer(time);
+      drawTextLayer();
+      drawLightningLayer();
+
+      flashAlpha = Math.max(0, flashAlpha * 0.91 - 0.01);
+      raf = window.requestAnimationFrame(frame);
+    };
+
+    resize();
+    window.addEventListener("resize", resize);
+    raf = window.requestAnimationFrame(frame);
+
+    return () => {
+      running = false;
+      window.cancelAnimationFrame(raf);
+      window.removeEventListener("resize", resize);
+    };
+  }, []);
+
+  useEffect(() => {
     const key = hashLocks(sanitized, simRuns);
     const existing = simulationCacheRef.current.get(key);
     let active = true;
@@ -271,6 +393,10 @@ function App() {
 
   return (
     <div className={`eg-shell ${compactDesktop ? "compact-desktop" : ""}`}>
+      <div className="bg-glow" aria-hidden="true" />
+      <canvas id="bg-stats" className="bg-canvas" aria-hidden="true" />
+      <canvas id="bg-lightning" className="bg-canvas" aria-hidden="true" />
+      <canvas id="bg-text" className="bg-canvas" aria-hidden="true" />
       <div className="bg-shape bg-top" aria-hidden="true" />
       <div className="bg-shape bg-bottom" aria-hidden="true" />
 

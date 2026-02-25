@@ -2193,3 +2193,331 @@ body.og-onboarding-open {
     scroll-behavior: auto !important;
   }
 }
+
+/* Odds Gods visual-system alignment overrides */
+:root {
+  --bg-base: #0e0c09;
+  --bg-surface: rgba(20, 17, 9, 0.88);
+  --bg-inset: rgba(16, 14, 8, 0.9);
+  --bg-raised: rgba(28, 24, 14, 0.88);
+  --amber: #b87d18;
+  --amber-dim: rgba(90, 61, 12, 0.7);
+  --amber-glow: rgba(232, 160, 32, 0.12);
+  --text-primary: #f0e6d0;
+  --text-secondary: #9b8a6e;
+  --text-tertiary: #5c4f3a;
+  --green-win: #4ade80;
+  --red-loss: #f87171;
+  --font-serif: "Instrument Serif", serif;
+  --font-mono: "Space Grotesk", sans-serif;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+}
+
+body {
+  background-color: var(--bg-base);
+}
+
+.bg-canvas {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.bg-glow {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  background:
+    radial-gradient(1000px 560px at 8% 0%, rgba(202, 167, 40, 0.24), transparent 58%),
+    radial-gradient(920px 520px at 100% 0%, rgba(189, 83, 8, 0.22), transparent 62%);
+}
+
+.eg-app {
+  position: relative;
+  z-index: 10;
+}
+
+.eg-main-panel {
+  background: transparent;
+  border-color: rgba(255, 255, 255, 0.08);
+  box-shadow: none;
+}
+
+.eg-side-panel {
+  background: var(--bg-surface);
+  border-color: rgba(255, 255, 255, 0.08);
+}
+
+.eg-region-head h2,
+.eg-round-label,
+.eg-section-head h2 {
+  font-family: var(--font-mono);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+}
+
+.eg-round-label {
+  font-size: 10px;
+}
+
+.eg-game-card {
+  background: var(--bg-surface);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+}
+
+.eg-game-card:hover {
+  border-color: rgba(184, 125, 24, 0.22);
+  box-shadow: none;
+}
+
+.eg-team-row,
+.eg-compact-chip,
+.eg-title-choice {
+  border-radius: var(--radius-sm);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  background: transparent;
+  transition: background 180ms ease, border-color 220ms ease, opacity 180ms ease;
+}
+
+.eg-team-row {
+  display: grid;
+  grid-template-columns: 18px 14px minmax(0, 1fr) minmax(52px, auto);
+  padding: var(--space-3) var(--space-4);
+  margin-bottom: 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+  border-left: 0;
+  border-right: 0;
+  border-top: 0;
+  border-radius: 0;
+  min-height: 32px;
+}
+
+.eg-team-row:hover:not(:disabled),
+.eg-compact-chip:hover:not(:disabled),
+.eg-title-choice:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.03);
+  border-color: rgba(184, 125, 24, 0.22);
+}
+
+.team-seed,
+.chip-seed {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--text-tertiary);
+}
+
+.team-name,
+.chip-code,
+.title-choice-name,
+.future-team-name {
+  font-family: var(--font-mono);
+  color: var(--text-primary);
+}
+
+.team-name,
+.future-team-name {
+  font-size: 14px;
+}
+
+.team-odds,
+.chip-prob,
+.title-choice-prob,
+.future-metric-value {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+.team-odds-wrap,
+.chip-odds {
+  min-width: 52px;
+}
+
+.eg-team-row.result-win,
+.eg-compact-chip.result-win,
+.eg-title-choice.result-win {
+  background: rgba(74, 222, 128, 0.06);
+  border-color: rgba(74, 222, 128, 0.4);
+}
+
+.eg-team-row.result-loss,
+.eg-compact-chip.result-loss,
+.eg-title-choice.result-loss {
+  opacity: 0.35;
+  border-color: rgba(248, 113, 113, 0.35);
+}
+
+.eg-team-row.fresh-pick.result-win {
+  animation: lock-flash-win 400ms ease-out forwards;
+}
+
+.eg-team-row.fresh-pick.result-loss {
+  animation: lock-flash-loss 400ms ease-out forwards;
+}
+
+.outcome-badge {
+  border: 0;
+  background: transparent;
+  width: auto;
+  height: auto;
+  border-radius: 0;
+  font-size: 13px;
+}
+
+.outcome-badge.win {
+  color: var(--green-win);
+}
+
+.outcome-badge.loss {
+  color: var(--red-loss);
+}
+
+.eg-futures-list {
+  border-radius: var(--radius-lg);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  background: var(--bg-surface);
+  padding: 0;
+  gap: 0;
+}
+
+.eg-future-item {
+  border: 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+  border-radius: 0;
+  padding: var(--space-3) var(--space-4);
+  background: transparent;
+}
+
+.eg-future-item:last-child {
+  border-bottom: 0;
+}
+
+.future-metric-grid {
+  margin-top: var(--space-2);
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.future-metric {
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 8px;
+  background: var(--bg-inset);
+}
+
+.future-metric-label {
+  color: var(--text-secondary);
+  font-family: var(--font-mono);
+  letter-spacing: 0.1em;
+}
+
+.onboarding-flow {
+  background: rgba(14, 12, 9, 0.72);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+
+.backdrop-bracket {
+  background: transparent;
+  filter: none;
+  transform: none;
+}
+
+.backdrop-scrim {
+  background:
+    radial-gradient(ellipse 120% 80% at 30% 50%, rgba(13, 11, 8, 0.35) 0%, rgba(13, 11, 8, 0.62) 100%),
+    rgba(14, 12, 9, 0.34);
+}
+
+.onboarding-stage {
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: linear-gradient(140deg, rgba(20, 16, 9, 0.9) 0%, rgba(16, 12, 7, 0.92) 100%);
+}
+
+.stage-kicker,
+.stage-counter,
+.stage-label,
+.pick-prompt-label,
+.suggestion-label,
+.skip-link {
+  font-family: var(--font-mono);
+}
+
+.stage-title,
+.stage-pick h3,
+.stage-handoff h3,
+.cta-stage1,
+.cta-advance,
+.cta-open-bracket,
+.reversal-link {
+  font-family: var(--font-serif);
+}
+
+.skip-link {
+  position: fixed;
+  left: 28px;
+  bottom: 24px;
+  z-index: 110;
+  text-decoration: none;
+}
+
+.onboarding-bottom {
+  position: static;
+}
+
+.stage-entering,
+.stage-enter {
+  animation: stage-in 280ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.stage-exiting,
+.stage-exit {
+  animation: stage-out 160ms ease-in forwards;
+}
+
+::-webkit-scrollbar {
+  width: 4px;
+  height: 4px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--bg-base);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--amber-dim);
+  border-radius: 2px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--amber);
+}
+
+@keyframes lock-flash-win {
+  0% {
+    background: rgba(74, 222, 128, 0.18);
+  }
+  100% {
+    background: rgba(74, 222, 128, 0.06);
+  }
+}
+
+@keyframes lock-flash-loss {
+  0% {
+    background: rgba(248, 113, 113, 0.14);
+  }
+  100% {
+    background: transparent;
+  }
+}
