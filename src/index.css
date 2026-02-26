@@ -2208,7 +2208,7 @@ body.og-onboarding-open {
 
 .matchup-edit-btn {
   position: absolute;
-  right: 6px;
+  right: 8px;
   top: 50%;
   transform: translateY(-50%);
   width: 20px;
@@ -2247,24 +2247,6 @@ body.og-onboarding-open {
   color: rgba(184, 125, 24, 0.9);
   background: rgba(184, 125, 24, 0.1);
   outline: none;
-}
-
-.prob-hint-tooltip {
-  position: absolute;
-  right: 32px;
-  top: 50%;
-  transform: translateY(-50%);
-  background: #1a1510;
-  border: 1px solid rgba(184, 125, 24, 0.28);
-  border-radius: 4px;
-  padding: 4px 10px;
-  font-family: "Space Grotesk", sans-serif;
-  font-size: 10px;
-  color: rgba(240, 230, 208, 0.65);
-  white-space: nowrap;
-  pointer-events: none;
-  z-index: 10;
-  animation: fadeInOut 3s ease forwards;
 }
 
 @keyframes fadeInOut {
@@ -2786,6 +2768,7 @@ body {
 .team-odds-wrap,
 .chip-odds {
   min-width: 52px;
+  padding-right: 24px;
 }
 
 .eg-team-row.result-win,

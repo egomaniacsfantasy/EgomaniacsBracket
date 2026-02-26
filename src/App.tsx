@@ -29,7 +29,6 @@ import type { OddsDisplayMode, Region, ResolvedGame, SimulationOutput } from "./
 
 const DEFAULT_SIM_RUNS = 5000;
 const ONBOARDING_STORAGE_KEY = "oddsGods_onboardingDismissed";
-const PROB_HINT_KEY = "bracket-prob-hint-shown";
 const STAGGERED_SIM_DELAY_MS = 2000;
 const MIN_STAGGERED_SIM_DELAY_MS = 1000;
 const MAX_STAGGERED_SIM_DELAY_MS = 5000;
@@ -109,11 +108,6 @@ function App() {
     return window.localStorage.getItem(ONBOARDING_STORAGE_KEY) !== "true";
   });
   const [probPopup, setProbPopup] = useState<ProbabilityPopupState | null>(null);
-  const [probHintDismissed, setProbHintDismissed] = useState(() => {
-    if (typeof window === "undefined") return true;
-    return window.sessionStorage.getItem(PROB_HINT_KEY) === "1";
-  });
-  const [probHintGameId, setProbHintGameId] = useState<string | null>(null);
   const [simResult, setSimResult] = useState<SimulationOutput>({
     futures: [],
     gameWinProbs: {},
@@ -354,19 +348,6 @@ function App() {
 
   const gameById = useMemo(() => new Map(games.map((game) => [game.id, game])), [games]);
 
-  const dismissProbHint = () => {
-    if (probHintDismissed) return;
-    setProbHintDismissed(true);
-    setProbHintGameId(null);
-    window.sessionStorage.setItem(PROB_HINT_KEY, "1");
-  };
-
-  useEffect(() => {
-    if (probHintDismissed || !probHintGameId) return;
-    const timer = window.setTimeout(() => dismissProbHint(), 3000);
-    return () => window.clearTimeout(timer);
-  }, [probHintDismissed, probHintGameId]);
-
   const applyCustomProbability = (gameId: string, customProbA: number | null) => {
     setCustomProbByGame((prev) => {
       const next = { ...prev };
@@ -396,7 +377,6 @@ function App() {
       anchorEl,
       savedProbA: game.customProbA ?? null,
     });
-    dismissProbHint();
   };
 
   const previewCustomProbability = (gameId: string, customProbA: number) => {
@@ -724,8 +704,6 @@ function App() {
                         inverted={invertedRegions.has(region)}
                         displayMode={displayMode}
                         onOpenProbabilityPopup={openProbabilityPopup}
-                        onRequestHint={probHintDismissed ? undefined : setProbHintGameId}
-                        hintGameId={probHintGameId}
                       />
                     ))}
                   </div>
@@ -752,8 +730,6 @@ function App() {
                         inverted={invertedRegions.has(region)}
                         displayMode={displayMode}
                         onOpenProbabilityPopup={openProbabilityPopup}
-                        onRequestHint={probHintDismissed ? undefined : setProbHintGameId}
-                        hintGameId={probHintGameId}
                       />
                     ))}
                   </div>
@@ -776,8 +752,6 @@ function App() {
                         lastPickedKey={lastPickedKey}
                         displayMode={displayMode}
                         onOpenProbabilityPopup={openProbabilityPopup}
-                        showHint={probHintGameId === leftSemi.id}
-                        onRequestHint={probHintDismissed ? undefined : setProbHintGameId}
                       />
                     ) : null}
                   </div>
@@ -795,8 +769,6 @@ function App() {
                           lastPickedKey={lastPickedKey}
                           displayMode={displayMode}
                           onOpenProbabilityPopup={openProbabilityPopup}
-                          showHint={probHintGameId === titleGame.id}
-                          onRequestHint={probHintDismissed ? undefined : setProbHintGameId}
                         />
                       </div>
                     ) : null}
@@ -815,8 +787,6 @@ function App() {
                         lastPickedKey={lastPickedKey}
                         displayMode={displayMode}
                         onOpenProbabilityPopup={openProbabilityPopup}
-                        showHint={probHintGameId === rightSemi.id}
-                        onRequestHint={probHintDismissed ? undefined : setProbHintGameId}
                       />
                     ) : null}
                   </div>
@@ -1010,8 +980,6 @@ function RegionBracket({
   inverted,
   displayMode,
   onOpenProbabilityPopup,
-  onRequestHint,
-  hintGameId,
 }: {
   region: Region;
   games: ResolvedGame[];
@@ -1023,8 +991,6 @@ function RegionBracket({
   inverted: boolean;
   displayMode: OddsDisplayMode;
   onOpenProbabilityPopup: (game: ResolvedGame, anchorEl: HTMLElement) => void;
-  onRequestHint?: (gameId: string | null) => void;
-  hintGameId: string | null;
 }) {
   const rounds = inverted ? [...regionRounds].reverse() : [...regionRounds];
 
@@ -1057,8 +1023,6 @@ function RegionBracket({
                         lastPickedKey={lastPickedKey}
                         displayMode={displayMode}
                         onOpenProbabilityPopup={onOpenProbabilityPopup}
-                        onRequestHint={onRequestHint}
-                        showHint={hintGameId === game.id}
                       />
                     </div>
                   );
@@ -1080,8 +1044,6 @@ function GameCard({
   lastPickedKey,
   displayMode,
   onOpenProbabilityPopup,
-  onRequestHint,
-  showHint,
 }: {
   game: ResolvedGame;
   gameWinProbs: SimulationOutput["gameWinProbs"];
@@ -1090,8 +1052,6 @@ function GameCard({
   lastPickedKey: string | null;
   displayMode: OddsDisplayMode;
   onOpenProbabilityPopup: (game: ResolvedGame, anchorEl: HTMLElement) => void;
-  onRequestHint?: (gameId: string | null) => void;
-  showHint?: boolean;
 }) {
   type CandidateRow = { teamId: string; prob: number; team: NonNullable<ReturnType<typeof teamsById.get>> };
 
@@ -1213,8 +1173,6 @@ function GameCard({
                   displayMode={displayMode}
                   editedProb={game.customProbA !== null}
                   canEditProb={!game.winnerId && game.teamAId !== null && game.teamBId !== null}
-                  showProbHint={Boolean(showHint)}
-                  onRequestHint={onRequestHint ? () => onRequestHint(game.id) : undefined}
                   onOpenProbEditor={(anchorEl) => onOpenProbabilityPopup(game, anchorEl)}
                   onPick={() => onPick(game, canPick ? team.id : null)}
                 />
@@ -1247,7 +1205,6 @@ function GameCard({
                     type="button"
                     className={`eg-compact-chip matchup-row ${game.winnerId ? "matchup-row--picked" : ""} ${selected ? "selected" : ""} ${lastPickedKey === `${game.id}:${team.id}` ? "fresh-pick" : ""} ${outcome === "win" ? "result-win" : ""} ${outcome === "loss" ? "result-loss" : ""}`}
                     disabled={!canPick}
-                    onMouseEnter={() => onRequestHint?.(game.id)}
                     onClick={(event) => {
                       if (compactLongPressFiredRef.current) {
                         compactLongPressFiredRef.current = false;
@@ -1321,9 +1278,6 @@ function GameCard({
                         >
                           ✎
                         </span>
-                        {showHint ? (
-                          <span className="prob-hint-tooltip">Disagree with this probability? Edit it.</span>
-                        ) : null}
                       </>
                     ) : null}
                   </button>
@@ -1348,7 +1302,6 @@ function GameCard({
               displayMode={displayMode}
               editedProb={false}
               canEditProb={false}
-              showProbHint={false}
               onPick={() => {}}
             />
             <TeamRow
@@ -1366,7 +1319,6 @@ function GameCard({
               displayMode={displayMode}
               editedProb={false}
               canEditProb={false}
-              showProbHint={false}
               onPick={() => {}}
             />
           </>
@@ -1411,8 +1363,6 @@ function TeamRow({
   displayMode,
   editedProb,
   canEditProb,
-  showProbHint,
-  onRequestHint,
   onOpenProbEditor,
   onPick,
 }: {
@@ -1430,8 +1380,6 @@ function TeamRow({
   displayMode: OddsDisplayMode;
   editedProb: boolean;
   canEditProb: boolean;
-  showProbHint: boolean;
-  onRequestHint?: () => void;
   onOpenProbEditor?: (anchorEl: HTMLElement) => void;
   onPick: () => void;
 }) {
@@ -1456,7 +1404,6 @@ function TeamRow({
       ref={rowRef}
       className={`eg-team-row matchup-row ${canEditProb ? "" : "matchup-row--picked"} ${compact ? "compact" : ""} ${selected ? "selected" : ""} ${freshPick ? "fresh-pick" : ""} ${outcome === "win" ? "result-win" : ""} ${outcome === "loss" ? "result-loss" : ""}`}
       disabled={disabled}
-      onMouseEnter={() => onRequestHint?.()}
       onClick={(event) => {
         if (longPressFiredRef.current) {
           longPressFiredRef.current = false;
@@ -1528,9 +1475,6 @@ function TeamRow({
           >
             ✎
           </span>
-          {showProbHint ? (
-            <span className="prob-hint-tooltip">Disagree with this probability? Edit it.</span>
-          ) : null}
         </>
       ) : null}
     </button>
