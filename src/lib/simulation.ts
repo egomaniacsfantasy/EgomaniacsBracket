@@ -4,6 +4,7 @@ import type { FuturesRow, GameWinProbability, Region, ResolvedGame, Round, Simul
 import type { CustomProbByGame, LockedPicks } from "./bracket";
 import { getGameWinProb, resolveGames } from "./bracket";
 
+const DEFAULT_SIM_SEED = 42;
 const rounds = ["R64", "R32", "S16", "E8", "F4", "CHAMP"] as const;
 const gameOrder = [...gameTemplates].sort((a, b) => {
   const rankA = rounds.indexOf(a.round);
@@ -12,6 +13,26 @@ const gameOrder = [...gameTemplates].sort((a, b) => {
   return a.slot - b.slot;
 });
 const templateById = new Map(gameTemplates.map((game) => [game.id, game]));
+
+const fnv1aHash = (input: string): number => {
+  let hash = 0x811c9dc5;
+  for (let i = 0; i < input.length; i += 1) {
+    hash ^= input.charCodeAt(i);
+    hash = Math.imul(hash, 0x01000193);
+  }
+  return hash >>> 0;
+};
+
+const mulberry32 = (seed: number): (() => number) => {
+  let t = seed >>> 0;
+  return () => {
+    t += 0x6d2b79f5;
+    let z = t;
+    z = Math.imul(z ^ (z >>> 15), z | 1);
+    z ^= z + Math.imul(z ^ (z >>> 7), z | 61);
+    return ((z ^ (z >>> 14)) >>> 0) / 4294967296;
+  };
+};
 
 const eligibleTeamsCache = new Map<string, string[]>();
 const eligibleTeamsForGame = (gameId: string): string[] => {
@@ -48,17 +69,18 @@ const eligibleLock = (
   return null;
 };
 
-const sampleWinner = (game: ResolvedGame): string => {
+const sampleWinner = (game: ResolvedGame, random: () => number): string => {
   if (!game.teamAId || !game.teamBId) return "";
   const pA = getGameWinProb(game, game.teamAId);
   if (pA === null) return "";
-  return Math.random() < pA ? game.teamAId : game.teamBId;
+  return random() < pA ? game.teamAId : game.teamBId;
 };
 
 const simulateBracket = (
   locks: LockedPicks,
   forceLocks: boolean,
-  customProbByGame: CustomProbByGame = {}
+  customProbByGame: CustomProbByGame = {},
+  random: () => number
 ): { winners: Record<string, string>; lockSuccess: boolean } => {
   const winners: Record<string, string> = {};
   let lockSuccess = true;
@@ -91,7 +113,7 @@ const simulateBracket = (
           ? Math.max(0.000001, Math.min(0.999999, customProbByGame[game.id] as number))
           : null,
     };
-    const naturalWinner = sampleWinner(resolvedGame);
+    const naturalWinner = sampleWinner(resolvedGame, random);
     if (!naturalWinner) {
       lockSuccess = false;
       continue;
@@ -195,6 +217,11 @@ export const runSimulation = (
   simRuns: number,
   customProbByGame: CustomProbByGame = {}
 ): SimulationOutput => {
+  const seedInput = hashLocks(locks, simRuns, customProbByGame);
+  const rootSeed = fnv1aHash(`${DEFAULT_SIM_SEED}::${seedInput}`);
+  const forcedRng = mulberry32(rootSeed ^ 0xa5a5a5a5);
+  const naturalRng = mulberry32(rootSeed ^ 0x5a5a5a5a);
+
   const { games: resolvedGames } = resolveGames(locks, customProbByGame);
   const resolvedById = new Map(resolvedGames.map((game) => [game.id, game]));
   const rows = makeEmptyFutures();
@@ -208,8 +235,8 @@ export const runSimulation = (
   let lockSuccesses = 0;
 
   for (let i = 0; i < simRuns; i += 1) {
-    const forced = simulateBracket(locks, true, customProbByGame);
-    const natural = simulateBracket(locks, false, customProbByGame);
+    const forced = simulateBracket(locks, true, customProbByGame, forcedRng);
+    const natural = simulateBracket(locks, false, customProbByGame, naturalRng);
 
     if (natural.lockSuccess) lockSuccesses += 1;
 
@@ -252,7 +279,9 @@ export const runSimulation = (
 };
 
 export const generateSimulatedBracket = (locks: LockedPicks, customProbByGame: CustomProbByGame = {}): LockedPicks => {
-  const forced = simulateBracket(locks, true, customProbByGame);
+  const seedInput = hashLocks(locks, 1, customProbByGame);
+  const random = mulberry32(fnv1aHash(`${DEFAULT_SIM_SEED}::sim-bracket::${seedInput}`));
+  const forced = simulateBracket(locks, true, customProbByGame, random);
   return { ...forced.winners };
 };
 
@@ -282,7 +311,9 @@ export const generateSimulatedBracketSteps = (
   regionOrder: Region[] = defaultRegionOrder,
   customProbByGame: CustomProbByGame = {}
 ): SimulatedPickStep[] => {
-  const forced = simulateBracket(locks, true, customProbByGame);
+  const seedInput = hashLocks(locks, 1, customProbByGame);
+  const random = mulberry32(fnv1aHash(`${DEFAULT_SIM_SEED}::sim-steps::${seedInput}`));
+  const forced = simulateBracket(locks, true, customProbByGame, random);
   const orderedGames = [...gameTemplates].sort((a, b) => {
     const roundDiff = roundRank[a.round] - roundRank[b.round];
     if (roundDiff !== 0) return roundDiff;

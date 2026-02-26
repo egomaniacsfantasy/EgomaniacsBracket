@@ -2225,7 +2225,12 @@ body.og-onboarding-open {
   color: rgba(240, 230, 208, 0.4);
   font-size: 12px;
   border-radius: 3px;
-  z-index: 2;
+  z-index: 10;
+}
+
+.matchup-row {
+  position: relative;
+  padding-right: 36px;
 }
 
 .matchup-row:not(.matchup-row--picked):hover .matchup-edit-btn {
