@@ -2225,12 +2225,13 @@ body.og-onboarding-open {
   color: rgba(240, 230, 208, 0.4);
   font-size: 12px;
   border-radius: 3px;
-  z-index: 10;
+  z-index: 100;
+  isolation: isolate;
 }
 
 .matchup-row {
   position: relative;
-  padding-right: 36px;
+  padding-right: 40px;
 }
 
 .matchup-row:not(.matchup-row--picked):hover .matchup-edit-btn {
@@ -2275,7 +2276,7 @@ body.og-onboarding-open {
 
 .prob-popup {
   position: fixed;
-  z-index: 1000;
+  z-index: 9999;
   width: 240px;
   background: #1a1510;
   border: 1px solid rgba(184, 125, 24, 0.3);
@@ -2752,7 +2753,18 @@ body {
 .eg-team-row.matchup-row,
 .eg-compact-chip.matchup-row {
   position: relative;
-  padding-right: 36px;
+  padding-right: 40px;
+}
+
+.matchup-row .team-seed,
+.matchup-row .team-name,
+.matchup-row .team-logo,
+.matchup-row .team-odds,
+.matchup-row .team-odds-wrap,
+.matchup-row .chip-prob,
+.matchup-row .chip-odds,
+.matchup-row .chip-code {
+  z-index: 1;
 }
 
 .adaptive-label,
