@@ -2748,6 +2748,13 @@ body {
   padding-bottom: 1px;
 }
 
+/* Keep odds clear of the hover edit button in final cascade styles */
+.eg-team-row.matchup-row,
+.eg-compact-chip.matchup-row {
+  position: relative;
+  padding-right: 36px;
+}
+
 .adaptive-label,
 .adaptive-label-current,
 .adaptive-label-prev,
