@@ -5,6 +5,7 @@ import { winProb } from "./odds";
 import type { Region, ResolvedGame, Round } from "../types";
 
 export type LockedPicks = Record<string, string>;
+export type CustomProbByGame = Record<string, number | null | undefined>;
 
 const roundRank: Record<Round, number> = {
   R64: 0,
@@ -21,7 +22,10 @@ const templatesOrdered = [...gameTemplates].sort((a, b) => {
   return a.slot - b.slot;
 });
 
-export const resolveGames = (lockedPicks: LockedPicks): { games: ResolvedGame[]; sanitized: LockedPicks } => {
+export const resolveGames = (
+  lockedPicks: LockedPicks,
+  customProbByGame: CustomProbByGame = {}
+): { games: ResolvedGame[]; sanitized: LockedPicks } => {
   const winnerByGame: Record<string, string | null> = {};
   const resolved: ResolvedGame[] = [];
   const sanitized: LockedPicks = {};
@@ -48,12 +52,19 @@ export const resolveGames = (lockedPicks: LockedPicks): { games: ResolvedGame[];
 
     winnerByGame[template.id] = winnerId;
 
+    const rawCustomProb = customProbByGame[template.id];
+    const customProbA =
+      typeof rawCustomProb === "number" && Number.isFinite(rawCustomProb) && rawCustomProb >= 0 && rawCustomProb <= 1
+        ? rawCustomProb
+        : null;
+
     resolved.push({
       ...template,
       teamAId,
       teamBId,
       winnerId,
       lockedByUser: Boolean(isValidLock),
+      customProbA,
     });
   }
 
@@ -62,7 +73,7 @@ export const resolveGames = (lockedPicks: LockedPicks): { games: ResolvedGame[];
 
 export const sanitizeLockedPicks = (lockedPicks: LockedPicks): LockedPicks => resolveGames(lockedPicks).sanitized;
 
-export const getGameWinProb = (game: ResolvedGame, teamId: string): number | null => {
+export const getModelGameWinProb = (game: ResolvedGame, teamId: string): number | null => {
   if (!game.teamAId || !game.teamBId) return null;
   const teamA = teamsById.get(game.teamAId);
   const teamB = teamsById.get(game.teamBId);
@@ -73,6 +84,23 @@ export const getGameWinProb = (game: ResolvedGame, teamId: string): number | nul
   const aProb = Math.max(0.000001, Math.min(0.999999, modelProb));
   if (teamId === teamA.id) return aProb;
   if (teamId === teamB.id) return 1 - aProb;
+  return null;
+};
+
+export const getGameWinProb = (
+  game: ResolvedGame,
+  teamId: string,
+  options?: { ignoreCustom?: boolean }
+): number | null => {
+  if (!game.teamAId || !game.teamBId) return null;
+  const modelProbA = getModelGameWinProb(game, game.teamAId);
+  if (modelProbA === null) return null;
+  const effectiveProbA =
+    options?.ignoreCustom || game.customProbA === null || game.customProbA === undefined
+      ? modelProbA
+      : Math.max(0.000001, Math.min(0.999999, game.customProbA));
+  if (teamId === game.teamAId) return effectiveProbA;
+  if (teamId === game.teamBId) return 1 - effectiveProbA;
   return null;
 };
 

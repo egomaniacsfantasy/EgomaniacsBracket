@@ -1,10 +1,8 @@
 import { gameTemplates } from "../data/bracket";
 import { teams, teamsById } from "../data/teams";
 import type { FuturesRow, GameWinProbability, Region, ResolvedGame, Round, SimulationOutput } from "../types";
-import type { LockedPicks } from "./bracket";
+import type { CustomProbByGame, LockedPicks } from "./bracket";
 import { getGameWinProb, resolveGames } from "./bracket";
-import { getMatchupWinProbForRound } from "./matchupProbabilities";
-import { winProb } from "./odds";
 
 const rounds = ["R64", "R32", "S16", "E8", "F4", "CHAMP"] as const;
 const gameOrder = [...gameTemplates].sort((a, b) => {
@@ -50,20 +48,18 @@ const eligibleLock = (
   return null;
 };
 
-const sampleWinner = (
-  teamAId: string,
-  teamBId: string,
-  round: (typeof rounds)[number]
-): string => {
-  const teamA = teamsById.get(teamAId)!;
-  const teamB = teamsById.get(teamBId)!;
-  const modelProb =
-    getMatchupWinProbForRound(teamA.name, teamB.name, round) ?? winProb(teamA.rating, teamB.rating);
-  const pA = Math.max(0.000001, Math.min(0.999999, modelProb));
-  return Math.random() < pA ? teamAId : teamBId;
+const sampleWinner = (game: ResolvedGame): string => {
+  if (!game.teamAId || !game.teamBId) return "";
+  const pA = getGameWinProb(game, game.teamAId);
+  if (pA === null) return "";
+  return Math.random() < pA ? game.teamAId : game.teamBId;
 };
 
-const simulateBracket = (locks: LockedPicks, forceLocks: boolean): { winners: Record<string, string>; lockSuccess: boolean } => {
+const simulateBracket = (
+  locks: LockedPicks,
+  forceLocks: boolean,
+  customProbByGame: CustomProbByGame = {}
+): { winners: Record<string, string>; lockSuccess: boolean } => {
   const winners: Record<string, string> = {};
   let lockSuccess = true;
 
@@ -84,7 +80,22 @@ const simulateBracket = (locks: LockedPicks, forceLocks: boolean): { winners: Re
       continue;
     }
 
-    const naturalWinner = sampleWinner(teamAId, teamBId, game.round);
+    const resolvedGame: ResolvedGame = {
+      ...game,
+      teamAId,
+      teamBId,
+      winnerId: null,
+      lockedByUser: false,
+      customProbA:
+        typeof customProbByGame[game.id] === "number" && Number.isFinite(customProbByGame[game.id] as number)
+          ? Math.max(0.000001, Math.min(0.999999, customProbByGame[game.id] as number))
+          : null,
+    };
+    const naturalWinner = sampleWinner(resolvedGame);
+    if (!naturalWinner) {
+      lockSuccess = false;
+      continue;
+    }
     const lock = eligibleLock(locks[game.id], teamAId, teamBId);
 
     if (lock && naturalWinner !== lock) {
@@ -99,8 +110,8 @@ const simulateBracket = (locks: LockedPicks, forceLocks: boolean): { winners: Re
   return { winners, lockSuccess };
 };
 
-const computeApproxLikelihood = (locks: LockedPicks): number => {
-  const { games } = resolveGames(locks);
+const computeApproxLikelihood = (locks: LockedPicks, customProbByGame: CustomProbByGame = {}): number => {
+  const { games } = resolveGames(locks, customProbByGame);
   let likelihood = 1;
   for (const game of games) {
     if (!game.lockedByUser || !game.winnerId) continue;
@@ -122,12 +133,21 @@ const makeEmptyFutures = (): FuturesRow[] =>
     champProb: 0,
   }));
 
-export const hashLocks = (locks: LockedPicks, simRuns: number): string => {
+export const hashLocks = (
+  locks: LockedPicks,
+  simRuns: number,
+  customProbByGame: CustomProbByGame = {}
+): string => {
   const picks = Object.entries(locks)
     .sort(([a], [b]) => a.localeCompare(b))
     .map(([g, t]) => `${g}:${t}`)
     .join("|");
-  return `${simRuns}::${picks}`;
+  const probs = Object.entries(customProbByGame)
+    .filter(([, p]) => typeof p === "number" && Number.isFinite(p))
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([g, p]) => `${g}:${(p as number).toFixed(6)}`)
+    .join("|");
+  return `${simRuns}::${picks}::${probs}`;
 };
 
 const normalizeGameWinProbs = (
@@ -170,8 +190,12 @@ const normalizeGameWinProbs = (
   return out;
 };
 
-export const runSimulation = (locks: LockedPicks, simRuns: number): SimulationOutput => {
-  const { games: resolvedGames } = resolveGames(locks);
+export const runSimulation = (
+  locks: LockedPicks,
+  simRuns: number,
+  customProbByGame: CustomProbByGame = {}
+): SimulationOutput => {
+  const { games: resolvedGames } = resolveGames(locks, customProbByGame);
   const resolvedById = new Map(resolvedGames.map((game) => [game.id, game]));
   const rows = makeEmptyFutures();
   const rowMap = new Map(rows.map((row) => [row.teamId, row]));
@@ -184,8 +208,8 @@ export const runSimulation = (locks: LockedPicks, simRuns: number): SimulationOu
   let lockSuccesses = 0;
 
   for (let i = 0; i < simRuns; i += 1) {
-    const forced = simulateBracket(locks, true);
-    const natural = simulateBracket(locks, false);
+    const forced = simulateBracket(locks, true, customProbByGame);
+    const natural = simulateBracket(locks, false, customProbByGame);
 
     if (natural.lockSuccess) lockSuccesses += 1;
 
@@ -223,12 +247,12 @@ export const runSimulation = (locks: LockedPicks, simRuns: number): SimulationOu
     futures: sorted,
     gameWinProbs: normalizeGameWinProbs(gameWinCounts, simRuns, resolvedById),
     likelihoodSimulation: lockSuccesses / simRuns,
-    likelihoodApprox: computeApproxLikelihood(locks),
+    likelihoodApprox: computeApproxLikelihood(locks, customProbByGame),
   };
 };
 
-export const generateSimulatedBracket = (locks: LockedPicks): LockedPicks => {
-  const forced = simulateBracket(locks, true);
+export const generateSimulatedBracket = (locks: LockedPicks, customProbByGame: CustomProbByGame = {}): LockedPicks => {
+  const forced = simulateBracket(locks, true, customProbByGame);
   return { ...forced.winners };
 };
 
@@ -255,9 +279,10 @@ export type SimulatedPickStep = {
 
 export const generateSimulatedBracketSteps = (
   locks: LockedPicks,
-  regionOrder: Region[] = defaultRegionOrder
+  regionOrder: Region[] = defaultRegionOrder,
+  customProbByGame: CustomProbByGame = {}
 ): SimulatedPickStep[] => {
-  const forced = simulateBracket(locks, true);
+  const forced = simulateBracket(locks, true, customProbByGame);
   const orderedGames = [...gameTemplates].sort((a, b) => {
     const roundDiff = roundRank[a.round] - roundRank[b.round];
     if (roundDiff !== 0) return roundDiff;

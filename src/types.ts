@@ -30,6 +30,7 @@ export interface ResolvedGame extends GameTemplate {
   teamBId: string | null;
   winnerId: string | null;
   lockedByUser: boolean;
+  customProbA: number | null;
 }
 
 export interface FuturesRow {

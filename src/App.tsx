@@ -7,10 +7,12 @@ import {
   finalRounds,
   gamesByRegionAndRound,
   getGameWinProb,
+  getModelGameWinProb,
   possibleWinnersByGame,
   resetRegionPicks,
   resolveGames,
   sanitizeLockedPicks,
+  type CustomProbByGame,
   type LockedPicks,
 } from "./lib/bracket";
 import { abbreviationForTeam } from "./lib/abbreviation";
@@ -27,6 +29,7 @@ import type { OddsDisplayMode, Region, ResolvedGame, SimulationOutput } from "./
 
 const DEFAULT_SIM_RUNS = 5000;
 const ONBOARDING_STORAGE_KEY = "oddsGods_onboardingDismissed";
+const PROB_HINT_KEY = "bracket-prob-hint-shown";
 const STAGGERED_SIM_DELAY_MS = 2000;
 const MIN_STAGGERED_SIM_DELAY_MS = 1000;
 const MAX_STAGGERED_SIM_DELAY_MS = 5000;
@@ -80,8 +83,15 @@ type DemoSimulationOutput = {
   titleOddsShift: DemoTitleShiftRow[];
 };
 
+type ProbabilityPopupState = {
+  gameId: string;
+  anchorEl: HTMLElement;
+  savedProbA: number | null;
+};
+
 function App() {
   const [lockedPicks, setLockedPicks] = useState<LockedPicks>({});
+  const [customProbByGame, setCustomProbByGame] = useState<CustomProbByGame>({});
   const [undoStack, setUndoStack] = useState<LockedPicks[]>([]);
   const [displayMode, setDisplayMode] = useState<OddsDisplayMode>("american");
   const [simRuns] = useState<number>(DEFAULT_SIM_RUNS);
@@ -98,6 +108,12 @@ function App() {
     if (typeof window === "undefined") return false;
     return window.localStorage.getItem(ONBOARDING_STORAGE_KEY) !== "true";
   });
+  const [probPopup, setProbPopup] = useState<ProbabilityPopupState | null>(null);
+  const [probHintDismissed, setProbHintDismissed] = useState(() => {
+    if (typeof window === "undefined") return true;
+    return window.sessionStorage.getItem(PROB_HINT_KEY) === "1";
+  });
+  const [probHintGameId, setProbHintGameId] = useState<string | null>(null);
   const [simResult, setSimResult] = useState<SimulationOutput>({
     futures: [],
     gameWinProbs: {},
@@ -115,7 +131,10 @@ function App() {
     []
   );
 
-  const { games, sanitized } = useMemo(() => resolveGames(lockedPicks), [lockedPicks]);
+  const { games, sanitized } = useMemo(
+    () => resolveGames(lockedPicks, customProbByGame),
+    [lockedPicks, customProbByGame]
+  );
   const possibleWinners = useMemo(() => possibleWinnersByGame(sanitized), [sanitized]);
 
   useEffect(() => {
@@ -253,7 +272,7 @@ function App() {
   }, []);
 
   useEffect(() => {
-    const key = hashLocks(sanitized, simRuns);
+    const key = hashLocks(sanitized, simRuns, customProbByGame);
     const existing = simulationCacheRef.current.get(key);
     let active = true;
 
@@ -270,7 +289,7 @@ function App() {
 
     const timer = window.setTimeout(() => {
       if (!active) return;
-      const result = runSimulation(sanitized, simRuns);
+      const result = runSimulation(sanitized, simRuns, customProbByGame);
       simulationCacheRef.current.set(key, result);
       setSimResult(result);
       setIsUpdating(false);
@@ -281,7 +300,7 @@ function App() {
       window.clearTimeout(updateTimer);
       window.clearTimeout(timer);
     };
-  }, [sanitized, simRuns]);
+  }, [sanitized, simRuns, customProbByGame]);
 
   const sortedFutures = useMemo(() => {
     const rows = [...simResult.futures];
@@ -333,6 +352,66 @@ function App() {
     setUndoStack((prev) => [...prev, current]);
   };
 
+  const gameById = useMemo(() => new Map(games.map((game) => [game.id, game])), [games]);
+
+  const dismissProbHint = () => {
+    if (probHintDismissed) return;
+    setProbHintDismissed(true);
+    setProbHintGameId(null);
+    window.sessionStorage.setItem(PROB_HINT_KEY, "1");
+  };
+
+  useEffect(() => {
+    if (probHintDismissed || !probHintGameId) return;
+    const timer = window.setTimeout(() => dismissProbHint(), 3000);
+    return () => window.clearTimeout(timer);
+  }, [probHintDismissed, probHintGameId]);
+
+  const applyCustomProbability = (gameId: string, customProbA: number | null) => {
+    setCustomProbByGame((prev) => {
+      const next = { ...prev };
+      if (customProbA === null || !Number.isFinite(customProbA)) {
+        delete next[gameId];
+      } else {
+        next[gameId] = Math.max(0.01, Math.min(0.99, customProbA));
+      }
+      return next;
+    });
+  };
+
+  const closeProbabilityPopup = (revertToSaved = true) => {
+    if (revertToSaved && probPopup) {
+      applyCustomProbability(probPopup.gameId, probPopup.savedProbA ?? null);
+    }
+    setProbPopup(null);
+  };
+
+  const openProbabilityPopup = (game: ResolvedGame, anchorEl: HTMLElement) => {
+    if (!game.teamAId || !game.teamBId || game.winnerId) return;
+    if (probPopup) {
+      closeProbabilityPopup(true);
+    }
+    setProbPopup({
+      gameId: game.id,
+      anchorEl,
+      savedProbA: game.customProbA ?? null,
+    });
+    dismissProbHint();
+  };
+
+  const previewCustomProbability = (gameId: string, customProbA: number) => {
+    applyCustomProbability(gameId, customProbA);
+  };
+
+  const saveProbabilityPopup = () => {
+    setProbPopup(null);
+  };
+
+  const resetProbabilityToModel = (gameId: string) => {
+    applyCustomProbability(gameId, null);
+    setProbPopup(null);
+  };
+
   const cancelStaggeredSim = () => {
     if (staggeredTimeoutRef.current !== null) {
       window.clearTimeout(staggeredTimeoutRef.current);
@@ -357,6 +436,9 @@ function App() {
       next[game.id] = teamId;
     }
     setLastPickedKey(`${game.id}:${teamId}`);
+    if (probPopup?.gameId === game.id) {
+      setProbPopup(null);
+    }
 
     setLockedPicks(sanitizeLockedPicks(next));
   };
@@ -364,6 +446,7 @@ function App() {
   const onUndo = () => {
     cancelStaggeredSim();
     if (undoStack.length === 0) return;
+    closeProbabilityPopup(true);
     const previous = undoStack[undoStack.length - 1];
     setUndoStack((prev) => prev.slice(0, -1));
     setLockedPicks(previous);
@@ -371,28 +454,33 @@ function App() {
 
   const onResetAll = () => {
     cancelStaggeredSim();
-    if (Object.keys(lockedPicks).length === 0) return;
+    if (Object.keys(lockedPicks).length === 0 && Object.keys(customProbByGame).length === 0) return;
     pushUndo(lockedPicks);
     setLockedPicks({});
+    setCustomProbByGame({});
+    setProbPopup(null);
   };
 
   const onResetRegion = (region: Region) => {
     cancelStaggeredSim();
+    closeProbabilityPopup(true);
     pushUndo(lockedPicks);
     setLockedPicks(resetRegionPicks(lockedPicks, region));
   };
 
   const onModelSim = () => {
     cancelStaggeredSim();
+    closeProbabilityPopup(true);
     pushUndo(lockedPicks);
-    setLockedPicks(sanitizeLockedPicks(generateSimulatedBracket(lockedPicks)));
+    setLockedPicks(sanitizeLockedPicks(generateSimulatedBracket(lockedPicks, customProbByGame)));
   };
 
   const onModelSimStaggered = () => {
     cancelStaggeredSim();
+    closeProbabilityPopup(true);
     setShowStaggeredControls(true);
     const baseLocks = { ...lockedPicks };
-    const steps = generateSimulatedBracketSteps(baseLocks, ["South", "East", "West", "Midwest"]);
+    const steps = generateSimulatedBracketSteps(baseLocks, ["South", "East", "West", "Midwest"], customProbByGame);
     if (steps.length === 0) return;
 
     pushUndo(baseLocks);
@@ -452,8 +540,8 @@ function App() {
 
   const runDemoSimulation = (gameId: string, winnerId: string): DemoSimulationOutput => {
     const baseLocks: LockedPicks = {};
-    const before = runSimulation(baseLocks, simRuns);
-    const after = runSimulation({ [gameId]: winnerId }, simRuns);
+    const before = runSimulation(baseLocks, simRuns, {});
+    const after = runSimulation({ [gameId]: winnerId }, simRuns, {});
     const game = before.gameWinProbs[gameId] ? resolveGames(baseLocks).games.find((g) => g.id === gameId) : null;
     const excludedTeams = new Set<string>();
     if (game?.teamAId) excludedTeams.add(game.teamAId);
@@ -501,6 +589,26 @@ function App() {
     },
     []
   );
+
+  useEffect(() => {
+    if (!probPopup) return;
+    const handleMouseDown = (event: MouseEvent) => {
+      const target = event.target as HTMLElement | null;
+      if (!target) return;
+      if (target.closest(".prob-popup")) return;
+      if (target.closest(".matchup-edit-btn")) return;
+      closeProbabilityPopup(true);
+    };
+    const handleEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") closeProbabilityPopup(true);
+    };
+    document.addEventListener("mousedown", handleMouseDown);
+    document.addEventListener("keydown", handleEscape);
+    return () => {
+      document.removeEventListener("mousedown", handleMouseDown);
+      document.removeEventListener("keydown", handleEscape);
+    };
+  }, [probPopup]);
 
   const finalGames = finalRounds(games);
   const leftSemi = finalGames.find((g) => g.id === "F4-Left-0") ?? null;
@@ -615,6 +723,9 @@ function App() {
                         onResetRegion={onResetRegion}
                         inverted={invertedRegions.has(region)}
                         displayMode={displayMode}
+                        onOpenProbabilityPopup={openProbabilityPopup}
+                        onRequestHint={probHintDismissed ? undefined : setProbHintGameId}
+                        hintGameId={probHintGameId}
                       />
                     ))}
                   </div>
@@ -640,6 +751,9 @@ function App() {
                         onResetRegion={onResetRegion}
                         inverted={invertedRegions.has(region)}
                         displayMode={displayMode}
+                        onOpenProbabilityPopup={openProbabilityPopup}
+                        onRequestHint={probHintDismissed ? undefined : setProbHintGameId}
+                        hintGameId={probHintGameId}
                       />
                     ))}
                   </div>
@@ -661,6 +775,9 @@ function App() {
                         onPick={onPick}
                         lastPickedKey={lastPickedKey}
                         displayMode={displayMode}
+                        onOpenProbabilityPopup={openProbabilityPopup}
+                        showHint={probHintGameId === leftSemi.id}
+                        onRequestHint={probHintDismissed ? undefined : setProbHintGameId}
                       />
                     ) : null}
                   </div>
@@ -677,6 +794,9 @@ function App() {
                           onPick={onPick}
                           lastPickedKey={lastPickedKey}
                           displayMode={displayMode}
+                          onOpenProbabilityPopup={openProbabilityPopup}
+                          showHint={probHintGameId === titleGame.id}
+                          onRequestHint={probHintDismissed ? undefined : setProbHintGameId}
                         />
                       </div>
                     ) : null}
@@ -694,6 +814,9 @@ function App() {
                         onPick={onPick}
                         lastPickedKey={lastPickedKey}
                         displayMode={displayMode}
+                        onOpenProbabilityPopup={openProbabilityPopup}
+                        showHint={probHintGameId === rightSemi.id}
+                        onRequestHint={probHintDismissed ? undefined : setProbHintGameId}
                       />
                     ) : null}
                   </div>
@@ -852,6 +975,18 @@ function App() {
         </section>
       </main>
 
+      {probPopup ? (
+        <ProbabilityPopup
+          matchup={gameById.get(probPopup.gameId) ?? null}
+          anchorEl={probPopup.anchorEl}
+          currentProbA={customProbByGame[probPopup.gameId] ?? null}
+          onPreview={(probA) => previewCustomProbability(probPopup.gameId, probA)}
+          onApply={saveProbabilityPopup}
+          onResetToModel={() => resetProbabilityToModel(probPopup.gameId)}
+          onClose={() => closeProbabilityPopup(true)}
+        />
+      ) : null}
+
       {onboardingOpen && demoGame ? (
         <OnboardingFlow
           demoGame={demoGame}
@@ -874,6 +1009,9 @@ function RegionBracket({
   onResetRegion,
   inverted,
   displayMode,
+  onOpenProbabilityPopup,
+  onRequestHint,
+  hintGameId,
 }: {
   region: Region;
   games: ResolvedGame[];
@@ -884,6 +1022,9 @@ function RegionBracket({
   onResetRegion: (region: Region) => void;
   inverted: boolean;
   displayMode: OddsDisplayMode;
+  onOpenProbabilityPopup: (game: ResolvedGame, anchorEl: HTMLElement) => void;
+  onRequestHint?: (gameId: string | null) => void;
+  hintGameId: string | null;
 }) {
   const rounds = inverted ? [...regionRounds].reverse() : [...regionRounds];
 
@@ -915,6 +1056,9 @@ function RegionBracket({
                         onPick={onPick}
                         lastPickedKey={lastPickedKey}
                         displayMode={displayMode}
+                        onOpenProbabilityPopup={onOpenProbabilityPopup}
+                        onRequestHint={onRequestHint}
+                        showHint={hintGameId === game.id}
                       />
                     </div>
                   );
@@ -935,6 +1079,9 @@ function GameCard({
   onPick,
   lastPickedKey,
   displayMode,
+  onOpenProbabilityPopup,
+  onRequestHint,
+  showHint,
 }: {
   game: ResolvedGame;
   gameWinProbs: SimulationOutput["gameWinProbs"];
@@ -942,6 +1089,9 @@ function GameCard({
   onPick: (game: ResolvedGame, teamId: string | null) => void;
   lastPickedKey: string | null;
   displayMode: OddsDisplayMode;
+  onOpenProbabilityPopup: (game: ResolvedGame, anchorEl: HTMLElement) => void;
+  onRequestHint?: (gameId: string | null) => void;
+  showHint?: boolean;
 }) {
   type CandidateRow = { teamId: string; prob: number; team: NonNullable<ReturnType<typeof teamsById.get>> };
 
@@ -981,6 +1131,8 @@ function GameCard({
   const useShowdownSplit = (game.round === "CHAMP" || game.round === "F4") && finalistRows.length === 2;
   const compactColumns = getCompactColumns(game.round, rows.length);
   const compactDensity = getCompactDensity(game.round, rows.length);
+  const compactLongPressTimerRef = useRef<number | null>(null);
+  const compactLongPressFiredRef = useRef(false);
 
   return (
     <article className={`eg-game-card round-${game.round.toLowerCase()}`}>
@@ -1059,6 +1211,11 @@ function GameCard({
                   tooltip={`Chance to advance from this game: ${(candidate.prob * 100).toFixed(1)}%`}
                   compact={false}
                   displayMode={displayMode}
+                  editedProb={game.customProbA !== null}
+                  canEditProb={!game.winnerId && game.teamAId !== null && game.teamBId !== null}
+                  showProbHint={Boolean(showHint)}
+                  onRequestHint={onRequestHint ? () => onRequestHint(game.id) : undefined}
+                  onOpenProbEditor={(anchorEl) => onOpenProbabilityPopup(game, anchorEl)}
                   onPick={() => onPick(game, canPick ? team.id : null)}
                 />
               );
@@ -1088,9 +1245,40 @@ function GameCard({
                   <button
                     key={`${game.id}-${team.id}`}
                     type="button"
-                    className={`eg-compact-chip ${selected ? "selected" : ""} ${lastPickedKey === `${game.id}:${team.id}` ? "fresh-pick" : ""} ${outcome === "win" ? "result-win" : ""} ${outcome === "loss" ? "result-loss" : ""}`}
+                    className={`eg-compact-chip matchup-row ${game.winnerId ? "matchup-row--picked" : ""} ${selected ? "selected" : ""} ${lastPickedKey === `${game.id}:${team.id}` ? "fresh-pick" : ""} ${outcome === "win" ? "result-win" : ""} ${outcome === "loss" ? "result-loss" : ""}`}
                     disabled={!canPick}
-                    onClick={() => onPick(game, canPick ? team.id : null)}
+                    onMouseEnter={() => onRequestHint?.(game.id)}
+                    onClick={(event) => {
+                      if (compactLongPressFiredRef.current) {
+                        compactLongPressFiredRef.current = false;
+                        event.preventDefault();
+                        return;
+                      }
+                      onPick(game, canPick ? team.id : null);
+                    }}
+                    onTouchStart={(event) => {
+                      if (game.winnerId || !game.teamAId || !game.teamBId) return;
+                      if (compactLongPressTimerRef.current !== null) {
+                        window.clearTimeout(compactLongPressTimerRef.current);
+                      }
+                      compactLongPressFiredRef.current = false;
+                      compactLongPressTimerRef.current = window.setTimeout(() => {
+                        compactLongPressFiredRef.current = true;
+                        onOpenProbabilityPopup(game, event.currentTarget);
+                      }, 400);
+                    }}
+                    onTouchEnd={() => {
+                      if (compactLongPressTimerRef.current !== null) {
+                        window.clearTimeout(compactLongPressTimerRef.current);
+                        compactLongPressTimerRef.current = null;
+                      }
+                    }}
+                    onTouchCancel={() => {
+                      if (compactLongPressTimerRef.current !== null) {
+                        window.clearTimeout(compactLongPressTimerRef.current);
+                        compactLongPressTimerRef.current = null;
+                      }
+                    }}
                     title={`Chance to advance from this game: ${(candidate.prob * 100).toFixed(1)}%`}
                   >
                     <span className="chip-seed">{team.seed}</span>
@@ -1107,11 +1295,37 @@ function GameCard({
                         <span className={`outcome-badge ${outcome}`}>{outcome === "win" ? "✓" : "✕"}</span>
                       ) : (
                         <>
-                          <span className="chip-prob">{primary}</span>
+                          <span className={`chip-prob ${game.customProbA !== null ? "edited-prob" : ""}`}>{primary}</span>
                           {secondary ? <span className="chip-sub">{secondary}</span> : null}
                         </>
                       )}
                     </span>
+                    {!game.winnerId && game.teamAId && game.teamBId ? (
+                      <>
+                        <span
+                          role="button"
+                          tabIndex={0}
+                          className="matchup-edit-btn"
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            onOpenProbabilityPopup(game, event.currentTarget as HTMLElement);
+                          }}
+                          onKeyDown={(event) => {
+                            if (event.key !== "Enter" && event.key !== " ") return;
+                            event.preventDefault();
+                            event.stopPropagation();
+                            onOpenProbabilityPopup(game, event.currentTarget as HTMLElement);
+                          }}
+                          title="Edit probability"
+                          aria-label="Edit matchup probability"
+                        >
+                          ✎
+                        </span>
+                        {showHint ? (
+                          <span className="prob-hint-tooltip">Disagree with this probability? Edit it.</span>
+                        ) : null}
+                      </>
+                    ) : null}
                   </button>
                 );
               })}
@@ -1132,6 +1346,9 @@ function GameCard({
               tooltip="Waiting for simulation..."
               compact={false}
               displayMode={displayMode}
+              editedProb={false}
+              canEditProb={false}
+              showProbHint={false}
               onPick={() => {}}
             />
             <TeamRow
@@ -1147,6 +1364,9 @@ function GameCard({
               tooltip="Waiting for simulation..."
               compact={false}
               displayMode={displayMode}
+              editedProb={false}
+              canEditProb={false}
+              showProbHint={false}
               onPick={() => {}}
             />
           </>
@@ -1189,6 +1409,11 @@ function TeamRow({
   tooltip,
   compact,
   displayMode,
+  editedProb,
+  canEditProb,
+  showProbHint,
+  onRequestHint,
+  onOpenProbEditor,
   onPick,
 }: {
   label: string;
@@ -1203,17 +1428,56 @@ function TeamRow({
   tooltip: string;
   compact: boolean;
   displayMode: OddsDisplayMode;
+  editedProb: boolean;
+  canEditProb: boolean;
+  showProbHint: boolean;
+  onRequestHint?: () => void;
+  onOpenProbEditor?: (anchorEl: HTMLElement) => void;
   onPick: () => void;
 }) {
   const formatted = prob !== null ? formatOddsDisplay(prob, displayMode) : { primary: "--" };
   const fullLabel = normalizeTeamName(label);
+  const longPressTimerRef = useRef<number | null>(null);
+  const longPressFiredRef = useRef(false);
+  const rowRef = useRef<HTMLButtonElement | null>(null);
+
+  const clearLongPress = () => {
+    if (longPressTimerRef.current !== null) {
+      window.clearTimeout(longPressTimerRef.current);
+      longPressTimerRef.current = null;
+    }
+  };
+
+  const isTouchDevice = typeof window !== "undefined" && window.matchMedia("(max-width: 767px)").matches;
 
   return (
     <button
       type="button"
-      className={`eg-team-row ${compact ? "compact" : ""} ${selected ? "selected" : ""} ${freshPick ? "fresh-pick" : ""} ${outcome === "win" ? "result-win" : ""} ${outcome === "loss" ? "result-loss" : ""}`}
+      ref={rowRef}
+      className={`eg-team-row matchup-row ${canEditProb ? "" : "matchup-row--picked"} ${compact ? "compact" : ""} ${selected ? "selected" : ""} ${freshPick ? "fresh-pick" : ""} ${outcome === "win" ? "result-win" : ""} ${outcome === "loss" ? "result-loss" : ""}`}
       disabled={disabled}
-      onClick={onPick}
+      onMouseEnter={() => onRequestHint?.()}
+      onClick={(event) => {
+        if (longPressFiredRef.current) {
+          longPressFiredRef.current = false;
+          event.preventDefault();
+          return;
+        }
+        onPick();
+      }}
+      onTouchStart={(event) => {
+        if (!canEditProb || !onOpenProbEditor || !isTouchDevice) return;
+        clearLongPress();
+        longPressFiredRef.current = false;
+        longPressTimerRef.current = window.setTimeout(() => {
+          if (!rowRef.current) return;
+          longPressFiredRef.current = true;
+          onOpenProbEditor(rowRef.current);
+          event.preventDefault();
+        }, 400);
+      }}
+      onTouchEnd={clearLongPress}
+      onTouchCancel={clearLongPress}
       title={tooltip}
     >
       <span className="team-seed" aria-label={seed !== null ? `Seed ${seed}` : "Seed unavailable"}>
@@ -1233,14 +1497,42 @@ function TeamRow({
       )}
       <span className="team-odds-wrap">
         {outcome ? (
-          <span className={`outcome-badge ${outcome}`}>{outcome === "win" ? "✓" : "✕"}</span>
+            <span className={`outcome-badge ${outcome}`}>{outcome === "win" ? "✓" : "✕"}</span>
         ) : (
           <>
-            <span className="team-odds">{formatted.primary}</span>
+            <span className={`team-odds ${editedProb ? "edited-prob" : ""}`}>{formatted.primary}</span>
             {formatted.secondary ? <span className="team-odds-sub">{formatted.secondary}</span> : null}
           </>
         )}
       </span>
+      {canEditProb && onOpenProbEditor ? (
+        <>
+          <span
+            role="button"
+            tabIndex={0}
+            className="matchup-edit-btn"
+            onClick={(event) => {
+              event.stopPropagation();
+              if (!rowRef.current) return;
+              onOpenProbEditor(rowRef.current);
+            }}
+            onKeyDown={(event) => {
+              if (event.key !== "Enter" && event.key !== " ") return;
+              event.preventDefault();
+              event.stopPropagation();
+              if (!rowRef.current) return;
+              onOpenProbEditor(rowRef.current);
+            }}
+            title="Edit probability"
+            aria-label="Edit matchup probability"
+          >
+            ✎
+          </span>
+          {showProbHint ? (
+            <span className="prob-hint-tooltip">Disagree with this probability? Edit it.</span>
+          ) : null}
+        </>
+      ) : null}
     </button>
   );
 }
@@ -1410,6 +1702,120 @@ function TeamHoverAnchor({
           )
         : null}
     </span>
+  );
+}
+
+function ProbabilityPopup({
+  matchup,
+  anchorEl,
+  currentProbA,
+  onPreview,
+  onApply,
+  onResetToModel,
+  onClose,
+}: {
+  matchup: ResolvedGame | null;
+  anchorEl: HTMLElement;
+  currentProbA: number | null;
+  onPreview: (probA: number) => void;
+  onApply: () => void;
+  onResetToModel: () => void;
+  onClose: () => void;
+}) {
+  const popupRef = useRef<HTMLDivElement | null>(null);
+  const [position, setPosition] = useState<{ left: number; top: number }>({ left: 0, top: 0 });
+  const teamA = matchup?.teamAId ? teamsById.get(matchup.teamAId) ?? null : null;
+  const teamB = matchup?.teamBId ? teamsById.get(matchup.teamBId) ?? null : null;
+  const modelProbA =
+    matchup && teamA ? (getModelGameWinProb(matchup, teamA.id) ?? 0.5) : 0.5;
+  const [probA, setProbA] = useState<number>(Math.round(((currentProbA ?? modelProbA) * 100)));
+  const isEdited = Math.round(probA) !== Math.round(modelProbA * 100);
+
+  useEffect(() => {
+    setProbA(Math.round(((currentProbA ?? modelProbA) * 100)));
+  }, [currentProbA, modelProbA]);
+
+  useLayoutEffect(() => {
+    const updatePosition = () => {
+      const rect = anchorEl.getBoundingClientRect();
+      const popupWidth = 240;
+      const popupHeight = 188;
+      const spaceRight = window.innerWidth - rect.right;
+      const left = spaceRight >= popupWidth + 12 ? rect.right + 8 : rect.left - popupWidth - 8;
+      const top = Math.max(
+        8,
+        Math.min(rect.top + rect.height / 2 - popupHeight / 2, window.innerHeight - popupHeight - 8)
+      );
+      setPosition({ left: Math.max(8, left), top });
+    };
+    updatePosition();
+    window.addEventListener("resize", updatePosition);
+    window.addEventListener("scroll", updatePosition, true);
+    return () => {
+      window.removeEventListener("resize", updatePosition);
+      window.removeEventListener("scroll", updatePosition, true);
+    };
+  }, [anchorEl]);
+
+  if (!matchup || !teamA || !teamB) return null;
+
+  return createPortal(
+    <div
+      ref={popupRef}
+      className="prob-popup"
+      style={{ left: `${position.left}px`, top: `${position.top}px` }}
+      role="dialog"
+      aria-label="Edit matchup probability"
+    >
+      <div className="prob-popup-header">
+        <span className="prob-popup-label">Matchup Probability</span>
+        <button className="prob-popup-close" onClick={onClose} aria-label="Close probability editor">
+          ✕
+        </button>
+      </div>
+      <div className="prob-popup-team">
+        <span className="prob-popup-team-name">{teamA.seed} {teamA.name}</span>
+        <span className="prob-popup-pct">{Math.round(probA)}%</span>
+      </div>
+      <div className="prob-popup-slider-wrap">
+        <input
+          type="range"
+          min={1}
+          max={99}
+          step={1}
+          value={Math.round(probA)}
+          onChange={(event) => {
+            const next = Math.min(99, Math.max(1, Number(event.target.value)));
+            setProbA(next);
+            onPreview(next / 100);
+          }}
+          className="prob-slider"
+          style={{
+            background: `linear-gradient(to right, rgba(184,125,24,0.8) 0%, rgba(184,125,24,0.8) ${Math.round(probA)}%, rgba(255,255,255,0.1) ${Math.round(probA)}%, rgba(255,255,255,0.1) 100%)`,
+          }}
+        />
+      </div>
+      <div className="prob-popup-team prob-popup-team--b">
+        <span className="prob-popup-team-name">{teamB.seed} {teamB.name}</span>
+        <span className="prob-popup-pct">{100 - Math.round(probA)}%</span>
+      </div>
+      <div className="prob-popup-baseline">
+        <span>Model: {Math.round(modelProbA * 100)}% / {100 - Math.round(modelProbA * 100)}%</span>
+        {isEdited ? (
+          <button className="prob-popup-reset-link" onClick={onResetToModel}>
+            Reset to model
+          </button>
+        ) : null}
+      </div>
+      <button
+        className="prob-popup-save"
+        disabled={!isEdited}
+        onClick={onApply}
+      >
+        {isEdited ? "Apply" : "No changes"}
+      </button>
+    </div>,
+    document.body
   );
 }
 
