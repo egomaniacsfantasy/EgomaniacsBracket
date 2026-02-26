@@ -2733,11 +2733,26 @@ body {
 .future-team-name {
   font-family: var(--font-mono);
   color: var(--text-primary);
+  line-height: 1.15;
 }
 
 .team-name,
 .future-team-name {
   font-size: 14px;
+}
+
+.team-name,
+.chip-code {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  padding-bottom: 1px;
+}
+
+.adaptive-label,
+.adaptive-label-current,
+.adaptive-label-prev,
+.adaptive-label-next {
+  line-height: 1.15;
 }
 
 .team-odds,
