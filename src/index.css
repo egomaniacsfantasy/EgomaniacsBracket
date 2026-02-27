@@ -2971,7 +2971,7 @@ body {
 
 @media (max-width: 767px) {
   .eg-app {
-    padding: 0 0 72px;
+    padding: 0;
     max-width: 100%;
   }
 
@@ -2987,7 +2987,7 @@ body {
 
   .og-top-nav-mobile {
     display: grid;
-    grid-template-columns: 36px 1fr 48px;
+    grid-template-columns: 36px 1fr 52px;
     align-items: center;
     width: 100%;
   }
@@ -3019,7 +3019,7 @@ body {
     color: var(--amber);
     border: 1px solid rgba(184, 125, 24, 0.3);
     border-radius: 3px;
-    padding: 3px 6px;
+    padding: 4px 7px;
     text-decoration: none;
     text-align: right;
     white-space: nowrap;
@@ -3033,6 +3033,10 @@ body {
   .eg-mobile-shell {
     position: relative;
     z-index: 10;
+  }
+
+  .mobile-bracket-scroll {
+    padding-bottom: calc(56px + 56px + 24px + env(safe-area-inset-bottom, 0));
   }
 
   .toolbar {
@@ -3083,7 +3087,7 @@ body {
 
   .mobile-region-tab {
     flex-shrink: 0;
-    padding: 12px 18px;
+    padding: 11px 20px;
     font-family: var(--font-mono);
     font-size: 11px;
     letter-spacing: 0.14em;
@@ -3092,6 +3096,7 @@ body {
     background: none;
     border: none;
     border-bottom: 2px solid transparent;
+    cursor: pointer;
     white-space: nowrap;
   }
 
@@ -3100,134 +3105,114 @@ body {
     border-bottom-color: var(--amber);
   }
 
-  .mobile-ff-link {
-    display: block;
-    width: calc(100% - 32px);
-    margin: 8px 16px;
-    text-align: center;
-    font-family: var(--font-mono);
-    font-size: 11px;
-    letter-spacing: 0.12em;
-    color: var(--amber);
-    background: rgba(184, 125, 24, 0.06);
-    border: 1px solid rgba(184, 125, 24, 0.18);
-    border-radius: 6px;
-    padding: 10px;
-  }
-
-  .mobile-bracket-canvas {
-    padding-top: 8px;
-    padding-bottom: 72px;
-  }
-
-  .mobile-rounds-scroll {
+  .mobile-round-nav {
     display: flex;
-    overflow-x: auto;
-    scroll-snap-type: x proximity;
-    -webkit-overflow-scrolling: touch;
-    scrollbar-width: none;
     gap: 8px;
-    padding: 0 16px;
+    padding: 14px 16px 10px;
+    overflow-x: auto;
+    scrollbar-width: none;
   }
 
-  .mobile-rounds-scroll::-webkit-scrollbar {
+  .mobile-round-nav::-webkit-scrollbar {
     display: none;
   }
 
-  .mobile-round-col--active {
-    flex: 0 0 calc(100vw - 32px - 72px - 16px);
-    scroll-snap-align: start;
-    min-width: 200px;
-  }
-
-  .mobile-round-col--ticker {
-    flex: 0 0 72px;
-    scroll-snap-align: start;
-  }
-
-  .mobile-round-col-header {
-    padding: 8px 0 10px;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.07);
-    margin-bottom: 8px;
-  }
-
-  .mobile-round-col-label {
+  .mobile-round-pill {
+    flex-shrink: 0;
+    height: 30px;
+    padding: 0 14px;
+    border-radius: 100px;
     font-family: var(--font-mono);
-    font-size: 9px;
-    letter-spacing: 0.18em;
-    text-transform: uppercase;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    background: none;
     color: var(--text-tertiary);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 5px;
   }
 
-  .mobile-round-col--active .mobile-round-col-label {
+  .mobile-round-pill.active {
+    background: rgba(184, 125, 24, 0.15);
+    border-color: rgba(184, 125, 24, 0.45);
     color: var(--amber);
   }
 
-  .mobile-matchup-full {
-    position: relative;
+  .mobile-round-pill--complete {
+    border-color: rgba(184, 125, 24, 0.25);
+    color: rgba(184, 125, 24, 0.6);
+  }
+
+  .mobile-round-pill--locked {
+    opacity: 0.28;
+    cursor: default;
+  }
+
+  .mobile-round-check {
+    font-size: 9px;
+    color: rgba(184, 125, 24, 0.7);
+  }
+
+  .m-card {
     background: var(--bg-surface);
     border: 1px solid rgba(255, 255, 255, 0.07);
-    border-radius: 8px;
-    margin-bottom: 10px;
+    border-radius: 10px;
+    margin: 0 16px 12px;
     overflow: hidden;
   }
 
-  .mobile-matchup-full.picked {
-    border-color: rgba(184, 125, 24, 0.2);
+  .m-card--picked {
+    border-color: rgba(184, 125, 24, 0.18);
   }
 
-  .mobile-matchup-edit-btn {
-    opacity: 0.35 !important;
-    right: 10px;
-    top: 14px;
-    transform: none;
-  }
-
-  .mobile-team-btn {
+  .m-team {
     width: 100%;
     display: flex;
     align-items: center;
-    gap: 8px;
-    padding: 14px 12px;
+    gap: 10px;
+    padding: 15px 14px;
     background: none;
     border: none;
     cursor: pointer;
-    min-height: 54px;
+    min-height: 56px;
     text-align: left;
-    transition: background 140ms ease;
+    transition: background 140ms;
   }
 
-  .mobile-team-btn:active:not(:disabled) {
+  .m-team:active:not(:disabled) {
     background: rgba(255, 255, 255, 0.03);
   }
 
-  .mobile-team-btn.winner {
+  .m-team--winner {
     background: rgba(184, 125, 24, 0.07);
   }
 
-  .mobile-team-btn.loser {
-    opacity: 0.38;
+  .m-team--loser {
+    opacity: 0.36;
   }
 
   .m-seed {
     font-family: var(--font-mono);
-    font-size: 10px;
+    font-size: 11px;
     color: var(--text-tertiary);
-    width: 16px;
+    width: 18px;
     text-align: right;
     flex-shrink: 0;
   }
 
   .m-logo {
-    width: 22px;
-    height: 22px;
+    width: 24px;
+    height: 24px;
     object-fit: contain;
     flex-shrink: 0;
   }
 
   .m-name {
     font-family: var(--font-serif);
-    font-size: 15px;
+    font-size: 16px;
     font-weight: 700;
     color: var(--text-primary);
     flex: 1;
@@ -3236,12 +3221,13 @@ body {
     white-space: nowrap;
   }
 
-  .m-right {
+  .m-stats {
     display: flex;
     flex-direction: column;
     align-items: flex-end;
     gap: 1px;
     flex-shrink: 0;
+    margin-left: 8px;
   }
 
   .m-prob {
@@ -3252,83 +3238,207 @@ body {
 
   .m-odds {
     font-family: var(--font-mono);
-    font-size: 15px;
+    font-size: 16px;
     font-weight: 700;
     color: var(--text-primary);
   }
 
-  .m-odds.edited {
+  .m-odds--edited {
     color: rgba(184, 125, 24, 0.9);
   }
 
-  .mobile-winner-bar {
+  .m-vs {
+    font-family: var(--font-mono);
+    font-size: 9px;
+    letter-spacing: 0.12em;
+    color: var(--text-tertiary);
+    padding: 3px 14px;
+    border-top: 1px solid rgba(255, 255, 255, 0.05);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  }
+
+  .m-card-footer {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 7px 12px;
-    background: rgba(184, 125, 24, 0.06);
-    border-top: 1px solid rgba(184, 125, 24, 0.12);
-    font-family: var(--font-mono);
-    font-size: 10px;
-    color: rgba(184, 125, 24, 0.8);
+    padding: 8px 14px;
+    border-top: 1px solid rgba(255, 255, 255, 0.05);
+    min-height: 36px;
   }
 
-  .m-undo {
+  .m-winner-label {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: rgba(184, 125, 24, 0.75);
+  }
+
+  .m-undo-btn {
     background: none;
     border: none;
     font-family: var(--font-mono);
-    font-size: 10px;
+    font-size: 11px;
     color: var(--text-tertiary);
     text-decoration: underline;
     text-underline-offset: 2px;
     padding: 0;
   }
 
-  .mobile-ticker-matchup {
+  .m-edit-prob-btn {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: rgba(184, 125, 24, 0.55);
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 0;
+    letter-spacing: 0.04em;
+  }
+
+  .m-ff-locked {
+    padding: 48px 24px;
+    text-align: center;
     display: flex;
     flex-direction: column;
-    align-items: flex-start;
+    align-items: center;
+    gap: 24px;
+  }
+
+  .m-ff-locked-msg {
+    font-family: var(--font-mono);
+    font-size: 13px;
+    color: var(--text-tertiary);
+    line-height: 1.7;
+  }
+
+  .m-ff-locked-progress {
+    display: flex;
+    gap: 10px;
+  }
+
+  .m-ff-region-dot {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    display: flex;
+    align-items: center;
     justify-content: center;
-    min-height: 118px;
-    margin-bottom: 10px;
-    gap: 2px;
-    padding: 8px 4px;
-    border: 1px solid rgba(255, 255, 255, 0.04);
-    border-radius: 6px;
-    background: var(--bg-surface);
+    font-family: var(--font-mono);
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--text-tertiary);
   }
 
-  .mobile-ticker-row {
-    width: 100%;
+  .m-ff-region-dot.complete {
+    border-color: rgba(184, 125, 24, 0.45);
+    background: rgba(184, 125, 24, 0.12);
+    color: var(--amber);
   }
 
-  .mobile-ticker-row.after-divider {
-    border-top: 1px solid rgba(255, 255, 255, 0.05);
-    padding-top: 6px;
-    margin-top: 3px;
+  .m-champion-body {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+    padding: 24px 16px 28px;
   }
 
-  .mobile-ticker-odds {
+  .m-champion-name {
+    font-family: var(--font-serif);
+    font-size: 22px;
+    font-weight: 700;
+    color: var(--text-primary);
+    text-align: center;
+  }
+
+  .live-odds-strip {
+    position: fixed;
+    bottom: 56px;
+    left: 0;
+    right: 0;
+    height: 56px;
+    background: rgba(20, 17, 10, 0.97);
+    backdrop-filter: blur(10px);
+    border-top: 1px solid rgba(184, 125, 24, 0.18);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 0 12px 0 14px;
+    z-index: 85;
+    overflow: hidden;
+  }
+
+  .live-odds-strip-label {
+    font-family: var(--font-mono);
+    font-size: 9px;
+    letter-spacing: 0.18em;
+    color: var(--amber);
+    text-transform: uppercase;
+    flex-shrink: 0;
+    opacity: 0.7;
+  }
+
+  .live-odds-strip-chips {
+    display: flex;
+    gap: 6px;
+    flex: 1;
+    overflow: hidden;
+  }
+
+  .live-odds-chip {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 100px;
+    padding: 4px 8px 4px 5px;
+    flex-shrink: 0;
+  }
+
+  .live-odds-chip--changed {
+    animation: chipFlash 800ms ease-out forwards;
+  }
+
+  .live-chip-logo {
+    width: 16px;
+    height: 16px;
+    object-fit: contain;
+  }
+
+  .live-chip-name {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    font-weight: 700;
+    color: var(--text-secondary);
+    white-space: nowrap;
+    max-width: 48px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .live-chip-odds {
     font-family: var(--font-mono);
     font-size: 11px;
     font-weight: 700;
-    color: var(--text-secondary);
-    line-height: 1.3;
+    color: var(--text-primary);
     white-space: nowrap;
-    width: 100%;
-    transition: color 200ms ease;
   }
 
-  .mobile-ticker-odds.edited {
-    color: rgba(184, 125, 24, 0.7);
-  }
-
-  .mobile-ticker-odds.just-changed {
-    animation: tickerFlash 600ms ease-out;
+  .live-odds-strip-expand {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    color: var(--amber);
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 0;
+    flex-shrink: 0;
+    opacity: 0.8;
   }
 
   .mobile-futures-view {
-    padding: 16px 16px 72px;
+    padding: 16px 16px calc(56px + 56px + 24px + env(safe-area-inset-bottom, 0));
     overflow-y: auto;
   }
 
@@ -3382,27 +3492,17 @@ body {
     left: 50% !important;
     top: 50% !important;
     transform: translate(-50%, -50%) !important;
-    width: min(85vw, 320px) !important;
-  }
-
-  .matchup-edit-btn {
-    opacity: 0.28;
-  }
-
-  .matchup-row:not(.matchup-row--picked):hover .matchup-edit-btn {
-    opacity: 0.28;
-  }
-
-  .matchup-edit-btn:active {
-    opacity: 1;
+    width: min(88vw, 320px) !important;
   }
 }
 
-@keyframes tickerFlash {
+@keyframes chipFlash {
   0% {
-    color: rgba(184, 125, 24, 0.95);
+    background: rgba(184, 125, 24, 0.22);
+    border-color: rgba(184, 125, 24, 0.6);
   }
   100% {
-    color: var(--text-secondary);
+    background: rgba(255, 255, 255, 0.04);
+    border-color: rgba(255, 255, 255, 0.08);
   }
 }

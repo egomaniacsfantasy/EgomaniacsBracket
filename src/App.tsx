@@ -90,8 +90,9 @@ type ProbabilityPopupState = {
 };
 
 type MobileTab = "bracket" | "futures";
-type MobileSection = "region" | "finalfour";
-type CandidateRow = { teamId: string; prob: number; team: NonNullable<ReturnType<typeof teamsById.get>> };
+type MobileSection = Region | "FF";
+type MobileRegionRound = "R64" | "R32" | "S16" | "E8";
+type MobileFfRound = "F4" | "CHAMP" | "WIN";
 
 function App() {
   const [lockedPicks, setLockedPicks] = useState<LockedPicks>({});
@@ -108,9 +109,10 @@ function App() {
     typeof window !== "undefined" ? window.matchMedia("(max-width: 767px)").matches : false
   );
   const [mobileTab, setMobileTab] = useState<MobileTab>("bracket");
-  const [mobileRegion, setMobileRegion] = useState<Region>("South");
-  const [mobileSection, setMobileSection] = useState<MobileSection>("region");
-  const [mobileChangedGameIds, setMobileChangedGameIds] = useState<Set<string>>(new Set());
+  const [mobileSection, setMobileSection] = useState<MobileSection>("South");
+  const [mobileRound, setMobileRound] = useState<MobileRegionRound>("R64");
+  const [mobileFfRound, setMobileFfRound] = useState<MobileFfRound>("F4");
+  const [liveOddsChangedIds, setLiveOddsChangedIds] = useState<Set<string>>(new Set());
   const [staggeredSimRunning, setStaggeredSimRunning] = useState(false);
   const [staggeredSimPaused, setStaggeredSimPaused] = useState(false);
   const [staggeredSimDelayMs, setStaggeredSimDelayMs] = useState(STAGGERED_SIM_DELAY_MS);
@@ -128,7 +130,7 @@ function App() {
   });
 
   const simulationCacheRef = useRef<Map<string, SimulationOutput>>(new Map());
-  const previousGameWinProbsRef = useRef<SimulationOutput["gameWinProbs"] | null>(null);
+  const previousFuturesRef = useRef<SimulationOutput["futures"] | null>(null);
   const mobileFlashTimeoutRef = useRef<number | null>(null);
   const staggeredTimeoutRef = useRef<number | null>(null);
   const staggeredStepsRef = useRef<Array<{ gameId: string; winnerId: string }>>([]);
@@ -319,40 +321,30 @@ function App() {
   }, [sanitized, simRuns, customProbByGame]);
 
   useEffect(() => {
-    const previous = previousGameWinProbsRef.current;
-    previousGameWinProbsRef.current = simResult.gameWinProbs;
+    const previous = previousFuturesRef.current;
+    previousFuturesRef.current = simResult.futures;
     if (!previous) return;
 
+    const previousMap = new Map(previous.map((row) => [row.teamId, row.champProb]));
     const changed = new Set<string>();
-    const gameIds = new Set([...Object.keys(previous), ...Object.keys(simResult.gameWinProbs)]);
-
-    for (const gameId of gameIds) {
-      const before = previous[gameId] ?? [];
-      const after = simResult.gameWinProbs[gameId] ?? [];
-      if (before.length !== after.length) {
-        changed.add(gameId);
-        continue;
-      }
-      for (let index = 0; index < before.length; index += 1) {
-        const prevRow = before[index];
-        const nextRow = after[index];
-        if (!prevRow || !nextRow || prevRow.teamId !== nextRow.teamId || Math.abs(prevRow.prob - nextRow.prob) > 0.000001) {
-          changed.add(gameId);
-          break;
-        }
+    for (const row of simResult.futures) {
+      const prev = previousMap.get(row.teamId);
+      if (prev === undefined) continue;
+      if (Math.abs(prev - row.champProb) > 0.000001) {
+        changed.add(row.teamId);
       }
     }
 
     if (changed.size === 0) return;
-    setMobileChangedGameIds(changed);
+    setLiveOddsChangedIds(changed);
     if (mobileFlashTimeoutRef.current !== null) {
       window.clearTimeout(mobileFlashTimeoutRef.current);
     }
     mobileFlashTimeoutRef.current = window.setTimeout(() => {
-      setMobileChangedGameIds(new Set());
+      setLiveOddsChangedIds(new Set());
       mobileFlashTimeoutRef.current = null;
-    }, 650);
-  }, [simResult.gameWinProbs]);
+    }, 850);
+  }, [simResult.futures]);
 
   const sortedFutures = useMemo(() => {
     const rows = [...simResult.futures];
@@ -488,6 +480,16 @@ function App() {
     const previous = undoStack[undoStack.length - 1];
     setUndoStack((prev) => prev.slice(0, -1));
     setLockedPicks(previous);
+  };
+
+  const onUndoGame = (gameId: string) => {
+    if (!lockedPicks[gameId]) return;
+    cancelStaggeredSim();
+    closeProbabilityPopup(true);
+    pushUndo(lockedPicks);
+    const next = { ...lockedPicks };
+    delete next[gameId];
+    setLockedPicks(sanitizeLockedPicks(next));
   };
 
   const onResetAll = () => {
@@ -655,7 +657,37 @@ function App() {
   const leftSemi = finalGames.find((g) => g.id === "F4-Left-0") ?? null;
   const rightSemi = finalGames.find((g) => g.id === "F4-Right-0") ?? null;
   const titleGame = finalGames.find((g) => g.id === "CHAMP-0") ?? null;
-  const anyRegionE8Complete = games.some((game) => game.round === "E8" && game.winnerId !== null);
+  const regionE8Status = Object.fromEntries(
+    mobileRegionOrder.map((region) => [region, games.some((game) => game.region === region && game.round === "E8" && game.winnerId !== null)])
+  ) as Record<Region, boolean>;
+  const allRegionE8Complete = mobileRegionOrder.every((region) =>
+    regionE8Status[region]
+  );
+  const allFinalFourComplete = [leftSemi, rightSemi].every((game) => game?.winnerId);
+  const championshipComplete = Boolean(titleGame?.winnerId);
+  const liveOddsTopContenders = sortedFutures.slice(0, 5).map((row) => {
+    const team = teamsById.get(row.teamId);
+    return {
+      id: row.teamId,
+      logoUrl: team ? teamLogoUrl(team) : fallbackLogo(row.teamId),
+      shortName: team ? mobileShortName(team.name) : row.teamId,
+      titleOdds: formatOddsDisplay(row.champProb, displayMode).primary,
+    };
+  });
+
+  useEffect(() => {
+    if (mobileSection === "FF") return;
+    const preferred = getPreferredMobileRegionRound(games, mobileSection);
+    setMobileRound((current) => (isRegionRoundAccessible(games, mobileSection, current) ? current : preferred));
+  }, [games, mobileSection]);
+
+  useEffect(() => {
+    if (mobileSection !== "FF") return;
+    const preferred = getPreferredMobileFfRound(allRegionE8Complete, allFinalFourComplete, championshipComplete);
+    setMobileFfRound((current) =>
+      isMobileFfRoundAccessible(allRegionE8Complete, allFinalFourComplete, championshipComplete, current) ? current : preferred
+    );
+  }, [mobileSection, allRegionE8Complete, allFinalFourComplete, championshipComplete]);
 
   const toolbar = (
     <div className="eg-main-actions toolbar">
@@ -901,50 +933,44 @@ function App() {
             {toolbar}
             {mobileTab === "bracket" ? (
               <>
-                <MobileRegionTabs
-                  activeRegion={mobileRegion}
-                  onChange={(region) => {
-                    setMobileSection("region");
-                    setMobileRegion(region);
-                  }}
-                />
-                {anyRegionE8Complete ? (
-                  <button className="mobile-ff-link" onClick={() => setMobileSection("finalfour")}>
-                    Final Four & Beyond →
-                  </button>
-                ) : null}
-                {mobileSection === "finalfour" ? (
-                  <MobileFinalFourCanvas
-                    leftSemi={leftSemi}
-                    rightSemi={rightSemi}
-                    titleGame={titleGame}
-                    gameWinProbs={simResult.gameWinProbs}
-                    possibleWinners={possibleWinners}
-                    lastPickedKey={lastPickedKey}
-                    displayMode={displayMode}
-                    onPick={onPick}
-                    onUndo={onUndo}
-                    onOpenProbabilityPopup={openProbabilityPopup}
-                    justChangedIds={mobileChangedGameIds}
-                  />
-                ) : (
-                  <MobileBracketCanvas
-                    region={mobileRegion}
-                    games={games}
-                    gameWinProbs={simResult.gameWinProbs}
-                    possibleWinners={possibleWinners}
-                    lastPickedKey={lastPickedKey}
-                    displayMode={displayMode}
-                    onPick={onPick}
-                    onUndo={onUndo}
-                    onOpenProbabilityPopup={openProbabilityPopup}
-                    justChangedIds={mobileChangedGameIds}
-                  />
-                )}
+                <MobileRegionTabs activeSection={mobileSection} onChange={setMobileSection} />
+                <div className="mobile-bracket-scroll">
+                  {mobileSection === "FF" ? (
+                    <MobileFinalFourView
+                      activeRound={mobileFfRound}
+                      allE8sComplete={allRegionE8Complete}
+                      regionE8Status={regionE8Status}
+                      allFinalFourComplete={allFinalFourComplete}
+                      championshipComplete={championshipComplete}
+                      leftSemi={leftSemi}
+                      rightSemi={rightSemi}
+                      titleGame={titleGame}
+                      onRoundChange={setMobileFfRound}
+                      onPick={onPick}
+                      onUndoPick={onUndoGame}
+                      onEditProb={openProbabilityPopup}
+                    />
+                  ) : (
+                    <MobileRegionView
+                      region={mobileSection}
+                      activeRound={mobileRound}
+                      games={games}
+                      onRoundChange={setMobileRound}
+                      onPick={onPick}
+                      onUndoPick={onUndoGame}
+                      onEditProb={openProbabilityPopup}
+                    />
+                  )}
+                </div>
               </>
             ) : (
               <div className="mobile-futures-view">{futuresContent}</div>
             )}
+            <LiveOddsStrip
+              topContenders={liveOddsTopContenders}
+              justChangedIds={liveOddsChangedIds}
+              onOpenFutures={() => setMobileTab("futures")}
+            />
             <MobileTabBar activeTab={mobileTab} onTabChange={setMobileTab} />
           </section>
         ) : (
@@ -1103,71 +1129,93 @@ function App() {
   );
 }
 
-function getGameRowsForDisplay(
-  game: ResolvedGame,
-  gameWinProbs: SimulationOutput["gameWinProbs"],
-  possibleWinners: Record<string, Set<string>>
-): CandidateRow[] {
-  const candidates = (gameWinProbs[game.id] || [])
-    .map((entry) => ({ ...entry, team: teamsById.get(entry.teamId) }))
-    .filter((entry): entry is CandidateRow => Boolean(entry.team));
-  const possibleForGame = possibleWinners[game.id] ?? new Set<string>();
-  const constrained = candidates.filter((candidate) => possibleForGame.has(candidate.teamId));
-
-  if (game.teamAId && game.teamBId) {
-    return [game.teamAId, game.teamBId]
-      .map((teamId) => {
-        const team = teamsById.get(teamId);
-        if (!team) return null;
-        return { teamId, prob: candidates.find((entry) => entry.teamId === teamId)?.prob ?? 0, team };
-      })
-      .filter((row): row is CandidateRow => row !== null);
-  }
-
-  return constrained.length > 2
-    ? [...constrained].sort((a, b) => {
-        if (b.prob !== a.prob) return b.prob - a.prob;
-        return a.team.seed - b.team.seed;
-      })
-    : constrained;
+function mobileShortName(name: string) {
+  const abbreviation = abbreviationForTeam(name);
+  if (abbreviation && abbreviation !== name) return abbreviation;
+  const words = name.split(" ");
+  return words.length > 2 ? words[words.length - 1] : name;
 }
 
-function formatMobilePercent(prob: number) {
-  return `${(prob * 100).toFixed(1)}%`;
+function getRegionRoundStatus(games: ResolvedGame[], region: Region, round: MobileRegionRound) {
+  if (round === "R64") {
+    const roundGames = gamesByRegionAndRound(games, region, round);
+    if (roundGames.every((game) => game.winnerId)) return "complete" as const;
+    if (roundGames.some((game) => game.winnerId)) return "in-progress" as const;
+    return "available" as const;
+  }
+
+  const previousRound: Record<Exclude<MobileRegionRound, "R64">, MobileRegionRound> = {
+    R32: "R64",
+    S16: "R32",
+    E8: "S16",
+  };
+  const priorGames = gamesByRegionAndRound(games, region, previousRound[round]);
+  if (!priorGames.length || priorGames.some((game) => !game.winnerId)) return "locked" as const;
+
+  const roundGames = gamesByRegionAndRound(games, region, round);
+  if (roundGames.every((game) => game.winnerId)) return "complete" as const;
+  if (roundGames.some((game) => game.winnerId)) return "in-progress" as const;
+  return "available" as const;
 }
 
-function getActiveRegionRound(games: ResolvedGame[], region: Region): ResolvedGame["round"] {
-  for (const round of regionRounds) {
-    const roundGames = games.filter((game) => game.region === region && game.round === round);
-    if (roundGames.some((game) => !game.winnerId)) return round;
-  }
-  return "E8";
+function isRegionRoundAccessible(games: ResolvedGame[], region: Region, round: MobileRegionRound) {
+  return getRegionRoundStatus(games, region, round) !== "locked";
 }
 
-function getActiveFinalRound(games: ResolvedGame[]): ResolvedGame["round"] {
-  for (const round of ["F4", "CHAMP"] as const) {
-    const roundGames = games.filter((game) => game.round === round);
-    if (roundGames.some((game) => !game.winnerId)) return round;
+function getPreferredMobileRegionRound(games: ResolvedGame[], region: Region): MobileRegionRound {
+  for (const round of ["R64", "R32", "S16", "E8"] as const) {
+    const status = getRegionRoundStatus(games, region, round);
+    if (status !== "locked" && status !== "complete") return round;
   }
-  return "CHAMP";
+  for (const round of ["E8", "S16", "R32", "R64"] as const) {
+    if (isRegionRoundAccessible(games, region, round)) return round;
+  }
+  return "R64";
+}
+
+function isMobileFfRoundAccessible(
+  allRegionE8Complete: boolean,
+  allFinalFourComplete: boolean,
+  championshipComplete: boolean,
+  round: MobileFfRound
+) {
+  if (round === "F4") return allRegionE8Complete;
+  if (round === "CHAMP") return allRegionE8Complete && allFinalFourComplete;
+  return allRegionE8Complete && allFinalFourComplete && championshipComplete;
+}
+
+function getPreferredMobileFfRound(
+  allRegionE8Complete: boolean,
+  allFinalFourComplete: boolean,
+  championshipComplete: boolean
+): MobileFfRound {
+  if (!allRegionE8Complete) return "F4";
+  if (!allFinalFourComplete) return "F4";
+  if (!championshipComplete) return "CHAMP";
+  return "WIN";
 }
 
 function MobileRegionTabs({
-  activeRegion,
+  activeSection,
   onChange,
 }: {
-  activeRegion: Region;
-  onChange: (region: Region) => void;
+  activeSection: MobileSection;
+  onChange: (section: MobileSection) => void;
 }) {
+  const sections: Array<{ id: MobileSection; label: string }> = [
+    ...mobileRegionOrder.map((region) => ({ id: region, label: region })),
+    { id: "FF", label: "FF+" },
+  ];
+
   return (
     <div className="mobile-region-tabs">
-      {mobileRegionOrder.map((region) => (
+      {sections.map((section) => (
         <button
-          key={region}
-          className={`mobile-region-tab ${activeRegion === region ? "active" : ""}`}
-          onClick={() => onChange(region)}
+          key={section.id}
+          className={`mobile-region-tab ${activeSection === section.id ? "active" : ""}`}
+          onClick={() => onChange(section.id)}
         >
-          {region}
+          {section.label}
         </button>
       ))}
     </div>
@@ -1201,333 +1249,355 @@ function MobileTabBar({
   );
 }
 
-function MobileBracketCanvas({
-  region,
-  games,
-  gameWinProbs,
-  possibleWinners,
-  lastPickedKey,
-  displayMode,
-  onPick,
-  onUndo,
-  onOpenProbabilityPopup,
-  justChangedIds,
+function MobileRoundNav({
+  rounds,
+  activeRound,
+  getStatus,
+  onRoundChange,
 }: {
-  region: Region;
-  games: ResolvedGame[];
-  gameWinProbs: SimulationOutput["gameWinProbs"];
-  possibleWinners: Record<string, Set<string>>;
-  lastPickedKey: string | null;
-  displayMode: OddsDisplayMode;
-  onPick: (game: ResolvedGame, teamId: string | null) => void;
-  onUndo: () => void;
-  onOpenProbabilityPopup: (game: ResolvedGame, anchorEl: HTMLElement) => void;
-  justChangedIds: Set<string>;
+  rounds: Array<{ id: string; label: string }>;
+  activeRound: string;
+  getStatus: (roundId: string) => "available" | "in-progress" | "complete" | "locked";
+  onRoundChange: (roundId: string) => void;
 }) {
-  const scrollRef = useRef<HTMLDivElement | null>(null);
-  const activeRound = getActiveRegionRound(games, region);
-  const rounds = regionRounds;
-
-  useEffect(() => {
-    const root = scrollRef.current;
-    if (!root) return;
-    const activeEl = root.querySelector(`[data-round='${activeRound}']`) as HTMLElement | null;
-    if (activeEl) {
-      activeEl.scrollIntoView({ behavior: "smooth", block: "nearest", inline: "start" });
-    }
-  }, [activeRound, region]);
-
   return (
-    <div className="mobile-bracket-canvas">
-      <div className="mobile-rounds-scroll" ref={scrollRef}>
-        {rounds.map((round) => (
-          <MobileRoundColumn
-            key={`${region}-${round}`}
-            round={round}
-            label={round === "R64" ? "R64" : round}
-            games={gamesByRegionAndRound(games, region, round)}
-            gameWinProbs={gameWinProbs}
-            possibleWinners={possibleWinners}
-            isActive={round === activeRound}
-            lastPickedKey={lastPickedKey}
-            displayMode={displayMode}
-            onPick={onPick}
-            onUndo={onUndo}
-            onOpenProbabilityPopup={onOpenProbabilityPopup}
-            justChangedIds={justChangedIds}
-          />
-        ))}
-      </div>
+    <div className="mobile-round-nav">
+      {rounds.map((round) => {
+        const status = getStatus(round.id);
+        return (
+          <button
+            key={round.id}
+            className={`mobile-round-pill mobile-round-pill--${status} ${activeRound === round.id ? "active" : ""}`}
+            onClick={() => {
+              if (status !== "locked") onRoundChange(round.id);
+            }}
+            disabled={status === "locked"}
+          >
+            {round.label}
+            {status === "complete" ? <span className="mobile-round-check">✓</span> : null}
+          </button>
+        );
+      })}
     </div>
   );
 }
 
-function MobileFinalFourCanvas({
+function MobileRegionView({
+  region,
+  activeRound,
+  games,
+  onRoundChange,
+  onPick,
+  onUndoPick,
+  onEditProb,
+}: {
+  region: Region;
+  activeRound: MobileRegionRound;
+  games: ResolvedGame[];
+  onRoundChange: (round: MobileRegionRound) => void;
+  onPick: (game: ResolvedGame, teamId: string | null) => void;
+  onUndoPick: (gameId: string) => void;
+  onEditProb: (game: ResolvedGame, anchorEl: HTMLElement) => void;
+}) {
+  const roundOrder: Array<{ id: MobileRegionRound; label: string }> = [
+    { id: "R64", label: "R64" },
+    { id: "R32", label: "R32" },
+    { id: "S16", label: "S16" },
+    { id: "E8", label: "E8" },
+  ];
+  const activeGames = gamesByRegionAndRound(games, region, activeRound);
+
+  const handlePickForRound = (game: ResolvedGame, teamId: string) => {
+    const roundGames = gamesByRegionAndRound(games, region, activeRound);
+    const allCompleteAfterPick = roundGames.every((roundGame) => roundGame.id === game.id || Boolean(roundGame.winnerId));
+    onPick(game, teamId);
+    if (allCompleteAfterPick) {
+      const nextRound: Record<MobileRegionRound, MobileRegionRound | null> = {
+        R64: "R32",
+        R32: "S16",
+        S16: "E8",
+        E8: null,
+      };
+      const next = nextRound[activeRound];
+      if (next) {
+        window.setTimeout(() => {
+          onRoundChange(next);
+          window.scrollTo({ top: 0, behavior: "smooth" });
+        }, 600);
+      }
+    }
+  };
+
+  return (
+    <>
+      <MobileRoundNav
+        rounds={roundOrder}
+        activeRound={activeRound}
+        getStatus={(roundId) => getRegionRoundStatus(games, region, roundId as MobileRegionRound)}
+        onRoundChange={(roundId) => onRoundChange(roundId as MobileRegionRound)}
+      />
+      {activeGames.map((game) => (
+        <MobileMatchupCard
+          key={game.id}
+          game={game}
+          onPick={handlePickForRound}
+          onUndoPick={onUndoPick}
+          onEditProb={onEditProb}
+        />
+      ))}
+    </>
+  );
+}
+
+function MobileFinalFourView({
+  activeRound,
+  allE8sComplete,
+  regionE8Status,
+  allFinalFourComplete,
+  championshipComplete,
   leftSemi,
   rightSemi,
   titleGame,
-  gameWinProbs,
-  possibleWinners,
-  lastPickedKey,
-  displayMode,
+  onRoundChange,
   onPick,
-  onUndo,
-  onOpenProbabilityPopup,
-  justChangedIds,
+  onUndoPick,
+  onEditProb,
 }: {
+  activeRound: MobileFfRound;
+  allE8sComplete: boolean;
+  regionE8Status: Record<Region, boolean>;
+  allFinalFourComplete: boolean;
+  championshipComplete: boolean;
   leftSemi: ResolvedGame | null;
   rightSemi: ResolvedGame | null;
   titleGame: ResolvedGame | null;
-  gameWinProbs: SimulationOutput["gameWinProbs"];
-  possibleWinners: Record<string, Set<string>>;
-  lastPickedKey: string | null;
-  displayMode: OddsDisplayMode;
+  onRoundChange: (round: MobileFfRound) => void;
   onPick: (game: ResolvedGame, teamId: string | null) => void;
-  onUndo: () => void;
-  onOpenProbabilityPopup: (game: ResolvedGame, anchorEl: HTMLElement) => void;
-  justChangedIds: Set<string>;
+  onUndoPick: (gameId: string) => void;
+  onEditProb: (game: ResolvedGame, anchorEl: HTMLElement) => void;
 }) {
-  const scrollRef = useRef<HTMLDivElement | null>(null);
-  const finalsGames = [leftSemi, rightSemi, titleGame].filter((game): game is ResolvedGame => Boolean(game));
-  const activeRound = getActiveFinalRound(finalsGames);
-  const grouped: Record<ResolvedGame["round"], ResolvedGame[]> = {
-    R64: [],
-    R32: [],
-    S16: [],
-    E8: [],
-    F4: finalsGames.filter((game) => game.round === "F4"),
-    CHAMP: finalsGames.filter((game) => game.round === "CHAMP"),
+  const rounds: Array<{ id: MobileFfRound; label: string }> = [
+    { id: "F4", label: "F4" },
+    { id: "CHAMP", label: "CHAMP" },
+    { id: "WIN", label: "WIN" },
+  ];
+
+  if (!allE8sComplete) {
+    return (
+      <div className="m-ff-locked">
+        <p className="m-ff-locked-msg">Complete all four Elite 8s to unlock the Final Four.</p>
+        <div className="m-ff-locked-progress">
+          {mobileRegionOrder.map((region) => {
+            return (
+              <div key={region} className={`m-ff-region-dot ${regionE8Status[region] ? "complete" : ""}`}>
+                {region.charAt(0)}
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    );
+  }
+
+  const semifinals = [leftSemi, rightSemi].filter((game): game is ResolvedGame => Boolean(game));
+  const championshipGames = titleGame ? [titleGame] : [];
+
+  const handlePickForRound = (game: ResolvedGame, teamId: string) => {
+    const roundGames = activeRound === "F4" ? semifinals : activeRound === "CHAMP" ? championshipGames : [];
+    const allCompleteAfterPick = roundGames.every((roundGame) => roundGame.id === game.id || Boolean(roundGame.winnerId));
+    onPick(game, teamId);
+    if (allCompleteAfterPick) {
+      const nextMap: Record<MobileFfRound, MobileFfRound | null> = {
+        F4: "CHAMP",
+        CHAMP: "WIN",
+        WIN: null,
+      };
+      const next = nextMap[activeRound];
+      if (next) {
+        window.setTimeout(() => {
+          onRoundChange(next);
+          window.scrollTo({ top: 0, behavior: "smooth" });
+        }, 600);
+      }
+    }
   };
 
-  useEffect(() => {
-    const root = scrollRef.current;
-    if (!root) return;
-    const activeEl = root.querySelector(`[data-round='${activeRound}']`) as HTMLElement | null;
-    if (activeEl) {
-      activeEl.scrollIntoView({ behavior: "smooth", block: "nearest", inline: "start" });
-    }
-  }, [activeRound]);
+  return (
+    <>
+      <MobileRoundNav
+        rounds={rounds}
+        activeRound={activeRound}
+        getStatus={(roundId) => {
+          if (roundId === "F4") return allFinalFourComplete ? "complete" : "available";
+          if (roundId === "CHAMP") return !allFinalFourComplete ? "locked" : championshipComplete ? "complete" : "available";
+          return championshipComplete ? "complete" : "locked";
+        }}
+        onRoundChange={(roundId) => onRoundChange(roundId as MobileFfRound)}
+      />
+      {activeRound === "F4"
+        ? semifinals.map((game) => (
+            <MobileMatchupCard
+              key={game.id}
+              game={game}
+              onPick={handlePickForRound}
+              onUndoPick={onUndoPick}
+              onEditProb={onEditProb}
+            />
+          ))
+        : null}
+      {activeRound === "CHAMP" && titleGame ? (
+        <MobileMatchupCard
+          game={titleGame}
+          onPick={handlePickForRound}
+          onUndoPick={onUndoPick}
+          onEditProb={onEditProb}
+        />
+      ) : null}
+      {activeRound === "WIN" ? <MobileChampionCard titleGame={titleGame} /> : null}
+    </>
+  );
+}
+
+function MobileChampionCard({ titleGame }: { titleGame: ResolvedGame | null }) {
+  const champion = titleGame?.winnerId ? teamsById.get(titleGame.winnerId) : null;
+
+  if (!champion) {
+    return (
+      <div className="m-ff-locked">
+        <p className="m-ff-locked-msg">Complete the championship matchup to reveal the champion.</p>
+      </div>
+    );
+  }
 
   return (
-    <div className="mobile-bracket-canvas">
-      <div className="mobile-rounds-scroll" ref={scrollRef}>
-        {(["F4", "CHAMP"] as const).map((round) => (
-          <MobileRoundColumn
-            key={`finals-${round}`}
-            round={round}
-            label={round === "F4" ? "F4" : "CHAMP"}
-            games={grouped[round]}
-            gameWinProbs={gameWinProbs}
-            possibleWinners={possibleWinners}
-            isActive={round === activeRound}
-            lastPickedKey={lastPickedKey}
-            displayMode={displayMode}
-            onPick={onPick}
-            onUndo={onUndo}
-            onOpenProbabilityPopup={onOpenProbabilityPopup}
-            justChangedIds={justChangedIds}
-          />
-        ))}
+    <div className="m-card m-card--picked">
+      <div className="m-card-footer">
+        <span className="m-winner-label">Champion</span>
+      </div>
+      <div className="m-champion-body">
+        <TeamLogo teamName={champion.name} src={teamLogoUrl(champion)} />
+        <span className="m-champion-name">{champion.name}</span>
       </div>
     </div>
   );
 }
 
-function MobileRoundColumn({
-  round,
-  label,
-  games,
-  gameWinProbs,
-  possibleWinners,
-  isActive,
-  lastPickedKey,
-  displayMode,
+function MobileMatchupCard({
+  game,
   onPick,
-  onUndo,
-  onOpenProbabilityPopup,
-  justChangedIds,
+  onUndoPick,
+  onEditProb,
 }: {
-  round: ResolvedGame["round"];
-  label: string;
-  games: ResolvedGame[];
-  gameWinProbs: SimulationOutput["gameWinProbs"];
-  possibleWinners: Record<string, Set<string>>;
-  isActive: boolean;
-  lastPickedKey: string | null;
-  displayMode: OddsDisplayMode;
-  onPick: (game: ResolvedGame, teamId: string | null) => void;
-  onUndo: () => void;
-  onOpenProbabilityPopup: (game: ResolvedGame, anchorEl: HTMLElement) => void;
-  justChangedIds: Set<string>;
+  game: ResolvedGame;
+  onPick: (game: ResolvedGame, teamId: string) => void;
+  onUndoPick: (gameId: string) => void;
+  onEditProb: (game: ResolvedGame, anchorEl: HTMLElement) => void;
 }) {
+  const cardRef = useRef<HTMLDivElement | null>(null);
+  const teamA = game.teamAId ? teamsById.get(game.teamAId) ?? null : null;
+  const teamB = game.teamBId ? teamsById.get(game.teamBId) ?? null : null;
+  if (!teamA || !teamB) return null;
+
+  const probA = Math.round((getGameWinProb(game, teamA.id) ?? 0) * 100);
+  const probB = Math.round((getGameWinProb(game, teamB.id) ?? 0) * 100);
+  const isPicked = Boolean(game.winnerId);
+  const isEdited = game.customProbA !== null;
+  const teamAOdds = formatOddsDisplay(probA / 100, "american").primary;
+  const teamBOdds = formatOddsDisplay(probB / 100, "american").primary;
+
   return (
-    <div
-      className={`mobile-round-col ${isActive ? "mobile-round-col--active" : "mobile-round-col--ticker"}`}
-      data-round={round}
-    >
-      <div className="mobile-round-col-header">
-        <span className="mobile-round-col-label">{label}</span>
-      </div>
-      <div className="mobile-round-col-matchups">
-        {games.map((game) =>
-          isActive ? (
-            <MobileMatchupFull
-              key={game.id}
-              game={game}
-              rows={getGameRowsForDisplay(game, gameWinProbs, possibleWinners)}
-              lastPickedKey={lastPickedKey}
-              displayMode={displayMode}
-              onPick={onPick}
-              onUndo={onUndo}
-              onOpenProbabilityPopup={onOpenProbabilityPopup}
-            />
-          ) : (
-            <MobileMatchupTicker
-              key={game.id}
-              game={game}
-              rows={getGameRowsForDisplay(game, gameWinProbs, possibleWinners)}
-              displayMode={displayMode}
-              justChanged={justChangedIds.has(game.id)}
-            />
-          )
+    <div className={`m-card ${isPicked ? "m-card--picked" : ""}`} ref={cardRef}>
+      <button
+        className={`m-team ${game.winnerId === teamA.id ? "m-team--winner" : ""} ${
+          game.winnerId && game.winnerId !== teamA.id ? "m-team--loser" : ""
+        }`}
+        onClick={() => {
+          if (!isPicked) onPick(game, teamA.id);
+        }}
+        disabled={isPicked}
+      >
+        <span className="m-seed">{teamA.seed}</span>
+        <TeamLogo teamName={teamA.name} src={teamLogoUrl(teamA)} />
+        <span className="m-name">{teamA.name}</span>
+        <div className="m-stats">
+          <span className="m-prob">{probA}%</span>
+          <span className={`m-odds ${isEdited ? "m-odds--edited" : ""}`}>{teamAOdds}</span>
+        </div>
+      </button>
+
+      <div className="m-vs">vs</div>
+
+      <button
+        className={`m-team ${game.winnerId === teamB.id ? "m-team--winner" : ""} ${
+          game.winnerId && game.winnerId !== teamB.id ? "m-team--loser" : ""
+        }`}
+        onClick={() => {
+          if (!isPicked) onPick(game, teamB.id);
+        }}
+        disabled={isPicked}
+      >
+        <span className="m-seed">{teamB.seed}</span>
+        <TeamLogo teamName={teamB.name} src={teamLogoUrl(teamB)} />
+        <span className="m-name">{teamB.name}</span>
+        <div className="m-stats">
+          <span className="m-prob">{probB}%</span>
+          <span className={`m-odds ${isEdited ? "m-odds--edited" : ""}`}>{teamBOdds}</span>
+        </div>
+      </button>
+
+      <div className="m-card-footer">
+        {isPicked ? (
+          <>
+            <span className="m-winner-label">✓ {(game.winnerId === teamA.id ? teamA.name : teamB.name)} advances</span>
+            <button className="m-undo-btn" onClick={() => onUndoPick(game.id)}>
+              Undo
+            </button>
+          </>
+        ) : (
+          <>
+            <span />
+            <button
+              className="m-edit-prob-btn"
+              onClick={() => {
+                if (cardRef.current) onEditProb(game, cardRef.current);
+              }}
+            >
+              ✎ Edit odds
+            </button>
+          </>
         )}
       </div>
     </div>
   );
 }
 
-function MobileMatchupFull({
-  game,
-  rows,
-  lastPickedKey,
-  displayMode,
-  onPick,
-  onUndo,
-  onOpenProbabilityPopup,
+function LiveOddsStrip({
+  topContenders,
+  justChangedIds,
+  onOpenFutures,
 }: {
-  game: ResolvedGame;
-  rows: CandidateRow[];
-  lastPickedKey: string | null;
-  displayMode: OddsDisplayMode;
-  onPick: (game: ResolvedGame, teamId: string | null) => void;
-  onUndo: () => void;
-  onOpenProbabilityPopup: (game: ResolvedGame, anchorEl: HTMLElement) => void;
+  topContenders: Array<{ id: string; logoUrl: string; shortName: string; titleOdds: string }>;
+  justChangedIds: Set<string>;
+  onOpenFutures: () => void;
 }) {
-  const cardRef = useRef<HTMLDivElement | null>(null);
-  const longPressTimerRef = useRef<number | null>(null);
-  const longPressFiredRef = useRef(false);
-  const clearLongPress = () => {
-    if (longPressTimerRef.current !== null) {
-      window.clearTimeout(longPressTimerRef.current);
-      longPressTimerRef.current = null;
-    }
-  };
-  const canEdit = !game.winnerId && game.teamAId && game.teamBId;
-  const directMatchup = Boolean(game.teamAId && game.teamBId);
-
   return (
-    <div ref={cardRef} className={`mobile-matchup-full ${game.winnerId ? "picked" : ""}`}>
-      {canEdit ? (
-        <button
-          className="matchup-edit-btn mobile-matchup-edit-btn"
-          onClick={(event) => {
-            event.stopPropagation();
-            if (!cardRef.current) return;
-            onOpenProbabilityPopup(game, cardRef.current);
-          }}
-          aria-label="Edit matchup probability"
-          title="Edit probability"
-        >
-          ✎
-        </button>
-      ) : null}
-      {rows.map((row) => {
-        const selected = game.winnerId === row.teamId;
-        const outcome =
-          game.lockedByUser && game.winnerId
-            ? game.winnerId === row.teamId
-              ? "winner"
-              : "loser"
-            : "";
-        const canPick = directMatchup && (row.teamId === game.teamAId || row.teamId === game.teamBId);
-        const formatted = formatOddsDisplay(row.prob, displayMode);
-        return (
-          <button
-            key={`${game.id}-${row.teamId}-mobile`}
-            className={`mobile-team-btn ${selected ? "winner" : ""} ${outcome === "loser" ? "loser" : ""} ${lastPickedKey === `${game.id}:${row.teamId}` ? "fresh-pick" : ""}`}
-            onClick={(event) => {
-              if (longPressFiredRef.current) {
-                longPressFiredRef.current = false;
-                event.preventDefault();
-                return;
-              }
-              if (!game.winnerId && canPick) onPick(game, row.teamId);
-            }}
-            onTouchStart={() => {
-              if (!canEdit || !cardRef.current) return;
-              clearLongPress();
-              longPressFiredRef.current = false;
-              longPressTimerRef.current = window.setTimeout(() => {
-                longPressFiredRef.current = true;
-                onOpenProbabilityPopup(game, cardRef.current!);
-              }, 400);
-            }}
-            onTouchEnd={clearLongPress}
-            onTouchCancel={clearLongPress}
-            disabled={Boolean(game.winnerId) || !canPick}
+    <div className="live-odds-strip">
+      <span className="live-odds-strip-label">Title</span>
+      <div className="live-odds-strip-chips">
+        {topContenders.slice(0, 5).map((team) => (
+          <div
+            key={team.id}
+            className={`live-odds-chip ${justChangedIds.has(team.id) ? "live-odds-chip--changed" : ""}`}
           >
-            <span className="m-seed">{row.team.seed}</span>
-            <TeamLogo teamName={row.team.name} src={teamLogoUrl(row.team)} />
-            <span className="m-name">{row.team.name}</span>
-            <div className="m-right">
-              <span className="m-prob">{formatMobilePercent(row.prob)}</span>
-              <span className={`m-odds ${game.customProbA !== null ? "edited" : ""}`}>{formatted.primary}</span>
-            </div>
-          </button>
-        );
-      })}
-      {game.winnerId ? (
-        <div className="mobile-winner-bar">
-          <span>
-            ✓ {teamsById.get(game.winnerId)?.name ?? "Winner selected"}
-          </span>
-          <button onClick={onUndo} className="m-undo">
-            Undo
-          </button>
-        </div>
-      ) : null}
-    </div>
-  );
-}
-
-function MobileMatchupTicker({
-  game,
-  rows,
-  displayMode,
-  justChanged,
-}: {
-  game: ResolvedGame;
-  rows: CandidateRow[];
-  displayMode: OddsDisplayMode;
-  justChanged: boolean;
-}) {
-  const displayRows =
-    rows.length <= 2
-      ? rows
-      : [...rows].sort((a, b) => b.prob - a.prob || a.team.seed - b.team.seed).slice(0, 2);
-
-  return (
-    <div className="mobile-ticker-matchup">
-      {displayRows.map((row, index) => {
-        const formatted = formatOddsDisplay(row.prob, displayMode);
-        return (
-          <div key={`${game.id}-${row.teamId}-ticker`} className={`mobile-ticker-row ${index > 0 ? "after-divider" : ""}`}>
-            <div className={`mobile-ticker-odds ${game.customProbA !== null ? "edited" : ""} ${justChanged ? "just-changed" : ""}`}>
-              {formatted.primary}
-            </div>
+            <img src={team.logoUrl} className="live-chip-logo" alt="" />
+            <span className="live-chip-name">{team.shortName}</span>
+            <span className="live-chip-odds">{team.titleOdds}</span>
           </div>
-        );
-      })}
+        ))}
+      </div>
+      <button className="live-odds-strip-expand" onClick={onOpenFutures}>
+        All →
+      </button>
     </div>
   );
 }
