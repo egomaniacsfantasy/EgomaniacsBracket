@@ -2283,9 +2283,11 @@ function RegionBracket({
 
     const innermostActive = [...activeRounds].sort((a, b) => roundDepth[a] - roundDepth[b])[0];
     const otherActive = activeRounds.filter((round) => round !== innermostActive);
-    const innermostWidth = Math.max(availableForActive * 0.6, MANUAL_WIDTH);
+    const MIN_OTHER_WIDTH = 100;
+    const maxInnermostWidth = availableForActive - (otherActive.length * MIN_OTHER_WIDTH);
+    const innermostWidth = Math.min(availableForActive * 0.6, maxInnermostWidth);
     const remainingForOthers = availableForActive - innermostWidth;
-    const perOtherWidth = Math.max(remainingForOthers / otherActive.length, MANUAL_WIDTH);
+    const perOtherWidth = remainingForOthers / otherActive.length;
 
     roundsBase.forEach((round, i) => {
       if (states[i] === "collapsed") widths[round] = COLLAPSED_WIDTH;
