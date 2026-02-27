@@ -29,6 +29,7 @@ import type { OddsDisplayMode, Region, ResolvedGame, SimulationOutput } from "./
 
 const DEFAULT_SIM_RUNS = 5000;
 const ONBOARDING_STORAGE_KEY = "oddsGods_onboardingDismissed";
+const FIRST_PICK_NUDGE_SESSION_KEY = "oddsGods_firstPickCascadeNudgeSeen";
 const STAGGERED_SIM_DELAY_MS = 2000;
 const MIN_STAGGERED_SIM_DELAY_MS = 1000;
 const MAX_STAGGERED_SIM_DELAY_MS = 5000;
@@ -65,6 +66,12 @@ const ROUND_RANK: Record<ResolvedGame["round"], number> = {
   F4: 4,
   CHAMP: 5,
 };
+const MOBILE_ROUND_ORDER: Record<"R64" | "R32" | "S16" | "E8", number> = {
+  R64: 0,
+  R32: 1,
+  S16: 2,
+  E8: 3,
+};
 
 type OnboardingStage = 1 | 2 | 3;
 
@@ -94,6 +101,7 @@ type MobileSection = Region | "FF";
 type MobileRegionRound = "R64" | "R32" | "S16" | "E8";
 type MobileFfRound = "F4" | "CHAMP" | "WIN";
 type CandidateRow = { teamId: string; prob: number; team: NonNullable<ReturnType<typeof teamsById.get>> };
+const MAJOR_SHIFT_NUDGE_COOLDOWN = 3;
 
 function App() {
   const [lockedPicks, setLockedPicks] = useState<LockedPicks>({});
@@ -115,6 +123,16 @@ function App() {
   const [mobileFfRound, setMobileFfRound] = useState<MobileFfRound>("F4");
   const [liveOddsChangedIds, setLiveOddsChangedIds] = useState<Set<string>>(new Set());
   const [mobileRoundDeltas, setMobileRoundDeltas] = useState<Partial<Record<MobileRegionRound, number>>>({});
+  const [hasSeenFirstPickNudge, setHasSeenFirstPickNudge] = useState(() => {
+    if (typeof window === "undefined") return false;
+    return window.sessionStorage.getItem(FIRST_PICK_NUDGE_SESSION_KEY) === "1";
+  });
+  const [firstPickNudgeVisible, setFirstPickNudgeVisible] = useState(false);
+  const [firstPickChangedRounds, setFirstPickChangedRounds] = useState<string[]>([]);
+  const [majorShiftNudgeVisible, setMajorShiftNudgeVisible] = useState(false);
+  const [majorShiftTeamName, setMajorShiftTeamName] = useState("");
+  const [majorShiftPct, setMajorShiftPct] = useState(0);
+  const [majorShiftTargetRound, setMajorShiftTargetRound] = useState<MobileRegionRound>("R32");
   const [staggeredSimRunning, setStaggeredSimRunning] = useState(false);
   const [staggeredSimPaused, setStaggeredSimPaused] = useState(false);
   const [staggeredSimDelayMs, setStaggeredSimDelayMs] = useState(STAGGERED_SIM_DELAY_MS);
@@ -136,6 +154,10 @@ function App() {
   const previousGameWinProbsRef = useRef<SimulationOutput["gameWinProbs"] | null>(null);
   const mobileFlashTimeoutRef = useRef<number | null>(null);
   const mobileDeltaTimeoutRef = useRef<number | null>(null);
+  const firstPickNudgeTimeoutRef = useRef<number | null>(null);
+  const pendingPickMetaRef = useRef<{ isFirstPick: boolean; section: MobileSection; round: MobileRegionRound | null } | null>(null);
+  const pendingMajorShiftTargetRef = useRef<MobileRegionRound>("R32");
+  const picksSinceLastNudgeRef = useRef(0);
   const staggeredTimeoutRef = useRef<number | null>(null);
   const staggeredStepsRef = useRef<Array<{ gameId: string; winnerId: string }>>([]);
   const staggeredIndexRef = useRef(0);
@@ -170,6 +192,11 @@ function App() {
     media.addEventListener("change", apply);
     return () => media.removeEventListener("change", apply);
   }, []);
+
+  useEffect(() => {
+    if (!hasSeenFirstPickNudge || typeof window === "undefined") return;
+    window.sessionStorage.setItem(FIRST_PICK_NUDGE_SESSION_KEY, "1");
+  }, [hasSeenFirstPickNudge]);
 
   useEffect(() => {
     const statsCanvas = document.getElementById("bg-stats") as HTMLCanvasElement | null;
@@ -339,15 +366,40 @@ function App() {
       }
     }
 
-    if (changed.size === 0) return;
-    setLiveOddsChangedIds(changed);
-    if (mobileFlashTimeoutRef.current !== null) {
-      window.clearTimeout(mobileFlashTimeoutRef.current);
+    if (changed.size > 0) {
+      setLiveOddsChangedIds(changed);
+      if (mobileFlashTimeoutRef.current !== null) {
+        window.clearTimeout(mobileFlashTimeoutRef.current);
+      }
+      mobileFlashTimeoutRef.current = window.setTimeout(() => {
+        setLiveOddsChangedIds(new Set());
+        mobileFlashTimeoutRef.current = null;
+      }, 850);
     }
-    mobileFlashTimeoutRef.current = window.setTimeout(() => {
-      setLiveOddsChangedIds(new Set());
-      mobileFlashTimeoutRef.current = null;
-    }, 850);
+
+    const pendingMeta = pendingPickMetaRef.current;
+    if (!pendingMeta || pendingMeta.isFirstPick) return;
+    const majorShift = getMajorShiftInfo(previous, simResult.futures);
+    if (!majorShift) {
+      picksSinceLastNudgeRef.current += 1;
+      pendingPickMetaRef.current = null;
+      return;
+    }
+    if (picksSinceLastNudgeRef.current < MAJOR_SHIFT_NUDGE_COOLDOWN) {
+      picksSinceLastNudgeRef.current += 1;
+      pendingPickMetaRef.current = null;
+      return;
+    }
+    const shiftTeam = teamsById.get(majorShift.teamId);
+    if (shiftTeam) {
+      setFirstPickNudgeVisible(false);
+      setMajorShiftTeamName(shiftTeam.name);
+      setMajorShiftPct(majorShift.shiftPct);
+      setMajorShiftTargetRound(pendingMajorShiftTargetRef.current);
+      setMajorShiftNudgeVisible(true);
+      picksSinceLastNudgeRef.current = 0;
+    }
+    pendingPickMetaRef.current = null;
   }, [simResult.futures]);
 
   useEffect(() => {
@@ -380,6 +432,10 @@ function App() {
       if (changedCount > 0) deltas[round] = changedCount;
     }
     if (!Object.keys(deltas).length) return;
+    const changedRoundEntries = (Object.keys(deltas) as MobileRegionRound[]).sort(
+      (a, b) => MOBILE_ROUND_ORDER[a] - MOBILE_ROUND_ORDER[b]
+    );
+    pendingMajorShiftTargetRef.current = changedRoundEntries[0] ?? "R32";
     setMobileRoundDeltas(deltas);
     if (mobileDeltaTimeoutRef.current !== null) {
       window.clearTimeout(mobileDeltaTimeoutRef.current);
@@ -388,6 +444,24 @@ function App() {
       setMobileRoundDeltas({});
       mobileDeltaTimeoutRef.current = null;
     }, 1600);
+
+    const pendingMeta = pendingPickMetaRef.current;
+    if (!pendingMeta || !pendingMeta.isFirstPick || hasSeenFirstPickNudge) return;
+    const changedLabels = changedRoundEntries.map((round) => round);
+    if (!changedLabels.length) return;
+    if (majorShiftNudgeVisible) setMajorShiftNudgeVisible(false);
+    if (firstPickNudgeTimeoutRef.current !== null) {
+      window.clearTimeout(firstPickNudgeTimeoutRef.current);
+    }
+    setFirstPickChangedRounds(changedLabels);
+    setFirstPickNudgeVisible(true);
+    setHasSeenFirstPickNudge(true);
+    firstPickNudgeTimeoutRef.current = window.setTimeout(() => {
+      setFirstPickNudgeVisible(false);
+      firstPickNudgeTimeoutRef.current = null;
+    }, 4000);
+    picksSinceLastNudgeRef.current = 0;
+    pendingPickMetaRef.current = null;
   }, [simResult.gameWinProbs, games, mobileSection, mobileRound]);
 
   const sortedFutures = useMemo(() => {
@@ -500,6 +574,17 @@ function App() {
   const onPick = (game: ResolvedGame, teamId: string | null) => {
     if (!teamId) return;
     if (teamId !== game.teamAId && teamId !== game.teamBId) return;
+    const isFirstPick =
+      Object.keys(sanitized).length === 0 &&
+      lockedPicks[game.id] !== teamId &&
+      mobileSection !== "FF" &&
+      mobileRound === "R64" &&
+      !hasSeenFirstPickNudge;
+    pendingPickMetaRef.current = {
+      isFirstPick,
+      section: mobileSection,
+      round: mobileSection === "FF" ? null : mobileRound,
+    };
     cancelStaggeredSim();
     pushUndo(lockedPicks);
 
@@ -520,6 +605,9 @@ function App() {
   const onUndo = () => {
     cancelStaggeredSim();
     if (undoStack.length === 0) return;
+    pendingPickMetaRef.current = null;
+    setFirstPickNudgeVisible(false);
+    setMajorShiftNudgeVisible(false);
     closeProbabilityPopup(true);
     const previous = undoStack[undoStack.length - 1];
     setUndoStack((prev) => prev.slice(0, -1));
@@ -529,6 +617,9 @@ function App() {
   const onUndoGame = (gameId: string) => {
     if (!lockedPicks[gameId]) return;
     cancelStaggeredSim();
+    pendingPickMetaRef.current = null;
+    setFirstPickNudgeVisible(false);
+    setMajorShiftNudgeVisible(false);
     closeProbabilityPopup(true);
     pushUndo(lockedPicks);
     const next = { ...lockedPicks };
@@ -540,6 +631,11 @@ function App() {
     if (!game.teamAId || !game.teamBId) return;
     if (teamId !== game.teamAId && teamId !== game.teamBId) return;
     if (game.winnerId === teamId) return;
+    pendingPickMetaRef.current = {
+      isFirstPick: false,
+      section: mobileSection,
+      round: mobileSection === "FF" ? null : mobileRound,
+    };
     cancelStaggeredSim();
     closeProbabilityPopup(true);
     pushUndo(lockedPicks);
@@ -550,6 +646,9 @@ function App() {
   const onResetAll = () => {
     cancelStaggeredSim();
     if (Object.keys(lockedPicks).length === 0 && Object.keys(customProbByGame).length === 0) return;
+    pendingPickMetaRef.current = null;
+    setFirstPickNudgeVisible(false);
+    setMajorShiftNudgeVisible(false);
     pushUndo(lockedPicks);
     setLockedPicks({});
     setCustomProbByGame({});
@@ -558,6 +657,9 @@ function App() {
 
   const onResetRegion = (region: Region) => {
     cancelStaggeredSim();
+    pendingPickMetaRef.current = null;
+    setFirstPickNudgeVisible(false);
+    setMajorShiftNudgeVisible(false);
     closeProbabilityPopup(true);
     pushUndo(lockedPicks);
     setLockedPicks(resetRegionPicks(lockedPicks, region));
@@ -565,6 +667,9 @@ function App() {
 
   const onModelSim = () => {
     cancelStaggeredSim();
+    pendingPickMetaRef.current = null;
+    setFirstPickNudgeVisible(false);
+    setMajorShiftNudgeVisible(false);
     closeProbabilityPopup(true);
     pushUndo(lockedPicks);
     setLockedPicks(sanitizeLockedPicks(generateSimulatedBracket(lockedPicks, customProbByGame)));
@@ -572,6 +677,9 @@ function App() {
 
   const onModelSimStaggered = () => {
     cancelStaggeredSim();
+    pendingPickMetaRef.current = null;
+    setFirstPickNudgeVisible(false);
+    setMajorShiftNudgeVisible(false);
     closeProbabilityPopup(true);
     setShowStaggeredControls(true);
     const baseLocks = { ...lockedPicks };
@@ -686,6 +794,9 @@ function App() {
       }
       if (mobileDeltaTimeoutRef.current !== null) {
         window.clearTimeout(mobileDeltaTimeoutRef.current);
+      }
+      if (firstPickNudgeTimeoutRef.current !== null) {
+        window.clearTimeout(firstPickNudgeTimeoutRef.current);
       }
     },
     []
@@ -1020,6 +1131,14 @@ function App() {
                       possibleWinners={possibleWinners}
                       displayMode={displayMode}
                       roundDeltas={mobileRoundDeltas}
+                      firstPickNudgeVisible={firstPickNudgeVisible}
+                      firstPickChangedRounds={firstPickChangedRounds}
+                      majorShiftNudgeVisible={majorShiftNudgeVisible}
+                      majorShiftTeamName={majorShiftTeamName}
+                      majorShiftPct={majorShiftPct}
+                      majorShiftTargetRound={majorShiftTargetRound}
+                      onDismissFirstPickNudge={() => setFirstPickNudgeVisible(false)}
+                      onDismissMajorShiftNudge={() => setMajorShiftNudgeVisible(false)}
                       onRoundChange={setMobileRound}
                       onPick={onPick}
                       onSwitchPick={onSwitchPick}
@@ -1281,6 +1400,86 @@ function getPreferredMobileFfRound(
   return "WIN";
 }
 
+function formatRoundList(rounds: string[]) {
+  if (rounds.length === 0) return "future rounds";
+  if (rounds.length === 1) return rounds[0];
+  if (rounds.length === 2) return `${rounds[0]} & ${rounds[1]}`;
+  return `${rounds.slice(0, -1).join(", ")} & ${rounds[rounds.length - 1]}`;
+}
+
+function getMajorShiftInfo(
+  previousFutures: SimulationOutput["futures"],
+  nextFutures: SimulationOutput["futures"]
+) {
+  const previousMap = new Map(previousFutures.map((row) => [row.teamId, row.champProb]));
+  let maxShift = 0;
+  let maxShiftTeamId: string | null = null;
+  for (const row of nextFutures) {
+    const prev = previousMap.get(row.teamId) ?? 0;
+    const shift = Math.abs(row.champProb - prev);
+    if (shift > maxShift) {
+      maxShift = shift;
+      maxShiftTeamId = row.teamId;
+    }
+  }
+  if (!maxShiftTeamId || maxShift < 0.03) return null;
+  return { teamId: maxShiftTeamId, shiftPct: Math.round(maxShift * 100) };
+}
+
+function CascadeFirstPickNudge({
+  visible,
+  changedRounds,
+  onDismiss,
+}: {
+  visible: boolean;
+  changedRounds: string[];
+  onDismiss: () => void;
+}) {
+  const roundText = formatRoundList(changedRounds);
+  return (
+    <div className={`cascade-nudge cascade-nudge--firstpick ${visible ? "visible" : ""}`}>
+      <span className="cascade-nudge-icon">↻</span>
+      <div className="cascade-nudge-text">
+        <span className="cascade-nudge-headline">Your pick just repriced {roundText}</span>
+        <span className="cascade-nudge-sub">Tap {roundText} above to see how the field shifted →</span>
+      </div>
+      <button className="cascade-nudge-dismiss" onClick={onDismiss} aria-label="Dismiss nudge">
+        ✕
+      </button>
+    </div>
+  );
+}
+
+function CascadeMajorShiftNudge({
+  visible,
+  teamName,
+  shiftPct,
+  onTapSee,
+  onDismiss,
+}: {
+  visible: boolean;
+  teamName: string;
+  shiftPct: number;
+  onTapSee: () => void;
+  onDismiss: () => void;
+}) {
+  return (
+    <div className={`cascade-nudge cascade-nudge--majorshift ${visible ? "visible" : ""}`}>
+      <span className="cascade-nudge-icon">⚡</span>
+      <div className="cascade-nudge-text">
+        <span className="cascade-nudge-headline">Big swing - {teamName}&apos;s title odds moved {shiftPct}%</span>
+        <span className="cascade-nudge-sub">See how the rest of the field repriced →</span>
+      </div>
+      <button className="cascade-nudge-cta" onClick={onTapSee}>
+        R32 →
+      </button>
+      <button className="cascade-nudge-dismiss" onClick={onDismiss} aria-label="Dismiss nudge">
+        ✕
+      </button>
+    </div>
+  );
+}
+
 function MobileRegionTabs({
   activeSection,
   onChange,
@@ -1382,6 +1581,14 @@ function MobileRegionView({
   possibleWinners,
   displayMode,
   roundDeltas,
+  firstPickNudgeVisible,
+  firstPickChangedRounds,
+  majorShiftNudgeVisible,
+  majorShiftTeamName,
+  majorShiftPct,
+  majorShiftTargetRound,
+  onDismissFirstPickNudge,
+  onDismissMajorShiftNudge,
   onRoundChange,
   onPick,
   onSwitchPick,
@@ -1395,6 +1602,14 @@ function MobileRegionView({
   possibleWinners: Record<string, Set<string>>;
   displayMode: OddsDisplayMode;
   roundDeltas: Partial<Record<MobileRegionRound, number>>;
+  firstPickNudgeVisible: boolean;
+  firstPickChangedRounds: string[];
+  majorShiftNudgeVisible: boolean;
+  majorShiftTeamName: string;
+  majorShiftPct: number;
+  majorShiftTargetRound: MobileRegionRound;
+  onDismissFirstPickNudge: () => void;
+  onDismissMajorShiftNudge: () => void;
   onRoundChange: (round: MobileRegionRound) => void;
   onPick: (game: ResolvedGame, teamId: string | null) => void;
   onSwitchPick: (game: ResolvedGame, teamId: string) => void;
@@ -1440,6 +1655,21 @@ function MobileRegionView({
         getMode={(roundId) => getRegionRoundMode(games, region, roundId as MobileRegionRound)}
         deltaByRound={roundDeltas}
         onRoundChange={(roundId) => onRoundChange(roundId as MobileRegionRound)}
+      />
+      <CascadeFirstPickNudge
+        visible={firstPickNudgeVisible}
+        changedRounds={firstPickChangedRounds}
+        onDismiss={onDismissFirstPickNudge}
+      />
+      <CascadeMajorShiftNudge
+        visible={!firstPickNudgeVisible && majorShiftNudgeVisible}
+        teamName={majorShiftTeamName}
+        shiftPct={majorShiftPct}
+        onTapSee={() => {
+          onRoundChange(majorShiftTargetRound);
+          onDismissMajorShiftNudge();
+        }}
+        onDismiss={onDismissMajorShiftNudge}
       />
       {roundMode === "probabilistic" ? (
         <>
@@ -1813,6 +2043,35 @@ function RegionBracket({
   onOpenProbabilityPopup: (game: ResolvedGame, anchorEl: HTMLElement) => void;
 }) {
   const rounds = inverted ? [...regionRounds].reverse() : [...regionRounds];
+  const collapseByRound = useMemo(
+    () =>
+      Object.fromEntries(
+        rounds.map((round) => {
+          const roundGames = gamesByRegionAndRound(games, region, round);
+          return [round, roundGames.length > 0 && roundGames.every((game) => Boolean(game.winnerId))];
+        })
+      ) as Partial<Record<ResolvedGame["round"], boolean>>,
+    [games, region, rounds]
+  );
+  const columnWidthByRound: Record<ResolvedGame["round"], string> = {
+    R64: "minmax(122px, 2.25fr)",
+    R32: "minmax(112px, 1.95fr)",
+    S16: "minmax(106px, 1.9fr)",
+    E8: "minmax(100px, 1.85fr)",
+    F4: "minmax(100px, 1.8fr)",
+    CHAMP: "minmax(100px, 1.8fr)",
+  };
+  const gridTemplateColumns = rounds
+    .map((round) => (collapseByRound[round] ? "68px" : columnWidthByRound[round]))
+    .join(" ");
+  const shortRoundLabel: Record<ResolvedGame["round"], string> = {
+    R64: "R64",
+    R32: "R32",
+    S16: "S16",
+    E8: "E8",
+    F4: "F4",
+    CHAMP: "CHAMP",
+  };
 
   return (
     <section className={`eg-region-card bracket-region ${inverted ? "region-inverted" : ""}`}>
@@ -1823,12 +2082,16 @@ function RegionBracket({
         </button>
       </div>
 
-      <div className="eg-round-grid bracket-grid">
+      <div className="eg-round-grid bracket-grid" style={{ gridTemplateColumns }}>
         {rounds.map((round) => {
           const roundGames = gamesByRegionAndRound(games, region, round);
+          const collapsed = Boolean(collapseByRound[round]);
           return (
-            <div key={`${region}-${round}`} className={`eg-round-col lane-${round.toLowerCase()}`}>
-              <p className="eg-round-label">{gameRoundLabel[round]}</p>
+            <div
+              key={`${region}-${round}`}
+              className={`eg-round-col lane-${round.toLowerCase()} ${collapsed ? "eg-round-col--collapsed" : ""}`}
+            >
+              <p className="eg-round-label">{collapsed ? shortRoundLabel[round] : gameRoundLabel[round]}</p>
               <div className="eg-games-lane">
                 {roundGames.map((game, idx) => {
                   const topPercent = ((idx + 0.5) / Math.max(1, roundGames.length)) * 100;
@@ -1837,6 +2100,7 @@ function RegionBracket({
                     <div key={game.id} className="eg-game-node" style={nodeStyle}>
                       <GameCard
                         game={game}
+                        collapsed={collapsed}
                         gameWinProbs={gameWinProbs}
                         possibleWinners={possibleWinners}
                         onPick={onPick}
@@ -1858,6 +2122,7 @@ function RegionBracket({
 
 function GameCard({
   game,
+  collapsed = false,
   gameWinProbs,
   possibleWinners,
   onPick,
@@ -1866,6 +2131,7 @@ function GameCard({
   onOpenProbabilityPopup,
 }: {
   game: ResolvedGame;
+  collapsed?: boolean;
   gameWinProbs: SimulationOutput["gameWinProbs"];
   possibleWinners: Record<string, Set<string>>;
   onPick: (game: ResolvedGame, teamId: string | null) => void;
@@ -1913,6 +2179,41 @@ function GameCard({
   const compactDensity = getCompactDensity(game.round, rows.length);
   const compactLongPressTimerRef = useRef<number | null>(null);
   const compactLongPressFiredRef = useRef(false);
+
+  if (collapsed) {
+    const compactTeams = [game.teamAId, game.teamBId]
+      .map((teamId) => (teamId ? teamsById.get(teamId) ?? null : null))
+      .filter((team): team is NonNullable<typeof team> => Boolean(team));
+
+    return (
+      <article className={`eg-game-card round-${game.round.toLowerCase()} collapsed`}>
+        <div className="bracket-cell--compact">
+          {compactTeams.length > 0 ? (
+            compactTeams.map((team) => (
+              <CompactTeamRow
+                key={`${game.id}-${team.id}-compact`}
+                team={team}
+                isWinner={game.winnerId === team.id}
+              />
+            ))
+          ) : (
+            <>
+              <div className="compact-team-row compact-team-row--loser">
+                <span className="compact-seed">--</span>
+                <span className="compact-logo" />
+                <span className="compact-result">✕</span>
+              </div>
+              <div className="compact-team-row compact-team-row--loser">
+                <span className="compact-seed">--</span>
+                <span className="compact-logo" />
+                <span className="compact-result">✕</span>
+              </div>
+            </>
+          )}
+        </div>
+      </article>
+    );
+  }
 
   return (
     <article className={`eg-game-card round-${game.round.toLowerCase()}`}>
@@ -2145,6 +2446,26 @@ function GameCard({
         )}
       </div>
     </article>
+  );
+}
+
+function CompactTeamRow({
+  team,
+  isWinner,
+}: {
+  team: NonNullable<ReturnType<typeof teamsById.get>>;
+  isWinner: boolean;
+}) {
+  return (
+    <div
+      className={`compact-team-row ${isWinner ? "compact-team-row--winner" : "compact-team-row--loser"}`}
+      data-team-name={`${team.seed} ${team.name}`}
+      title={`${team.seed} ${team.name}`}
+    >
+      <span className="compact-seed">{team.seed}</span>
+      <img src={teamLogoUrl(team)} className="compact-logo" alt={team.name} loading="lazy" />
+      <span className="compact-result">{isWinner ? "✓" : "✕"}</span>
+    </div>
   );
 }
 
