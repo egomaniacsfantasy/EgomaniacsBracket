@@ -34,6 +34,17 @@ const mulberry32 = (seed: number): (() => number) => {
   };
 };
 
+const runtimeRandom = (): number => {
+  if (typeof globalThis.crypto !== "undefined" && typeof globalThis.crypto.getRandomValues === "function") {
+    const bytes = new Uint32Array(1);
+    globalThis.crypto.getRandomValues(bytes);
+    return bytes[0] / 4294967296;
+  }
+  return Math.random();
+};
+
+const createRuntimeRng = (): (() => number) => () => runtimeRandom();
+
 const eligibleTeamsCache = new Map<string, string[]>();
 const eligibleTeamsForGame = (gameId: string): string[] => {
   const cached = eligibleTeamsCache.get(gameId);
@@ -279,8 +290,7 @@ export const runSimulation = (
 };
 
 export const generateSimulatedBracket = (locks: LockedPicks, customProbByGame: CustomProbByGame = {}): LockedPicks => {
-  const seedInput = hashLocks(locks, 1, customProbByGame);
-  const random = mulberry32(fnv1aHash(`${DEFAULT_SIM_SEED}::sim-bracket::${seedInput}`));
+  const random = createRuntimeRng();
   const forced = simulateBracket(locks, true, customProbByGame, random);
   return { ...forced.winners };
 };
@@ -311,8 +321,7 @@ export const generateSimulatedBracketSteps = (
   regionOrder: Region[] = defaultRegionOrder,
   customProbByGame: CustomProbByGame = {}
 ): SimulatedPickStep[] => {
-  const seedInput = hashLocks(locks, 1, customProbByGame);
-  const random = mulberry32(fnv1aHash(`${DEFAULT_SIM_SEED}::sim-steps::${seedInput}`));
+  const random = createRuntimeRng();
   const forced = simulateBracket(locks, true, customProbByGame, random);
   const orderedGames = [...gameTemplates].sort((a, b) => {
     const roundDiff = roundRank[a.round] - roundRank[b.round];
