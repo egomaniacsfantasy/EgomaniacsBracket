@@ -1,10 +1,32 @@
 import type { GameTemplate, Region, Round, Side } from "../types";
 
 export const regionOrder: Region[] = ["East", "West", "South", "Midwest"];
-export const sideRegions: Record<Side, Region[]> = {
-  Left: ["East", "West"],
-  Right: ["South", "Midwest"],
-};
+export const BRACKET_HALVES: Array<{
+  id: "halfA" | "halfB";
+  side: Side;
+  label: string;
+  semifinalGameId: "F4-Left-0" | "F4-Right-0";
+  regions: [Region, Region];
+}> = [
+  {
+    id: "halfA",
+    side: "Left",
+    label: "South/West",
+    semifinalGameId: "F4-Left-0",
+    regions: ["South", "West"],
+  },
+  {
+    id: "halfB",
+    side: "Right",
+    label: "East/Midwest",
+    semifinalGameId: "F4-Right-0",
+    regions: ["East", "Midwest"],
+  },
+];
+
+export const sideRegions: Record<Side, Region[]> = Object.fromEntries(
+  BRACKET_HALVES.map((half) => [half.side, [...half.regions]])
+) as Record<Side, Region[]>;
 
 const seedMatchups: [number, number][] = [
   [1, 16],
@@ -21,7 +43,7 @@ const rounds: Round[] = ["R64", "R32", "S16", "E8", "F4", "CHAMP"];
 export const roundOrder = rounds;
 
 const regionToSide = (region: Region): Side =>
-  region === "East" || region === "West" ? "Left" : "Right";
+  BRACKET_HALVES.find((half) => half.regions.includes(region))?.side ?? "Left";
 
 export const gameTemplates: GameTemplate[] = (() => {
   const games: GameTemplate[] = [];
@@ -76,24 +98,17 @@ export const gameTemplates: GameTemplate[] = (() => {
     });
   }
 
-  games.push({
-    id: "F4-Left-0",
-    round: "F4",
-    region: null,
-    side: "Left",
-    slot: 0,
-    sourceGameIds: ["East-E8-0", "West-E8-0"],
-    initialTeamIds: null,
-  });
-  games.push({
-    id: "F4-Right-0",
-    round: "F4",
-    region: null,
-    side: "Right",
-    slot: 1,
-    sourceGameIds: ["South-E8-0", "Midwest-E8-0"],
-    initialTeamIds: null,
-  });
+  for (const [slot, half] of BRACKET_HALVES.entries()) {
+    games.push({
+      id: half.semifinalGameId,
+      round: "F4",
+      region: null,
+      side: half.side,
+      slot,
+      sourceGameIds: [`${half.regions[0]}-E8-0`, `${half.regions[1]}-E8-0`],
+      initialTeamIds: null,
+    });
+  }
   games.push({
     id: "CHAMP-0",
     round: "CHAMP",

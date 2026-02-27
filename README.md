@@ -21,7 +21,7 @@ Open `http://localhost:5173/bracket`.
 - Right panel futures update after every pick:
   - Odds to win championship
   - Odds to win region
-  - Odds to win side (`Left = East/West`, `Right = South/Midwest`)
+  - Odds by bracket half (`Half A = South/West`, `Half B = East/Midwest`)
 - Includes:
   - Undo (single-step stack)
   - Reset all

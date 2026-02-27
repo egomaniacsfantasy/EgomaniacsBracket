@@ -2,7 +2,7 @@ import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import "./index.css";
 import { teamsById } from "./data/teams";
-import { regionRounds } from "./data/bracket";
+import { BRACKET_HALVES, regionRounds } from "./data/bracket";
 import {
   finalRounds,
   gamesByRegionAndRound,
@@ -42,12 +42,9 @@ const formatModes: { id: OddsDisplayMode; label: string }[] = [
   { id: "implied", label: "Implied %" },
 ];
 
-const regionSections: Region[][] = [
-  ["South", "East"],
-  ["West", "Midwest"],
-];
+const regionSections: Region[][] = BRACKET_HALVES.map((half) => [...half.regions]);
 const mobileRegionOrder: Region[] = ["South", "East", "West", "Midwest"];
-const invertedRegions = new Set<Region>(["East", "Midwest"]);
+const invertedRegions = new Set<Region>([regionSections[0][1], regionSections[1][1]]);
 
 const gameRoundLabel: Record<string, string> = {
   R64: "Round of 64",
@@ -1044,7 +1041,7 @@ function App() {
       <section className="eg-panel-block settings-block">
         <h3>Settings</h3>
         <p className="eg-setting-label">Side definition</p>
-        <p className="eg-setting-value">Left side: East/West, Right side: South/Midwest</p>
+        <p className="eg-setting-value">Half A: South/West, Half B: East/Midwest</p>
 
         <p className="eg-setting-label">Current lock count</p>
         <p className="eg-setting-value">{Object.keys(sanitized).length} picks</p>
@@ -1168,7 +1165,7 @@ function App() {
                 <section className="eg-bracket-section top-half">
                   <div className="eg-section-head">
                     <h2>Top Half Bracket</h2>
-                    <p>South + East</p>
+                    <p>{regionSections[0][0]} + {regionSections[0][1]}</p>
                   </div>
                   <div className="eg-region-scroll">
                     <div className="eg-region-grid bracket-style">
@@ -1194,7 +1191,7 @@ function App() {
                 <section className="eg-bracket-section">
                   <div className="eg-section-head">
                     <h2>Bottom Half Bracket</h2>
-                    <p>West + Midwest</p>
+                    <p>{regionSections[1][0]} + {regionSections[1][1]}</p>
                   </div>
                   <div className="eg-region-scroll">
                     <div className="eg-region-grid bracket-style">
@@ -1222,7 +1219,7 @@ function App() {
                   <div className="eg-finals-stage">
                     <div className="eg-semi-col left">
                       <p className="eg-finals-label">Semifinal</p>
-                      <p className="eg-finals-sub">South + East</p>
+                      <p className="eg-finals-sub">{regionSections[0][0]} + {regionSections[0][1]}</p>
                       {leftSemi ? (
                         <GameCard
                           key={leftSemi.id}
@@ -1257,7 +1254,7 @@ function App() {
 
                     <div className="eg-semi-col right">
                       <p className="eg-finals-label">Semifinal</p>
-                      <p className="eg-finals-sub">West + Midwest</p>
+                      <p className="eg-finals-sub">{regionSections[1][0]} + {regionSections[1][1]}</p>
                       {rightSemi ? (
                         <GameCard
                           key={rightSemi.id}
