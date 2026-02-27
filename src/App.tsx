@@ -46,15 +46,6 @@ const regionSections: Region[][] = BRACKET_HALVES.map((half) => [...half.regions
 const mobileRegionOrder: Region[] = ["South", "East", "West", "Midwest"];
 const invertedRegions = new Set<Region>([regionSections[0][1], regionSections[1][1]]);
 
-const gameRoundLabel: Record<string, string> = {
-  R64: "Round of 64",
-  R32: "Round of 32",
-  S16: "Sweet 16",
-  E8: "Elite 8",
-  F4: "Final Four",
-  CHAMP: "Championship",
-};
-
 const ROUND_RANK: Record<ResolvedGame["round"], number> = {
   R64: 0,
   R32: 1,
@@ -68,6 +59,17 @@ const MOBILE_ROUND_ORDER: Record<"R64" | "R32" | "S16" | "E8", number> = {
   R32: 1,
   S16: 2,
   E8: 3,
+};
+const MOBILE_ROUND_FULL_NAME: Record<MobileRegionRound, string> = {
+  R64: "Round of 64",
+  R32: "Round of 32",
+  S16: "Sweet 16",
+  E8: "Elite 8",
+};
+const MOBILE_NEXT_ROUND_NAME: Record<Exclude<MobileRegionRound, "R64">, string> = {
+  R32: "Sweet 16",
+  S16: "Elite 8",
+  E8: "Final Four",
 };
 
 type OnboardingStage = 1 | 2 | 3;
@@ -98,7 +100,13 @@ type MobileSection = Region | "FF";
 type MobileRegionRound = "R64" | "R32" | "S16" | "E8";
 type MobileFfRound = "F4" | "CHAMP" | "WIN";
 type CandidateRow = { teamId: string; prob: number; team: NonNullable<ReturnType<typeof teamsById.get>> };
+type MobileCascadeNudge = {
+  type: "firstpick" | "majorshift";
+  upsetTeamName: string;
+  roundDeltas: Partial<Record<MobileRegionRound, number>>;
+};
 const MAJOR_SHIFT_NUDGE_COOLDOWN = 3;
+const EMPTY_TITLE_ODDS_MAP = new Map<string, string>();
 
 function App() {
   const [lockedPicks, setLockedPicks] = useState<LockedPicks>({});
@@ -111,6 +119,7 @@ function App() {
   const [lastPickedKey, setLastPickedKey] = useState<string | null>(null);
   const [sidePanelOpen, setSidePanelOpen] = useState(false);
   const [compactDesktop, setCompactDesktop] = useState(false);
+  const [manuallyExpandedRounds, setManuallyExpandedRounds] = useState<Set<string>>(new Set());
   const [isMobile, setIsMobile] = useState(() =>
     typeof window !== "undefined" ? window.matchMedia("(max-width: 767px)").matches : false
   );
@@ -120,16 +129,12 @@ function App() {
   const [mobileFfRound, setMobileFfRound] = useState<MobileFfRound>("F4");
   const [liveOddsChangedIds, setLiveOddsChangedIds] = useState<Set<string>>(new Set());
   const [mobileRoundDeltas, setMobileRoundDeltas] = useState<Partial<Record<MobileRegionRound, number>>>({});
+  const [cascadeNudge, setCascadeNudge] = useState<MobileCascadeNudge | null>(null);
+  const [cascadeNudgeVisible, setCascadeNudgeVisible] = useState(false);
   const [hasSeenFirstPickNudge, setHasSeenFirstPickNudge] = useState(() => {
     if (typeof window === "undefined") return false;
     return window.sessionStorage.getItem(FIRST_PICK_NUDGE_SESSION_KEY) === "1";
   });
-  const [firstPickNudgeVisible, setFirstPickNudgeVisible] = useState(false);
-  const [firstPickChangedRounds, setFirstPickChangedRounds] = useState<string[]>([]);
-  const [majorShiftNudgeVisible, setMajorShiftNudgeVisible] = useState(false);
-  const [majorShiftTeamName, setMajorShiftTeamName] = useState("");
-  const [majorShiftPct, setMajorShiftPct] = useState(0);
-  const [majorShiftTargetRound, setMajorShiftTargetRound] = useState<MobileRegionRound>("R32");
   const [staggeredSimRunning, setStaggeredSimRunning] = useState(false);
   const [staggeredSimPaused, setStaggeredSimPaused] = useState(false);
   const [staggeredSimDelayMs, setStaggeredSimDelayMs] = useState(STAGGERED_SIM_DELAY_MS);
@@ -151,9 +156,9 @@ function App() {
   const previousGameWinProbsRef = useRef<SimulationOutput["gameWinProbs"] | null>(null);
   const mobileFlashTimeoutRef = useRef<number | null>(null);
   const mobileDeltaTimeoutRef = useRef<number | null>(null);
-  const firstPickNudgeTimeoutRef = useRef<number | null>(null);
+  const cascadeNudgeTimeoutRef = useRef<number | null>(null);
   const pendingPickMetaRef = useRef<{ isFirstPick: boolean; section: MobileSection; round: MobileRegionRound | null } | null>(null);
-  const pendingMajorShiftTargetRef = useRef<MobileRegionRound>("R32");
+  const pendingRoundDeltasRef = useRef<Partial<Record<MobileRegionRound, number>>>({});
   const picksSinceLastNudgeRef = useRef(0);
   const staggeredTimeoutRef = useRef<number | null>(null);
   const staggeredStepsRef = useRef<Array<{ gameId: string; winnerId: string }>>([]);
@@ -191,9 +196,44 @@ function App() {
   }, []);
 
   useEffect(() => {
+    setManuallyExpandedRounds((prev) => {
+      const next = new Set<string>();
+      prev.forEach((key) => {
+        const [region, round] = key.split("-");
+        const roundGames = gamesByRegionAndRound(games, region as Region, round as MobileRegionRound);
+        if (roundGames.length > 0 && roundGames.every((game) => Boolean(game.winnerId))) {
+          next.add(key);
+        }
+      });
+      return next;
+    });
+  }, [games]);
+
+  useEffect(() => {
     if (!hasSeenFirstPickNudge || typeof window === "undefined") return;
     window.sessionStorage.setItem(FIRST_PICK_NUDGE_SESSION_KEY, "1");
   }, [hasSeenFirstPickNudge]);
+
+  const dismissCascadeNudge = () => {
+    setCascadeNudgeVisible(false);
+    if (cascadeNudgeTimeoutRef.current !== null) {
+      window.clearTimeout(cascadeNudgeTimeoutRef.current);
+      cascadeNudgeTimeoutRef.current = null;
+    }
+  };
+
+  const showCascadeNudge = (nextNudge: MobileCascadeNudge) => {
+    if (!Object.keys(nextNudge.roundDeltas).length) return;
+    if (cascadeNudgeTimeoutRef.current !== null) {
+      window.clearTimeout(cascadeNudgeTimeoutRef.current);
+    }
+    setCascadeNudge(nextNudge);
+    setCascadeNudgeVisible(true);
+    cascadeNudgeTimeoutRef.current = window.setTimeout(() => {
+      setCascadeNudgeVisible(false);
+      cascadeNudgeTimeoutRef.current = null;
+    }, 5000);
+  };
 
   useEffect(() => {
     const statsCanvas = document.getElementById("bg-stats") as HTMLCanvasElement | null;
@@ -387,13 +427,12 @@ function App() {
       pendingPickMetaRef.current = null;
       return;
     }
-    const shiftTeam = teamsById.get(majorShift.teamId);
-    if (shiftTeam) {
-      setFirstPickNudgeVisible(false);
-      setMajorShiftTeamName(shiftTeam.name);
-      setMajorShiftPct(majorShift.shiftPct);
-      setMajorShiftTargetRound(pendingMajorShiftTargetRef.current);
-      setMajorShiftNudgeVisible(true);
+    if (pendingMeta.section !== "FF") {
+      showCascadeNudge({
+        type: "majorshift",
+        upsetTeamName: majorShift.teamName,
+        roundDeltas: pendingRoundDeltasRef.current,
+      });
       picksSinceLastNudgeRef.current = 0;
     }
     pendingPickMetaRef.current = null;
@@ -403,24 +442,47 @@ function App() {
     const previous = previousGameWinProbsRef.current;
     previousGameWinProbsRef.current = simResult.gameWinProbs;
     if (!previous) return;
-    if (mobileSection === "FF") return;
-    if (mobileRound !== "R64") return;
+    const pendingMeta = pendingPickMetaRef.current;
+    if (!pendingMeta || pendingMeta.section === "FF" || pendingMeta.round === null) return;
+    const sourceRound = pendingMeta.round;
+    const sourceRegion = pendingMeta.section;
+    const downstreamByRound: Record<MobileRegionRound, MobileRegionRound[]> = {
+      R64: ["R32", "S16", "E8"],
+      R32: ["S16", "E8"],
+      S16: ["E8"],
+      E8: [],
+    };
+    const roundsToCheck = downstreamByRound[sourceRound];
+    if (!roundsToCheck.length) {
+      pendingRoundDeltasRef.current = {};
+      pendingPickMetaRef.current = null;
+      return;
+    }
 
     const deltas: Partial<Record<MobileRegionRound, number>> = {};
-    for (const round of ["R32", "S16", "E8"] as const) {
-      const roundGames = gamesByRegionAndRound(games, mobileSection, round);
+    for (const round of roundsToCheck) {
+      const roundGames = gamesByRegionAndRound(games, sourceRegion, round);
       let changedCount = 0;
       for (const game of roundGames) {
         const prevRows = previous[game.id] ?? [];
         const nextRows = simResult.gameWinProbs[game.id] ?? [];
-        if (prevRows.length !== nextRows.length) {
+        if (!prevRows.length || !nextRows.length) continue;
+
+        const prevLeader = [...prevRows].sort((a, b) => b.prob - a.prob)[0];
+        const nextLeader = [...nextRows].sort((a, b) => b.prob - a.prob)[0];
+        const leaderChanged = Boolean(prevLeader?.teamId && nextLeader?.teamId && prevLeader.teamId !== nextLeader.teamId);
+        if (leaderChanged) {
           changedCount += 1;
           continue;
         }
-        for (let i = 0; i < prevRows.length; i += 1) {
-          const prevRow = prevRows[i];
-          const nextRow = nextRows[i];
-          if (!prevRow || !nextRow || prevRow.teamId !== nextRow.teamId || Math.abs(prevRow.prob - nextRow.prob) > 0.000001) {
+
+        const prevByTeam = new Map(prevRows.map((row) => [row.teamId, row.prob]));
+        const nextByTeam = new Map(nextRows.map((row) => [row.teamId, row.prob]));
+        const teamIds = new Set([...prevByTeam.keys(), ...nextByTeam.keys()]);
+        for (const teamId of teamIds) {
+          const prevProb = prevByTeam.get(teamId) ?? 0;
+          const nextProb = nextByTeam.get(teamId) ?? 0;
+          if (Math.abs(prevProb - nextProb) >= 0.02) {
             changedCount += 1;
             break;
           }
@@ -428,11 +490,11 @@ function App() {
       }
       if (changedCount > 0) deltas[round] = changedCount;
     }
-    if (!Object.keys(deltas).length) return;
+    pendingRoundDeltasRef.current = deltas;
     const changedRoundEntries = (Object.keys(deltas) as MobileRegionRound[]).sort(
       (a, b) => MOBILE_ROUND_ORDER[a] - MOBILE_ROUND_ORDER[b]
     );
-    pendingMajorShiftTargetRef.current = changedRoundEntries[0] ?? "R32";
+
     setMobileRoundDeltas(deltas);
     if (mobileDeltaTimeoutRef.current !== null) {
       window.clearTimeout(mobileDeltaTimeoutRef.current);
@@ -442,24 +504,20 @@ function App() {
       mobileDeltaTimeoutRef.current = null;
     }, 1600);
 
-    const pendingMeta = pendingPickMetaRef.current;
     if (!pendingMeta || !pendingMeta.isFirstPick || hasSeenFirstPickNudge) return;
-    const changedLabels = changedRoundEntries.map((round) => round);
-    if (!changedLabels.length) return;
-    if (majorShiftNudgeVisible) setMajorShiftNudgeVisible(false);
-    if (firstPickNudgeTimeoutRef.current !== null) {
-      window.clearTimeout(firstPickNudgeTimeoutRef.current);
+    if (!changedRoundEntries.length) {
+      pendingPickMetaRef.current = null;
+      return;
     }
-    setFirstPickChangedRounds(changedLabels);
-    setFirstPickNudgeVisible(true);
+    showCascadeNudge({
+      type: "firstpick",
+      upsetTeamName: "",
+      roundDeltas: deltas,
+    });
     setHasSeenFirstPickNudge(true);
-    firstPickNudgeTimeoutRef.current = window.setTimeout(() => {
-      setFirstPickNudgeVisible(false);
-      firstPickNudgeTimeoutRef.current = null;
-    }, 4000);
     picksSinceLastNudgeRef.current = 0;
     pendingPickMetaRef.current = null;
-  }, [simResult.gameWinProbs, games, mobileSection, mobileRound]);
+  }, [simResult.gameWinProbs, games, hasSeenFirstPickNudge]);
 
   const sortedFutures = useMemo(() => {
     const rows = [...simResult.futures];
@@ -469,6 +527,14 @@ function App() {
     });
     return rows;
   }, [simResult.futures, sortDesc]);
+
+  const titleOddsByTeam = useMemo(
+    () =>
+      new Map(
+        simResult.futures.map((row) => [row.teamId, formatOddsDisplay(row.champProb, displayMode).primary])
+      ),
+    [simResult.futures, displayMode]
+  );
 
   const preTournamentBaseline = useMemo(() => runSimulation({}, simRuns), [simRuns]);
   const preTournamentFutures = useMemo(
@@ -603,8 +669,7 @@ function App() {
     cancelStaggeredSim();
     if (undoStack.length === 0) return;
     pendingPickMetaRef.current = null;
-    setFirstPickNudgeVisible(false);
-    setMajorShiftNudgeVisible(false);
+    dismissCascadeNudge();
     closeProbabilityPopup(true);
     const previous = undoStack[undoStack.length - 1];
     setUndoStack((prev) => prev.slice(0, -1));
@@ -615,8 +680,7 @@ function App() {
     if (!lockedPicks[gameId]) return;
     cancelStaggeredSim();
     pendingPickMetaRef.current = null;
-    setFirstPickNudgeVisible(false);
-    setMajorShiftNudgeVisible(false);
+    dismissCascadeNudge();
     closeProbabilityPopup(true);
     pushUndo(lockedPicks);
     const next = { ...lockedPicks };
@@ -644,8 +708,7 @@ function App() {
     cancelStaggeredSim();
     if (Object.keys(lockedPicks).length === 0 && Object.keys(customProbByGame).length === 0) return;
     pendingPickMetaRef.current = null;
-    setFirstPickNudgeVisible(false);
-    setMajorShiftNudgeVisible(false);
+    dismissCascadeNudge();
     pushUndo(lockedPicks);
     setLockedPicks({});
     setCustomProbByGame({});
@@ -655,18 +718,26 @@ function App() {
   const onResetRegion = (region: Region) => {
     cancelStaggeredSim();
     pendingPickMetaRef.current = null;
-    setFirstPickNudgeVisible(false);
-    setMajorShiftNudgeVisible(false);
+    dismissCascadeNudge();
     closeProbabilityPopup(true);
     pushUndo(lockedPicks);
     setLockedPicks(resetRegionPicks(lockedPicks, region));
   };
 
+  const onToggleManualExpandRound = (region: Region, round: MobileRegionRound) => {
+    const key = `${region}-${round}`;
+    setManuallyExpandedRounds((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
+  };
+
   const onModelSim = () => {
     cancelStaggeredSim();
     pendingPickMetaRef.current = null;
-    setFirstPickNudgeVisible(false);
-    setMajorShiftNudgeVisible(false);
+    dismissCascadeNudge();
     closeProbabilityPopup(true);
     pushUndo(lockedPicks);
     setLockedPicks(sanitizeLockedPicks(generateSimulatedBracket(lockedPicks, customProbByGame)));
@@ -675,8 +746,7 @@ function App() {
   const onModelSimStaggered = () => {
     cancelStaggeredSim();
     pendingPickMetaRef.current = null;
-    setFirstPickNudgeVisible(false);
-    setMajorShiftNudgeVisible(false);
+    dismissCascadeNudge();
     closeProbabilityPopup(true);
     setShowStaggeredControls(true);
     const baseLocks = { ...lockedPicks };
@@ -792,8 +862,8 @@ function App() {
       if (mobileDeltaTimeoutRef.current !== null) {
         window.clearTimeout(mobileDeltaTimeoutRef.current);
       }
-      if (firstPickNudgeTimeoutRef.current !== null) {
-        window.clearTimeout(firstPickNudgeTimeoutRef.current);
+      if (cascadeNudgeTimeoutRef.current !== null) {
+        window.clearTimeout(cascadeNudgeTimeoutRef.current);
       }
     },
     []
@@ -1128,14 +1198,6 @@ function App() {
                       possibleWinners={possibleWinners}
                       displayMode={displayMode}
                       roundDeltas={mobileRoundDeltas}
-                      firstPickNudgeVisible={firstPickNudgeVisible}
-                      firstPickChangedRounds={firstPickChangedRounds}
-                      majorShiftNudgeVisible={majorShiftNudgeVisible}
-                      majorShiftTeamName={majorShiftTeamName}
-                      majorShiftPct={majorShiftPct}
-                      majorShiftTargetRound={majorShiftTargetRound}
-                      onDismissFirstPickNudge={() => setFirstPickNudgeVisible(false)}
-                      onDismissMajorShiftNudge={() => setMajorShiftNudgeVisible(false)}
                       onRoundChange={setMobileRound}
                       onPick={onPick}
                       onSwitchPick={onSwitchPick}
@@ -1148,6 +1210,18 @@ function App() {
             ) : (
               <div className="mobile-futures-view">{futuresContent}</div>
             )}
+            <CascadeNudge
+              visible={mobileTab === "bracket" && cascadeNudgeVisible}
+              type={cascadeNudge?.type ?? "firstpick"}
+              upsetTeamName={cascadeNudge?.upsetTeamName ?? ""}
+              roundDeltas={cascadeNudge?.roundDeltas ?? {}}
+              onDismiss={dismissCascadeNudge}
+              onTapRound={(round) => {
+                if (mobileSection === "FF") return;
+                setMobileRound(round);
+                dismissCascadeNudge();
+              }}
+            />
             <LiveOddsStrip
               topContenders={liveOddsTopContenders}
               justChangedIds={liveOddsChangedIds}
@@ -1169,21 +1243,41 @@ function App() {
                   </div>
                   <div className="eg-region-scroll">
                     <div className="eg-region-grid bracket-style">
-                      {regionSections[0].map((region) => (
-                        <RegionBracket
-                          key={region}
-                          region={region}
-                          games={games}
-                          gameWinProbs={simResult.gameWinProbs}
-                          possibleWinners={possibleWinners}
-                          onPick={onPick}
-                          lastPickedKey={lastPickedKey}
-                          onResetRegion={onResetRegion}
-                          inverted={invertedRegions.has(region)}
-                          displayMode={displayMode}
-                          onOpenProbabilityPopup={openProbabilityPopup}
-                        />
-                      ))}
+                      <RegionBracket
+                        key={regionSections[0][0]}
+                        region={regionSections[0][0]}
+                        position="left"
+                        games={games}
+                        gameWinProbs={simResult.gameWinProbs}
+                        possibleWinners={possibleWinners}
+                        onPick={onPick}
+                        lastPickedKey={lastPickedKey}
+                        onResetRegion={onResetRegion}
+                        inverted={invertedRegions.has(regionSections[0][0])}
+                        displayMode={displayMode}
+                        titleOddsByTeam={titleOddsByTeam}
+                        manuallyExpandedRounds={manuallyExpandedRounds}
+                        onToggleManualExpandRound={onToggleManualExpandRound}
+                        onOpenProbabilityPopup={openProbabilityPopup}
+                      />
+                      <div className="bracket-half-divider" aria-hidden="true" />
+                      <RegionBracket
+                        key={regionSections[0][1]}
+                        region={regionSections[0][1]}
+                        position="right"
+                        games={games}
+                        gameWinProbs={simResult.gameWinProbs}
+                        possibleWinners={possibleWinners}
+                        onPick={onPick}
+                        lastPickedKey={lastPickedKey}
+                        onResetRegion={onResetRegion}
+                        inverted={invertedRegions.has(regionSections[0][1])}
+                        displayMode={displayMode}
+                        titleOddsByTeam={titleOddsByTeam}
+                        manuallyExpandedRounds={manuallyExpandedRounds}
+                        onToggleManualExpandRound={onToggleManualExpandRound}
+                        onOpenProbabilityPopup={openProbabilityPopup}
+                      />
                     </div>
                   </div>
                 </section>
@@ -1195,21 +1289,41 @@ function App() {
                   </div>
                   <div className="eg-region-scroll">
                     <div className="eg-region-grid bracket-style">
-                      {regionSections[1].map((region) => (
-                        <RegionBracket
-                          key={region}
-                          region={region}
-                          games={games}
-                          gameWinProbs={simResult.gameWinProbs}
-                          possibleWinners={possibleWinners}
-                          onPick={onPick}
-                          lastPickedKey={lastPickedKey}
-                          onResetRegion={onResetRegion}
-                          inverted={invertedRegions.has(region)}
-                          displayMode={displayMode}
-                          onOpenProbabilityPopup={openProbabilityPopup}
-                        />
-                      ))}
+                      <RegionBracket
+                        key={regionSections[1][0]}
+                        region={regionSections[1][0]}
+                        position="left"
+                        games={games}
+                        gameWinProbs={simResult.gameWinProbs}
+                        possibleWinners={possibleWinners}
+                        onPick={onPick}
+                        lastPickedKey={lastPickedKey}
+                        onResetRegion={onResetRegion}
+                        inverted={invertedRegions.has(regionSections[1][0])}
+                        displayMode={displayMode}
+                        titleOddsByTeam={titleOddsByTeam}
+                        manuallyExpandedRounds={manuallyExpandedRounds}
+                        onToggleManualExpandRound={onToggleManualExpandRound}
+                        onOpenProbabilityPopup={openProbabilityPopup}
+                      />
+                      <div className="bracket-half-divider" aria-hidden="true" />
+                      <RegionBracket
+                        key={regionSections[1][1]}
+                        region={regionSections[1][1]}
+                        position="right"
+                        games={games}
+                        gameWinProbs={simResult.gameWinProbs}
+                        possibleWinners={possibleWinners}
+                        onPick={onPick}
+                        lastPickedKey={lastPickedKey}
+                        onResetRegion={onResetRegion}
+                        inverted={invertedRegions.has(regionSections[1][1])}
+                        displayMode={displayMode}
+                        titleOddsByTeam={titleOddsByTeam}
+                        manuallyExpandedRounds={manuallyExpandedRounds}
+                        onToggleManualExpandRound={onToggleManualExpandRound}
+                        onOpenProbabilityPopup={openProbabilityPopup}
+                      />
                     </div>
                   </div>
                 </section>
@@ -1397,13 +1511,6 @@ function getPreferredMobileFfRound(
   return "WIN";
 }
 
-function formatRoundList(rounds: string[]) {
-  if (rounds.length === 0) return "future rounds";
-  if (rounds.length === 1) return rounds[0];
-  if (rounds.length === 2) return `${rounds[0]} & ${rounds[1]}`;
-  return `${rounds.slice(0, -1).join(", ")} & ${rounds[rounds.length - 1]}`;
-}
-
 function getMajorShiftInfo(
   previousFutures: SimulationOutput["futures"],
   nextFutures: SimulationOutput["futures"]
@@ -1420,57 +1527,57 @@ function getMajorShiftInfo(
     }
   }
   if (!maxShiftTeamId || maxShift < 0.03) return null;
-  return { teamId: maxShiftTeamId, shiftPct: Math.round(maxShift * 100) };
+  const teamName = teamsById.get(maxShiftTeamId)?.name ?? "Unknown";
+  return { teamId: maxShiftTeamId, teamName, shiftPct: Math.round(maxShift * 100) };
 }
 
-function CascadeFirstPickNudge({
+function CascadeNudge({
   visible,
-  changedRounds,
+  type,
+  upsetTeamName,
+  roundDeltas,
+  onTapRound,
   onDismiss,
 }: {
   visible: boolean;
-  changedRounds: string[];
+  type: "firstpick" | "majorshift";
+  upsetTeamName: string;
+  roundDeltas: Partial<Record<MobileRegionRound, number>>;
+  onTapRound: (round: MobileRegionRound) => void;
   onDismiss: () => void;
 }) {
-  const roundText = formatRoundList(changedRounds);
-  return (
-    <div className={`cascade-nudge cascade-nudge--firstpick ${visible ? "visible" : ""}`}>
-      <span className="cascade-nudge-icon">↻</span>
-      <div className="cascade-nudge-text">
-        <span className="cascade-nudge-headline">Your pick just repriced {roundText}</span>
-        <span className="cascade-nudge-sub">Tap {roundText} above to see how the field shifted →</span>
-      </div>
-      <button className="cascade-nudge-dismiss" onClick={onDismiss} aria-label="Dismiss nudge">
-        ✕
-      </button>
-    </div>
-  );
-}
+  const roundAbbr: Record<MobileRegionRound, string> = {
+    R64: "R64",
+    R32: "R32",
+    S16: "S16",
+    E8: "E8",
+  };
+  const rippleEntries = (Object.entries(roundDeltas) as Array<[MobileRegionRound, number]>).filter(([, count]) => count > 0);
+  const rippleText = rippleEntries
+    .map(([round, count]) => `${roundAbbr[round]}: ${count} repriced`)
+    .join(" · ");
+  const hotRound = rippleEntries.sort((a, b) => b[1] - a[1])[0]?.[0];
+  const headline =
+    type === "firstpick"
+      ? "Your pick cascaded through the bracket"
+      : `${upsetTeamName} upset just rippled through the bracket`;
 
-function CascadeMajorShiftNudge({
-  visible,
-  teamName,
-  shiftPct,
-  onTapSee,
-  onDismiss,
-}: {
-  visible: boolean;
-  teamName: string;
-  shiftPct: number;
-  onTapSee: () => void;
-  onDismiss: () => void;
-}) {
   return (
-    <div className={`cascade-nudge cascade-nudge--majorshift ${visible ? "visible" : ""}`}>
-      <span className="cascade-nudge-icon">⚡</span>
-      <div className="cascade-nudge-text">
-        <span className="cascade-nudge-headline">Big swing - {teamName}&apos;s title odds moved {shiftPct}%</span>
-        <span className="cascade-nudge-sub">See how the rest of the field repriced →</span>
+    <div className={`cascade-nudge-bottom ${visible ? "visible" : ""}`}>
+      <span className="cascade-nudge-bottom-icon">{type === "firstpick" ? "↻" : "⚡"}</span>
+      <div className="cascade-nudge-bottom-text">
+        <span className="cascade-nudge-bottom-headline">{headline}</span>
+        <span className="cascade-nudge-bottom-ripple">{rippleText}</span>
       </div>
-      <button className="cascade-nudge-cta" onClick={onTapSee}>
-        R32 →
-      </button>
-      <button className="cascade-nudge-dismiss" onClick={onDismiss} aria-label="Dismiss nudge">
+      {hotRound ? (
+        <button
+          className="cascade-nudge-bottom-cta"
+          onClick={() => onTapRound(hotRound)}
+        >
+          {roundAbbr[hotRound]} →
+        </button>
+      ) : null}
+      <button className="cascade-nudge-bottom-dismiss" onClick={onDismiss} aria-label="Dismiss nudge">
         ✕
       </button>
     </div>
@@ -1578,14 +1685,6 @@ function MobileRegionView({
   possibleWinners,
   displayMode,
   roundDeltas,
-  firstPickNudgeVisible,
-  firstPickChangedRounds,
-  majorShiftNudgeVisible,
-  majorShiftTeamName,
-  majorShiftPct,
-  majorShiftTargetRound,
-  onDismissFirstPickNudge,
-  onDismissMajorShiftNudge,
   onRoundChange,
   onPick,
   onSwitchPick,
@@ -1599,14 +1698,6 @@ function MobileRegionView({
   possibleWinners: Record<string, Set<string>>;
   displayMode: OddsDisplayMode;
   roundDeltas: Partial<Record<MobileRegionRound, number>>;
-  firstPickNudgeVisible: boolean;
-  firstPickChangedRounds: string[];
-  majorShiftNudgeVisible: boolean;
-  majorShiftTeamName: string;
-  majorShiftPct: number;
-  majorShiftTargetRound: MobileRegionRound;
-  onDismissFirstPickNudge: () => void;
-  onDismissMajorShiftNudge: () => void;
   onRoundChange: (round: MobileRegionRound) => void;
   onPick: (game: ResolvedGame, teamId: string | null) => void;
   onSwitchPick: (game: ResolvedGame, teamId: string) => void;
@@ -1653,21 +1744,6 @@ function MobileRegionView({
         deltaByRound={roundDeltas}
         onRoundChange={(roundId) => onRoundChange(roundId as MobileRegionRound)}
       />
-      <CascadeFirstPickNudge
-        visible={firstPickNudgeVisible}
-        changedRounds={firstPickChangedRounds}
-        onDismiss={onDismissFirstPickNudge}
-      />
-      <CascadeMajorShiftNudge
-        visible={!firstPickNudgeVisible && majorShiftNudgeVisible}
-        teamName={majorShiftTeamName}
-        shiftPct={majorShiftPct}
-        onTapSee={() => {
-          onRoundChange(majorShiftTargetRound);
-          onDismissMajorShiftNudge();
-        }}
-        onDismiss={onDismissMajorShiftNudge}
-      />
       {roundMode === "probabilistic" ? (
         <>
           <div className="m-prob-banner">
@@ -1678,7 +1754,7 @@ function MobileRegionView({
           {activeGames.map((game) => (
             <MobileProbSlotCard
               key={game.id}
-              game={game}
+              currentRound={activeRound}
               contenders={getGameRowsForDisplay(game, gameWinProbs, possibleWinners)}
               displayMode={displayMode}
             />
@@ -1970,27 +2046,29 @@ function LiveOddsStrip({
 }
 
 function MobileProbSlotCard({
-  game,
+  currentRound,
   contenders,
   displayMode,
 }: {
-  game: ResolvedGame;
+  currentRound: MobileRegionRound;
   contenders: CandidateRow[];
   displayMode: OddsDisplayMode;
 }) {
+  const roundName = MOBILE_ROUND_FULL_NAME[currentRound];
+  const nextRoundName = MOBILE_NEXT_ROUND_NAME[currentRound as Exclude<MobileRegionRound, "R64">] ?? "next round";
   const alive = contenders.filter((row) => row.prob > 0).sort((a, b) => (b.prob !== a.prob ? b.prob - a.prob : a.team.seed - b.team.seed));
 
   return (
     <div className="m-prob-card">
       <div className="m-prob-card-header">
-        <span className="m-prob-eyebrow">All paths · {gameRoundLabel[game.round]}</span>
+        <span className="m-prob-eyebrow">All paths · {roundName.toUpperCase()}</span>
         <span className="m-prob-updating">↻ Live</span>
       </div>
       {alive.map((row) => {
         const reach = Math.round(row.prob * 100);
         const locked = reach === 100;
         return (
-          <div className={`m-prob-row ${locked ? "m-prob-row--locked" : ""}`} key={`${game.id}-${row.teamId}`}>
+          <div className={`m-prob-row ${locked ? "m-prob-row--locked" : ""}`} key={row.teamId}>
             <div className="m-prob-rank-bar" style={{ width: `${reach}%` }} />
             <div className="m-prob-row-content">
               <div className="m-prob-row-left">
@@ -1998,12 +2076,12 @@ function MobileProbSlotCard({
                 <img src={teamLogoUrl(row.team)} className="m-logo-sm" alt="" />
                 <div className="m-prob-row-info">
                   <span className="m-name-sm">{row.team.name}</span>
-                  <span className="m-prob-reach">{locked ? "✓ Locked in" : `${reach}% to reach`}</span>
+                  <span className="m-prob-reach">{locked ? "✓ Locked in" : `${reach}% to reach ${roundName}`}</span>
                 </div>
               </div>
               <div className="m-prob-row-right">
                 <span className="m-odds-sm">{formatOddsDisplay(row.prob, displayMode).primary}</span>
-                <span className="m-prob-win-label">to win slot</span>
+                <span className="m-prob-win-label">to advance to {nextRoundName}</span>
               </div>
             </div>
           </div>
@@ -2018,6 +2096,7 @@ function MobileProbSlotCard({
 
 function RegionBracket({
   region,
+  position,
   games,
   gameWinProbs,
   possibleWinners,
@@ -2026,9 +2105,13 @@ function RegionBracket({
   onResetRegion,
   inverted,
   displayMode,
+  titleOddsByTeam,
+  manuallyExpandedRounds,
+  onToggleManualExpandRound,
   onOpenProbabilityPopup,
 }: {
   region: Region;
+  position: "left" | "right";
   games: ResolvedGame[];
   gameWinProbs: SimulationOutput["gameWinProbs"];
   possibleWinners: Record<string, Set<string>>;
@@ -2037,41 +2120,147 @@ function RegionBracket({
   onResetRegion: (region: Region) => void;
   inverted: boolean;
   displayMode: OddsDisplayMode;
+  titleOddsByTeam: Map<string, string>;
+  manuallyExpandedRounds: Set<string>;
+  onToggleManualExpandRound: (region: Region, round: MobileRegionRound) => void;
   onOpenProbabilityPopup: (game: ResolvedGame, anchorEl: HTMLElement) => void;
 }) {
   const rounds = inverted ? [...regionRounds].reverse() : [...regionRounds];
-  const collapseByRound = useMemo(
+  const COLLAPSED_WIDTH = 68;
+  const MANUAL_WIDTH = 160;
+  const roundDepth: Record<MobileRegionRound, number> = { R64: 0, R32: 1, S16: 2, E8: 3 };
+  const roundShort: Record<MobileRegionRound, string> = { R64: "R64", R32: "R32", S16: "S16", E8: "E8" };
+  const roundLong: Record<MobileRegionRound, string> = {
+    R64: "ROUND OF 64",
+    R32: "ROUND OF 32",
+    S16: "SWEET 16",
+    E8: "ELITE 8",
+  };
+  const regionRef = useRef<HTMLElement | null>(null);
+  const [regionWidth, setRegionWidth] = useState(560);
+  const [effectiveCollapsed, setEffectiveCollapsed] = useState<Record<MobileRegionRound, boolean>>({
+    R64: false,
+    R32: false,
+    S16: false,
+    E8: false,
+  });
+  const [collapsingKeys, setCollapsingKeys] = useState<Set<string>>(new Set());
+  const [expandingKeys, setExpandingKeys] = useState<Set<string>>(new Set());
+  const transitionTimersRef = useRef<number[]>([]);
+  const completeByRound = useMemo(
     () =>
       Object.fromEntries(
-        rounds.map((round) => {
+        (["R64", "R32", "S16", "E8"] as const).map((round) => {
           const roundGames = gamesByRegionAndRound(games, region, round);
           return [round, roundGames.length > 0 && roundGames.every((game) => Boolean(game.winnerId))];
         })
-      ) as Partial<Record<ResolvedGame["round"], boolean>>,
-    [games, region, rounds]
+      ) as Record<MobileRegionRound, boolean>,
+    [games, region]
   );
-  const columnWidthByRound: Record<ResolvedGame["round"], string> = {
-    R64: "minmax(122px, 2.25fr)",
-    R32: "minmax(112px, 1.95fr)",
-    S16: "minmax(106px, 1.9fr)",
-    E8: "minmax(100px, 1.85fr)",
-    F4: "minmax(100px, 1.8fr)",
-    CHAMP: "minmax(100px, 1.8fr)",
-  };
-  const gridTemplateColumns = rounds
-    .map((round) => (collapseByRound[round] ? "68px" : columnWidthByRound[round]))
-    .join(" ");
-  const shortRoundLabel: Record<ResolvedGame["round"], string> = {
-    R64: "R64",
-    R32: "R32",
-    S16: "S16",
-    E8: "E8",
-    F4: "F4",
-    CHAMP: "CHAMP",
-  };
+  const roundStateByRound = useMemo(() => {
+    const out = {} as Record<MobileRegionRound, "collapsed" | "manual" | "active">;
+    (["R64", "R32", "S16", "E8"] as const).forEach((round) => {
+      const manual = manuallyExpandedRounds.has(`${region}-${round}`);
+      if (!completeByRound[round]) out[round] = "active";
+      else if (manual) out[round] = "manual";
+      else out[round] = "collapsed";
+    });
+    return out;
+  }, [completeByRound, manuallyExpandedRounds, region]);
+
+  useEffect(() => {
+    const node = regionRef.current;
+    if (!node) return;
+    const observer = new ResizeObserver((entries) => {
+      const entry = entries[0];
+      if (!entry) return;
+      setRegionWidth(entry.contentRect.width);
+    });
+    observer.observe(node);
+    return () => observer.disconnect();
+  }, []);
+
+  useEffect(() => {
+    (["R64", "R32", "S16", "E8"] as const).forEach((round) => {
+      const key = `${region}-${round}`;
+      const targetCollapsed = roundStateByRound[round] === "collapsed";
+      const currentCollapsed = effectiveCollapsed[round];
+      if (targetCollapsed === currentCollapsed) return;
+
+      if (targetCollapsed) {
+        setCollapsingKeys((prev) => new Set(prev).add(key));
+        const timer = window.setTimeout(() => {
+          setEffectiveCollapsed((prev) => ({ ...prev, [round]: true }));
+          setCollapsingKeys((prev) => {
+            const next = new Set(prev);
+            next.delete(key);
+            return next;
+          });
+        }, 120);
+        transitionTimersRef.current.push(timer);
+      } else {
+        setEffectiveCollapsed((prev) => ({ ...prev, [round]: false }));
+        setExpandingKeys((prev) => new Set(prev).add(key));
+        const timer = window.setTimeout(() => {
+          setExpandingKeys((prev) => {
+            const next = new Set(prev);
+            next.delete(key);
+            return next;
+          });
+        }, 300);
+        transitionTimersRef.current.push(timer);
+      }
+    });
+    return () => {
+      transitionTimersRef.current.forEach((timer) => window.clearTimeout(timer));
+      transitionTimersRef.current = [];
+    };
+  }, [roundStateByRound, effectiveCollapsed, region]);
+
+  const columnWidths = useMemo(() => {
+    const roundsBase: MobileRegionRound[] = ["R64", "R32", "S16", "E8"];
+    const states = roundsBase.map((round) => roundStateByRound[round]);
+    const collapsedTotal = states.filter((state) => state === "collapsed").length * COLLAPSED_WIDTH;
+    const manualTotal = states.filter((state) => state === "manual").length * MANUAL_WIDTH;
+    const availableForActive = Math.max(80, regionWidth - collapsedTotal - manualTotal);
+    const activeRounds = roundsBase.filter((round) => roundStateByRound[round] === "active");
+    const widths = {} as Record<MobileRegionRound, number>;
+
+    if (!activeRounds.length) {
+      roundsBase.forEach((round, index) => {
+        widths[round] = states[index] === "manual" ? MANUAL_WIDTH : COLLAPSED_WIDTH;
+      });
+      return widths;
+    }
+
+    const innermostActive = [...activeRounds].sort((a, b) => roundDepth[b] - roundDepth[a])[0];
+    const otherActive = activeRounds.filter((round) => round !== innermostActive);
+    const innermostShare = activeRounds.length === 1 ? availableForActive : availableForActive * 0.6;
+    const remaining = availableForActive - innermostShare;
+    const perOther = otherActive.length ? remaining / otherActive.length : 0;
+
+    roundsBase.forEach((round) => {
+      const state = roundStateByRound[round];
+      if (state === "collapsed") widths[round] = COLLAPSED_WIDTH;
+      else if (state === "manual") widths[round] = MANUAL_WIDTH;
+      else if (round === innermostActive) widths[round] = innermostShare;
+      else widths[round] = perOther;
+    });
+
+    return widths;
+  }, [regionWidth, roundStateByRound]);
+
+  const innermostActiveRound = useMemo(() => {
+    const activeRounds = (["R64", "R32", "S16", "E8"] as const).filter((round) => roundStateByRound[round] === "active");
+    if (!activeRounds.length) return null;
+    return [...activeRounds].sort((a, b) => roundDepth[b] - roundDepth[a])[0];
+  }, [roundStateByRound]);
 
   return (
-    <section className={`eg-region-card bracket-region ${inverted ? "region-inverted" : ""}`}>
+    <section
+      ref={regionRef}
+      className={`eg-region-card bracket-region bracket-region--${position} ${inverted ? "region-inverted" : ""}`}
+    >
       <div className="eg-region-head">
         <h2>{region}</h2>
         <button className="eg-mini-btn" onClick={() => onResetRegion(region)}>
@@ -2079,17 +2268,54 @@ function RegionBracket({
         </button>
       </div>
 
-      <div className="eg-round-grid bracket-grid" style={{ gridTemplateColumns }}>
+      <div className="eg-round-grid bracket-grid">
         {rounds.map((round) => {
           const roundGames = gamesByRegionAndRound(games, region, round);
-          const collapsed = Boolean(collapseByRound[round]);
+          const roundKey = `${region}-${round}`;
+          const collapsed = Boolean(effectiveCollapsed[round as MobileRegionRound]);
+          const isManualExpanded = roundStateByRound[round as MobileRegionRound] === "manual";
+          const displayTier: "compact" | "normal" | "wide" =
+            collapsed ? "compact" : isManualExpanded ? "normal" : getDisplayTier(columnWidths[round as MobileRegionRound]);
+          const roundComplete = completeByRound[round as MobileRegionRound];
+          const isInnermost = innermostActiveRound === round;
           return (
             <div
               key={`${region}-${round}`}
-              className={`eg-round-col lane-${round.toLowerCase()} ${collapsed ? "eg-round-col--collapsed" : ""}`}
+              className={`eg-round-col lane-${round.toLowerCase()} ${collapsed ? "eg-round-col--collapsed" : ""} ${
+                isInnermost ? "eg-round-col--innermost-active" : ""
+              } ${collapsingKeys.has(roundKey) ? "eg-round-col--collapsing" : ""} ${
+                expandingKeys.has(roundKey) ? "eg-round-col--expanding" : ""
+              }`}
+              style={{ width: `${columnWidths[round as MobileRegionRound]}px` }}
             >
-              <p className="eg-round-label">{collapsed ? shortRoundLabel[round] : gameRoundLabel[round]}</p>
-              <div className="eg-games-lane">
+              <div
+                className={`round-col-header ${
+                  collapsed && !isManualExpanded ? "round-col-header--collapsed" : ""
+                } ${isManualExpanded ? "round-col-header--manual" : ""}`}
+                onClick={() => {
+                  if (collapsed && roundComplete) onToggleManualExpandRound(region, round as MobileRegionRound);
+                }}
+                title={collapsed && roundComplete ? `Expand ${roundLong[round as MobileRegionRound]}` : undefined}
+              >
+                <span className="round-col-header-label">
+                  {collapsed ? roundShort[round as MobileRegionRound] : roundLong[round as MobileRegionRound]}
+                </span>
+                {collapsed && !isManualExpanded ? <span className="round-col-header-expand-hint">···</span> : null}
+                {isManualExpanded ? (
+                  <button
+                    type="button"
+                    className="round-col-header-collapse-btn"
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      onToggleManualExpandRound(region, round as MobileRegionRound);
+                    }}
+                    title="Collapse round"
+                  >
+                    ⊟
+                  </button>
+                ) : null}
+              </div>
+              <div className="eg-games-lane bracket-round-col-content">
                 {roundGames.map((game, idx) => {
                   const topPercent = ((idx + 0.5) / Math.max(1, roundGames.length)) * 100;
                   const nodeStyle = { top: `${topPercent}%` } as React.CSSProperties;
@@ -2097,7 +2323,9 @@ function RegionBracket({
                     <div key={game.id} className="eg-game-node" style={nodeStyle}>
                       <GameCard
                         game={game}
-                        collapsed={collapsed}
+                        collapsed={displayTier === "compact"}
+                        displayTier={displayTier}
+                        titleOddsByTeam={titleOddsByTeam}
                         gameWinProbs={gameWinProbs}
                         possibleWinners={possibleWinners}
                         onPick={onPick}
@@ -2120,6 +2348,8 @@ function RegionBracket({
 function GameCard({
   game,
   collapsed = false,
+  displayTier = "normal",
+  titleOddsByTeam = EMPTY_TITLE_ODDS_MAP,
   gameWinProbs,
   possibleWinners,
   onPick,
@@ -2129,6 +2359,8 @@ function GameCard({
 }: {
   game: ResolvedGame;
   collapsed?: boolean;
+  displayTier?: "compact" | "normal" | "wide";
+  titleOddsByTeam?: Map<string, string>;
   gameWinProbs: SimulationOutput["gameWinProbs"];
   possibleWinners: Record<string, Set<string>>;
   onPick: (game: ResolvedGame, teamId: string | null) => void;
@@ -2176,6 +2408,7 @@ function GameCard({
   const compactDensity = getCompactDensity(game.round, rows.length);
   const compactLongPressTimerRef = useRef<number | null>(null);
   const compactLongPressFiredRef = useRef(false);
+  const useWideTier = displayTier === "wide";
 
   if (collapsed) {
     const compactTeams = [game.teamAId, game.teamBId]
@@ -2213,7 +2446,9 @@ function GameCard({
   }
 
   return (
-    <article className={`eg-game-card round-${game.round.toLowerCase()}`}>
+    <article
+      className={`eg-game-card round-${game.round.toLowerCase()} ${useWideTier ? "bracket-matchup-card--wide" : ""}`}
+    >
       <div className="eg-game-list">
         {useShowdownSplit ? (
           <div className={`eg-champ-split ${game.round === "CHAMP" ? "championship" : "semifinal"}`}>
@@ -2261,13 +2496,79 @@ function GameCard({
             })}
           </div>
         ) : rows.length > 0 ? (
-          game.round === "R64" ? (
+          game.round === "R64" || useWideTier ? (
             rows.map((candidate) => {
               const team = candidate.team!;
               const canPick =
                 game.teamAId !== null &&
                 game.teamBId !== null &&
                 (team.id === game.teamAId || team.id === game.teamBId);
+              const selected = game.winnerId === team.id;
+              const outcome =
+                game.lockedByUser && game.winnerId
+                  ? game.winnerId === team.id
+                    ? "win"
+                    : "loss"
+                  : null;
+              if (useWideTier) {
+                const formatted = formatOddsDisplay(candidate.prob, displayMode);
+                return (
+                  <button
+                    key={`${game.id}-${team.id}`}
+                    type="button"
+                    className={`bracket-team-row bracket-team-row--wide matchup-row ${game.winnerId ? "matchup-row--picked" : ""} ${selected ? "selected" : ""} ${lastPickedKey === `${game.id}:${team.id}` ? "fresh-pick" : ""} ${outcome === "win" ? "bracket-team-row--winner result-win" : ""} ${outcome === "loss" ? "bracket-team-row--loser result-loss" : ""}`}
+                    disabled={!canPick}
+                    onClick={() => onPick(game, canPick ? team.id : null)}
+                    title={`Chance to advance from this game: ${(candidate.prob * 100).toFixed(1)}%`}
+                  >
+                    <span className="btw-seed">{team.seed}</span>
+                    <TeamHoverAnchor teamName={team.name} logoSrc={teamLogoUrl(team)}>
+                      <img src={teamLogoUrl(team)} className="btw-logo" alt={`${team.name} logo`} loading="lazy" />
+                    </TeamHoverAnchor>
+                    <div className="btw-names">
+                      <TeamHoverAnchor teamName={fullTeamName(team.name)} logoSrc={teamLogoUrl(team)}>
+                        <span className="btw-fullname">{fullTeamName(team.name)}</span>
+                      </TeamHoverAnchor>
+                      {titleOddsByTeam.has(team.id) ? (
+                        <span className="btw-title-odds">{titleOddsByTeam.get(team.id)} title</span>
+                      ) : null}
+                    </div>
+                    <span className="btw-matchup-odds-wrap">
+                      {outcome ? (
+                        <span className={`outcome-badge ${outcome}`}>{outcome === "win" ? "✓" : "✕"}</span>
+                      ) : (
+                        <>
+                          <span className={`btw-matchup-odds ${game.customProbA !== null ? "edited-prob" : ""}`}>
+                            {formatted.primary}
+                          </span>
+                          {formatted.secondary ? <span className="btw-matchup-sub">{formatted.secondary}</span> : null}
+                        </>
+                      )}
+                    </span>
+                    {!game.winnerId && game.teamAId && game.teamBId ? (
+                      <span
+                        role="button"
+                        tabIndex={0}
+                        className="matchup-edit-btn"
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          onOpenProbabilityPopup(game, event.currentTarget as HTMLElement);
+                        }}
+                        onKeyDown={(event) => {
+                          if (event.key !== "Enter" && event.key !== " ") return;
+                          event.preventDefault();
+                          event.stopPropagation();
+                          onOpenProbabilityPopup(game, event.currentTarget as HTMLElement);
+                        }}
+                        title="Edit probability"
+                        aria-label="Edit matchup probability"
+                      >
+                        ✎
+                      </span>
+                    ) : null}
+                  </button>
+                );
+              }
               return (
                 <TeamRow
                   key={`${game.id}-${team.id}`}
@@ -2484,6 +2785,12 @@ function getCompactDensity(round: ResolvedGame["round"], count: number): "sm" | 
   if (count <= 4) return "lg";
   if (count <= 8) return "md";
   return "sm";
+}
+
+function getDisplayTier(columnWidth: number): "compact" | "normal" | "wide" {
+  if (columnWidth < 90) return "compact";
+  if (columnWidth < 200) return "normal";
+  return "wide";
 }
 
 function TeamRow({
