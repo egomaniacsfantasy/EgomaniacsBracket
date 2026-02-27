@@ -224,6 +224,7 @@ body {
   background: rgba(20, 14, 8, 0.5);
   position: relative;
   z-index: 1;
+  max-width: 100%;
 }
 
 .eg-section-head {
@@ -278,6 +279,8 @@ body {
   min-height: 860px;
   overflow: visible;
   isolation: isolate;
+  max-width: 740px;
+  width: 100%;
 }
 
 .eg-region-head {
@@ -298,26 +301,23 @@ body {
 
 .eg-round-grid {
   display: grid;
-  grid-template-columns: minmax(0, 1.0fr) minmax(0, 1.3fr) minmax(0, 1.6fr) minmax(0, 2.1fr);
+  grid-template-columns: minmax(0, 1.4fr) minmax(0, 1.3fr) minmax(0, 1.6fr) minmax(0, 2.1fr);
   gap: 12px;
   min-height: 840px;
   align-items: start;
-}
-
-.eg-round-grid--transitioning {
-  transition: grid-template-columns 320ms cubic-bezier(0.4, 0, 0.2, 1);
+  transition: grid-template-columns 350ms cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .eg-layout.panel-open .eg-round-grid {
-  grid-template-columns: minmax(0, 1.0fr) minmax(0, 1.3fr) minmax(0, 1.6fr) minmax(0, 2.1fr);
+  grid-template-columns: minmax(0, 1.4fr) minmax(0, 1.3fr) minmax(0, 1.6fr) minmax(0, 2.1fr);
 }
 
 .eg-layout.panel-open .region-inverted .eg-round-grid {
-  grid-template-columns: minmax(0, 2.1fr) minmax(0, 1.6fr) minmax(0, 1.3fr) minmax(0, 1.0fr);
+  grid-template-columns: minmax(0, 2.1fr) minmax(0, 1.6fr) minmax(0, 1.3fr) minmax(0, 1.4fr);
 }
 
 .region-inverted .eg-round-grid {
-  grid-template-columns: minmax(0, 2.1fr) minmax(0, 1.6fr) minmax(0, 1.3fr) minmax(0, 1.0fr);
+  grid-template-columns: minmax(0, 2.1fr) minmax(0, 1.6fr) minmax(0, 1.3fr) minmax(0, 1.4fr);
 }
 
 .eg-round-col {
@@ -831,86 +831,101 @@ body {
 @media (min-width: 768px) {
   .eg-round-col--e8 .eg-game-card {
     border-color: rgba(184, 125, 24, 0.28);
-    background: linear-gradient(
-      135deg,
-      rgba(184, 125, 24, 0.06) 0%,
-      rgba(20, 14, 8, 0.9) 60%
-    );
-    border-radius: 10px;
-    box-shadow: 0 0 24px rgba(184, 125, 24, 0.08);
+    background: linear-gradient(160deg, rgba(184, 125, 24, 0.07) 0%, rgba(14, 12, 9, 0.95) 55%);
+    border-radius: 12px;
+    box-shadow:
+      0 0 0 1px rgba(184, 125, 24, 0.12) inset,
+      0 4px 24px rgba(0, 0, 0, 0.4),
+      0 0 40px rgba(184, 125, 24, 0.06);
+    overflow: hidden;
   }
 
   .eg-round-col--e8 .eg-game-card:hover {
-    border-color: rgba(184, 125, 24, 0.5);
-    box-shadow: 0 0 32px rgba(184, 125, 24, 0.14);
-    transition: border-color 200ms ease, box-shadow 200ms ease;
+    border-color: rgba(184, 125, 24, 0.48);
+    box-shadow:
+      0 0 0 1px rgba(184, 125, 24, 0.22) inset,
+      0 4px 32px rgba(0, 0, 0, 0.5),
+      0 0 48px rgba(184, 125, 24, 0.1);
+    transition: border-color 220ms ease, box-shadow 220ms ease;
   }
 
-  .eg-round-col--e8 .eg-team-row,
-  .eg-round-col--e8 .eg-team-row.matchup-row {
-    padding: 13px 16px;
-    gap: 10px;
+  .eg-round-col--e8 .eg-compact-chip {
+    padding: 14px 18px;
+    gap: 12px;
+    min-height: 56px;
+    position: relative;
   }
 
-  .eg-round-col--e8 .btw-seed {
-    font-size: 12px;
-    width: 20px;
+  .eg-round-col--e8 .chip-seed {
+    font-family: var(--font-mono);
+    font-size: 13px;
+    font-weight: 600;
+    color: rgba(184, 125, 24, 0.6);
+    width: 22px;
+    text-align: right;
+    flex-shrink: 0;
   }
 
-  .eg-round-col--e8 .btw-logo,
+  .eg-round-col--e8 .chip-seed ~ * img,
   .eg-round-col--e8 .team-logo {
-    width: 28px;
-    height: 28px;
+    width: 30px;
+    height: 30px;
   }
 
-  .eg-round-col--e8 .btw-abbrev-name {
-    display: none;
+  .eg-round-col--e8 .chip-odds {
+    flex-shrink: 0;
   }
 
-  .eg-round-col--e8 .btw-fullname {
-    font-family: var(--font-serif);
-    font-size: 16px;
-    font-weight: 700;
-    color: var(--text-primary);
-    display: block;
-  }
-
-  .eg-round-col--e8 .btw-title-odds {
-    display: block;
-    font-size: 11px;
-    color: rgba(184, 125, 24, 0.8);
-    letter-spacing: 0.02em;
-  }
-
-  .eg-round-col--e8 .team-odds {
+  .eg-round-col--e8 .chip-prob {
+    font-family: var(--font-mono);
     font-size: 15px;
     font-weight: 700;
+    color: var(--text-secondary);
   }
 
-  .eg-round-col--e8 .eg-team-row.result-win {
-    background: rgba(184, 125, 24, 0.08);
+  .eg-round-col--e8 .eg-compact-chip.result-win {
+    background: linear-gradient(90deg, rgba(184, 125, 24, 0.12) 0%, rgba(184, 125, 24, 0.04) 100%);
   }
 
-  .eg-round-col--e8 .eg-team-row.result-win .btw-fullname {
-    color: rgba(255, 240, 200, 0.95);
-  }
-
-  .eg-round-col--e8 .eg-team-row.result-win .btw-title-odds {
+  .eg-round-col--e8 .eg-compact-chip.result-win .chip-seed {
     color: rgba(184, 125, 24, 0.95);
   }
 
-  .eg-round-col--e8 .eg-team-row.result-loss {
-    opacity: 0.32;
+  .eg-round-col--e8 .eg-compact-chip.result-loss {
+    opacity: 0.3;
   }
 
   .eg-round-col--e8 .eg-round-label {
     color: rgba(184, 125, 24, 0.7);
-    letter-spacing: 0.14em;
+    letter-spacing: 0.16em;
     font-size: 10px;
+    text-transform: uppercase;
   }
 
   .eg-round-col--e8 .eg-games-lane {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
     min-height: 600px;
+    padding: 0 4px;
+  }
+
+  .eg-round-col--e8 .eg-game-card::after {
+    content: "";
+    display: block;
+    height: 1px;
+    background: rgba(184, 125, 24, 0.12);
+    margin: 0 16px;
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 50%;
+  }
+
+  .eg-round-col--e8-pending .eg-game-card {
+    border-color: rgba(184, 125, 24, 0.1);
+    background: transparent;
+    box-shadow: none;
   }
 }
 

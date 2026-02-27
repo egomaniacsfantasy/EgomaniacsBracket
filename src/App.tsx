@@ -2073,7 +2073,6 @@ function RegionBracket({
   displayMode: OddsDisplayMode;
   onOpenProbabilityPopup: (game: ResolvedGame, anchorEl: HTMLElement) => void;
 }) {
-  const collapseTimersRef = useRef<number[]>([]);
   const rounds = inverted ? [...regionRounds].reverse() : [...regionRounds];
   const collapseByRound = useMemo(
     () =>
@@ -2085,97 +2084,11 @@ function RegionBracket({
       ) as Partial<Record<ResolvedGame["round"], boolean>>,
     [games, region, rounds]
   );
-  const [effectiveCollapseByRound, setEffectiveCollapseByRound] =
-    useState<Partial<Record<ResolvedGame["round"], boolean>>>(collapseByRound);
-  const [collapsingRounds, setCollapsingRounds] = useState<Set<ResolvedGame["round"]>>(new Set());
-  const [preExpandingRounds, setPreExpandingRounds] = useState<Set<ResolvedGame["round"]>>(new Set());
-  const [expandingRounds, setExpandingRounds] = useState<Set<ResolvedGame["round"]>>(new Set());
-  const [isGridTransitioning, setIsGridTransitioning] = useState(false);
-  const previousCollapseRef = useRef<Partial<Record<ResolvedGame["round"], boolean>>>(collapseByRound);
-
-  useEffect(() => {
-    return () => {
-      collapseTimersRef.current.forEach((timerId) => window.clearTimeout(timerId));
-      collapseTimersRef.current = [];
-    };
-  }, []);
-
-  useEffect(() => {
-    const previous = previousCollapseRef.current;
-    const next = collapseByRound;
-    const changedRounds = rounds.filter((round) => Boolean(previous[round]) !== Boolean(next[round]));
-
-    if (changedRounds.length === 0) {
-      previousCollapseRef.current = next;
-      return;
-    }
-
-    setIsGridTransitioning(true);
-    const gridTimer = window.setTimeout(() => {
-      setIsGridTransitioning(false);
-    }, 350);
-    collapseTimersRef.current.push(gridTimer);
-
-    changedRounds.forEach((round) => {
-      const wasCollapsed = Boolean(previous[round]);
-      const isCollapsed = Boolean(next[round]);
-      if (!wasCollapsed && isCollapsed) {
-        setCollapsingRounds((prevSet) => {
-          const copy = new Set(prevSet);
-          copy.add(round);
-          return copy;
-        });
-        const collapseTimer = window.setTimeout(() => {
-          setEffectiveCollapseByRound((prevMap) => ({ ...prevMap, [round]: true }));
-          setCollapsingRounds((prevSet) => {
-            const copy = new Set(prevSet);
-            copy.delete(round);
-            return copy;
-          });
-        }, 140);
-        collapseTimersRef.current.push(collapseTimer);
-        return;
-      }
-
-      if (wasCollapsed && !isCollapsed) {
-        setPreExpandingRounds((prevSet) => {
-          const copy = new Set(prevSet);
-          copy.add(round);
-          return copy;
-        });
-        setEffectiveCollapseByRound((prevMap) => ({ ...prevMap, [round]: false }));
-        const preExpandTimer = window.setTimeout(() => {
-          setPreExpandingRounds((prevSet) => {
-            const copy = new Set(prevSet);
-            copy.delete(round);
-            return copy;
-          });
-          setExpandingRounds((prevSet) => {
-            const copy = new Set(prevSet);
-            copy.add(round);
-            return copy;
-          });
-          const expandTimer = window.setTimeout(() => {
-            setExpandingRounds((prevSet) => {
-              const copy = new Set(prevSet);
-              copy.delete(round);
-              return copy;
-            });
-          }, 160);
-          collapseTimersRef.current.push(expandTimer);
-        }, 300);
-        collapseTimersRef.current.push(preExpandTimer);
-      }
-    });
-
-    previousCollapseRef.current = next;
-  }, [collapseByRound, rounds]);
-
   const buildGridTemplate = (): string => {
     const orderedRounds: Array<"R64" | "R32" | "S16" | "E8"> = ["R64", "R32", "S16", "E8"];
-    const baseFractions = [1.0, 1.3, 1.6, 2.1];
+    const baseFractions = [1.4, 1.3, 1.6, 2.1];
     const parts = orderedRounds.map((round, idx) =>
-      effectiveCollapseByRound[round] ? "minmax(0, 68px)" : `minmax(0, ${baseFractions[idx]}fr)`
+      collapseByRound[round] ? "minmax(0, 68px)" : `minmax(0, ${baseFractions[idx]}fr)`
     );
     if (inverted) parts.reverse();
     return parts.join(" ");
@@ -2199,20 +2112,16 @@ function RegionBracket({
         </button>
       </div>
 
-      <div
-        className={`eg-round-grid bracket-grid ${isGridTransitioning ? "eg-round-grid--transitioning" : ""}`}
-        style={{ gridTemplateColumns }}
-      >
+      <div className="eg-round-grid bracket-grid" style={{ gridTemplateColumns }}>
         {rounds.map((round) => {
           const roundGames = gamesByRegionAndRound(games, region, round);
-          const collapsed = Boolean(effectiveCollapseByRound[round]);
-          const isCollapsing = collapsingRounds.has(round);
-          const isPreExpanding = preExpandingRounds.has(round);
-          const isExpanding = expandingRounds.has(round);
+          const collapsed = Boolean(collapseByRound[round]);
+          const e8Game = round === "E8" ? roundGames[0] : null;
+          const e8Confirmed = Boolean(e8Game?.teamAId && e8Game?.teamBId);
           return (
             <div
               key={`${region}-${round}`}
-              className={`eg-round-col lane-${round.toLowerCase()} ${collapsed ? "eg-round-col--collapsed" : ""} ${round === "E8" ? "eg-round-col--e8" : ""} ${isCollapsing ? "eg-round-col--collapsing" : ""} ${isPreExpanding ? "eg-round-col--pre-expanding" : ""} ${isExpanding ? "eg-round-col--expanding" : ""}`}
+              className={`eg-round-col lane-${round.toLowerCase()} ${collapsed ? "eg-round-col--collapsed" : ""} ${round === "E8" && e8Confirmed ? "eg-round-col--e8" : ""} ${round === "E8" && !e8Confirmed ? "eg-round-col--e8-pending" : ""}`}
             >
               <div className="eg-round-col-content">
                 <p className="eg-round-label">{collapsed ? shortRoundLabel[round] : gameRoundLabel[round]}</p>
