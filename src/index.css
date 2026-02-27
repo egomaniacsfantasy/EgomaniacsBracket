@@ -11,6 +11,7 @@
   --action: #f0e4c6;
   --success: #a5db9e;
   --shadow: 0 26px 60px rgba(0, 0, 0, 0.38);
+  --bracket-col-gap: 12px;
 }
 
 * {
@@ -259,8 +260,19 @@ body {
 }
 
 .eg-region-grid.bracket-style {
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: minmax(0, 1fr) 2px minmax(0, 1fr);
+  gap: 0;
+  align-items: stretch;
   min-width: 0;
+}
+
+.bracket-half-divider {
+  flex: 0 0 2px;
+  width: 2px;
+  margin: 0 16px;
+  align-self: stretch;
+  background: rgba(184, 125, 24, 0.35);
+  flex-shrink: 0;
 }
 
 .eg-region-card,
@@ -298,7 +310,7 @@ body {
 .eg-round-grid {
   display: grid;
   grid-template-columns: minmax(0, 2.25fr) minmax(0, 1.95fr) minmax(0, 1.9fr) minmax(0, 1.85fr);
-  gap: 6px;
+  gap: var(--bracket-col-gap);
   min-height: 840px;
   align-items: start;
   justify-content: space-between;
@@ -353,21 +365,29 @@ body {
   z-index: 2;
 }
 
+.bracket-region--left .eg-round-label {
+  text-align: right;
+}
+
+.bracket-region--right .eg-round-label {
+  text-align: left;
+}
+
 .eg-games-lane {
   position: relative;
   display: block;
   height: max(var(--lane-height, 840px), 76vh);
-  border-left: 1px solid rgba(74, 193, 100, 0.45);
-  padding-left: 10px;
+  border-right: 1px solid rgba(74, 193, 100, 0.45);
+  padding-right: 10px;
   margin-top: 6px;
   overflow: hidden;
 }
 
-.region-inverted .eg-games-lane {
-  border-left: 0;
-  border-right: 1px solid rgba(74, 193, 100, 0.45);
-  padding-left: 0;
-  padding-right: 10px;
+.bracket-region--right .eg-games-lane {
+  border-right: 0;
+  border-left: 1px solid rgba(74, 193, 100, 0.45);
+  padding-right: 0;
+  padding-left: 10px;
 }
 
 .lane-r64 .eg-games-lane {
@@ -383,34 +403,29 @@ body {
   z-index: 1;
 }
 
-.region-inverted .eg-game-node {
-  left: 0;
-  right: 0;
-}
-
 .lane-r32 .eg-game-node::before,
 .lane-s16 .eg-game-node::before,
 .lane-e8 .eg-game-node::before {
   content: "";
   position: absolute;
-  left: -8px;
+  right: -8px;
   top: 50%;
   width: 8px;
   height: 1px;
   background: rgba(74, 193, 100, 0.75);
 }
 
-.region-inverted .lane-r32 .eg-game-node::before,
-.region-inverted .lane-s16 .eg-game-node::before,
-.region-inverted .lane-e8 .eg-game-node::before {
-  left: auto;
-  right: -8px;
+.bracket-region--right .lane-r32 .eg-game-node::before,
+.bracket-region--right .lane-s16 .eg-game-node::before,
+.bracket-region--right .lane-e8 .eg-game-node::before {
+  right: auto;
+  left: -8px;
 }
 
 .eg-game-card {
   border: 1px solid rgba(171, 138, 69, 0.26);
   border-radius: 9px;
-  padding: 5px;
+  padding: 0;
   background: rgba(14, 11, 6, 0.7);
   transition: transform 180ms ease, border-color 180ms ease, box-shadow 180ms ease;
   position: relative;
@@ -565,6 +580,10 @@ body {
   grid-template-columns: 1fr;
 }
 
+.eg-shell.compact-desktop .eg-layout.panel-open .bracket-half-divider {
+  display: none;
+}
+
 .eg-shell.compact-desktop .eg-layout.panel-open .eg-section-head {
   margin-bottom: 6px;
 }
@@ -576,6 +595,10 @@ body {
 @media (max-width: 1750px) {
   .eg-layout.panel-open .eg-region-grid.bracket-style {
     grid-template-columns: 1fr;
+  }
+
+  .eg-layout.panel-open .bracket-half-divider {
+    display: none;
   }
 }
 
@@ -592,7 +615,7 @@ body {
   grid-template-columns: 16px 12px minmax(0, 1fr) minmax(46px, auto);
   align-items: center;
   column-gap: 3px;
-  padding: 3px 6px;
+  padding: 7px 12px;
   cursor: pointer;
   margin-bottom: 4px;
   transition: border-color 0.15s ease, background 0.15s ease;
@@ -600,6 +623,26 @@ body {
   overflow: visible;
   position: relative;
   z-index: 2;
+}
+
+.bracket-region--left .eg-round-col {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+}
+
+.bracket-region--right .eg-round-col {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+}
+
+.bracket-region--left .eg-round-col .eg-game-card,
+.bracket-region--left .eg-round-col .eg-team-row,
+.bracket-region--right .eg-round-col .eg-game-card,
+.bracket-region--right .eg-round-col .eg-team-row {
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .eg-team-row.compact {
@@ -1610,6 +1653,10 @@ input[type="range"] {
     grid-template-columns: 1fr;
   }
 
+  .bracket-half-divider {
+    display: none;
+  }
+
   .eg-finals-card {
     max-width: 100%;
   }
@@ -1627,6 +1674,13 @@ input[type="range"] {
     flex-direction: column;
     align-items: flex-start;
     gap: 2px;
+  }
+}
+
+@media (max-width: 767px) {
+  .bracket-region--left .eg-round-col,
+  .bracket-region--right .eg-round-col {
+    align-items: stretch;
   }
 }
 

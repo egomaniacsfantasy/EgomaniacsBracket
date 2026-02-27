@@ -44,7 +44,7 @@ const formatModes: { id: OddsDisplayMode; label: string }[] = [
 
 const regionSections: Region[][] = BRACKET_HALVES.map((half) => [...half.regions]);
 const mobileRegionOrder: Region[] = ["South", "East", "West", "Midwest"];
-const invertedRegions = new Set<Region>([regionSections[0][1], regionSections[1][1]]);
+const rightSideRegions = new Set<Region>(["West", "Midwest"]);
 
 const gameRoundLabel: Record<string, string> = {
   R64: "Round of 64",
@@ -1169,21 +1169,31 @@ function App() {
                   </div>
                   <div className="eg-region-scroll">
                     <div className="eg-region-grid bracket-style">
-                      {regionSections[0].map((region) => (
-                        <RegionBracket
-                          key={region}
-                          region={region}
-                          games={games}
-                          gameWinProbs={simResult.gameWinProbs}
-                          possibleWinners={possibleWinners}
-                          onPick={onPick}
-                          lastPickedKey={lastPickedKey}
-                          onResetRegion={onResetRegion}
-                          inverted={invertedRegions.has(region)}
-                          displayMode={displayMode}
-                          onOpenProbabilityPopup={openProbabilityPopup}
-                        />
-                      ))}
+                      <RegionBracket
+                        region={regionSections[0][0]}
+                        games={games}
+                        gameWinProbs={simResult.gameWinProbs}
+                        possibleWinners={possibleWinners}
+                        onPick={onPick}
+                        lastPickedKey={lastPickedKey}
+                        onResetRegion={onResetRegion}
+                        isRightSide={rightSideRegions.has(regionSections[0][0])}
+                        displayMode={displayMode}
+                        onOpenProbabilityPopup={openProbabilityPopup}
+                      />
+                      <div className="bracket-half-divider" aria-hidden="true" />
+                      <RegionBracket
+                        region={regionSections[0][1]}
+                        games={games}
+                        gameWinProbs={simResult.gameWinProbs}
+                        possibleWinners={possibleWinners}
+                        onPick={onPick}
+                        lastPickedKey={lastPickedKey}
+                        onResetRegion={onResetRegion}
+                        isRightSide={rightSideRegions.has(regionSections[0][1])}
+                        displayMode={displayMode}
+                        onOpenProbabilityPopup={openProbabilityPopup}
+                      />
                     </div>
                   </div>
                 </section>
@@ -1195,21 +1205,31 @@ function App() {
                   </div>
                   <div className="eg-region-scroll">
                     <div className="eg-region-grid bracket-style">
-                      {regionSections[1].map((region) => (
-                        <RegionBracket
-                          key={region}
-                          region={region}
-                          games={games}
-                          gameWinProbs={simResult.gameWinProbs}
-                          possibleWinners={possibleWinners}
-                          onPick={onPick}
-                          lastPickedKey={lastPickedKey}
-                          onResetRegion={onResetRegion}
-                          inverted={invertedRegions.has(region)}
-                          displayMode={displayMode}
-                          onOpenProbabilityPopup={openProbabilityPopup}
-                        />
-                      ))}
+                      <RegionBracket
+                        region={regionSections[1][0]}
+                        games={games}
+                        gameWinProbs={simResult.gameWinProbs}
+                        possibleWinners={possibleWinners}
+                        onPick={onPick}
+                        lastPickedKey={lastPickedKey}
+                        onResetRegion={onResetRegion}
+                        isRightSide={rightSideRegions.has(regionSections[1][0])}
+                        displayMode={displayMode}
+                        onOpenProbabilityPopup={openProbabilityPopup}
+                      />
+                      <div className="bracket-half-divider" aria-hidden="true" />
+                      <RegionBracket
+                        region={regionSections[1][1]}
+                        games={games}
+                        gameWinProbs={simResult.gameWinProbs}
+                        possibleWinners={possibleWinners}
+                        onPick={onPick}
+                        lastPickedKey={lastPickedKey}
+                        onResetRegion={onResetRegion}
+                        isRightSide={rightSideRegions.has(regionSections[1][1])}
+                        displayMode={displayMode}
+                        onOpenProbabilityPopup={openProbabilityPopup}
+                      />
                     </div>
                   </div>
                 </section>
@@ -2024,7 +2044,7 @@ function RegionBracket({
   onPick,
   lastPickedKey,
   onResetRegion,
-  inverted,
+  isRightSide,
   displayMode,
   onOpenProbabilityPopup,
 }: {
@@ -2035,11 +2055,11 @@ function RegionBracket({
   onPick: (game: ResolvedGame, teamId: string | null) => void;
   lastPickedKey: string | null;
   onResetRegion: (region: Region) => void;
-  inverted: boolean;
+  isRightSide: boolean;
   displayMode: OddsDisplayMode;
   onOpenProbabilityPopup: (game: ResolvedGame, anchorEl: HTMLElement) => void;
 }) {
-  const rounds = inverted ? [...regionRounds].reverse() : [...regionRounds];
+  const rounds = isRightSide ? [...regionRounds].reverse() : [...regionRounds];
   const collapseByRound = useMemo(
     () =>
       Object.fromEntries(
@@ -2071,7 +2091,7 @@ function RegionBracket({
   };
 
   return (
-    <section className={`eg-region-card bracket-region ${inverted ? "region-inverted" : ""}`}>
+    <section className={`eg-region-card bracket-region ${isRightSide ? "bracket-region--right" : "bracket-region--left"}`}>
       <div className="eg-region-head">
         <h2>{region}</h2>
         <button className="eg-mini-btn" onClick={() => onResetRegion(region)}>
@@ -2079,7 +2099,7 @@ function RegionBracket({
         </button>
       </div>
 
-      <div className="eg-round-grid bracket-grid" style={{ gridTemplateColumns }}>
+      <div className="eg-round-grid bracket-grid eg-region-cols" style={{ gridTemplateColumns }}>
         {rounds.map((round) => {
           const roundGames = gamesByRegionAndRound(games, region, round);
           const collapsed = Boolean(collapseByRound[round]);
