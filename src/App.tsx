@@ -2151,7 +2151,6 @@ function RegionBracket({
     E8: "ELITE 8",
   };
   const regionRef = useRef<HTMLElement | null>(null);
-  const [regionWidth, setRegionWidth] = useState(560);
   const [effectiveCollapsed, setEffectiveCollapsed] = useState<Record<MobileRegionRound, boolean>>({
     R64: false,
     R32: false,
@@ -2181,18 +2180,6 @@ function RegionBracket({
     });
     return out;
   }, [completeByRound, manuallyExpandedRounds, region]);
-
-  useEffect(() => {
-    const node = regionRef.current;
-    if (!node) return;
-    const observer = new ResizeObserver((entries) => {
-      const entry = entries[0];
-      if (!entry) return;
-      setRegionWidth(entry.contentRect.width);
-    });
-    observer.observe(node);
-    return () => observer.disconnect();
-  }, []);
 
   useEffect(() => {
     (["R64", "R32", "S16", "E8"] as const).forEach((round) => {
@@ -2233,36 +2220,15 @@ function RegionBracket({
 
   const columnWidths = useMemo(() => {
     const roundsBase: MobileRegionRound[] = ["R64", "R32", "S16", "E8"];
-    const states = roundsBase.map((round) => roundStateByRound[round]);
-    const collapsedTotal = states.filter((state) => state === "collapsed").length * COLLAPSED_WIDTH;
-    const manualTotal = states.filter((state) => state === "manual").length * MANUAL_WIDTH;
-    const availableForActive = Math.max(80, regionWidth - collapsedTotal - manualTotal);
-    const activeRounds = roundsBase.filter((round) => roundStateByRound[round] === "active");
     const widths = {} as Record<MobileRegionRound, number>;
-
-    if (!activeRounds.length) {
-      roundsBase.forEach((round, index) => {
-        widths[round] = states[index] === "manual" ? MANUAL_WIDTH : COLLAPSED_WIDTH;
-      });
-      return widths;
-    }
-
-    const innermostActive = [...activeRounds].sort((a, b) => roundDepth[b] - roundDepth[a])[0];
-    const otherActive = activeRounds.filter((round) => round !== innermostActive);
-    const innermostShare = activeRounds.length === 1 ? availableForActive : availableForActive * 0.6;
-    const remaining = availableForActive - innermostShare;
-    const perOther = otherActive.length ? remaining / otherActive.length : 0;
-
     roundsBase.forEach((round) => {
       const state = roundStateByRound[round];
       if (state === "collapsed") widths[round] = COLLAPSED_WIDTH;
       else if (state === "manual") widths[round] = MANUAL_WIDTH;
-      else if (round === innermostActive) widths[round] = innermostShare;
-      else widths[round] = perOther;
+      else widths[round] = MANUAL_WIDTH;
     });
-
     return widths;
-  }, [regionWidth, roundStateByRound]);
+  }, [roundStateByRound]);
 
   const innermostActiveRound = useMemo(() => {
     const activeRounds = (["R64", "R32", "S16", "E8"] as const).filter((round) => roundStateByRound[round] === "active");
@@ -2288,8 +2254,7 @@ function RegionBracket({
           const roundKey = `${region}-${round}`;
           const collapsed = Boolean(effectiveCollapsed[round as MobileRegionRound]);
           const isManualExpanded = roundStateByRound[round as MobileRegionRound] === "manual";
-          const displayTier: "compact" | "normal" | "wide" =
-            collapsed ? "compact" : isManualExpanded ? "normal" : getDisplayTier(columnWidths[round as MobileRegionRound]);
+          const displayTier: "compact" | "normal" | "wide" = collapsed ? "compact" : "normal";
           const roundComplete = completeByRound[round as MobileRegionRound];
           const isInnermost = innermostActiveRound === round;
           return (
@@ -2819,12 +2784,6 @@ function getCompactDensity(round: ResolvedGame["round"], count: number): "sm" | 
   if (count <= 4) return "lg";
   if (count <= 8) return "md";
   return "sm";
-}
-
-function getDisplayTier(columnWidth: number): "compact" | "normal" | "wide" {
-  if (columnWidth < 90) return "compact";
-  if (columnWidth < 200) return "normal";
-  return "wide";
 }
 
 function TeamRow({
