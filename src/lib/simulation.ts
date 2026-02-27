@@ -69,36 +69,6 @@ const eligibleLock = (
   return null;
 };
 
-const buildRequiredWinnersFromLocks = (locks: LockedPicks): Record<string, string> => {
-  const required: Record<string, string> = {};
-
-  const applyRequirement = (gameId: string, teamId: string): void => {
-    const existing = required[gameId];
-    if (existing && existing !== teamId) return;
-    required[gameId] = teamId;
-
-    const game = templateById.get(gameId);
-    if (!game?.sourceGameIds) return;
-
-    const [sourceA, sourceB] = game.sourceGameIds;
-    const sourceAEligible = eligibleTeamsForGame(sourceA);
-    const sourceBEligible = eligibleTeamsForGame(sourceB);
-    if (sourceAEligible.includes(teamId)) {
-      applyRequirement(sourceA, teamId);
-      return;
-    }
-    if (sourceBEligible.includes(teamId)) {
-      applyRequirement(sourceB, teamId);
-    }
-  };
-
-  for (const [gameId, teamId] of Object.entries(locks)) {
-    applyRequirement(gameId, teamId);
-  }
-
-  return required;
-};
-
 const sampleWinner = (game: ResolvedGame, random: () => number): string => {
   if (!game.teamAId || !game.teamBId) return "";
   const pA = getGameWinProb(game, game.teamAId);
@@ -114,7 +84,6 @@ const simulateBracket = (
 ): { winners: Record<string, string>; lockSuccess: boolean } => {
   const winners: Record<string, string> = {};
   let lockSuccess = true;
-  const requiredWinners = forceLocks ? buildRequiredWinnersFromLocks(locks) : {};
 
   for (const game of gameOrder) {
     let teamAId: string | null = null;
@@ -150,7 +119,6 @@ const simulateBracket = (
       continue;
     }
     const lock = eligibleLock(locks[game.id], teamAId, teamBId);
-    const requiredWinner = eligibleLock(requiredWinners[game.id], teamAId, teamBId);
 
     if (lock && naturalWinner !== lock) {
       lockSuccess = false;
@@ -158,7 +126,7 @@ const simulateBracket = (
       lockSuccess = false;
     }
 
-    winners[game.id] = forceLocks && lock ? lock : forceLocks && requiredWinner ? requiredWinner : naturalWinner;
+    winners[game.id] = forceLocks && lock ? lock : naturalWinner;
   }
 
   return { winners, lockSuccess };
@@ -314,7 +282,7 @@ export const generateSimulatedBracket = (locks: LockedPicks, customProbByGame: C
   const seedInput = hashLocks(locks, 1, customProbByGame);
   const random = mulberry32(fnv1aHash(`${DEFAULT_SIM_SEED}::sim-bracket::${seedInput}`));
   const forced = simulateBracket(locks, true, customProbByGame, random);
-  return { ...locks, ...forced.winners };
+  return { ...forced.winners };
 };
 
 const roundRank: Record<Round, number> = {

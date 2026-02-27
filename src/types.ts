@@ -12,7 +12,7 @@ export interface Team {
   seed: number;
   region: Region;
   rating: number;
-  espnId: number;
+  logoUrl?: string;
 }
 
 export interface GameTemplate {
