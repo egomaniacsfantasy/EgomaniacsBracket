@@ -2185,14 +2185,32 @@ function RegionBracket({
   }, [completeByRound, manuallyExpandedRounds, region]);
 
   useEffect(() => {
-    if (!regionColsRef.current) return;
+    const node = regionColsRef.current;
+    if (!node) return;
+
+    const measure = () => {
+      const measured = node.getBoundingClientRect().width;
+      if (measured > 0) {
+        setRegionWidth(measured);
+      }
+    };
+
+    // Ensure initial mount measurement is not left at fallback.
+    measure();
+
     const observer = new ResizeObserver((entries) => {
       for (const entry of entries) {
-        setRegionWidth(entry.contentRect.width);
+        if (entry.contentRect.width > 0) {
+          setRegionWidth(entry.contentRect.width);
+        }
       }
     });
-    observer.observe(regionColsRef.current);
-    return () => observer.disconnect();
+    observer.observe(node);
+    window.addEventListener("resize", measure);
+    return () => {
+      observer.disconnect();
+      window.removeEventListener("resize", measure);
+    };
   }, []);
 
   useEffect(() => {
@@ -2574,8 +2592,8 @@ function GameCard({
                       />
                     </TeamHoverAnchor>
                     <div className="btw-names">
-                      <span className="btw-fullname" title={fullTeamName(team.name)}>
-                        {fullTeamName(team.name)}
+                      <span className="btw-fullname" title={team.name}>
+                        {team.name}
                       </span>
                       {titleOddsByTeam.has(team.id) ? (
                         <span className="btw-title-odds">{titleOddsByTeam.get(team.id)} title</span>
