@@ -159,6 +159,7 @@ function App() {
   const staggeredStepsRef = useRef<Array<{ gameId: string; winnerId: string }>>([]);
   const staggeredIndexRef = useRef(0);
   const staggeredDelayRef = useRef(STAGGERED_SIM_DELAY_MS);
+  const simGeneratedGameIdsRef = useRef<Set<string>>(new Set());
   const demoGame = useMemo(
     () => resolveGames({}).games.find((game) => game.id === "South-R64-0") ?? null,
     []
@@ -173,6 +174,14 @@ function App() {
   useEffect(() => {
     staggeredDelayRef.current = staggeredSimDelayMs;
   }, [staggeredSimDelayMs]);
+
+  useEffect(() => {
+    if (simGeneratedGameIdsRef.current.size === 0) return;
+    const activeGameIds = new Set(Object.keys(lockedPicks));
+    for (const gameId of Array.from(simGeneratedGameIdsRef.current)) {
+      if (!activeGameIds.has(gameId)) simGeneratedGameIdsRef.current.delete(gameId);
+    }
+  }, [lockedPicks]);
 
   useEffect(() => {
     const media = window.matchMedia("(max-width: 1850px)");
@@ -532,6 +541,15 @@ function App() {
     setProbPopup(null);
   };
 
+  const getUserLockedPicks = (locks: LockedPicks): LockedPicks => {
+    if (simGeneratedGameIdsRef.current.size === 0) return { ...locks };
+    const next: LockedPicks = {};
+    for (const [gameId, winnerId] of Object.entries(locks)) {
+      if (!simGeneratedGameIdsRef.current.has(gameId)) next[gameId] = winnerId;
+    }
+    return next;
+  };
+
   const openProbabilityPopup = (game: ResolvedGame, anchorEl: HTMLElement) => {
     if (!game.teamAId || !game.teamBId || game.winnerId) return;
     if (probPopup) {
@@ -583,6 +601,7 @@ function App() {
       round: mobileSection === "FF" ? null : mobileRound,
     };
     cancelStaggeredSim();
+    simGeneratedGameIdsRef.current.delete(game.id);
     pushUndo(lockedPicks);
 
     const next: LockedPicks = { ...lockedPicks };
@@ -618,6 +637,7 @@ function App() {
     setFirstPickNudgeVisible(false);
     setMajorShiftNudgeVisible(false);
     closeProbabilityPopup(true);
+    simGeneratedGameIdsRef.current.delete(gameId);
     pushUndo(lockedPicks);
     const next = { ...lockedPicks };
     delete next[gameId];
@@ -635,6 +655,7 @@ function App() {
     };
     cancelStaggeredSim();
     closeProbabilityPopup(true);
+    simGeneratedGameIdsRef.current.delete(game.id);
     pushUndo(lockedPicks);
     setLastPickedKey(`${game.id}:${teamId}`);
     setLockedPicks(sanitizeLockedPicks({ ...lockedPicks, [game.id]: teamId }));
@@ -647,6 +668,7 @@ function App() {
     setFirstPickNudgeVisible(false);
     setMajorShiftNudgeVisible(false);
     pushUndo(lockedPicks);
+    simGeneratedGameIdsRef.current.clear();
     setLockedPicks({});
     setCustomProbByGame({});
     setProbPopup(null);
@@ -659,6 +681,9 @@ function App() {
     setMajorShiftNudgeVisible(false);
     closeProbabilityPopup(true);
     pushUndo(lockedPicks);
+    for (const game of games) {
+      if (game.region === region) simGeneratedGameIdsRef.current.delete(game.id);
+    }
     setLockedPicks(resetRegionPicks(lockedPicks, region));
   };
 
@@ -669,7 +694,12 @@ function App() {
     setMajorShiftNudgeVisible(false);
     closeProbabilityPopup(true);
     pushUndo(lockedPicks);
-    setLockedPicks(sanitizeLockedPicks(generateSimulatedBracket(lockedPicks, customProbByGame)));
+    const baseLocks = getUserLockedPicks(lockedPicks);
+    const nextLocks = sanitizeLockedPicks(generateSimulatedBracket(baseLocks, customProbByGame));
+    simGeneratedGameIdsRef.current = new Set(
+      Object.keys(nextLocks).filter((gameId) => !Object.prototype.hasOwnProperty.call(baseLocks, gameId))
+    );
+    setLockedPicks(nextLocks);
   };
 
   const onModelSimStaggered = () => {
@@ -679,15 +709,19 @@ function App() {
     setMajorShiftNudgeVisible(false);
     closeProbabilityPopup(true);
     setShowStaggeredControls(true);
-    const baseLocks = { ...lockedPicks };
+    const baseLocks = getUserLockedPicks(lockedPicks);
     const steps = generateSimulatedBracketSteps(baseLocks, ["South", "East", "West", "Midwest"], customProbByGame);
-    if (steps.length === 0) return;
+    if (steps.length === 0) {
+      simGeneratedGameIdsRef.current = new Set();
+      return;
+    }
 
     pushUndo(baseLocks);
     setStaggeredSimRunning(true);
     setStaggeredSimPaused(false);
     staggeredStepsRef.current = steps;
     staggeredIndexRef.current = 0;
+    simGeneratedGameIdsRef.current = new Set(steps.map((step) => step.gameId));
 
     const advance = () => {
       if (staggeredSimPaused) {
