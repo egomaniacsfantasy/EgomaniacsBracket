@@ -2422,7 +2422,7 @@ function GameCard({
   const compactDensity = getCompactDensity(game.round, rows.length);
   const compactLongPressTimerRef = useRef<number | null>(null);
   const compactLongPressFiredRef = useRef(false);
-  const useWideTier = displayTier === "wide";
+  const useWideTier = displayTier === "wide" && Boolean(game.teamAId && game.teamBId) && rows.length <= 2;
 
   if (collapsed) {
     const compactTeams = [game.teamAId, game.teamBId]
@@ -2437,20 +2437,22 @@ function GameCard({
               <CompactTeamRow
                 key={`${game.id}-${team.id}-compact`}
                 team={team}
-                isWinner={game.winnerId === team.id}
+                outcome={
+                  game.winnerId === null ? "none" : game.winnerId === team.id ? "win" : "loss"
+                }
               />
             ))
           ) : (
             <>
-              <div className="compact-team-row compact-team-row--loser">
+              <div className="compact-team-row compact-team-row--neutral">
                 <span className="compact-seed">--</span>
                 <span className="compact-logo" />
-                <span className="compact-result">✕</span>
+                <span className="compact-result" />
               </div>
-              <div className="compact-team-row compact-team-row--loser">
+              <div className="compact-team-row compact-team-row--neutral">
                 <span className="compact-seed">--</span>
                 <span className="compact-logo" />
-                <span className="compact-result">✕</span>
+                <span className="compact-result" />
               </div>
             </>
           )}
@@ -2548,9 +2550,9 @@ function GameCard({
                       />
                     </TeamHoverAnchor>
                     <div className="btw-names">
-                      <TeamHoverAnchor teamName={fullTeamName(team.name)} logoSrc={teamLogoUrl(team)}>
-                        <span className="btw-fullname">{fullTeamName(team.name)}</span>
-                      </TeamHoverAnchor>
+                      <span className="btw-fullname" title={fullTeamName(team.name)}>
+                        {fullTeamName(team.name)}
+                      </span>
                       {titleOddsByTeam.has(team.id) ? (
                         <span className="btw-title-odds">{titleOddsByTeam.get(team.id)} title</span>
                       ) : null}
@@ -2771,14 +2773,16 @@ function GameCard({
 
 function CompactTeamRow({
   team,
-  isWinner,
+  outcome,
 }: {
   team: NonNullable<ReturnType<typeof teamsById.get>>;
-  isWinner: boolean;
+  outcome: "win" | "loss" | "none";
 }) {
   return (
     <div
-      className={`compact-team-row ${isWinner ? "compact-team-row--winner" : "compact-team-row--loser"}`}
+      className={`compact-team-row ${
+        outcome === "win" ? "compact-team-row--winner" : outcome === "loss" ? "compact-team-row--loser" : "compact-team-row--neutral"
+      }`}
       data-team-name={`${team.seed} ${team.name}`}
       title={`${team.seed} ${team.name}`}
     >
@@ -2792,7 +2796,7 @@ function CompactTeamRow({
           event.currentTarget.style.display = "none";
         }}
       />
-      <span className="compact-result">{isWinner ? "✓" : "✕"}</span>
+      <span className="compact-result">{outcome === "win" ? "✓" : outcome === "loss" ? "✕" : ""}</span>
     </div>
   );
 }

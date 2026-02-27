@@ -1253,6 +1253,10 @@ body {
   opacity: 0.35;
 }
 
+.compact-team-row--neutral {
+  opacity: 0.75;
+}
+
 .compact-seed {
   font-family: var(--font-mono);
   font-size: 9px;
@@ -1281,6 +1285,10 @@ body {
 
 .compact-team-row--loser .compact-result {
   color: rgba(255, 255, 255, 0.2);
+}
+
+.compact-team-row--neutral .compact-result {
+  color: transparent;
 }
 
 .compact-team-row::after {
