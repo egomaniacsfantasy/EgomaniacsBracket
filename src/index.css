@@ -862,15 +862,20 @@ body {
 .team-logo {
   width: 14px;
   height: 14px;
-  border-radius: 3px;
-  object-fit: cover;
-  background: rgba(255, 255, 255, 0.07);
-  border: 1px solid rgba(255, 255, 255, 0.12);
+  object-fit: contain;
+  background: none;
+  border: none;
+  border-radius: 0;
+  box-shadow: none;
   flex-shrink: 0;
 }
 
 .team-logo-placeholder {
   opacity: 0.28;
+}
+
+.team-logo-hidden {
+  display: inline-block;
 }
 
 .team-hover-anchor {
@@ -926,8 +931,8 @@ body {
 .team-hover-logo {
   width: 16px;
   height: 16px;
-  border-radius: 3px;
-  object-fit: cover;
+  border-radius: 0;
+  object-fit: contain;
   flex-shrink: 0;
 }
 

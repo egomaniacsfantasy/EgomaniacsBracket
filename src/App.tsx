@@ -2032,7 +2032,14 @@ function LiveOddsStrip({
             key={team.id}
             className={`live-odds-chip ${justChangedIds.has(team.id) ? "live-odds-chip--changed" : ""}`}
           >
-            <img src={team.logoUrl} className="live-chip-logo" alt="" />
+            <img
+              src={team.logoUrl}
+              className="live-chip-logo"
+              alt=""
+              onError={(event) => {
+                event.currentTarget.style.display = "none";
+              }}
+            />
             <span className="live-chip-name">{team.shortName}</span>
             <span className="live-chip-odds">{displayMode === "implied" ? team.titleImpliedPct : team.titleOdds}</span>
           </div>
@@ -2073,7 +2080,14 @@ function MobileProbSlotCard({
             <div className="m-prob-row-content">
               <div className="m-prob-row-left">
                 <span className="m-seed">{row.team.seed}</span>
-                <img src={teamLogoUrl(row.team)} className="m-logo-sm" alt="" />
+                <img
+                  src={teamLogoUrl(row.team)}
+                  className="m-logo-sm"
+                  alt=""
+                  onError={(event) => {
+                    event.currentTarget.style.display = "none";
+                  }}
+                />
                 <div className="m-prob-row-info">
                   <span className="m-name-sm">{row.team.name}</span>
                   <span className="m-prob-reach">{locked ? "✓ Locked in" : `${reach}% to reach ${roundName}`}</span>
@@ -2523,7 +2537,15 @@ function GameCard({
                   >
                     <span className="btw-seed">{team.seed}</span>
                     <TeamHoverAnchor teamName={team.name} logoSrc={teamLogoUrl(team)}>
-                      <img src={teamLogoUrl(team)} className="btw-logo" alt={`${team.name} logo`} loading="lazy" />
+                      <img
+                        src={teamLogoUrl(team)}
+                        className="btw-logo"
+                        alt={`${team.name} logo`}
+                        loading="lazy"
+                        onError={(event) => {
+                          event.currentTarget.style.display = "none";
+                        }}
+                      />
                     </TeamHoverAnchor>
                     <div className="btw-names">
                       <TeamHoverAnchor teamName={fullTeamName(team.name)} logoSrc={teamLogoUrl(team)}>
@@ -2761,7 +2783,15 @@ function CompactTeamRow({
       title={`${team.seed} ${team.name}`}
     >
       <span className="compact-seed">{team.seed}</span>
-      <img src={teamLogoUrl(team)} className="compact-logo" alt={team.name} loading="lazy" />
+      <img
+        src={teamLogoUrl(team)}
+        className="compact-logo"
+        alt={team.name}
+        loading="lazy"
+        onError={(event) => {
+          event.currentTarget.style.display = "none";
+        }}
+      />
       <span className="compact-result">{isWinner ? "✓" : "✕"}</span>
     </div>
   );
@@ -2928,16 +2958,18 @@ function TeamRow({
 
 function TeamLogo({ teamName, src }: { teamName: string; src: string }) {
   const [failed, setFailed] = useState(false);
-  const fallback = fallbackLogo(teamName);
-
   return (
-    <img
-      className="team-logo"
-      src={failed ? fallback : src}
-      alt={`${teamName} logo`}
-      loading="lazy"
-      onError={() => setFailed(true)}
-    />
+    failed ? (
+      <span className="team-logo team-logo-hidden" aria-hidden="true" />
+    ) : (
+      <img
+        className="team-logo"
+        src={src}
+        alt={`${teamName} logo`}
+        loading="lazy"
+        onError={() => setFailed(true)}
+      />
+    )
   );
 }
 
@@ -3084,7 +3116,15 @@ function TeamHoverAnchor({
               aria-label={fullTeamName(teamName)}
               style={{ left: `${pos.x}px`, top: `${pos.y}px` }}
             >
-              <img className="team-hover-logo" src={logoSrc} alt={`${teamName} logo`} loading="lazy" />
+              <img
+                className="team-hover-logo"
+                src={logoSrc}
+                alt={`${teamName} logo`}
+                loading="lazy"
+                onError={(event) => {
+                  event.currentTarget.style.display = "none";
+                }}
+              />
               <span className="team-hover-name">{fullTeamName(teamName)}</span>
             </span>,
             document.body
