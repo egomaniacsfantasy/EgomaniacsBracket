@@ -45,6 +45,7 @@ const regionSections: Region[][] = [
   ["South", "East"],
   ["West", "Midwest"],
 ];
+const mobileRegionOrder: Region[] = ["South", "East", "West", "Midwest"];
 const invertedRegions = new Set<Region>(["East", "Midwest"]);
 
 const gameRoundLabel: Record<string, string> = {
@@ -88,6 +89,10 @@ type ProbabilityPopupState = {
   savedProbA: number | null;
 };
 
+type MobileTab = "bracket" | "futures";
+type MobileSection = "region" | "finalfour";
+type CandidateRow = { teamId: string; prob: number; team: NonNullable<ReturnType<typeof teamsById.get>> };
+
 function App() {
   const [lockedPicks, setLockedPicks] = useState<LockedPicks>({});
   const [customProbByGame, setCustomProbByGame] = useState<CustomProbByGame>({});
@@ -99,6 +104,13 @@ function App() {
   const [lastPickedKey, setLastPickedKey] = useState<string | null>(null);
   const [sidePanelOpen, setSidePanelOpen] = useState(false);
   const [compactDesktop, setCompactDesktop] = useState(false);
+  const [isMobile, setIsMobile] = useState(() =>
+    typeof window !== "undefined" ? window.matchMedia("(max-width: 767px)").matches : false
+  );
+  const [mobileTab, setMobileTab] = useState<MobileTab>("bracket");
+  const [mobileRegion, setMobileRegion] = useState<Region>("South");
+  const [mobileSection, setMobileSection] = useState<MobileSection>("region");
+  const [mobileChangedGameIds, setMobileChangedGameIds] = useState<Set<string>>(new Set());
   const [staggeredSimRunning, setStaggeredSimRunning] = useState(false);
   const [staggeredSimPaused, setStaggeredSimPaused] = useState(false);
   const [staggeredSimDelayMs, setStaggeredSimDelayMs] = useState(STAGGERED_SIM_DELAY_MS);
@@ -116,6 +128,8 @@ function App() {
   });
 
   const simulationCacheRef = useRef<Map<string, SimulationOutput>>(new Map());
+  const previousGameWinProbsRef = useRef<SimulationOutput["gameWinProbs"] | null>(null);
+  const mobileFlashTimeoutRef = useRef<number | null>(null);
   const staggeredTimeoutRef = useRef<number | null>(null);
   const staggeredStepsRef = useRef<Array<{ gameId: string; winnerId: string }>>([]);
   const staggeredIndexRef = useRef(0);
@@ -138,6 +152,14 @@ function App() {
   useEffect(() => {
     const media = window.matchMedia("(max-width: 1850px)");
     const apply = () => setCompactDesktop(media.matches);
+    apply();
+    media.addEventListener("change", apply);
+    return () => media.removeEventListener("change", apply);
+  }, []);
+
+  useEffect(() => {
+    const media = window.matchMedia("(max-width: 767px)");
+    const apply = () => setIsMobile(media.matches);
     apply();
     media.addEventListener("change", apply);
     return () => media.removeEventListener("change", apply);
@@ -295,6 +317,42 @@ function App() {
       window.clearTimeout(timer);
     };
   }, [sanitized, simRuns, customProbByGame]);
+
+  useEffect(() => {
+    const previous = previousGameWinProbsRef.current;
+    previousGameWinProbsRef.current = simResult.gameWinProbs;
+    if (!previous) return;
+
+    const changed = new Set<string>();
+    const gameIds = new Set([...Object.keys(previous), ...Object.keys(simResult.gameWinProbs)]);
+
+    for (const gameId of gameIds) {
+      const before = previous[gameId] ?? [];
+      const after = simResult.gameWinProbs[gameId] ?? [];
+      if (before.length !== after.length) {
+        changed.add(gameId);
+        continue;
+      }
+      for (let index = 0; index < before.length; index += 1) {
+        const prevRow = before[index];
+        const nextRow = after[index];
+        if (!prevRow || !nextRow || prevRow.teamId !== nextRow.teamId || Math.abs(prevRow.prob - nextRow.prob) > 0.000001) {
+          changed.add(gameId);
+          break;
+        }
+      }
+    }
+
+    if (changed.size === 0) return;
+    setMobileChangedGameIds(changed);
+    if (mobileFlashTimeoutRef.current !== null) {
+      window.clearTimeout(mobileFlashTimeoutRef.current);
+    }
+    mobileFlashTimeoutRef.current = window.setTimeout(() => {
+      setMobileChangedGameIds(new Set());
+      mobileFlashTimeoutRef.current = null;
+    }, 650);
+  }, [simResult.gameWinProbs]);
 
   const sortedFutures = useMemo(() => {
     const rows = [...simResult.futures];
@@ -566,6 +624,9 @@ function App() {
       if (staggeredTimeoutRef.current !== null) {
         window.clearTimeout(staggeredTimeoutRef.current);
       }
+      if (mobileFlashTimeoutRef.current !== null) {
+        window.clearTimeout(mobileFlashTimeoutRef.current);
+      }
     },
     []
   );
@@ -594,6 +655,203 @@ function App() {
   const leftSemi = finalGames.find((g) => g.id === "F4-Left-0") ?? null;
   const rightSemi = finalGames.find((g) => g.id === "F4-Right-0") ?? null;
   const titleGame = finalGames.find((g) => g.id === "CHAMP-0") ?? null;
+  const anyRegionE8Complete = games.some((game) => game.round === "E8" && game.winnerId !== null);
+
+  const toolbar = (
+    <div className="eg-main-actions toolbar">
+      <button onClick={onUndo} disabled={undoStack.length === 0} className="eg-btn">
+        Undo
+      </button>
+      <button onClick={onResetAll} className="eg-btn">
+        Reset All
+      </button>
+      <button onClick={onModelSim} className="eg-btn">
+        Instant Sim Bracket
+      </button>
+      <button onClick={onModelSimStaggered} className="eg-btn" disabled={staggeredSimRunning}>
+        {staggeredSimRunning ? "Staggered Sim Running..." : "Staggered Sim Bracket"}
+      </button>
+      {staggeredSimRunning ? (
+        <button
+          onClick={onToggleStaggeredPause}
+          className="eg-btn"
+          aria-label={staggeredSimPaused ? "Resume staggered simulation" : "Pause staggered simulation"}
+          title={staggeredSimPaused ? "Resume staggered simulation" : "Pause staggered simulation"}
+        >
+          {staggeredSimPaused ? "▶" : "⏸"}
+        </button>
+      ) : null}
+      {(showStaggeredControls || staggeredSimRunning) ? (
+        <div className="eg-stagger-controls">
+          <label htmlFor="stagger-delay" className="eg-stagger-label">
+            Stagger Delay: {(staggeredSimDelayMs / 1000).toFixed(1)}s
+          </label>
+          <input
+            id="stagger-delay"
+            type="range"
+            min={MIN_STAGGERED_SIM_DELAY_MS}
+            max={MAX_STAGGERED_SIM_DELAY_MS}
+            step={250}
+            value={staggeredSimDelayMs}
+            onChange={(event) => setStaggeredSimDelayMs(Number(event.target.value))}
+            className="eg-stagger-slider"
+          />
+        </div>
+      ) : null}
+      <div className="eg-mode-toggle">
+        {formatModes.map((mode) => (
+          <button
+            key={mode.id}
+            className={`eg-chip ${displayMode === mode.id ? "active" : ""}`}
+            onClick={() => setDisplayMode(mode.id)}
+          >
+            {mode.label}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+
+  const futuresContent = (
+    <>
+      <section className="eg-panel-block">
+        <div className="eg-panel-head">
+          <h3>
+            Futures
+            <span
+              className="eg-info"
+              title="Futures are recalculated via simulation given your locked picks."
+            >
+              i
+            </span>
+          </h3>
+          <button className="eg-mini-btn" onClick={() => setSortDesc((v) => !v)}>
+            Sort {sortDesc ? "↓" : "↑"}
+          </button>
+        </div>
+
+        {isUpdating ? <p className="eg-updating">Updating…</p> : null}
+        <div className="eg-futures-list">
+          {sortedFutures.map((row) => {
+            const team = teamsById.get(row.teamId);
+            if (!team) return null;
+            const metrics: Array<{ label: "R32" | "S16" | "E8" | "F4" | "Title" | "Champ"; prob: number }> = [
+              { label: "R32", prob: row.round2Prob },
+              { label: "S16", prob: row.sweet16Prob },
+              { label: "E8", prob: row.elite8Prob },
+              { label: "F4", prob: row.final4Prob },
+              { label: "Title", prob: row.titleGameProb },
+              { label: "Champ", prob: row.champProb },
+            ];
+            return (
+              <article key={row.teamId} className="eg-future-item">
+                <div className="team-cell">
+                  <TeamHoverAnchor teamName={team.name} logoSrc={teamLogoUrl(team)}>
+                    <TeamLogo teamName={team.name} src={teamLogoUrl(team)} />
+                  </TeamHoverAnchor>
+                  <span className="seed">{team.seed}</span>
+                  <TeamHoverAnchor teamName={team.name} logoSrc={teamLogoUrl(team)}>
+                    <span className="future-team-name">{team.name}</span>
+                  </TeamHoverAnchor>
+                </div>
+                <div className="future-metric-grid">
+                  {metrics.map((metric) => {
+                    const formatted = formatOddsDisplay(metric.prob, displayMode);
+                    const state = teamProgress.get(row.teamId);
+                    const requiredRank = stageRankByMetric[metric.label];
+                    const isAchieved = Boolean(state && state.lastWinRank >= requiredRank);
+                    const isEliminated = Boolean(state && state.firstLossRank <= requiredRank);
+                    return (
+                      <div key={`${row.teamId}-${metric.label}`} className="future-metric">
+                        <span className="future-metric-label">{metric.label}</span>
+                        <span className="future-metric-value">
+                          {isAchieved ? (
+                            <span className="outcome-badge win">✓</span>
+                          ) : isEliminated ? (
+                            <span className="outcome-badge loss">✕</span>
+                          ) : (
+                            formatted.primary
+                          )}
+                        </span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </article>
+            );
+          })}
+        </div>
+      </section>
+
+      <section className="eg-panel-block">
+        <div className="eg-panel-head">
+          <h3>Pre-Tournament Baseline</h3>
+        </div>
+        <p className="eg-metric-label">Static pre-pick advancement odds (never conditioned)</p>
+        <div className="eg-futures-list">
+          {preTournamentFutures.map((row) => {
+            const team = teamsById.get(row.teamId);
+            if (!team) return null;
+            const metrics: Array<{ label: "R32" | "S16" | "E8" | "F4" | "Title" | "Champ"; prob: number }> = [
+              { label: "R32", prob: row.round2Prob },
+              { label: "S16", prob: row.sweet16Prob },
+              { label: "E8", prob: row.elite8Prob },
+              { label: "F4", prob: row.final4Prob },
+              { label: "Title", prob: row.titleGameProb },
+              { label: "Champ", prob: row.champProb },
+            ];
+            return (
+              <article key={`baseline-${row.teamId}`} className="eg-future-item">
+                <div className="team-cell">
+                  <TeamHoverAnchor teamName={team.name} logoSrc={teamLogoUrl(team)}>
+                    <TeamLogo teamName={team.name} src={teamLogoUrl(team)} />
+                  </TeamHoverAnchor>
+                  <span className="seed">{team.seed}</span>
+                  <TeamHoverAnchor teamName={team.name} logoSrc={teamLogoUrl(team)}>
+                    <span className="future-team-name">{team.name}</span>
+                  </TeamHoverAnchor>
+                </div>
+                <div className="future-metric-grid">
+                  {metrics.map((metric) => {
+                    const formatted = formatOddsDisplay(metric.prob, displayMode);
+                    return (
+                      <div key={`baseline-${row.teamId}-${metric.label}`} className="future-metric">
+                        <span className="future-metric-label">{metric.label}</span>
+                        <span className="future-metric-value">{formatted.primary}</span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </article>
+            );
+          })}
+        </div>
+      </section>
+
+      <section className="eg-panel-block">
+        <h3>Your Bracket</h3>
+        <p className="eg-metric-label">Likelihood of your picks so far (simulation-based)</p>
+        <p className="eg-metric-value">{toImpliedLabel(simResult.likelihoodSimulation)}</p>
+        <p className="eg-metric-sub">{toOneInX(simResult.likelihoodSimulation)}</p>
+
+        <p className="eg-metric-label">Fast approximation (product of locked game win probs)</p>
+        <p className="eg-metric-value">{toImpliedLabel(simResult.likelihoodApprox)}</p>
+        <p className="eg-metric-sub">{toOneInX(simResult.likelihoodApprox)}</p>
+      </section>
+
+      <section className="eg-panel-block settings-block">
+        <h3>Settings</h3>
+        <p className="eg-setting-label">Side definition</p>
+        <p className="eg-setting-value">Left side: East/West, Right side: South/Midwest</p>
+
+        <p className="eg-setting-label">Current lock count</p>
+        <p className="eg-setting-value">{Object.keys(sanitized).length} picks</p>
+        <button className="eg-mini-btn onboarding-replay-btn" onClick={() => setOnboardingOpen(true)}>
+          Replay Intro
+        </button>
+      </section>
+    </>
+  );
 
   return (
     <div className={`eg-shell ${compactDesktop ? "compact-desktop" : ""}`}>
@@ -606,163 +864,157 @@ function App() {
 
       <main className="eg-app">
         <nav className="og-top-nav" aria-label="Odds Gods tools">
-          <a className="og-top-nav-brand" href={LANDING_URL}>
-            <img className="og-top-nav-logo" src="/logo-icon.png?v=20260225" alt="Odds Gods" />
-            <span className="odds">ODDS</span> <span className="gods">GODS</span>
-          </a>
-          <div className="og-top-nav-tabs">
-            <a className="og-top-nav-link active" href={BRACKET_URL} aria-current="page">
-              The Bracket Lab
-              <span className="beta-badge">BETA</span>
+          <div className="og-top-nav-desktop">
+            <a className="og-top-nav-brand" href={LANDING_URL}>
+              <img className="og-top-nav-logo" src="/logo-icon.png?v=20260225" alt="Odds Gods" />
+              <span className="odds">ODDS</span> <span className="gods">GODS</span>
             </a>
-            <a className="og-top-nav-link" href={WATO_URL}>
-              What Are the Odds?
-              <span className="beta-badge">BETA</span>
+            <div className="og-top-nav-tabs">
+              <a className="og-top-nav-link active" href={BRACKET_URL} aria-current="page">
+                The Bracket Lab
+                <span className="beta-badge">BETA</span>
+              </a>
+              <a className="og-top-nav-link" href={WATO_URL}>
+                What Are the Odds?
+                <span className="beta-badge">BETA</span>
+              </a>
+            </div>
+          </div>
+          <div className="og-top-nav-mobile">
+            <a className="og-mobile-logo-link" href={LANDING_URL} aria-label="Odds Gods home">
+              <img className="nav-logo-icon" src="/logo-icon.png?v=20260225" alt="Odds Gods" />
+            </a>
+            <span className="nav-product-title">The Bracket Lab</span>
+            <a className="nav-mobile-alt" href={WATO_URL}>
+              WATO
             </a>
           </div>
         </nav>
-        <header className="eg-header">
+        <header className={`eg-header ${isMobile ? "mobile-hidden" : ""}`}>
           <h1>The Bracket Lab</h1>
           <p className="eg-subtitle">
             March Madness what-if odds. Click picks to condition futures in real time.
           </p>
         </header>
-
-        <section className={`eg-layout ${sidePanelOpen ? "panel-open" : "panel-collapsed"}`}>
-          <div className="eg-main-panel">
-            <div className="eg-main-actions">
-              <button onClick={onUndo} disabled={undoStack.length === 0} className="eg-btn">
-                Undo
-              </button>
-              <button onClick={onResetAll} className="eg-btn">
-                Reset All
-              </button>
-              <button onClick={onModelSim} className="eg-btn">
-                Instant Sim Bracket
-              </button>
-              <button onClick={onModelSimStaggered} className="eg-btn" disabled={staggeredSimRunning}>
-                {staggeredSimRunning ? "Staggered Sim Running..." : "Staggered Sim Bracket"}
-              </button>
-              {staggeredSimRunning ? (
-                <button
-                  onClick={onToggleStaggeredPause}
-                  className="eg-btn"
-                  aria-label={staggeredSimPaused ? "Resume staggered simulation" : "Pause staggered simulation"}
-                  title={staggeredSimPaused ? "Resume staggered simulation" : "Pause staggered simulation"}
-                >
-                  {staggeredSimPaused ? "▶" : "⏸"}
-                </button>
-              ) : null}
-              {(showStaggeredControls || staggeredSimRunning) ? (
-                <div className="eg-stagger-controls">
-                  <label htmlFor="stagger-delay" className="eg-stagger-label">
-                    Stagger Delay: {(staggeredSimDelayMs / 1000).toFixed(1)}s
-                  </label>
-                  <input
-                    id="stagger-delay"
-                    type="range"
-                    min={MIN_STAGGERED_SIM_DELAY_MS}
-                    max={MAX_STAGGERED_SIM_DELAY_MS}
-                    step={250}
-                    value={staggeredSimDelayMs}
-                    onChange={(event) => setStaggeredSimDelayMs(Number(event.target.value))}
-                    className="eg-stagger-slider"
-                  />
-                </div>
-              ) : null}
-              <div className="eg-mode-toggle">
-                {formatModes.map((mode) => (
-                  <button
-                    key={mode.id}
-                    className={`eg-chip ${displayMode === mode.id ? "active" : ""}`}
-                    onClick={() => setDisplayMode(mode.id)}
-                  >
-                    {mode.label}
+        {isMobile ? (
+          <section className="eg-mobile-shell">
+            {toolbar}
+            {mobileTab === "bracket" ? (
+              <>
+                <MobileRegionTabs
+                  activeRegion={mobileRegion}
+                  onChange={(region) => {
+                    setMobileSection("region");
+                    setMobileRegion(region);
+                  }}
+                />
+                {anyRegionE8Complete ? (
+                  <button className="mobile-ff-link" onClick={() => setMobileSection("finalfour")}>
+                    Final Four & Beyond →
                   </button>
-                ))}
-              </div>
-            </div>
+                ) : null}
+                {mobileSection === "finalfour" ? (
+                  <MobileFinalFourCanvas
+                    leftSemi={leftSemi}
+                    rightSemi={rightSemi}
+                    titleGame={titleGame}
+                    gameWinProbs={simResult.gameWinProbs}
+                    possibleWinners={possibleWinners}
+                    lastPickedKey={lastPickedKey}
+                    displayMode={displayMode}
+                    onPick={onPick}
+                    onUndo={onUndo}
+                    onOpenProbabilityPopup={openProbabilityPopup}
+                    justChangedIds={mobileChangedGameIds}
+                  />
+                ) : (
+                  <MobileBracketCanvas
+                    region={mobileRegion}
+                    games={games}
+                    gameWinProbs={simResult.gameWinProbs}
+                    possibleWinners={possibleWinners}
+                    lastPickedKey={lastPickedKey}
+                    displayMode={displayMode}
+                    onPick={onPick}
+                    onUndo={onUndo}
+                    onOpenProbabilityPopup={openProbabilityPopup}
+                    justChangedIds={mobileChangedGameIds}
+                  />
+                )}
+              </>
+            ) : (
+              <div className="mobile-futures-view">{futuresContent}</div>
+            )}
+            <MobileTabBar activeTab={mobileTab} onTabChange={setMobileTab} />
+          </section>
+        ) : (
+          <section className={`eg-layout ${sidePanelOpen ? "panel-open" : "panel-collapsed"}`}>
+            <div className="eg-main-panel">
+              {toolbar}
 
-            <div className="eg-bracket-stack">
-              <section className="eg-bracket-section top-half">
-                <div className="eg-section-head">
-                  <h2>Top Half Bracket</h2>
-                  <p>South + East</p>
-                </div>
-                <div className="eg-region-scroll">
-                  <div className="eg-region-grid bracket-style">
-                    {regionSections[0].map((region) => (
-                      <RegionBracket
-                        key={region}
-                        region={region}
-                        games={games}
-                        gameWinProbs={simResult.gameWinProbs}
-                        possibleWinners={possibleWinners}
-                        onPick={onPick}
-                        lastPickedKey={lastPickedKey}
-                        onResetRegion={onResetRegion}
-                        inverted={invertedRegions.has(region)}
-                        displayMode={displayMode}
-                        onOpenProbabilityPopup={openProbabilityPopup}
-                      />
-                    ))}
+              <div className="eg-bracket-stack">
+                <section className="eg-bracket-section top-half">
+                  <div className="eg-section-head">
+                    <h2>Top Half Bracket</h2>
+                    <p>South + East</p>
                   </div>
-                </div>
-              </section>
-
-              <section className="eg-bracket-section">
-                <div className="eg-section-head">
-                  <h2>Bottom Half Bracket</h2>
-                  <p>West + Midwest</p>
-                </div>
-                <div className="eg-region-scroll">
-                  <div className="eg-region-grid bracket-style">
-                    {regionSections[1].map((region) => (
-                      <RegionBracket
-                        key={region}
-                        region={region}
-                        games={games}
-                        gameWinProbs={simResult.gameWinProbs}
-                        possibleWinners={possibleWinners}
-                        onPick={onPick}
-                        lastPickedKey={lastPickedKey}
-                        onResetRegion={onResetRegion}
-                        inverted={invertedRegions.has(region)}
-                        displayMode={displayMode}
-                        onOpenProbabilityPopup={openProbabilityPopup}
-                      />
-                    ))}
+                  <div className="eg-region-scroll">
+                    <div className="eg-region-grid bracket-style">
+                      {regionSections[0].map((region) => (
+                        <RegionBracket
+                          key={region}
+                          region={region}
+                          games={games}
+                          gameWinProbs={simResult.gameWinProbs}
+                          possibleWinners={possibleWinners}
+                          onPick={onPick}
+                          lastPickedKey={lastPickedKey}
+                          onResetRegion={onResetRegion}
+                          inverted={invertedRegions.has(region)}
+                          displayMode={displayMode}
+                          onOpenProbabilityPopup={openProbabilityPopup}
+                        />
+                      ))}
+                    </div>
                   </div>
-                </div>
-              </section>
+                </section>
 
-              <section className="eg-finals-card bracket-finals">
-                <h2>Final Four & Championship</h2>
-                <div className="eg-finals-stage">
-                  <div className="eg-semi-col left">
-                    <p className="eg-finals-label">Semifinal</p>
-                    <p className="eg-finals-sub">South + East</p>
-                    {leftSemi ? (
-                      <GameCard
-                        key={leftSemi.id}
-                        game={leftSemi}
-                        gameWinProbs={simResult.gameWinProbs}
-                        possibleWinners={possibleWinners}
-                        onPick={onPick}
-                        lastPickedKey={lastPickedKey}
-                        displayMode={displayMode}
-                        onOpenProbabilityPopup={openProbabilityPopup}
-                      />
-                    ) : null}
+                <section className="eg-bracket-section">
+                  <div className="eg-section-head">
+                    <h2>Bottom Half Bracket</h2>
+                    <p>West + Midwest</p>
                   </div>
+                  <div className="eg-region-scroll">
+                    <div className="eg-region-grid bracket-style">
+                      {regionSections[1].map((region) => (
+                        <RegionBracket
+                          key={region}
+                          region={region}
+                          games={games}
+                          gameWinProbs={simResult.gameWinProbs}
+                          possibleWinners={possibleWinners}
+                          onPick={onPick}
+                          lastPickedKey={lastPickedKey}
+                          onResetRegion={onResetRegion}
+                          inverted={invertedRegions.has(region)}
+                          displayMode={displayMode}
+                          onOpenProbabilityPopup={openProbabilityPopup}
+                        />
+                      ))}
+                    </div>
+                  </div>
+                </section>
 
-                  <div className="eg-title-col">
-                    <p className="eg-finals-label title">National Championship</p>
-                    {titleGame ? (
-                      <div className="eg-title-hero">
+                <section className="eg-finals-card bracket-finals">
+                  <h2>Final Four & Championship</h2>
+                  <div className="eg-finals-stage">
+                    <div className="eg-semi-col left">
+                      <p className="eg-finals-label">Semifinal</p>
+                      <p className="eg-finals-sub">South + East</p>
+                      {leftSemi ? (
                         <GameCard
-                          key={titleGame.id}
-                          game={titleGame}
+                          key={leftSemi.id}
+                          game={leftSemi}
                           gameWinProbs={simResult.gameWinProbs}
                           possibleWinners={possibleWinners}
                           onPick={onPick}
@@ -770,179 +1022,61 @@ function App() {
                           displayMode={displayMode}
                           onOpenProbabilityPopup={openProbabilityPopup}
                         />
-                      </div>
-                    ) : null}
-                  </div>
+                      ) : null}
+                    </div>
 
-                  <div className="eg-semi-col right">
-                    <p className="eg-finals-label">Semifinal</p>
-                    <p className="eg-finals-sub">West + Midwest</p>
-                    {rightSemi ? (
-                      <GameCard
-                        key={rightSemi.id}
-                        game={rightSemi}
-                        gameWinProbs={simResult.gameWinProbs}
-                        possibleWinners={possibleWinners}
-                        onPick={onPick}
-                        lastPickedKey={lastPickedKey}
-                        displayMode={displayMode}
-                        onOpenProbabilityPopup={openProbabilityPopup}
-                      />
-                    ) : null}
+                    <div className="eg-title-col">
+                      <p className="eg-finals-label title">National Championship</p>
+                      {titleGame ? (
+                        <div className="eg-title-hero">
+                          <GameCard
+                            key={titleGame.id}
+                            game={titleGame}
+                            gameWinProbs={simResult.gameWinProbs}
+                            possibleWinners={possibleWinners}
+                            onPick={onPick}
+                            lastPickedKey={lastPickedKey}
+                            displayMode={displayMode}
+                            onOpenProbabilityPopup={openProbabilityPopup}
+                          />
+                        </div>
+                      ) : null}
+                    </div>
+
+                    <div className="eg-semi-col right">
+                      <p className="eg-finals-label">Semifinal</p>
+                      <p className="eg-finals-sub">West + Midwest</p>
+                      {rightSemi ? (
+                        <GameCard
+                          key={rightSemi.id}
+                          game={rightSemi}
+                          gameWinProbs={simResult.gameWinProbs}
+                          possibleWinners={possibleWinners}
+                          onPick={onPick}
+                          lastPickedKey={lastPickedKey}
+                          displayMode={displayMode}
+                          onOpenProbabilityPopup={openProbabilityPopup}
+                        />
+                      ) : null}
+                    </div>
                   </div>
-                </div>
-              </section>
+                </section>
+              </div>
             </div>
-          </div>
 
-          <aside className={`eg-side-panel ${sidePanelOpen ? "open" : "collapsed"}`}>
-            <button
-              type="button"
-              className="eg-side-toggle"
-              onClick={() => setSidePanelOpen((v) => !v)}
-              aria-expanded={sidePanelOpen}
-            >
-              {sidePanelOpen ? "Collapse ▸" : "Futures ▾"}
-            </button>
-
-            <section className="eg-panel-block">
-              <div className="eg-panel-head">
-                <h3>
-                  Futures
-                  <span
-                    className="eg-info"
-                    title="Futures are recalculated via simulation given your locked picks."
-                  >
-                    i
-                  </span>
-                </h3>
-                <button className="eg-mini-btn" onClick={() => setSortDesc((v) => !v)}>
-                  Sort {sortDesc ? "↓" : "↑"}
-                </button>
-              </div>
-
-              {isUpdating ? <p className="eg-updating">Updating…</p> : null}
-              <div className="eg-futures-list">
-                {sortedFutures.map((row) => {
-                  const team = teamsById.get(row.teamId);
-                  if (!team) return null;
-                  const metrics: Array<{ label: "R32" | "S16" | "E8" | "F4" | "Title" | "Champ"; prob: number }> = [
-                    { label: "R32", prob: row.round2Prob },
-                    { label: "S16", prob: row.sweet16Prob },
-                    { label: "E8", prob: row.elite8Prob },
-                    { label: "F4", prob: row.final4Prob },
-                    { label: "Title", prob: row.titleGameProb },
-                    { label: "Champ", prob: row.champProb },
-                  ];
-                  return (
-                    <article key={row.teamId} className="eg-future-item">
-                      <div className="team-cell">
-                        <TeamHoverAnchor teamName={team.name} logoSrc={teamLogoUrl(team)}>
-                          <TeamLogo teamName={team.name} src={teamLogoUrl(team)} />
-                        </TeamHoverAnchor>
-                        <span className="seed">{team.seed}</span>
-                        <TeamHoverAnchor teamName={team.name} logoSrc={teamLogoUrl(team)}>
-                          <span className="future-team-name">{team.name}</span>
-                        </TeamHoverAnchor>
-                      </div>
-                      <div className="future-metric-grid">
-                        {metrics.map((metric) => {
-                          const formatted = formatOddsDisplay(metric.prob, displayMode);
-                          const state = teamProgress.get(row.teamId);
-                          const requiredRank = stageRankByMetric[metric.label];
-                          const isAchieved = Boolean(state && state.lastWinRank >= requiredRank);
-                          const isEliminated = Boolean(state && state.firstLossRank <= requiredRank);
-                          return (
-                            <div key={`${row.teamId}-${metric.label}`} className="future-metric">
-                              <span className="future-metric-label">{metric.label}</span>
-                              <span className="future-metric-value">
-                                {isAchieved ? (
-                                  <span className="outcome-badge win">✓</span>
-                                ) : isEliminated ? (
-                                  <span className="outcome-badge loss">✕</span>
-                                ) : (
-                                  formatted.primary
-                                )}
-                              </span>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    </article>
-                  );
-                })}
-              </div>
-            </section>
-
-            <section className="eg-panel-block">
-              <div className="eg-panel-head">
-                <h3>Pre-Tournament Baseline</h3>
-              </div>
-              <p className="eg-metric-label">Static pre-pick advancement odds (never conditioned)</p>
-              <div className="eg-futures-list">
-                {preTournamentFutures.map((row) => {
-                  const team = teamsById.get(row.teamId);
-                  if (!team) return null;
-                  const metrics: Array<{ label: "R32" | "S16" | "E8" | "F4" | "Title" | "Champ"; prob: number }> = [
-                    { label: "R32", prob: row.round2Prob },
-                    { label: "S16", prob: row.sweet16Prob },
-                    { label: "E8", prob: row.elite8Prob },
-                    { label: "F4", prob: row.final4Prob },
-                    { label: "Title", prob: row.titleGameProb },
-                    { label: "Champ", prob: row.champProb },
-                  ];
-                  return (
-                    <article key={`baseline-${row.teamId}`} className="eg-future-item">
-                      <div className="team-cell">
-                        <TeamHoverAnchor teamName={team.name} logoSrc={teamLogoUrl(team)}>
-                          <TeamLogo teamName={team.name} src={teamLogoUrl(team)} />
-                        </TeamHoverAnchor>
-                        <span className="seed">{team.seed}</span>
-                        <TeamHoverAnchor teamName={team.name} logoSrc={teamLogoUrl(team)}>
-                          <span className="future-team-name">{team.name}</span>
-                        </TeamHoverAnchor>
-                      </div>
-                      <div className="future-metric-grid">
-                        {metrics.map((metric) => {
-                          const formatted = formatOddsDisplay(metric.prob, displayMode);
-                          return (
-                            <div key={`baseline-${row.teamId}-${metric.label}`} className="future-metric">
-                              <span className="future-metric-label">{metric.label}</span>
-                              <span className="future-metric-value">{formatted.primary}</span>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    </article>
-                  );
-                })}
-              </div>
-            </section>
-
-            <section className="eg-panel-block">
-              <h3>Your Bracket</h3>
-              <p className="eg-metric-label">Likelihood of your picks so far (simulation-based)</p>
-              <p className="eg-metric-value">{toImpliedLabel(simResult.likelihoodSimulation)}</p>
-              <p className="eg-metric-sub">{toOneInX(simResult.likelihoodSimulation)}</p>
-
-              <p className="eg-metric-label">Fast approximation (product of locked game win probs)</p>
-              <p className="eg-metric-value">{toImpliedLabel(simResult.likelihoodApprox)}</p>
-              <p className="eg-metric-sub">{toOneInX(simResult.likelihoodApprox)}</p>
-            </section>
-
-            <section className="eg-panel-block settings-block">
-              <h3>Settings</h3>
-              <p className="eg-setting-label">Side definition</p>
-              <p className="eg-setting-value">Left side: East/West, Right side: South/Midwest</p>
-
-              <p className="eg-setting-label">Current lock count</p>
-              <p className="eg-setting-value">{Object.keys(sanitized).length} picks</p>
-              <button className="eg-mini-btn onboarding-replay-btn" onClick={() => setOnboardingOpen(true)}>
-                Replay Intro
+            <aside className={`eg-side-panel ${sidePanelOpen ? "open" : "collapsed"}`}>
+              <button
+                type="button"
+                className="eg-side-toggle"
+                onClick={() => setSidePanelOpen((v) => !v)}
+                aria-expanded={sidePanelOpen}
+              >
+                {sidePanelOpen ? "Collapse ▸" : "Futures ▾"}
               </button>
-            </section>
-          </aside>
-        </section>
+              {futuresContent}
+            </aside>
+          </section>
+        )}
       </main>
 
       {probPopup ? (
@@ -965,6 +1099,435 @@ function App() {
           onSkip={skipOnboarding}
         />
       ) : null}
+    </div>
+  );
+}
+
+function getGameRowsForDisplay(
+  game: ResolvedGame,
+  gameWinProbs: SimulationOutput["gameWinProbs"],
+  possibleWinners: Record<string, Set<string>>
+): CandidateRow[] {
+  const candidates = (gameWinProbs[game.id] || [])
+    .map((entry) => ({ ...entry, team: teamsById.get(entry.teamId) }))
+    .filter((entry): entry is CandidateRow => Boolean(entry.team));
+  const possibleForGame = possibleWinners[game.id] ?? new Set<string>();
+  const constrained = candidates.filter((candidate) => possibleForGame.has(candidate.teamId));
+
+  if (game.teamAId && game.teamBId) {
+    return [game.teamAId, game.teamBId]
+      .map((teamId) => {
+        const team = teamsById.get(teamId);
+        if (!team) return null;
+        return { teamId, prob: candidates.find((entry) => entry.teamId === teamId)?.prob ?? 0, team };
+      })
+      .filter((row): row is CandidateRow => row !== null);
+  }
+
+  return constrained.length > 2
+    ? [...constrained].sort((a, b) => {
+        if (b.prob !== a.prob) return b.prob - a.prob;
+        return a.team.seed - b.team.seed;
+      })
+    : constrained;
+}
+
+function formatMobilePercent(prob: number) {
+  return `${(prob * 100).toFixed(1)}%`;
+}
+
+function getActiveRegionRound(games: ResolvedGame[], region: Region): ResolvedGame["round"] {
+  for (const round of regionRounds) {
+    const roundGames = games.filter((game) => game.region === region && game.round === round);
+    if (roundGames.some((game) => !game.winnerId)) return round;
+  }
+  return "E8";
+}
+
+function getActiveFinalRound(games: ResolvedGame[]): ResolvedGame["round"] {
+  for (const round of ["F4", "CHAMP"] as const) {
+    const roundGames = games.filter((game) => game.round === round);
+    if (roundGames.some((game) => !game.winnerId)) return round;
+  }
+  return "CHAMP";
+}
+
+function MobileRegionTabs({
+  activeRegion,
+  onChange,
+}: {
+  activeRegion: Region;
+  onChange: (region: Region) => void;
+}) {
+  return (
+    <div className="mobile-region-tabs">
+      {mobileRegionOrder.map((region) => (
+        <button
+          key={region}
+          className={`mobile-region-tab ${activeRegion === region ? "active" : ""}`}
+          onClick={() => onChange(region)}
+        >
+          {region}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+function MobileTabBar({
+  activeTab,
+  onTabChange,
+}: {
+  activeTab: MobileTab;
+  onTabChange: (tab: MobileTab) => void;
+}) {
+  return (
+    <div className="mobile-tab-bar">
+      <button
+        className={`mobile-tab ${activeTab === "bracket" ? "active" : ""}`}
+        onClick={() => onTabChange("bracket")}
+      >
+        <span className="mobile-tab-icon">⬡</span>
+        <span className="mobile-tab-label">Bracket</span>
+      </button>
+      <button
+        className={`mobile-tab ${activeTab === "futures" ? "active" : ""}`}
+        onClick={() => onTabChange("futures")}
+      >
+        <span className="mobile-tab-icon">↗</span>
+        <span className="mobile-tab-label">Futures</span>
+      </button>
+    </div>
+  );
+}
+
+function MobileBracketCanvas({
+  region,
+  games,
+  gameWinProbs,
+  possibleWinners,
+  lastPickedKey,
+  displayMode,
+  onPick,
+  onUndo,
+  onOpenProbabilityPopup,
+  justChangedIds,
+}: {
+  region: Region;
+  games: ResolvedGame[];
+  gameWinProbs: SimulationOutput["gameWinProbs"];
+  possibleWinners: Record<string, Set<string>>;
+  lastPickedKey: string | null;
+  displayMode: OddsDisplayMode;
+  onPick: (game: ResolvedGame, teamId: string | null) => void;
+  onUndo: () => void;
+  onOpenProbabilityPopup: (game: ResolvedGame, anchorEl: HTMLElement) => void;
+  justChangedIds: Set<string>;
+}) {
+  const scrollRef = useRef<HTMLDivElement | null>(null);
+  const activeRound = getActiveRegionRound(games, region);
+  const rounds = regionRounds;
+
+  useEffect(() => {
+    const root = scrollRef.current;
+    if (!root) return;
+    const activeEl = root.querySelector(`[data-round='${activeRound}']`) as HTMLElement | null;
+    if (activeEl) {
+      activeEl.scrollIntoView({ behavior: "smooth", block: "nearest", inline: "start" });
+    }
+  }, [activeRound, region]);
+
+  return (
+    <div className="mobile-bracket-canvas">
+      <div className="mobile-rounds-scroll" ref={scrollRef}>
+        {rounds.map((round) => (
+          <MobileRoundColumn
+            key={`${region}-${round}`}
+            round={round}
+            label={round === "R64" ? "R64" : round}
+            games={gamesByRegionAndRound(games, region, round)}
+            gameWinProbs={gameWinProbs}
+            possibleWinners={possibleWinners}
+            isActive={round === activeRound}
+            lastPickedKey={lastPickedKey}
+            displayMode={displayMode}
+            onPick={onPick}
+            onUndo={onUndo}
+            onOpenProbabilityPopup={onOpenProbabilityPopup}
+            justChangedIds={justChangedIds}
+          />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function MobileFinalFourCanvas({
+  leftSemi,
+  rightSemi,
+  titleGame,
+  gameWinProbs,
+  possibleWinners,
+  lastPickedKey,
+  displayMode,
+  onPick,
+  onUndo,
+  onOpenProbabilityPopup,
+  justChangedIds,
+}: {
+  leftSemi: ResolvedGame | null;
+  rightSemi: ResolvedGame | null;
+  titleGame: ResolvedGame | null;
+  gameWinProbs: SimulationOutput["gameWinProbs"];
+  possibleWinners: Record<string, Set<string>>;
+  lastPickedKey: string | null;
+  displayMode: OddsDisplayMode;
+  onPick: (game: ResolvedGame, teamId: string | null) => void;
+  onUndo: () => void;
+  onOpenProbabilityPopup: (game: ResolvedGame, anchorEl: HTMLElement) => void;
+  justChangedIds: Set<string>;
+}) {
+  const scrollRef = useRef<HTMLDivElement | null>(null);
+  const finalsGames = [leftSemi, rightSemi, titleGame].filter((game): game is ResolvedGame => Boolean(game));
+  const activeRound = getActiveFinalRound(finalsGames);
+  const grouped: Record<ResolvedGame["round"], ResolvedGame[]> = {
+    R64: [],
+    R32: [],
+    S16: [],
+    E8: [],
+    F4: finalsGames.filter((game) => game.round === "F4"),
+    CHAMP: finalsGames.filter((game) => game.round === "CHAMP"),
+  };
+
+  useEffect(() => {
+    const root = scrollRef.current;
+    if (!root) return;
+    const activeEl = root.querySelector(`[data-round='${activeRound}']`) as HTMLElement | null;
+    if (activeEl) {
+      activeEl.scrollIntoView({ behavior: "smooth", block: "nearest", inline: "start" });
+    }
+  }, [activeRound]);
+
+  return (
+    <div className="mobile-bracket-canvas">
+      <div className="mobile-rounds-scroll" ref={scrollRef}>
+        {(["F4", "CHAMP"] as const).map((round) => (
+          <MobileRoundColumn
+            key={`finals-${round}`}
+            round={round}
+            label={round === "F4" ? "F4" : "CHAMP"}
+            games={grouped[round]}
+            gameWinProbs={gameWinProbs}
+            possibleWinners={possibleWinners}
+            isActive={round === activeRound}
+            lastPickedKey={lastPickedKey}
+            displayMode={displayMode}
+            onPick={onPick}
+            onUndo={onUndo}
+            onOpenProbabilityPopup={onOpenProbabilityPopup}
+            justChangedIds={justChangedIds}
+          />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function MobileRoundColumn({
+  round,
+  label,
+  games,
+  gameWinProbs,
+  possibleWinners,
+  isActive,
+  lastPickedKey,
+  displayMode,
+  onPick,
+  onUndo,
+  onOpenProbabilityPopup,
+  justChangedIds,
+}: {
+  round: ResolvedGame["round"];
+  label: string;
+  games: ResolvedGame[];
+  gameWinProbs: SimulationOutput["gameWinProbs"];
+  possibleWinners: Record<string, Set<string>>;
+  isActive: boolean;
+  lastPickedKey: string | null;
+  displayMode: OddsDisplayMode;
+  onPick: (game: ResolvedGame, teamId: string | null) => void;
+  onUndo: () => void;
+  onOpenProbabilityPopup: (game: ResolvedGame, anchorEl: HTMLElement) => void;
+  justChangedIds: Set<string>;
+}) {
+  return (
+    <div
+      className={`mobile-round-col ${isActive ? "mobile-round-col--active" : "mobile-round-col--ticker"}`}
+      data-round={round}
+    >
+      <div className="mobile-round-col-header">
+        <span className="mobile-round-col-label">{label}</span>
+      </div>
+      <div className="mobile-round-col-matchups">
+        {games.map((game) =>
+          isActive ? (
+            <MobileMatchupFull
+              key={game.id}
+              game={game}
+              rows={getGameRowsForDisplay(game, gameWinProbs, possibleWinners)}
+              lastPickedKey={lastPickedKey}
+              displayMode={displayMode}
+              onPick={onPick}
+              onUndo={onUndo}
+              onOpenProbabilityPopup={onOpenProbabilityPopup}
+            />
+          ) : (
+            <MobileMatchupTicker
+              key={game.id}
+              game={game}
+              rows={getGameRowsForDisplay(game, gameWinProbs, possibleWinners)}
+              displayMode={displayMode}
+              justChanged={justChangedIds.has(game.id)}
+            />
+          )
+        )}
+      </div>
+    </div>
+  );
+}
+
+function MobileMatchupFull({
+  game,
+  rows,
+  lastPickedKey,
+  displayMode,
+  onPick,
+  onUndo,
+  onOpenProbabilityPopup,
+}: {
+  game: ResolvedGame;
+  rows: CandidateRow[];
+  lastPickedKey: string | null;
+  displayMode: OddsDisplayMode;
+  onPick: (game: ResolvedGame, teamId: string | null) => void;
+  onUndo: () => void;
+  onOpenProbabilityPopup: (game: ResolvedGame, anchorEl: HTMLElement) => void;
+}) {
+  const cardRef = useRef<HTMLDivElement | null>(null);
+  const longPressTimerRef = useRef<number | null>(null);
+  const longPressFiredRef = useRef(false);
+  const clearLongPress = () => {
+    if (longPressTimerRef.current !== null) {
+      window.clearTimeout(longPressTimerRef.current);
+      longPressTimerRef.current = null;
+    }
+  };
+  const canEdit = !game.winnerId && game.teamAId && game.teamBId;
+  const directMatchup = Boolean(game.teamAId && game.teamBId);
+
+  return (
+    <div ref={cardRef} className={`mobile-matchup-full ${game.winnerId ? "picked" : ""}`}>
+      {canEdit ? (
+        <button
+          className="matchup-edit-btn mobile-matchup-edit-btn"
+          onClick={(event) => {
+            event.stopPropagation();
+            if (!cardRef.current) return;
+            onOpenProbabilityPopup(game, cardRef.current);
+          }}
+          aria-label="Edit matchup probability"
+          title="Edit probability"
+        >
+          ✎
+        </button>
+      ) : null}
+      {rows.map((row) => {
+        const selected = game.winnerId === row.teamId;
+        const outcome =
+          game.lockedByUser && game.winnerId
+            ? game.winnerId === row.teamId
+              ? "winner"
+              : "loser"
+            : "";
+        const canPick = directMatchup && (row.teamId === game.teamAId || row.teamId === game.teamBId);
+        const formatted = formatOddsDisplay(row.prob, displayMode);
+        return (
+          <button
+            key={`${game.id}-${row.teamId}-mobile`}
+            className={`mobile-team-btn ${selected ? "winner" : ""} ${outcome === "loser" ? "loser" : ""} ${lastPickedKey === `${game.id}:${row.teamId}` ? "fresh-pick" : ""}`}
+            onClick={(event) => {
+              if (longPressFiredRef.current) {
+                longPressFiredRef.current = false;
+                event.preventDefault();
+                return;
+              }
+              if (!game.winnerId && canPick) onPick(game, row.teamId);
+            }}
+            onTouchStart={() => {
+              if (!canEdit || !cardRef.current) return;
+              clearLongPress();
+              longPressFiredRef.current = false;
+              longPressTimerRef.current = window.setTimeout(() => {
+                longPressFiredRef.current = true;
+                onOpenProbabilityPopup(game, cardRef.current!);
+              }, 400);
+            }}
+            onTouchEnd={clearLongPress}
+            onTouchCancel={clearLongPress}
+            disabled={Boolean(game.winnerId) || !canPick}
+          >
+            <span className="m-seed">{row.team.seed}</span>
+            <TeamLogo teamName={row.team.name} src={teamLogoUrl(row.team)} />
+            <span className="m-name">{row.team.name}</span>
+            <div className="m-right">
+              <span className="m-prob">{formatMobilePercent(row.prob)}</span>
+              <span className={`m-odds ${game.customProbA !== null ? "edited" : ""}`}>{formatted.primary}</span>
+            </div>
+          </button>
+        );
+      })}
+      {game.winnerId ? (
+        <div className="mobile-winner-bar">
+          <span>
+            ✓ {teamsById.get(game.winnerId)?.name ?? "Winner selected"}
+          </span>
+          <button onClick={onUndo} className="m-undo">
+            Undo
+          </button>
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+function MobileMatchupTicker({
+  game,
+  rows,
+  displayMode,
+  justChanged,
+}: {
+  game: ResolvedGame;
+  rows: CandidateRow[];
+  displayMode: OddsDisplayMode;
+  justChanged: boolean;
+}) {
+  const displayRows =
+    rows.length <= 2
+      ? rows
+      : [...rows].sort((a, b) => b.prob - a.prob || a.team.seed - b.team.seed).slice(0, 2);
+
+  return (
+    <div className="mobile-ticker-matchup">
+      {displayRows.map((row, index) => {
+        const formatted = formatOddsDisplay(row.prob, displayMode);
+        return (
+          <div key={`${game.id}-${row.teamId}-ticker`} className={`mobile-ticker-row ${index > 0 ? "after-divider" : ""}`}>
+            <div className={`mobile-ticker-odds ${game.customProbA !== null ? "edited" : ""} ${justChanged ? "just-changed" : ""}`}>
+              {formatted.primary}
+            </div>
+          </div>
+        );
+      })}
     </div>
   );
 }

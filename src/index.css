@@ -2957,3 +2957,452 @@ body {
     background: transparent;
   }
 }
+
+.og-top-nav-mobile {
+  display: none;
+}
+
+.og-top-nav-desktop {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+}
+
+@media (max-width: 767px) {
+  .eg-app {
+    padding: 0 0 72px;
+    max-width: 100%;
+  }
+
+  .og-top-nav {
+    height: 48px;
+    margin: 0;
+    padding: 0 16px;
+  }
+
+  .og-top-nav-desktop {
+    display: none;
+  }
+
+  .og-top-nav-mobile {
+    display: grid;
+    grid-template-columns: 36px 1fr 48px;
+    align-items: center;
+    width: 100%;
+  }
+
+  .og-mobile-logo-link {
+    display: inline-flex;
+    align-items: center;
+    justify-content: flex-start;
+  }
+
+  .nav-logo-icon {
+    width: 28px;
+    height: 28px;
+    object-fit: contain;
+  }
+
+  .nav-product-title {
+    font-family: var(--font-serif);
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--text-primary);
+    text-align: center;
+  }
+
+  .nav-mobile-alt {
+    font-family: var(--font-mono);
+    font-size: 9px;
+    letter-spacing: 0.12em;
+    color: var(--amber);
+    border: 1px solid rgba(184, 125, 24, 0.3);
+    border-radius: 3px;
+    padding: 3px 6px;
+    text-decoration: none;
+    text-align: right;
+    white-space: nowrap;
+    justify-self: end;
+  }
+
+  .eg-header.mobile-hidden {
+    display: none;
+  }
+
+  .eg-mobile-shell {
+    position: relative;
+    z-index: 10;
+  }
+
+  .toolbar {
+    display: flex;
+    flex-wrap: nowrap;
+    gap: 8px;
+    padding: 10px 16px;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    margin-bottom: 0;
+  }
+
+  .toolbar::-webkit-scrollbar {
+    display: none;
+  }
+
+  .toolbar .eg-btn,
+  .toolbar .eg-chip,
+  .toolbar .eg-mini-btn {
+    flex-shrink: 0;
+    height: 36px;
+    padding: 0 14px;
+    font-size: 12px;
+    white-space: nowrap;
+  }
+
+  .toolbar .eg-stagger-controls {
+    flex-shrink: 0;
+  }
+
+  .mobile-region-tabs {
+    display: flex;
+    position: sticky;
+    top: 48px;
+    z-index: 60;
+    background: rgba(14, 12, 9, 0.96);
+    backdrop-filter: blur(8px);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+    padding: 0 16px;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+
+  .mobile-region-tabs::-webkit-scrollbar {
+    display: none;
+  }
+
+  .mobile-region-tab {
+    flex-shrink: 0;
+    padding: 12px 18px;
+    font-family: var(--font-mono);
+    font-size: 11px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--text-tertiary);
+    background: none;
+    border: none;
+    border-bottom: 2px solid transparent;
+    white-space: nowrap;
+  }
+
+  .mobile-region-tab.active {
+    color: var(--amber);
+    border-bottom-color: var(--amber);
+  }
+
+  .mobile-ff-link {
+    display: block;
+    width: calc(100% - 32px);
+    margin: 8px 16px;
+    text-align: center;
+    font-family: var(--font-mono);
+    font-size: 11px;
+    letter-spacing: 0.12em;
+    color: var(--amber);
+    background: rgba(184, 125, 24, 0.06);
+    border: 1px solid rgba(184, 125, 24, 0.18);
+    border-radius: 6px;
+    padding: 10px;
+  }
+
+  .mobile-bracket-canvas {
+    padding-top: 8px;
+    padding-bottom: 72px;
+  }
+
+  .mobile-rounds-scroll {
+    display: flex;
+    overflow-x: auto;
+    scroll-snap-type: x proximity;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    gap: 8px;
+    padding: 0 16px;
+  }
+
+  .mobile-rounds-scroll::-webkit-scrollbar {
+    display: none;
+  }
+
+  .mobile-round-col--active {
+    flex: 0 0 calc(100vw - 32px - 72px - 16px);
+    scroll-snap-align: start;
+    min-width: 200px;
+  }
+
+  .mobile-round-col--ticker {
+    flex: 0 0 72px;
+    scroll-snap-align: start;
+  }
+
+  .mobile-round-col-header {
+    padding: 8px 0 10px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+    margin-bottom: 8px;
+  }
+
+  .mobile-round-col-label {
+    font-family: var(--font-mono);
+    font-size: 9px;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--text-tertiary);
+  }
+
+  .mobile-round-col--active .mobile-round-col-label {
+    color: var(--amber);
+  }
+
+  .mobile-matchup-full {
+    position: relative;
+    background: var(--bg-surface);
+    border: 1px solid rgba(255, 255, 255, 0.07);
+    border-radius: 8px;
+    margin-bottom: 10px;
+    overflow: hidden;
+  }
+
+  .mobile-matchup-full.picked {
+    border-color: rgba(184, 125, 24, 0.2);
+  }
+
+  .mobile-matchup-edit-btn {
+    opacity: 0.35 !important;
+    right: 10px;
+    top: 14px;
+    transform: none;
+  }
+
+  .mobile-team-btn {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 14px 12px;
+    background: none;
+    border: none;
+    cursor: pointer;
+    min-height: 54px;
+    text-align: left;
+    transition: background 140ms ease;
+  }
+
+  .mobile-team-btn:active:not(:disabled) {
+    background: rgba(255, 255, 255, 0.03);
+  }
+
+  .mobile-team-btn.winner {
+    background: rgba(184, 125, 24, 0.07);
+  }
+
+  .mobile-team-btn.loser {
+    opacity: 0.38;
+  }
+
+  .m-seed {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    color: var(--text-tertiary);
+    width: 16px;
+    text-align: right;
+    flex-shrink: 0;
+  }
+
+  .m-logo {
+    width: 22px;
+    height: 22px;
+    object-fit: contain;
+    flex-shrink: 0;
+  }
+
+  .m-name {
+    font-family: var(--font-serif);
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--text-primary);
+    flex: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .m-right {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 1px;
+    flex-shrink: 0;
+  }
+
+  .m-prob {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    color: var(--text-tertiary);
+  }
+
+  .m-odds {
+    font-family: var(--font-mono);
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--text-primary);
+  }
+
+  .m-odds.edited {
+    color: rgba(184, 125, 24, 0.9);
+  }
+
+  .mobile-winner-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 7px 12px;
+    background: rgba(184, 125, 24, 0.06);
+    border-top: 1px solid rgba(184, 125, 24, 0.12);
+    font-family: var(--font-mono);
+    font-size: 10px;
+    color: rgba(184, 125, 24, 0.8);
+  }
+
+  .m-undo {
+    background: none;
+    border: none;
+    font-family: var(--font-mono);
+    font-size: 10px;
+    color: var(--text-tertiary);
+    text-decoration: underline;
+    text-underline-offset: 2px;
+    padding: 0;
+  }
+
+  .mobile-ticker-matchup {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    justify-content: center;
+    min-height: 118px;
+    margin-bottom: 10px;
+    gap: 2px;
+    padding: 8px 4px;
+    border: 1px solid rgba(255, 255, 255, 0.04);
+    border-radius: 6px;
+    background: var(--bg-surface);
+  }
+
+  .mobile-ticker-row {
+    width: 100%;
+  }
+
+  .mobile-ticker-row.after-divider {
+    border-top: 1px solid rgba(255, 255, 255, 0.05);
+    padding-top: 6px;
+    margin-top: 3px;
+  }
+
+  .mobile-ticker-odds {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--text-secondary);
+    line-height: 1.3;
+    white-space: nowrap;
+    width: 100%;
+    transition: color 200ms ease;
+  }
+
+  .mobile-ticker-odds.edited {
+    color: rgba(184, 125, 24, 0.7);
+  }
+
+  .mobile-ticker-odds.just-changed {
+    animation: tickerFlash 600ms ease-out;
+  }
+
+  .mobile-futures-view {
+    padding: 16px 16px 72px;
+    overflow-y: auto;
+  }
+
+  .mobile-tab-bar {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 56px;
+    background: rgba(14, 12, 9, 0.97);
+    backdrop-filter: blur(12px);
+    border-top: 1px solid rgba(255, 255, 255, 0.08);
+    display: flex;
+    z-index: 90;
+    padding-bottom: env(safe-area-inset-bottom, 0);
+  }
+
+  .mobile-tab {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 3px;
+    background: none;
+    border: none;
+  }
+
+  .mobile-tab-icon {
+    font-size: 18px;
+    color: var(--text-tertiary);
+    transition: color 150ms ease;
+  }
+
+  .mobile-tab-label {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--text-tertiary);
+    transition: color 150ms ease;
+  }
+
+  .mobile-tab.active .mobile-tab-icon,
+  .mobile-tab.active .mobile-tab-label {
+    color: var(--amber);
+  }
+
+  .prob-popup {
+    position: fixed !important;
+    left: 50% !important;
+    top: 50% !important;
+    transform: translate(-50%, -50%) !important;
+    width: min(85vw, 320px) !important;
+  }
+
+  .matchup-edit-btn {
+    opacity: 0.28;
+  }
+
+  .matchup-row:not(.matchup-row--picked):hover .matchup-edit-btn {
+    opacity: 0.28;
+  }
+
+  .matchup-edit-btn:active {
+    opacity: 1;
+  }
+}
+
+@keyframes tickerFlash {
+  0% {
+    color: rgba(184, 125, 24, 0.95);
+  }
+  100% {
+    color: var(--text-secondary);
+  }
+}
