@@ -298,23 +298,22 @@ body {
 
 .eg-round-grid {
   display: grid;
-  grid-template-columns: minmax(0, 2.25fr) minmax(0, 1.95fr) minmax(0, 1.9fr) minmax(0, 1.85fr);
+  grid-template-columns: minmax(0, 1.0fr) minmax(0, 1.3fr) minmax(0, 1.6fr) minmax(0, 2.1fr);
   gap: 12px;
   min-height: 840px;
   align-items: start;
-  transition: grid-template-columns 300ms ease-out;
 }
 
 .eg-layout.panel-open .eg-round-grid {
-  grid-template-columns: minmax(0, 2.12fr) minmax(0, 1.8fr) minmax(0, 1.76fr) minmax(0, 1.72fr);
+  grid-template-columns: minmax(0, 1.0fr) minmax(0, 1.3fr) minmax(0, 1.6fr) minmax(0, 2.1fr);
 }
 
 .eg-layout.panel-open .region-inverted .eg-round-grid {
-  grid-template-columns: minmax(0, 1.72fr) minmax(0, 1.76fr) minmax(0, 1.8fr) minmax(0, 2.12fr);
+  grid-template-columns: minmax(0, 2.1fr) minmax(0, 1.6fr) minmax(0, 1.3fr) minmax(0, 1.0fr);
 }
 
 .region-inverted .eg-round-grid {
-  grid-template-columns: minmax(0, 1.85fr) minmax(0, 1.9fr) minmax(0, 1.95fr) minmax(0, 2.25fr);
+  grid-template-columns: minmax(0, 2.1fr) minmax(0, 1.6fr) minmax(0, 1.3fr) minmax(0, 1.0fr);
 }
 
 .eg-round-col {
@@ -329,8 +328,7 @@ body {
 }
 
 .eg-round-col--collapsed {
-  max-width: 68px;
-  min-width: 68px;
+  overflow: hidden;
 }
 
 .eg-round-col--collapsed .eg-round-label {

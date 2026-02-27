@@ -2086,7 +2086,7 @@ function RegionBracket({
   );
   const buildGridTemplate = (): string => {
     const orderedRounds: Array<"R64" | "R32" | "S16" | "E8"> = ["R64", "R32", "S16", "E8"];
-    const baseFractions = [2.25, 1.95, 1.9, 1.85];
+    const baseFractions = [1.0, 1.3, 1.6, 2.1];
     const parts = orderedRounds.map((round, idx) =>
       collapseByRound[round] ? "minmax(0, 68px)" : `minmax(0, ${baseFractions[idx]}fr)`
     );
