@@ -2975,10 +2975,24 @@ body {
     max-width: 100%;
   }
 
+  .eg-app,
+  .eg-page-shell,
+  main {
+    padding-left: 0 !important;
+    padding-right: 0 !important;
+    max-width: 100vw !important;
+    overflow-x: hidden;
+  }
+
   .og-top-nav {
     height: 48px;
     margin: 0;
     padding: 0 16px;
+    width: 100%;
+    max-width: 100%;
+    border-radius: 0;
+    background: rgba(14, 12, 9, 1);
+    box-shadow: none;
   }
 
   .og-top-nav-desktop {
@@ -3047,7 +3061,9 @@ body {
     overflow-x: auto;
     -webkit-overflow-scrolling: touch;
     scrollbar-width: none;
-    margin-bottom: 0;
+    margin: 0;
+    background: rgba(14, 12, 9, 1);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
   }
 
   .toolbar::-webkit-scrollbar {
@@ -3058,10 +3074,24 @@ body {
   .toolbar .eg-chip,
   .toolbar .eg-mini-btn {
     flex-shrink: 0;
-    height: 36px;
+    height: 34px;
     padding: 0 14px;
     font-size: 12px;
+    font-family: var(--font-mono);
+    letter-spacing: 0.04em;
+    border-radius: 100px;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    background: rgba(255, 255, 255, 0.06);
+    color: var(--text-secondary);
     white-space: nowrap;
+  }
+
+  .toolbar button.active,
+  .toolbar button[data-active="true"],
+  .toolbar button[aria-pressed="true"] {
+    background: rgba(184, 125, 24, 0.15);
+    border-color: rgba(184, 125, 24, 0.4);
+    color: var(--amber);
   }
 
   .toolbar .eg-stagger-controls {
@@ -3073,7 +3103,7 @@ body {
     position: sticky;
     top: 48px;
     z-index: 60;
-    background: rgba(14, 12, 9, 0.96);
+    background: rgba(14, 12, 9, 1);
     backdrop-filter: blur(8px);
     border-bottom: 1px solid rgba(255, 255, 255, 0.07);
     padding: 0 16px;
@@ -3141,19 +3171,40 @@ body {
     color: var(--amber);
   }
 
+  .mobile-round-pill--interactive {
+    border-color: rgba(255, 255, 255, 0.14);
+    color: var(--text-secondary);
+  }
+
+  .mobile-round-pill--probabilistic {
+    border-color: rgba(184, 125, 24, 0.2);
+    color: rgba(184, 125, 24, 0.55);
+    border-style: dashed;
+  }
+
   .mobile-round-pill--complete {
     border-color: rgba(184, 125, 24, 0.25);
     color: rgba(184, 125, 24, 0.6);
   }
 
-  .mobile-round-pill--locked {
-    opacity: 0.28;
-    cursor: default;
-  }
-
   .mobile-round-check {
     font-size: 9px;
     color: rgba(184, 125, 24, 0.7);
+  }
+
+  .m-pill-delta {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background: rgba(184, 125, 24, 0.9);
+    color: #0a0806;
+    font-size: 9px;
+    font-weight: 700;
+    margin-left: 3px;
+    animation: deltaPop 1500ms ease-out forwards;
   }
 
   .m-card {
@@ -3294,6 +3345,176 @@ body {
     letter-spacing: 0.04em;
   }
 
+  .m-prob-banner {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin: 8px 16px 12px;
+    padding: 10px 14px;
+    background: rgba(184, 125, 24, 0.07);
+    border: 1px solid rgba(184, 125, 24, 0.18);
+    border-radius: 8px;
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: rgba(184, 125, 24, 0.7);
+    line-height: 1.5;
+  }
+
+  .m-prob-banner button {
+    background: none;
+    border: none;
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--amber);
+    cursor: pointer;
+    padding: 0;
+    white-space: nowrap;
+    flex-shrink: 0;
+    margin-left: auto;
+  }
+
+  .m-prob-card {
+    background: var(--bg-surface);
+    border: 1px solid rgba(184, 125, 24, 0.22);
+    border-left: 3px solid rgba(184, 125, 24, 0.5);
+    border-radius: 10px;
+    margin: 0 16px 12px;
+    overflow: hidden;
+  }
+
+  .m-prob-card-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 14px;
+    background: rgba(184, 125, 24, 0.05);
+    border-bottom: 1px solid rgba(184, 125, 24, 0.1);
+  }
+
+  .m-prob-eyebrow {
+    font-family: var(--font-mono);
+    font-size: 9px;
+    letter-spacing: 0.16em;
+    color: rgba(184, 125, 24, 0.7);
+    text-transform: uppercase;
+  }
+
+  .m-prob-updating {
+    font-family: var(--font-mono);
+    font-size: 9px;
+    color: rgba(184, 125, 24, 0.55);
+  }
+
+  .m-prob-row {
+    position: relative;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+    overflow: hidden;
+  }
+
+  .m-prob-row:last-of-type {
+    border-bottom: none;
+  }
+
+  .m-prob-rank-bar {
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    background: rgba(184, 125, 24, 0.06);
+    transition: width 400ms ease-out;
+    pointer-events: none;
+  }
+
+  .m-prob-row--locked .m-prob-rank-bar {
+    background: rgba(184, 125, 24, 0.1);
+    width: 100% !important;
+  }
+
+  .m-prob-row-content {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 11px 14px;
+    gap: 8px;
+  }
+
+  .m-prob-row-left {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex: 1;
+    min-width: 0;
+  }
+
+  .m-logo-sm {
+    width: 20px;
+    height: 20px;
+    object-fit: contain;
+    flex-shrink: 0;
+  }
+
+  .m-prob-row-info {
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+    min-width: 0;
+  }
+
+  .m-name-sm {
+    font-family: var(--font-serif);
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--text-primary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .m-prob-reach {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    color: var(--text-tertiary);
+  }
+
+  .m-prob-row--locked .m-prob-reach {
+    color: rgba(184, 125, 24, 0.65);
+  }
+
+  .m-prob-row-right {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 1px;
+    flex-shrink: 0;
+  }
+
+  .m-odds-sm {
+    font-family: var(--font-mono);
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--text-primary);
+  }
+
+  .m-prob-win-label {
+    font-family: var(--font-mono);
+    font-size: 9px;
+    color: var(--text-tertiary);
+    white-space: nowrap;
+  }
+
+  .m-prob-card-footer {
+    padding: 7px 14px;
+    border-top: 1px solid rgba(255, 255, 255, 0.05);
+  }
+
+  .m-prob-footer-note {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    color: var(--text-tertiary);
+    font-style: italic;
+  }
+
   .m-ff-locked {
     padding: 48px 24px;
     text-align: center;
@@ -3382,7 +3603,13 @@ body {
     display: flex;
     gap: 6px;
     flex: 1;
-    overflow: hidden;
+    overflow-x: auto;
+    scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .live-odds-strip-chips::-webkit-scrollbar {
+    display: none;
   }
 
   .live-odds-chip {
@@ -3504,5 +3731,25 @@ body {
   100% {
     background: rgba(255, 255, 255, 0.04);
     border-color: rgba(255, 255, 255, 0.08);
+  }
+}
+
+@keyframes deltaPop {
+  0% {
+    opacity: 0;
+    transform: scale(0.6);
+  }
+  15% {
+    opacity: 1;
+    transform: scale(1.15);
+  }
+  30% {
+    transform: scale(1);
+  }
+  75% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
   }
 }
