@@ -2084,17 +2084,16 @@ function RegionBracket({
       ) as Partial<Record<ResolvedGame["round"], boolean>>,
     [games, region, rounds]
   );
-  const columnWidthByRound: Record<ResolvedGame["round"], string> = {
-    R64: "minmax(122px, 2.25fr)",
-    R32: "minmax(112px, 1.95fr)",
-    S16: "minmax(106px, 1.9fr)",
-    E8: "minmax(100px, 1.85fr)",
-    F4: "minmax(100px, 1.8fr)",
-    CHAMP: "minmax(100px, 1.8fr)",
+  const buildGridTemplate = (): string => {
+    const orderedRounds: Array<"R64" | "R32" | "S16" | "E8"> = ["R64", "R32", "S16", "E8"];
+    const baseFractions = [2.25, 1.95, 1.9, 1.85];
+    const parts = orderedRounds.map((round, idx) =>
+      collapseByRound[round] ? "minmax(0, 68px)" : `minmax(0, ${baseFractions[idx]}fr)`
+    );
+    if (inverted) parts.reverse();
+    return parts.join(" ");
   };
-  const gridTemplateColumns = rounds
-    .map((round) => (collapseByRound[round] ? "68px" : columnWidthByRound[round]))
-    .join(" ");
+  const gridTemplateColumns = buildGridTemplate();
   const shortRoundLabel: Record<ResolvedGame["round"], string> = {
     R64: "R64",
     R32: "R32",
@@ -2276,7 +2275,7 @@ function GameCard({
                     </TeamHoverAnchor>
                     <TeamHoverAnchor teamName={team.name} logoSrc={teamLogoUrl(team)}>
                       <span className={`title-choice-name ${game.round === "CHAMP" ? "full-team-name" : ""}`}>
-                        {game.round === "CHAMP" ? fullTeamName(team.name) : team.name}
+                        {team.name}
                       </span>
                     </TeamHoverAnchor>
                   </span>
@@ -2611,7 +2610,11 @@ function TeamRow({
       )}
       {compact ? null : (
         <TeamHoverAnchor teamName={fullLabel} logoSrc={logoSrc ?? fallbackLogo(fullLabel)}>
-          <AdaptiveTeamLabel className="team-name" fullName={fullLabel} />
+          <span className="team-name-wrap">
+            <AdaptiveTeamLabel className="team-name btw-abbrev-name" fullName={fullLabel} />
+            <span className="team-name btw-fullname">{fullLabel}</span>
+            {formatted.secondary ? <span className="btw-title-odds">{formatted.secondary}</span> : null}
+          </span>
         </TeamHoverAnchor>
       )}
       <span className="team-odds-wrap">
