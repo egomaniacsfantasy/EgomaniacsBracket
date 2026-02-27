@@ -2140,9 +2140,10 @@ function RegionBracket({
   onOpenProbabilityPopup: (game: ResolvedGame, anchorEl: HTMLElement) => void;
 }) {
   const rounds = inverted ? [...regionRounds].reverse() : [...regionRounds];
+  const roundsBase: MobileRegionRound[] = ["R64", "R32", "S16", "E8"];
   const COLLAPSED_WIDTH = 68;
   const MANUAL_WIDTH = 160;
-  const roundDepth: Record<MobileRegionRound, number> = { R64: 0, R32: 1, S16: 2, E8: 3 };
+  const roundDepth: Record<MobileRegionRound, number> = { R64: 64, R32: 32, S16: 16, E8: 8 };
   const roundShort: Record<MobileRegionRound, string> = { R64: "R64", R32: "R32", S16: "S16", E8: "E8" };
   const roundLong: Record<MobileRegionRound, string> = {
     R64: "ROUND OF 64",
@@ -2151,6 +2152,8 @@ function RegionBracket({
     E8: "ELITE 8",
   };
   const regionRef = useRef<HTMLElement | null>(null);
+  const regionColsRef = useRef<HTMLDivElement | null>(null);
+  const [regionWidth, setRegionWidth] = useState(760);
   const [effectiveCollapsed, setEffectiveCollapsed] = useState<Record<MobileRegionRound, boolean>>({
     R64: false,
     R32: false,
@@ -2180,6 +2183,17 @@ function RegionBracket({
     });
     return out;
   }, [completeByRound, manuallyExpandedRounds, region]);
+
+  useEffect(() => {
+    if (!regionColsRef.current) return;
+    const observer = new ResizeObserver((entries) => {
+      for (const entry of entries) {
+        setRegionWidth(entry.contentRect.width);
+      }
+    });
+    observer.observe(regionColsRef.current);
+    return () => observer.disconnect();
+  }, []);
 
   useEffect(() => {
     (["R64", "R32", "S16", "E8"] as const).forEach((round) => {
@@ -2219,22 +2233,61 @@ function RegionBracket({
   }, [roundStateByRound, effectiveCollapsed, region]);
 
   const columnWidths = useMemo(() => {
-    const roundsBase: MobileRegionRound[] = ["R64", "R32", "S16", "E8"];
-    const widths = {} as Record<MobileRegionRound, number>;
-    roundsBase.forEach((round) => {
-      const state = roundStateByRound[round];
-      if (state === "collapsed") widths[round] = COLLAPSED_WIDTH;
-      else if (state === "manual") widths[round] = MANUAL_WIDTH;
-      else widths[round] = MANUAL_WIDTH;
+    const states = roundsBase.map((round) => {
+      const isCollapsed = Boolean(effectiveCollapsed[round]);
+      const isManual = manuallyExpandedRounds.has(`${region}-${round}`);
+      if (!isCollapsed) return "active" as const;
+      if (isManual) return "manual" as const;
+      return "collapsed" as const;
     });
+
+    const collapsedTotal = states.filter((state) => state === "collapsed").length * COLLAPSED_WIDTH;
+    const manualTotal = states.filter((state) => state === "manual").length * MANUAL_WIDTH;
+    const availableForActive = regionWidth - collapsedTotal - manualTotal;
+    const activeRounds = roundsBase.filter((_, i) => states[i] === "active");
+    const widths = {} as Record<MobileRegionRound, number>;
+
+    if (activeRounds.length === 0) {
+      roundsBase.forEach((round, i) => {
+        widths[round] = states[i] === "manual" ? MANUAL_WIDTH : COLLAPSED_WIDTH;
+      });
+      return widths;
+    }
+
+    if (activeRounds.length === 1) {
+      roundsBase.forEach((round, i) => {
+        if (states[i] === "active") widths[round] = Math.max(availableForActive, MANUAL_WIDTH);
+        else if (states[i] === "manual") widths[round] = MANUAL_WIDTH;
+        else widths[round] = COLLAPSED_WIDTH;
+      });
+      return widths;
+    }
+
+    const innermostActive = [...activeRounds].sort((a, b) => roundDepth[a] - roundDepth[b])[0];
+    const otherActive = activeRounds.filter((round) => round !== innermostActive);
+    const innermostWidth = Math.max(availableForActive * 0.6, MANUAL_WIDTH);
+    const remainingForOthers = availableForActive - innermostWidth;
+    const perOtherWidth = Math.max(remainingForOthers / otherActive.length, MANUAL_WIDTH);
+
+    roundsBase.forEach((round, i) => {
+      if (states[i] === "collapsed") widths[round] = COLLAPSED_WIDTH;
+      else if (states[i] === "manual") widths[round] = MANUAL_WIDTH;
+      else if (round === innermostActive) widths[round] = innermostWidth;
+      else widths[round] = perOtherWidth;
+    });
+
     return widths;
-  }, [roundStateByRound]);
+  }, [effectiveCollapsed, manuallyExpandedRounds, region, regionWidth, roundDepth, roundsBase]);
 
   const innermostActiveRound = useMemo(() => {
-    const activeRounds = (["R64", "R32", "S16", "E8"] as const).filter((round) => roundStateByRound[round] === "active");
+    const activeRounds = roundsBase.filter((round) => {
+      const isCollapsed = Boolean(effectiveCollapsed[round]);
+      const isManual = manuallyExpandedRounds.has(`${region}-${round}`);
+      return !isCollapsed || isManual;
+    });
     if (!activeRounds.length) return null;
-    return [...activeRounds].sort((a, b) => roundDepth[b] - roundDepth[a])[0];
-  }, [roundStateByRound]);
+    return [...activeRounds].sort((a, b) => roundDepth[a] - roundDepth[b])[0];
+  }, [effectiveCollapsed, manuallyExpandedRounds, region, roundDepth, roundsBase]);
 
   return (
     <section
@@ -2248,20 +2301,26 @@ function RegionBracket({
         </button>
       </div>
 
-      <div className="eg-round-grid bracket-grid">
+      <div
+        ref={regionColsRef}
+        className="eg-round-grid bracket-grid eg-region-cols"
+        style={{ gridTemplateColumns: rounds.map((round) => `${columnWidths[round as MobileRegionRound]}px`).join(" ") }}
+      >
         {rounds.map((round) => {
           const roundGames = gamesByRegionAndRound(games, region, round);
           const roundKey = `${region}-${round}`;
           const collapsed = Boolean(effectiveCollapsed[round as MobileRegionRound]);
           const isManualExpanded = roundStateByRound[round as MobileRegionRound] === "manual";
-          const displayTier: "compact" | "normal" | "wide" = collapsed ? "compact" : "normal";
+          const colWidth = columnWidths[round as MobileRegionRound] ?? MANUAL_WIDTH;
+          const displayTier: "compact" | "normal" | "wide" =
+            collapsed ? "compact" : colWidth >= 200 ? "wide" : "normal";
           const roundComplete = completeByRound[round as MobileRegionRound];
           const isInnermost = innermostActiveRound === round;
           return (
             <div
               key={`${region}-${round}`}
               className={`eg-round-col lane-${round.toLowerCase()} ${collapsed ? "eg-round-col--collapsed" : ""} ${
-                isInnermost ? "eg-round-col--innermost-active" : ""
+                isInnermost ? "eg-round-col--innermost-active bracket-round-col--innermost-active" : ""
               } ${collapsingKeys.has(roundKey) ? "eg-round-col--collapsing" : ""} ${
                 expandingKeys.has(roundKey) ? "eg-round-col--expanding" : ""
               }`}

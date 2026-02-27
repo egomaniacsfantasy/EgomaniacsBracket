@@ -464,6 +464,14 @@ body {
   border-color: rgba(184, 125, 24, 0.35);
 }
 
+.bracket-round-col--innermost-active .bracket-matchup-card--wide {
+  border-color: rgba(184, 125, 24, 0.18);
+}
+
+.bracket-round-col--innermost-active .bracket-matchup-card--wide:hover {
+  border-color: rgba(184, 125, 24, 0.35);
+}
+
 .eg-game-card.collapsed {
   min-height: 0;
   padding: 4px;
