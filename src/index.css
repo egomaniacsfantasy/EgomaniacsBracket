@@ -304,6 +304,10 @@ body {
   align-items: start;
 }
 
+.eg-round-grid--transitioning {
+  transition: grid-template-columns 320ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+
 .eg-layout.panel-open .eg-round-grid {
   grid-template-columns: minmax(0, 1.0fr) minmax(0, 1.3fr) minmax(0, 1.6fr) minmax(0, 2.1fr);
 }
@@ -327,8 +331,31 @@ body {
   container-name: round-col;
 }
 
+.eg-round-col-content {
+  opacity: 1;
+}
+
 .eg-round-col--collapsed {
   overflow: hidden;
+}
+
+.eg-round-col--collapsing .eg-round-col-content,
+.eg-round-col--collapsing .eg-games-lane,
+.eg-round-col--pre-expanding .eg-round-col-content,
+.eg-round-col--pre-expanding .eg-games-lane,
+.eg-round-col--expanding .eg-round-col-content,
+.eg-round-col--expanding .eg-games-lane {
+  opacity: 0;
+}
+
+.eg-round-col--collapsing .eg-round-col-content,
+.eg-round-col--collapsing .eg-games-lane {
+  transition: opacity 120ms ease-out;
+}
+
+.eg-round-col--expanding .eg-round-col-content,
+.eg-round-col--expanding .eg-games-lane {
+  animation: fadeInContent 160ms ease-out forwards;
 }
 
 .eg-round-col--collapsed .eg-round-label {
@@ -769,13 +796,132 @@ body {
   line-height: 1.05;
 }
 
-@container round-col (min-width: 180px) {
+.btw-title-odds {
+  display: none;
+}
+
+@container round-col (min-width: 160px) {
   .btw-abbrev-name {
     display: none;
   }
 
   .btw-fullname {
     display: block;
+  }
+
+  .btw-title-odds {
+    display: none;
+  }
+}
+
+@container round-col (min-width: 220px) {
+  .btw-abbrev-name {
+    display: none;
+  }
+
+  .btw-fullname {
+    display: block;
+  }
+
+  .btw-title-odds {
+    display: block;
+  }
+}
+
+@media (min-width: 768px) {
+  .eg-round-col--e8 .eg-game-card {
+    border-color: rgba(184, 125, 24, 0.28);
+    background: linear-gradient(
+      135deg,
+      rgba(184, 125, 24, 0.06) 0%,
+      rgba(20, 14, 8, 0.9) 60%
+    );
+    border-radius: 10px;
+    box-shadow: 0 0 24px rgba(184, 125, 24, 0.08);
+  }
+
+  .eg-round-col--e8 .eg-game-card:hover {
+    border-color: rgba(184, 125, 24, 0.5);
+    box-shadow: 0 0 32px rgba(184, 125, 24, 0.14);
+    transition: border-color 200ms ease, box-shadow 200ms ease;
+  }
+
+  .eg-round-col--e8 .eg-team-row,
+  .eg-round-col--e8 .eg-team-row.matchup-row {
+    padding: 13px 16px;
+    gap: 10px;
+  }
+
+  .eg-round-col--e8 .btw-seed {
+    font-size: 12px;
+    width: 20px;
+  }
+
+  .eg-round-col--e8 .btw-logo,
+  .eg-round-col--e8 .team-logo {
+    width: 28px;
+    height: 28px;
+  }
+
+  .eg-round-col--e8 .btw-abbrev-name {
+    display: none;
+  }
+
+  .eg-round-col--e8 .btw-fullname {
+    font-family: var(--font-serif);
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--text-primary);
+    display: block;
+  }
+
+  .eg-round-col--e8 .btw-title-odds {
+    display: block;
+    font-size: 11px;
+    color: rgba(184, 125, 24, 0.8);
+    letter-spacing: 0.02em;
+  }
+
+  .eg-round-col--e8 .team-odds {
+    font-size: 15px;
+    font-weight: 700;
+  }
+
+  .eg-round-col--e8 .eg-team-row.result-win {
+    background: rgba(184, 125, 24, 0.08);
+  }
+
+  .eg-round-col--e8 .eg-team-row.result-win .btw-fullname {
+    color: rgba(255, 240, 200, 0.95);
+  }
+
+  .eg-round-col--e8 .eg-team-row.result-win .btw-title-odds {
+    color: rgba(184, 125, 24, 0.95);
+  }
+
+  .eg-round-col--e8 .eg-team-row.result-loss {
+    opacity: 0.32;
+  }
+
+  .eg-round-col--e8 .eg-round-label {
+    color: rgba(184, 125, 24, 0.7);
+    letter-spacing: 0.14em;
+    font-size: 10px;
+  }
+
+  .eg-round-col--e8 .eg-games-lane {
+    min-height: 600px;
+  }
+}
+
+@keyframes fadeInContent {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
   }
 }
 
