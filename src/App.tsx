@@ -17,7 +17,7 @@ import {
   type LockedPicks,
 } from "./lib/bracket";
 import { abbreviationForTeam } from "./lib/abbreviation";
-import { formatOddsDisplay, toImpliedLabel, toOneInX } from "./lib/odds";
+import { formatOddsDisplay, toAmericanOdds, toImpliedLabel, toOneInX } from "./lib/odds";
 import {
   generateSimulatedBracket,
   generateSimulatedBracketSteps,
@@ -241,6 +241,8 @@ type ShareCardData = {
   bracketLikelihood: string | null;
 };
 
+type FuturesSortMode = "champ_desc" | "champ_asc" | "delta_desc";
+
 const DEFAULT_HINTS_SHOWN: HintsShown = {
   undo: false,
   sim: false,
@@ -291,6 +293,40 @@ const WALKTHROUGH_STEPS: WalkthroughStepConfig[] = [
   },
 ];
 
+const FUTURES_METRIC_KEYS = ["R32", "S16", "E8", "F4", "Title", "Champ"] as const;
+type FuturesMetricKey = (typeof FUTURES_METRIC_KEYS)[number];
+
+const getMetricProb = (row: SimulationOutput["futures"][number], metric: FuturesMetricKey): number => {
+  if (metric === "R32") return row.round2Prob;
+  if (metric === "S16") return row.sweet16Prob;
+  if (metric === "E8") return row.elite8Prob;
+  if (metric === "F4") return row.final4Prob;
+  if (metric === "Title") return row.titleGameProb;
+  return row.champProb;
+};
+
+const computeDelta = (conditionedProb: number, baselineProb: number, displayMode: OddsDisplayMode): number => {
+  if (displayMode === "implied") {
+    return (conditionedProb - baselineProb) * 100;
+  }
+  const conditionedAmerican = toAmericanOdds(conditionedProb);
+  const baselineAmerican = toAmericanOdds(baselineProb);
+  return baselineAmerican - conditionedAmerican;
+};
+
+const hasMeaningfulDelta = (delta: number, displayMode: OddsDisplayMode): boolean =>
+  displayMode === "implied" ? Math.abs(delta) >= 0.1 : Math.abs(delta) >= 1;
+
+const formatDelta = (delta: number, displayMode: OddsDisplayMode): string => {
+  if (displayMode === "implied") {
+    const sign = delta > 0 ? "+" : "";
+    return `${sign}${delta.toFixed(1)}%`;
+  }
+  const rounded = Math.round(delta);
+  const sign = rounded > 0 ? "+" : "";
+  return `${sign}${rounded}`;
+};
+
 function App() {
   const [lockedPicks, setLockedPicks] = useState<LockedPicks>({});
   const [customProbByGame, setCustomProbByGame] = useState<CustomProbByGame>({});
@@ -301,7 +337,7 @@ function App() {
     return saved === "american" || saved === "implied" ? saved : "implied";
   });
   const [simRuns] = useState<number>(DEFAULT_SIM_RUNS);
-  const [sortDesc, setSortDesc] = useState(true);
+  const [futuresSortMode, setFuturesSortMode] = useState<FuturesSortMode>("champ_desc");
   const [isUpdating, setIsUpdating] = useState(false);
   const [lastPickedKey, setLastPickedKey] = useState<string | null>(null);
   const [sidePanelOpen, setSidePanelOpen] = useState(false);
@@ -315,6 +351,7 @@ function App() {
   const [mobileFfRound, setMobileFfRound] = useState<MobileFfRound>("F4");
   const [liveOddsChangedIds, setLiveOddsChangedIds] = useState<Set<string>>(new Set());
   const [mobileRoundDeltas, setMobileRoundDeltas] = useState<Partial<Record<MobileRegionRound, number>>>({});
+  const [futuresDeltaChangedKeys, setFuturesDeltaChangedKeys] = useState<Set<string>>(new Set());
   const [hasSeenFirstPickNudge, setHasSeenFirstPickNudge] = useState(() => {
     if (typeof window === "undefined") return false;
     return window.sessionStorage.getItem(FIRST_PICK_NUDGE_SESSION_KEY) === "1";
@@ -743,22 +780,35 @@ function App() {
     if (!previous) return;
 
     const previousMap = new Map(previous.map((row) => [row.teamId, row.champProb]));
+    const previousRowMap = new Map(previous.map((row) => [row.teamId, row]));
     const changed = new Set<string>();
+    const changedDeltaKeys = new Set<string>();
     for (const row of simResult.futures) {
       const prev = previousMap.get(row.teamId);
       if (prev === undefined) continue;
       if (Math.abs(prev - row.champProb) > 0.000001) {
         changed.add(row.teamId);
       }
+      const previousRow = previousRowMap.get(row.teamId);
+      if (!previousRow) continue;
+      for (const metric of FUTURES_METRIC_KEYS) {
+        const previousProb = getMetricProb(previousRow, metric);
+        const nextProb = getMetricProb(row, metric);
+        if (Math.abs(previousProb - nextProb) > 0.000001) {
+          changedDeltaKeys.add(`${row.teamId}-${metric}`);
+        }
+      }
     }
 
-    if (changed.size > 0) {
+    if (changed.size > 0 || changedDeltaKeys.size > 0) {
       setLiveOddsChangedIds(changed);
+      setFuturesDeltaChangedKeys(changedDeltaKeys);
       if (mobileFlashTimeoutRef.current !== null) {
         window.clearTimeout(mobileFlashTimeoutRef.current);
       }
       mobileFlashTimeoutRef.current = window.setTimeout(() => {
         setLiveOddsChangedIds(new Set());
+        setFuturesDeltaChangedKeys(new Set());
         mobileFlashTimeoutRef.current = null;
       }, 850);
     }
@@ -850,16 +900,26 @@ function App() {
     pendingPickMetaRef.current = null;
   }, [simResult.gameWinProbs, games, mobileSection, mobileRound]);
 
+  const preTournamentBaseline = useMemo(() => runSimulation({}, simRuns), [simRuns]);
+  const baselineByTeamId = useMemo(
+    () => new Map(preTournamentBaseline.futures.map((row) => [row.teamId, row])),
+    [preTournamentBaseline.futures]
+  );
+
   const sortedFutures = useMemo(() => {
     const rows = [...simResult.futures];
     rows.sort((a, b) => {
-      const diff = b.champProb - a.champProb;
-      return sortDesc ? diff : -diff;
+      if (futuresSortMode === "champ_desc") return b.champProb - a.champProb;
+      if (futuresSortMode === "champ_asc") return a.champProb - b.champProb;
+      const baseA = baselineByTeamId.get(a.teamId);
+      const baseB = baselineByTeamId.get(b.teamId);
+      const deltaA = baseA ? computeDelta(a.champProb, baseA.champProb, displayMode) : 0;
+      const deltaB = baseB ? computeDelta(b.champProb, baseB.champProb, displayMode) : 0;
+      return deltaB - deltaA;
     });
     return rows;
-  }, [simResult.futures, sortDesc]);
+  }, [baselineByTeamId, displayMode, futuresSortMode, simResult.futures]);
 
-  const preTournamentBaseline = useMemo(() => runSimulation({}, simRuns), [simRuns]);
   const preTournamentFutures = useMemo(
     () => [...preTournamentBaseline.futures].sort((a, b) => b.champProb - a.champProb),
     [preTournamentBaseline.futures]
@@ -1271,6 +1331,17 @@ function App() {
     if (shareExporting || shareCardComputedData.totalPicks === 0) return;
     setShareCardData(shareCardComputedData);
     setShareExportNonce((prev) => prev + 1);
+  };
+
+  const onCycleFuturesSort = () => {
+    setFuturesSortMode((prev) => {
+      const next: FuturesSortMode =
+        prev === "champ_desc" ? "champ_asc" : prev === "champ_asc" ? "delta_desc" : "champ_desc";
+      trackEvent("futures_sort_changed", {
+        sort_mode: next,
+      });
+      return next;
+    });
   };
 
   const onModelSim = () => {
@@ -1898,8 +1969,8 @@ function App() {
               i
             </span>
           </h3>
-          <button className="eg-mini-btn" onClick={() => setSortDesc((v) => !v)}>
-            Sort {sortDesc ? "↓" : "↑"}
+          <button className="eg-mini-btn" onClick={onCycleFuturesSort}>
+            Sort {futuresSortMode === "delta_desc" ? "Δ↓" : futuresSortMode === "champ_desc" ? "↓" : "↑"}
           </button>
         </div>
 
@@ -1916,6 +1987,8 @@ function App() {
               { label: "Title", prob: row.titleGameProb },
               { label: "Champ", prob: row.champProb },
             ];
+            const baselineRow = baselineByTeamId.get(row.teamId);
+            const fullyEliminated = metrics.every((metric) => metric.prob <= 0.000001);
             return (
               <article key={row.teamId} className="eg-future-item">
                 <div className="team-cell">
@@ -1934,6 +2007,18 @@ function App() {
                     const requiredRank = stageRankByMetric[metric.label];
                     const isAchieved = Boolean(state && state.lastWinRank >= requiredRank);
                     const isEliminated = Boolean(state && state.firstLossRank <= requiredRank);
+                    const baselineProb = baselineRow ? getMetricProb(baselineRow, metric.label) : null;
+                    const delta =
+                      baselineProb === null || baselineProb === undefined
+                        ? null
+                        : computeDelta(metric.prob, baselineProb, displayMode);
+                    const showDelta = Boolean(
+                      delta !== null &&
+                        hasMeaningfulDelta(delta, displayMode) &&
+                        !fullyEliminated
+                    );
+                    const deltaClass = delta !== null && delta > 0 ? "delta-up" : "delta-down";
+                    const deltaChanged = futuresDeltaChangedKeys.has(`${row.teamId}-${metric.label}`);
                     return (
                       <div key={`${row.teamId}-${metric.label}`} className="future-metric">
                         <span className="future-metric-label">{metric.label}</span>
@@ -1946,6 +2031,13 @@ function App() {
                             formatted.primary
                           )}
                         </span>
+                        {showDelta && delta !== null ? (
+                          <span
+                            className={`futures-delta ${deltaClass} ${deltaChanged ? "futures-delta--changed" : ""}`}
+                          >
+                            {formatDelta(delta, displayMode)}
+                          </span>
+                        ) : null}
                       </div>
                     );
                   })}

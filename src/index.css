@@ -1722,6 +1722,40 @@ body {
   text-overflow: clip;
 }
 
+.futures-delta {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: 0.02em;
+  margin-top: 2px;
+  transition: color 300ms ease-out;
+}
+
+.futures-delta.delta-up {
+  color: rgba(76, 175, 80, 0.8);
+}
+
+.futures-delta.delta-down {
+  color: rgba(239, 83, 80, 0.75);
+}
+
+.futures-delta--changed {
+  animation: deltaFlash 600ms ease-out;
+}
+
+@keyframes deltaFlash {
+  0% {
+    opacity: 0.4;
+  }
+  50% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 1;
+  }
+}
+
 .eg-table {
   width: 100%;
   border-collapse: collapse;
