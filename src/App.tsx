@@ -695,6 +695,61 @@ function App() {
     return next;
   };
 
+  const sanitizeCustomProbByParticipants = (
+    prevLocks: LockedPicks,
+    nextLocks: LockedPicks,
+    currentCustom: CustomProbByGame
+  ): CustomProbByGame => {
+    if (Object.keys(currentCustom).length === 0) return currentCustom;
+
+    const prevResolved = resolveGames(prevLocks).games;
+    const nextResolved = resolveGames(nextLocks).games;
+    const prevById = new Map(prevResolved.map((game) => [game.id, game]));
+    const nextById = new Map(nextResolved.map((game) => [game.id, game]));
+
+    let changed = false;
+    const nextCustom: CustomProbByGame = {};
+
+    for (const [gameId, rawProb] of Object.entries(currentCustom)) {
+      if (typeof rawProb !== "number" || !Number.isFinite(rawProb)) continue;
+
+      const nextGame = nextById.get(gameId);
+      if (!nextGame || !nextGame.teamAId || !nextGame.teamBId) {
+        changed = true;
+        continue;
+      }
+
+      const prevGame = prevById.get(gameId);
+      const participantsChanged =
+        !prevGame ||
+        prevGame.teamAId !== nextGame.teamAId ||
+        prevGame.teamBId !== nextGame.teamBId;
+
+      if (participantsChanged) {
+        changed = true;
+        continue;
+      }
+
+      nextCustom[gameId] = rawProb;
+    }
+
+    return changed ? nextCustom : currentCustom;
+  };
+
+  const applyLockedPicksUpdate = (nextRawLocks: LockedPicks) => {
+    const nextSanitizedLocks = sanitizeLockedPicks(nextRawLocks);
+    const nextCustomProbByGame = sanitizeCustomProbByParticipants(lockedPicks, nextSanitizedLocks, customProbByGame);
+
+    if (nextCustomProbByGame !== customProbByGame) {
+      setCustomProbByGame(nextCustomProbByGame);
+      if (probPopup && !Object.prototype.hasOwnProperty.call(nextCustomProbByGame, probPopup.gameId)) {
+        setProbPopup(null);
+      }
+    }
+
+    setLockedPicks(nextSanitizedLocks);
+  };
+
   const openProbabilityPopup = (game: ResolvedGame, anchorEl: HTMLElement) => {
     if (!game.teamAId || !game.teamBId || game.winnerId) return;
     if (probPopup) {
@@ -771,7 +826,7 @@ function App() {
       setProbPopup(null);
     }
 
-    setLockedPicks(sanitizeLockedPicks(next));
+    applyLockedPicksUpdate(next);
   };
 
   const onUndo = () => {
@@ -792,7 +847,7 @@ function App() {
     closeProbabilityPopup(true);
     const previous = undoStack[undoStack.length - 1];
     setUndoStack((prev) => prev.slice(0, -1));
-    setLockedPicks(previous);
+    applyLockedPicksUpdate(previous);
   };
 
   const onUndoGame = (gameId: string) => {
@@ -806,7 +861,7 @@ function App() {
     pushUndo(lockedPicks);
     const next = { ...lockedPicks };
     delete next[gameId];
-    setLockedPicks(sanitizeLockedPicks(next));
+    applyLockedPicksUpdate(next);
   };
 
   const onSwitchPick = (game: ResolvedGame, teamId: string) => {
@@ -823,7 +878,7 @@ function App() {
     simGeneratedGameIdsRef.current.delete(game.id);
     pushUndo(lockedPicks);
     setLastPickedKey(`${game.id}:${teamId}`);
-    setLockedPicks(sanitizeLockedPicks({ ...lockedPicks, [game.id]: teamId }));
+    applyLockedPicksUpdate({ ...lockedPicks, [game.id]: teamId });
   };
 
   const onUnavailableRoundClick = (round: ResolvedGame["round"]) => {
@@ -865,7 +920,7 @@ function App() {
     for (const game of games) {
       if (game.region === region) simGeneratedGameIdsRef.current.delete(game.id);
     }
-    setLockedPicks(resetRegionPicks(lockedPicks, region));
+    applyLockedPicksUpdate(resetRegionPicks(lockedPicks, region));
   };
 
   const onRequestResetAll = () => {

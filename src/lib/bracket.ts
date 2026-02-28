@@ -43,7 +43,8 @@ export const resolveGames = (
     }
 
     const candidate = lockedPicks[template.id] || null;
-    const isValidLock = candidate !== null && (candidate === teamAId || candidate === teamBId);
+    const participantsReady = teamAId !== null && teamBId !== null;
+    const isValidLock = participantsReady && candidate !== null && (candidate === teamAId || candidate === teamBId);
     const winnerId = isValidLock ? candidate : null;
 
     if (isValidLock && winnerId) {
