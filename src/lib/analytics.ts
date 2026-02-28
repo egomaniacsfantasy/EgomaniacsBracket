@@ -7,7 +7,12 @@ const POSTHOG_HOST = env.VITE_POSTHOG_HOST || "https://us.i.posthog.com";
 let initialized = false;
 
 export function initAnalytics() {
-  if (initialized || !POSTHOG_KEY) return;
+  if (initialized) return;
+  if (!POSTHOG_KEY) {
+    // If a global PostHog snippet is already present, allow tracking through it.
+    initialized = Boolean((window as unknown as { posthog?: { capture?: (event: string, props?: Record<string, unknown>) => void } }).posthog?.capture);
+    return;
+  }
   posthog.init(POSTHOG_KEY, {
     api_host: POSTHOG_HOST,
     person_profiles: "identified_only",
@@ -18,9 +23,15 @@ export function initAnalytics() {
 }
 
 export function trackEvent(event: string, properties?: Record<string, unknown>) {
-  if (!initialized) return;
   try {
-    posthog.capture(event, properties);
+    if (initialized) {
+      posthog.capture(event, properties);
+      return;
+    }
+    const globalPosthog = (window as unknown as { posthog?: { capture?: (name: string, props?: Record<string, unknown>) => void } }).posthog;
+    if (globalPosthog?.capture) {
+      globalPosthog.capture(event, properties);
+    }
   } catch {
     // no-op
   }
