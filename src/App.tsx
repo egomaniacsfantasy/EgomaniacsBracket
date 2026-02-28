@@ -432,6 +432,7 @@ function App() {
   const [activeHint, setActiveHint] = useState<ActiveHint | null>(null);
   const [resetModalConfig, setResetModalConfig] = useState<ResetModalConfig | null>(null);
   const [linkCopied, setLinkCopied] = useState(false);
+  const [expandedCollapsedMatchupId, setExpandedCollapsedMatchupId] = useState<string | null>(null);
   const [shareToastVisible, setShareToastVisible] = useState(false);
   const [shareModalVisible, setShareModalVisible] = useState(false);
   const [shareExporting, setShareExporting] = useState<ShareFormat | null>(null);
@@ -1384,6 +1385,22 @@ function App() {
     });
   };
 
+  const onExpandCollapsedMatchup = (game: ResolvedGame, matchupId: string | null) => {
+    if (!matchupId) {
+      if (probPopup?.gameId === expandedCollapsedMatchupId) {
+        closeProbabilityPopup(true);
+      }
+      setExpandedCollapsedMatchupId(null);
+      return;
+    }
+    setExpandedCollapsedMatchupId(matchupId);
+    trackEvent("collapsed_round_expanded", {
+      matchup_id: matchupId,
+      round: game.round,
+      region: game.region,
+    });
+  };
+
   const onCopyShareLink = async () => {
     if (typeof window === "undefined") return;
     const shareUrl = window.location.href;
@@ -1675,6 +1692,57 @@ function App() {
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
   }, [shareModalVisible, shareExporting]);
+
+  useEffect(() => {
+    if (!expandedCollapsedMatchupId) return;
+
+    const handleMouseDown = (event: MouseEvent) => {
+      const target = event.target as HTMLElement | null;
+      if (!target) return;
+      if (target.closest(".collapsed-expanded-overlay")) return;
+      if (target.closest(".bracket-cell--clickable")) return;
+      if (target.closest(".prob-popup")) return;
+      if (probPopup?.gameId === expandedCollapsedMatchupId) {
+        closeProbabilityPopup(true);
+      }
+      setExpandedCollapsedMatchupId(null);
+    };
+
+    const handleEscape = (event: KeyboardEvent) => {
+      if (event.key !== "Escape") return;
+      if (probPopup?.gameId === expandedCollapsedMatchupId) {
+        closeProbabilityPopup(true);
+      }
+      setExpandedCollapsedMatchupId(null);
+    };
+
+    document.addEventListener("mousedown", handleMouseDown);
+    document.addEventListener("keydown", handleEscape);
+    return () => {
+      document.removeEventListener("mousedown", handleMouseDown);
+      document.removeEventListener("keydown", handleEscape);
+    };
+  }, [expandedCollapsedMatchupId, probPopup]);
+
+  useEffect(() => {
+    if (!expandedCollapsedMatchupId) return;
+    const game = games.find((entry) => entry.id === expandedCollapsedMatchupId);
+    if (!game || !game.region || game.round === "E8" || game.round === "F4" || game.round === "CHAMP") {
+      setExpandedCollapsedMatchupId(null);
+      return;
+    }
+
+    const r32Games = gamesByRegionAndRound(games, game.region, "R32");
+    const s16Games = gamesByRegionAndRound(games, game.region, "S16");
+    const e8Games = gamesByRegionAndRound(games, game.region, "E8");
+    const roundStillCollapsed =
+      (game.round === "R64" && r32Games.length > 0 && r32Games.every((entry) => Boolean(entry.teamAId && entry.teamBId))) ||
+      (game.round === "R32" && s16Games.length > 0 && s16Games.every((entry) => Boolean(entry.teamAId && entry.teamBId))) ||
+      (game.round === "S16" && e8Games.length > 0 && e8Games.every((entry) => Boolean(entry.teamAId && entry.teamBId)));
+    if (!roundStillCollapsed) {
+      setExpandedCollapsedMatchupId(null);
+    }
+  }, [expandedCollapsedMatchupId, games]);
 
   useEffect(() => {
     if (!probPopup) return;
@@ -2408,6 +2476,8 @@ function App() {
                           displayMode={displayMode}
                           onOpenProbabilityPopup={openProbabilityPopup}
                           onUnavailableRoundClick={onUnavailableRoundClick}
+                          expandedCollapsedMatchupId={expandedCollapsedMatchupId}
+                          onExpandCollapsedMatchup={onExpandCollapsedMatchup}
                         />
                       ))}
                     </div>
@@ -2435,6 +2505,8 @@ function App() {
                           displayMode={displayMode}
                           onOpenProbabilityPopup={openProbabilityPopup}
                           onUnavailableRoundClick={onUnavailableRoundClick}
+                          expandedCollapsedMatchupId={expandedCollapsedMatchupId}
+                          onExpandCollapsedMatchup={onExpandCollapsedMatchup}
                         />
                       ))}
                     </div>
@@ -3563,6 +3635,8 @@ function RegionBracket({
   displayMode,
   onOpenProbabilityPopup,
   onUnavailableRoundClick,
+  expandedCollapsedMatchupId,
+  onExpandCollapsedMatchup,
 }: {
   region: Region;
   games: ResolvedGame[];
@@ -3575,6 +3649,8 @@ function RegionBracket({
   displayMode: OddsDisplayMode;
   onOpenProbabilityPopup: (game: ResolvedGame, anchorEl: HTMLElement) => void;
   onUnavailableRoundClick: (round: ResolvedGame["round"]) => void;
+  expandedCollapsedMatchupId: string | null;
+  onExpandCollapsedMatchup: (game: ResolvedGame, matchupId: string | null) => void;
 }) {
   const rounds = inverted ? [...regionRounds].reverse() : [...regionRounds];
   const collapseByRound = useMemo(() => {
@@ -3657,6 +3733,7 @@ function RegionBracket({
                         <GameCard
                           game={game}
                           collapsed={collapsed}
+                          expandedFromCollapsed={collapsed && expandedCollapsedMatchupId === game.id}
                           gameWinProbs={gameWinProbs}
                           possibleWinners={possibleWinners}
                           onPick={onPick}
@@ -3664,6 +3741,7 @@ function RegionBracket({
                           displayMode={displayMode}
                           onOpenProbabilityPopup={onOpenProbabilityPopup}
                           onUnavailableRoundClick={onUnavailableRoundClick}
+                          onExpandCollapsedMatchup={(matchupId) => onExpandCollapsedMatchup(game, matchupId)}
                         />
                       </div>
                     );
@@ -3681,6 +3759,7 @@ function RegionBracket({
 function GameCard({
   game,
   collapsed = false,
+  expandedFromCollapsed = false,
   gameWinProbs,
   possibleWinners,
   onPick,
@@ -3688,9 +3767,11 @@ function GameCard({
   displayMode,
   onOpenProbabilityPopup,
   onUnavailableRoundClick,
+  onExpandCollapsedMatchup,
 }: {
   game: ResolvedGame;
   collapsed?: boolean;
+  expandedFromCollapsed?: boolean;
   gameWinProbs: SimulationOutput["gameWinProbs"];
   possibleWinners: Record<string, Set<string>>;
   onPick: (game: ResolvedGame, teamId: string | null) => void;
@@ -3698,6 +3779,7 @@ function GameCard({
   displayMode: OddsDisplayMode;
   onOpenProbabilityPopup: (game: ResolvedGame, anchorEl: HTMLElement) => void;
   onUnavailableRoundClick?: (round: ResolvedGame["round"]) => void;
+  onExpandCollapsedMatchup?: (matchupId: string | null) => void;
 }) {
   type CandidateRow = { teamId: string; prob: number; team: NonNullable<ReturnType<typeof teamsById.get>> };
 
@@ -3740,14 +3822,18 @@ function GameCard({
   const compactLongPressTimerRef = useRef<number | null>(null);
   const compactLongPressFiredRef = useRef(false);
 
-  if (collapsed) {
+  if (collapsed && !expandedFromCollapsed) {
     const compactTeams = [game.teamAId, game.teamBId]
       .map((teamId) => (teamId ? teamsById.get(teamId) ?? null : null))
       .filter((team): team is NonNullable<typeof team> => Boolean(team));
 
     return (
       <article className={`eg-game-card round-${game.round.toLowerCase()} collapsed`} data-game-id={game.id}>
-        <div className="bracket-cell--compact">
+        <div
+          className="bracket-cell--compact bracket-cell--clickable"
+          onClick={() => onExpandCollapsedMatchup?.(game.id)}
+          title="Click to edit this pick"
+        >
           {compactTeams.length > 0 ? (
             compactTeams.map((team) => (
               <CompactTeamRow
@@ -3770,13 +3856,47 @@ function GameCard({
               </div>
             </>
           )}
+          <div className="compact-edit-hint">✎</div>
         </div>
       </article>
     );
   }
 
+  const wrappedPick = (teamId: string | null) => {
+    const shouldTrackChange = expandedFromCollapsed && teamId !== game.winnerId;
+    onPick(game, teamId);
+    if (shouldTrackChange) {
+      trackEvent("collapsed_round_pick_changed", {
+        matchup_id: game.id,
+        round: game.round,
+        region: game.region,
+        new_winner: teamId,
+      });
+    }
+    if (expandedFromCollapsed) {
+      window.setTimeout(() => onExpandCollapsedMatchup?.(null), 400);
+    }
+  };
+
   return (
-    <article className={`eg-game-card round-${game.round.toLowerCase()}`} data-game-id={game.id}>
+    <article
+      className={`eg-game-card round-${game.round.toLowerCase()} ${expandedFromCollapsed ? "collapsed-expanded-overlay" : ""}`}
+      data-game-id={game.id}
+    >
+      {expandedFromCollapsed ? (
+        <button
+          type="button"
+          className="expanded-collapse-btn"
+          onClick={(event) => {
+            event.stopPropagation();
+            onExpandCollapsedMatchup?.(null);
+          }}
+          title="Collapse"
+          aria-label="Collapse expanded matchup"
+        >
+          ✕
+        </button>
+      ) : null}
       <div className="eg-game-list">
         {useShowdownCard ? (
           <ShowdownCard
@@ -3784,7 +3904,7 @@ function GameCard({
             finalists={finalistRows}
             displayMode={displayMode}
             lastPickedKey={lastPickedKey}
-            onPick={onPick}
+            onPick={wrappedPick}
           />
         ) : rows.length > 0 ? (
           game.round === "R64" ? (
@@ -3818,7 +3938,7 @@ function GameCard({
                   editedProb={game.customProbA !== null}
                   canEditProb={!game.winnerId && game.teamAId !== null && game.teamBId !== null}
                   onOpenProbEditor={(anchorEl) => onOpenProbabilityPopup(game, anchorEl)}
-                  onPick={() => onPick(game, canPick ? team.id : null)}
+                  onPick={() => wrappedPick(canPick ? team.id : null)}
                 />
               );
             })
@@ -3859,7 +3979,7 @@ function GameCard({
                         onUnavailableRoundClick?.(game.round);
                         return;
                       }
-                      onPick(game, canPick ? team.id : null);
+                      wrappedPick(canPick ? team.id : null);
                     }}
                     onTouchStart={(event) => {
                       if (game.winnerId || !game.teamAId || !game.teamBId) return;
@@ -3986,7 +4106,7 @@ function CompactTeamRow({
   return (
     <div
       className={`compact-team-row ${isWinner ? "compact-team-row--winner" : "compact-team-row--loser"}`}
-      data-team-name={`${team.seed} ${team.name}`}
+      data-team-name={`${team.seed} ${team.name} · Click to edit`}
       title={`${team.seed} ${team.name}`}
     >
       <span className="compact-seed">{team.seed}</span>
@@ -4007,7 +4127,7 @@ function ShowdownCard({
   finalists: CandidateRow[];
   displayMode: OddsDisplayMode;
   lastPickedKey: string | null;
-  onPick: (game: ResolvedGame, teamId: string | null) => void;
+  onPick: (teamId: string | null) => void;
 }) {
   const roundClass = game.round === "CHAMP" ? "round-champ" : game.round === "F4" ? "round-f4" : "round-e8";
   const roundLabel = game.round === "CHAMP" ? "National Championship" : game.round === "F4" ? "Final Four" : "Elite 8";
@@ -4043,7 +4163,7 @@ function ShowdownCard({
               <button
                 type="button"
                 className={`eg-showdown-team ${selected ? "picked winner" : ""} ${decided && !selected ? "loser" : ""} ${lastPickedKey === `${game.id}:${team.id}` ? "fresh-pick" : ""}`}
-                onClick={() => onPick(game, team.id)}
+                onClick={() => onPick(team.id)}
                 title={`Chance to advance from this game: ${(candidate.prob * 100).toFixed(1)}%`}
               >
                 <span className="eg-showdown-seed">#{team.seed}</span>
