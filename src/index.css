@@ -3953,6 +3953,10 @@ body.walkthrough-active .eg-title-choice:hover {
   opacity: 1;
 }
 
+.eg-showdown-card.decided .eg-showdown-odds {
+  display: none;
+}
+
 .eg-showdown-card.decided .eg-showdown-team.loser {
   opacity: 0.35;
   filter: grayscale(0.7);
@@ -3974,6 +3978,10 @@ body.walkthrough-active .eg-title-choice:hover {
   letter-spacing: 2px;
   color: #e7bf72;
   margin-top: 6px;
+}
+
+.eg-showdown-card.round-champ.decided .eg-showdown-team.winner::after {
+  content: "NCAA CHAMPION";
 }
 
 .og-top-nav-mobile {

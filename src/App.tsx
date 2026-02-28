@@ -2913,6 +2913,16 @@ function ShowdownCard({
                 : "loss"
               : null;
           const { primary } = formatOddsDisplay(candidate.prob, displayMode);
+          const resultLabel =
+            outcome === "win"
+              ? game.round === "CHAMP"
+                ? "✓ NCAA Champion"
+                : "✓ Advances"
+              : outcome === "loss"
+                ? game.round === "CHAMP"
+                  ? "✕ Runner-up"
+                  : "✕ Eliminated"
+                : null;
           return (
             <Fragment key={`${game.id}-${team.id}-showdown`}>
               {index === 1 ? <span className="eg-showdown-vs">VS</span> : null}
@@ -2926,9 +2936,7 @@ function ShowdownCard({
                 <TeamLogo teamName={team.name} src={teamLogoUrl(team)} className="eg-showdown-logo" />
                 <span className="eg-showdown-name">{showdownTeamName(team.name)}</span>
                 {!decided ? <span className="eg-showdown-odds">{primary}</span> : null}
-                {outcome ? (
-                  <span className="eg-showdown-result">{outcome === "win" ? "✓ Advances" : "✕ Eliminated"}</span>
-                ) : null}
+                {resultLabel ? <span className="eg-showdown-result">{resultLabel}</span> : null}
               </button>
             </Fragment>
           );
