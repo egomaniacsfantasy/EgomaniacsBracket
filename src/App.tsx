@@ -32,6 +32,7 @@ const DEFAULT_SIM_RUNS = 5000;
 const ONBOARDING_STORAGE_KEY = "oddsGods_onboardingDismissed";
 const HINTS_STORAGE_KEY = "oddsGods_hintsShown";
 const FIRST_PICK_NUDGE_SESSION_KEY = "oddsGods_firstPickCascadeNudgeSeen";
+const ODDS_FORMAT_STORAGE_KEY = "bracketlab-odds-format";
 const STAGGERED_SIM_DELAY_MS = 2000;
 const MIN_STAGGERED_SIM_DELAY_MS = 1000;
 const MAX_STAGGERED_SIM_DELAY_MS = 5000;
@@ -227,16 +228,16 @@ const DEFAULT_HINTS_SHOWN: HintsShown = {
 const WALKTHROUGH_STEPS: WalkthroughStepConfig[] = [
   {
     id: "make-pick",
-    heading: "Make your first pick",
-    body: "Tap a team to lock them as the winner of this game. Try picking the 1-seed.",
+    heading: "Pick the upset",
+    body: "Tap the underdog to see what happens. Pick the upset and watch the entire bracket react.",
     ctaText: "Got it →",
-    advanceOn: "pick-detected",
+    advanceOn: "button-click",
     allowSkip: true,
   },
   {
     id: "watch-reprice",
     heading: "Everything just changed",
-    body: "Your pick updated odds across the entire bracket — Round of 32, Sweet 16, Elite 8, all the way to the championship. These aren't static numbers. Every pick you make recalculates everything.",
+    body: "Your upset pick just repriced odds across the entire bracket — Round of 32, Sweet 16, Elite 8, all the way to the championship. These aren't static numbers. Every pick you make recalculates everything.",
     ctaText: "Got it →",
     advanceOn: "button-click",
     allowSkip: true,
@@ -260,7 +261,7 @@ const WALKTHROUGH_STEPS: WalkthroughStepConfig[] = [
   {
     id: "ready",
     heading: "Your toolkit",
-    body: "Undo picks, reset a region, or simulate an entire bracket. Switch between American odds and implied percentages anytime. Now go build your bracket.",
+    body: "You're seeing implied probabilities. Switch to American odds, simulate brackets, undo, or reset anytime.",
     ctaText: "Start picking →",
     advanceOn: "button-click",
     allowSkip: false,
@@ -271,7 +272,11 @@ function App() {
   const [lockedPicks, setLockedPicks] = useState<LockedPicks>({});
   const [customProbByGame, setCustomProbByGame] = useState<CustomProbByGame>({});
   const [undoStack, setUndoStack] = useState<LockedPicks[]>([]);
-  const [displayMode, setDisplayMode] = useState<OddsDisplayMode>("american");
+  const [displayMode, setDisplayMode] = useState<OddsDisplayMode>(() => {
+    if (typeof window === "undefined") return "implied";
+    const saved = window.localStorage.getItem(ODDS_FORMAT_STORAGE_KEY);
+    return saved === "american" || saved === "implied" ? saved : "implied";
+  });
   const [simRuns] = useState<number>(DEFAULT_SIM_RUNS);
   const [sortDesc, setSortDesc] = useState(true);
   const [isUpdating, setIsUpdating] = useState(false);
@@ -311,6 +316,7 @@ function App() {
   const [walkthroughTargetRect, setWalkthroughTargetRect] = useState<DOMRect | null>(null);
   const [tooltipPlacement, setTooltipPlacement] = useState<TooltipPlacement>("below");
   const [walkthroughFirstPickedTeamId, setWalkthroughFirstPickedTeamId] = useState<string | null>(null);
+  const [walkthroughMatchupId, setWalkthroughMatchupId] = useState<string | null>(null);
   const [hintsShown, setHintsShown] = useState<HintsShown>(() => {
     if (typeof window === "undefined") return DEFAULT_HINTS_SHOWN;
     try {
@@ -358,6 +364,52 @@ function App() {
     [lockedPicks, customProbByGame]
   );
   const possibleWinners = useMemo(() => possibleWinnersByGame(sanitized), [sanitized]);
+  const walkthroughMatchup = useMemo(
+    () => (walkthroughMatchupId ? games.find((game) => game.id === walkthroughMatchupId) ?? null : null),
+    [games, walkthroughMatchupId]
+  );
+  const walkthroughUnderdog = useMemo(() => {
+    if (!walkthroughMatchup || !walkthroughMatchup.teamAId || !walkthroughMatchup.teamBId) return null;
+    const probA = getModelGameWinProb(walkthroughMatchup, walkthroughMatchup.teamAId) ?? 0.5;
+    return probA >= 0.5 ? teamsById.get(walkthroughMatchup.teamBId) ?? null : teamsById.get(walkthroughMatchup.teamAId) ?? null;
+  }, [walkthroughMatchup]);
+  const walkthroughPickMade = Boolean(walkthroughMatchupId && sanitized[walkthroughMatchupId]);
+
+  const selectOnboardingMatchupId = (): string | null => {
+    const candidatesFor = (source: ResolvedGame[], minProb: number, maxProb: number) =>
+      source
+        .filter((game) => game.round === "R64" && game.teamAId && game.teamBId)
+        .filter((game) => {
+          const probA = getModelGameWinProb(game, game.teamAId as string);
+          if (probA === null) return false;
+          const underdogProb = Math.min(probA, 1 - probA);
+          return underdogProb >= minProb && underdogProb <= maxProb;
+        })
+        .sort((a, b) => {
+          const teamAA = teamsById.get(a.teamAId as string);
+          const teamAB = teamsById.get(a.teamBId as string);
+          const teamBA = teamsById.get(b.teamAId as string);
+          const teamBB = teamsById.get(b.teamBId as string);
+          const gapA = teamAA && teamAB ? Math.abs(teamAA.seed - teamAB.seed) : 0;
+          const gapB = teamBA && teamBB ? Math.abs(teamBA.seed - teamBB.seed) : 0;
+          return gapB - gapA;
+        });
+
+    const southGames = games.filter((game) => game.region === "South");
+    const primarySouth = candidatesFor(southGames, 0.15, 0.45);
+    if (primarySouth.length > 0) return primarySouth[0].id;
+
+    const primaryAll = candidatesFor(games, 0.15, 0.45);
+    if (primaryAll.length > 0) return primaryAll[0].id;
+
+    const fallbackSouth = candidatesFor(southGames, 0.1, 0.5);
+    if (fallbackSouth.length > 0) return fallbackSouth[0].id;
+
+    const fallbackAll = candidatesFor(games, 0.1, 0.5);
+    if (fallbackAll.length > 0) return fallbackAll[0].id;
+
+    return games.find((game) => game.round === "R64")?.id ?? null;
+  };
 
   useEffect(() => {
     staggeredDelayRef.current = staggeredSimDelayMs;
@@ -399,6 +451,11 @@ function App() {
 
   useEffect(() => {
     if (typeof window === "undefined") return;
+    window.localStorage.setItem(ODDS_FORMAT_STORAGE_KEY, displayMode);
+  }, [displayMode]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
     const rawHash = window.location.hash.startsWith("#") ? window.location.hash.slice(1) : "";
     if (!rawHash) {
       suppressHashSyncRef.current = false;
@@ -437,10 +494,7 @@ function App() {
     });
   }, [isMobile, sidePanelOpen]);
 
-  const completeWalkthrough = () => {
-    trackEvent("onboarding_completed", {
-      step_index: walkthroughStep,
-    });
+  const closeWalkthrough = () => {
     if (walkthroughAdvanceTimerRef.current !== null) {
       window.clearTimeout(walkthroughAdvanceTimerRef.current);
       walkthroughAdvanceTimerRef.current = null;
@@ -450,15 +504,21 @@ function App() {
     setWalkthroughTargetEl(null);
     setWalkthroughTargetRect(null);
     setWalkthroughFirstPickedTeamId(null);
+    setWalkthroughMatchupId(null);
     window.localStorage.setItem(ONBOARDING_STORAGE_KEY, "true");
     setWelcomeGateOpen(false);
   };
 
+  const completeWalkthrough = () => {
+    trackEvent("onboarding_completed");
+    closeWalkthrough();
+  };
+
   const skipWalkthrough = () => {
     trackEvent("onboarding_skipped", {
-      step_index: walkthroughStep,
+      skipped_at_step: walkthroughStep + 1,
     });
-    completeWalkthrough();
+    closeWalkthrough();
   };
 
   const startWalkthrough = (opts?: { replay?: boolean }) => {
@@ -478,6 +538,7 @@ function App() {
     setWalkthroughTargetEl(null);
     setWalkthroughTargetRect(null);
     setWalkthroughFirstPickedTeamId(null);
+    setWalkthroughMatchupId(selectOnboardingMatchupId());
     setWalkthroughActive(true);
   };
 
@@ -1306,6 +1367,38 @@ function App() {
   }, [mobileSection, allRegionE8Complete, allFinalFourComplete, championshipComplete]);
 
   const currentWalkthroughStep = WALKTHROUGH_STEPS[walkthroughStep] ?? null;
+  const walkthroughDisplayStep = useMemo(() => {
+    if (!currentWalkthroughStep) return null;
+
+    if (currentWalkthroughStep.id === "make-pick" && walkthroughUnderdog) {
+      return {
+        ...currentWalkthroughStep,
+        heading: "Pick the upset",
+        body: `Tap the underdog to see what happens. Pick #${walkthroughUnderdog.seed} ${walkthroughUnderdog.name} — watch the entire bracket react.`,
+      };
+    }
+
+    if (currentWalkthroughStep.id === "watch-reprice") {
+      return {
+        ...currentWalkthroughStep,
+        body: "Your upset pick just repriced odds across the entire bracket — Round of 32, Sweet 16, Elite 8, all the way to the championship. These aren't static numbers. Every pick you make recalculates everything.",
+      };
+    }
+
+    if (currentWalkthroughStep.id === "ready") {
+      return {
+        ...currentWalkthroughStep,
+        body: "You're seeing implied probabilities. Switch to American odds, simulate brackets, undo, or reset anytime.",
+      };
+    }
+
+    return currentWalkthroughStep;
+  }, [currentWalkthroughStep, walkthroughUnderdog]);
+  const walkthroughCtaDisabled = currentWalkthroughStep?.id === "make-pick" && !walkthroughPickMade;
+  const walkthroughCtaLabel =
+    currentWalkthroughStep?.id === "make-pick" && !walkthroughPickMade
+      ? "Pick a team first"
+      : currentWalkthroughStep?.ctaText ?? "Next →";
 
   useEffect(() => {
     if (!walkthroughActive || !currentWalkthroughStep) return;
@@ -1322,24 +1415,44 @@ function App() {
       const southRegion = resolveSouthRegion();
       switch (currentWalkthroughStep.id) {
         case "make-pick": {
+          if (walkthroughMatchupId) {
+            const byId = document.querySelector<HTMLElement>(`.eg-game-card[data-game-id="${walkthroughMatchupId}"]`);
+            if (byId) return byId;
+          }
           if (isMobile) {
             return document.querySelector<HTMLElement>(".mobile-matchup-card, .m-card, .mobile-matchup-full");
           }
           return southRegion?.querySelector<HTMLElement>(".eg-game-card.round-r64") ?? null;
         }
         case "watch-reprice": {
+          const sourceTemplate = walkthroughMatchupId ? gameTemplates.find((game) => game.id === walkthroughMatchupId) : null;
+          const nextTemplate = walkthroughMatchupId
+            ? gameTemplates.find(
+                (game) => game.round === "R32" && game.sourceGameIds?.includes(walkthroughMatchupId)
+              )
+            : null;
+          if (nextTemplate) {
+            const byId = document.querySelector<HTMLElement>(`.eg-game-card[data-game-id="${nextTemplate.id}"]`);
+            if (byId) return byId;
+          }
           if (isMobile) {
             return document.querySelector<HTMLElement>(".mobile-round-pill.active + * .m-card, .m-card, .mobile-prob-card");
           }
-          if (southRegion && walkthroughFirstPickedTeamId) {
+          const targetRegionCard =
+            sourceTemplate?.region
+              ? Array.from(document.querySelectorAll<HTMLElement>(".eg-region-card.bracket-region")).find((card) =>
+                  card.querySelector("h2")?.textContent?.trim().toLowerCase().includes(sourceTemplate.region!.toLowerCase())
+                ) ?? southRegion
+              : southRegion;
+          if (targetRegionCard && walkthroughFirstPickedTeamId) {
             const teamName = teamsById.get(walkthroughFirstPickedTeamId)?.name ?? "";
             const rows = Array.from(
-              southRegion.querySelectorAll<HTMLElement>(".lane-r32 .matchup-row, .lane-r32 .eg-compact-chip")
+              targetRegionCard.querySelectorAll<HTMLElement>(".lane-r32 .matchup-row, .lane-r32 .eg-compact-chip")
             );
             const matched = rows.find((row) => row.textContent?.toLowerCase().includes(teamName.toLowerCase()));
             if (matched) return matched;
           }
-          return southRegion?.querySelector<HTMLElement>(".lane-r32 .eg-game-card, .lane-r32 .matchup-row") ?? null;
+          return targetRegionCard?.querySelector<HTMLElement>(".lane-r32 .eg-game-card, .lane-r32 .matchup-row") ?? null;
         }
         case "see-futures": {
           if (isMobile) {
@@ -1352,7 +1465,7 @@ function App() {
             return document.querySelector<HTMLElement>(".m-edit-prob-btn");
           }
           const r64Cards = southRegion?.querySelectorAll<HTMLElement>(".eg-game-card.round-r64");
-          return r64Cards?.[1] ?? r64Cards?.[0] ?? null;
+          return r64Cards?.[1]?.querySelector<HTMLElement>(".matchup-edit-btn") ?? r64Cards?.[0]?.querySelector<HTMLElement>(".matchup-edit-btn") ?? null;
         }
         case "ready":
           return document.querySelector<HTMLElement>(".eg-main-actions.toolbar");
@@ -1370,12 +1483,12 @@ function App() {
       }
       if (currentWalkthroughStep.id === "make-pick") {
         setMobileTab("bracket");
-        setMobileSection("South");
+        if (walkthroughMatchup?.region) setMobileSection(walkthroughMatchup.region);
         setMobileRound("R64");
       }
       if (currentWalkthroughStep.id === "watch-reprice") {
         setMobileTab("bracket");
-        setMobileSection("South");
+        if (walkthroughMatchup?.region) setMobileSection(walkthroughMatchup.region);
         setMobileRound("R32");
       }
       if (currentWalkthroughStep.id === "see-futures") {
@@ -1418,7 +1531,7 @@ function App() {
     return () => {
       cancelled = true;
     };
-  }, [currentWalkthroughStep, isMobile, mobileRound, mobileSection, sidePanelOpen, walkthroughActive, walkthroughFirstPickedTeamId]);
+  }, [currentWalkthroughStep, isMobile, mobileRound, mobileSection, sidePanelOpen, walkthroughActive, walkthroughFirstPickedTeamId, walkthroughMatchup, walkthroughMatchupId]);
 
   useEffect(() => {
     if (!walkthroughActive || !walkthroughTargetEl) return;
@@ -1484,21 +1597,11 @@ function App() {
   }, [isMobile, walkthroughActive, walkthroughTargetRect]);
 
   useEffect(() => {
-    if (!walkthroughActive || currentWalkthroughStep?.id !== "make-pick") return;
-    const selected = document.querySelector(".eg-team-row.selected.result-win, .mobile-team-btn.winner");
-    if (!selected) return;
-    if (walkthroughAdvanceTimerRef.current !== null) window.clearTimeout(walkthroughAdvanceTimerRef.current);
-    const winnerGame = Object.entries(lockedPicks)[0];
-    if (winnerGame?.[1]) setWalkthroughFirstPickedTeamId(winnerGame[1]);
-    walkthroughAdvanceTimerRef.current = window.setTimeout(() => {
-      setWalkthroughStep(1);
-    }, 600);
-    return () => {
-      if (walkthroughAdvanceTimerRef.current !== null) {
-        window.clearTimeout(walkthroughAdvanceTimerRef.current);
-      }
-    };
-  }, [currentWalkthroughStep?.id, lockedPicks, walkthroughActive]);
+    if (!walkthroughActive || !walkthroughMatchupId) return;
+    const winnerId = sanitized[walkthroughMatchupId];
+    if (!winnerId) return;
+    setWalkthroughFirstPickedTeamId(winnerId);
+  }, [sanitized, walkthroughActive, walkthroughMatchupId]);
 
   useEffect(() => {
     if (!walkthroughActive) return;
@@ -1508,6 +1611,7 @@ function App() {
       setWalkthroughTargetEl(null);
       setWalkthroughTargetRect(null);
       setWalkthroughFirstPickedTeamId(null);
+      setWalkthroughMatchupId(null);
     };
     window.addEventListener("popstate", onNavigate);
     return () => window.removeEventListener("popstate", onNavigate);
@@ -2030,14 +2134,30 @@ function App() {
         onCancel={() => setResetModalConfig(null)}
       />
 
-      {walkthroughActive && walkthroughTargetRect && currentWalkthroughStep ? (
+      {walkthroughActive && walkthroughTargetRect && walkthroughDisplayStep ? (
         <Suspense fallback={null}>
           <SpotlightWalkthrough
-            step={currentWalkthroughStep}
+            step={walkthroughDisplayStep}
             stepIndex={walkthroughStep}
             targetRect={walkthroughTargetRect}
             placement={tooltipPlacement}
+            ctaDisabled={walkthroughCtaDisabled}
+            ctaLabel={walkthroughCtaLabel}
             onAdvance={() => {
+              if (walkthroughCtaDisabled) return;
+              const highlighted = walkthroughMatchup;
+              const pickedTeamId = highlighted?.id ? sanitized[highlighted.id] ?? null : null;
+              const pickedTeam = pickedTeamId ? teamsById.get(pickedTeamId) ?? null : null;
+              const opponentTeam =
+                highlighted && pickedTeamId && highlighted.teamAId && highlighted.teamBId
+                  ? teamsById.get(highlighted.teamAId === pickedTeamId ? highlighted.teamBId : highlighted.teamAId) ?? null
+                  : null;
+              trackEvent("onboarding_step_completed", {
+                step: walkthroughStep + 1,
+                matchup_id: highlighted?.id ?? null,
+                picked_team: pickedTeamId,
+                was_upset: Boolean(pickedTeam && opponentTeam && pickedTeam.seed > opponentTeam.seed),
+              });
               if (currentWalkthroughStep.id === "ready") {
                 completeWalkthrough();
                 return;
@@ -2959,7 +3079,7 @@ function GameCard({
       .filter((team): team is NonNullable<typeof team> => Boolean(team));
 
     return (
-      <article className={`eg-game-card round-${game.round.toLowerCase()} collapsed`}>
+      <article className={`eg-game-card round-${game.round.toLowerCase()} collapsed`} data-game-id={game.id}>
         <div className="bracket-cell--compact">
           {compactTeams.length > 0 ? (
             compactTeams.map((team) => (
@@ -2989,7 +3109,7 @@ function GameCard({
   }
 
   return (
-    <article className={`eg-game-card round-${game.round.toLowerCase()}`}>
+    <article className={`eg-game-card round-${game.round.toLowerCase()}`} data-game-id={game.id}>
       <div className="eg-game-list">
         {useShowdownCard ? (
           <ShowdownCard
@@ -3804,6 +3924,8 @@ function SpotlightWalkthrough({
   stepIndex,
   targetRect,
   placement,
+  ctaDisabled,
+  ctaLabel,
   onAdvance,
   onSkip,
 }: {
@@ -3811,12 +3933,13 @@ function SpotlightWalkthrough({
   stepIndex: number;
   targetRect: DOMRect;
   placement: TooltipPlacement;
+  ctaDisabled: boolean;
+  ctaLabel: string;
   onAdvance: () => void;
   onSkip: () => void;
 }) {
   const tooltipRef = useRef<HTMLDivElement | null>(null);
   const ctaRef = useRef<HTMLButtonElement | null>(null);
-  const buttonLabel = step.ctaText?.trim() || "Next →";
   const padded = {
     top: Math.max(8, targetRect.top - 8),
     left: Math.max(8, targetRect.left - 8),
@@ -3825,8 +3948,13 @@ function SpotlightWalkthrough({
   };
 
   useEffect(() => {
-    ctaRef.current?.focus();
-  }, [step.id]);
+    if (!ctaDisabled) {
+      ctaRef.current?.focus();
+      return;
+    }
+    const skipBtn = tooltipRef.current?.querySelector<HTMLButtonElement>(".walkthrough-skip-link");
+    skipBtn?.focus();
+  }, [ctaDisabled, step.id]);
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
@@ -3835,7 +3963,7 @@ function SpotlightWalkthrough({
         onSkip();
         return;
       }
-      if (event.key === "Enter" && document.activeElement === ctaRef.current) {
+      if (event.key === "Enter" && document.activeElement === ctaRef.current && !ctaDisabled) {
         event.preventDefault();
         onAdvance();
         return;
@@ -3857,7 +3985,7 @@ function SpotlightWalkthrough({
     };
     document.addEventListener("keydown", onKeyDown);
     return () => document.removeEventListener("keydown", onKeyDown);
-  }, [onAdvance, onSkip]);
+  }, [ctaDisabled, onAdvance, onSkip]);
 
   const tooltipStyle: React.CSSProperties = (() => {
     const gap = 14;
@@ -3918,8 +4046,14 @@ function SpotlightWalkthrough({
           ))}
         </div>
         <div className="walkthrough-actions">
-          <button type="button" className="walkthrough-cta-btn" ref={ctaRef} onClick={onAdvance}>
-            {buttonLabel}
+          <button
+            type="button"
+            className={`walkthrough-cta-btn ${ctaDisabled ? "walkthrough-cta-btn--disabled" : ""}`}
+            ref={ctaRef}
+            onClick={onAdvance}
+            disabled={ctaDisabled}
+          >
+            {ctaLabel}
           </button>
           {step.allowSkip ? (
             <button type="button" className="walkthrough-skip-link" onClick={onSkip}>

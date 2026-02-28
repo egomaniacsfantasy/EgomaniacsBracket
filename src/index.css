@@ -2072,6 +2072,13 @@ input[type="range"] {
   background: #d4b85e;
 }
 
+.walkthrough-cta-btn--disabled,
+.walkthrough-cta-btn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
 .walkthrough-skip-link {
   border: 0;
   background: transparent;
@@ -2766,7 +2773,7 @@ body.og-onboarding-open {
 
 .matchup-edit-btn {
   position: absolute;
-  right: 0px;
+  left: 18px;
   top: 50%;
   transform: translateY(-50%);
   width: 18px;
@@ -4026,6 +4033,10 @@ body.walkthrough-active .eg-side-panel {
 body.walkthrough-active .wt-spotlight-target,
 body.walkthrough-active .wt-spotlight-target * {
   pointer-events: auto !important;
+}
+
+body.walkthrough-active .wt-spotlight-target.matchup-edit-btn {
+  opacity: 1 !important;
 }
 
 body.walkthrough-active .eg-team-row:hover,
