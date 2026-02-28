@@ -936,7 +936,7 @@ body {
     display: flex;
     flex-direction: column;
     justify-content: center;
-    min-height: 600px;
+    min-height: clamp(300px, 38vh, 420px);
     padding: 0 4px;
   }
 
@@ -3499,10 +3499,11 @@ body {
 }
 
 .eg-showdown-odds {
-  font-size: 14px;
-  font-weight: 500;
+  font-size: 17px;
+  font-weight: 700;
   color: rgba(231, 191, 114, 0.8);
   font-family: "SF Mono", "Fira Code", monospace;
+  line-height: 1.1;
 }
 
 .eg-showdown-vs {
