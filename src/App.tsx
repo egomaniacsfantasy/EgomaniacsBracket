@@ -1,4 +1,4 @@
-import { Suspense, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { Fragment, Suspense, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import "./index.css";
 import { teamsById } from "./data/teams";
@@ -1140,6 +1140,29 @@ function App() {
       window.removeEventListener("resize", onScrollOrResize);
       if (debounceTimer !== null) window.clearTimeout(debounceTimer);
       if (raf) window.cancelAnimationFrame(raf);
+    };
+  }, [walkthroughActive, walkthroughTargetEl]);
+
+  useEffect(() => {
+    const clearSpotlight = () => {
+      document.querySelectorAll<HTMLElement>(".wt-spotlight-target").forEach((el) => {
+        el.classList.remove("wt-spotlight-target");
+      });
+    };
+
+    if (!walkthroughActive || !walkthroughTargetEl) {
+      clearSpotlight();
+      return;
+    }
+
+    clearSpotlight();
+    const timer = window.setTimeout(() => {
+      walkthroughTargetEl.classList.add("wt-spotlight-target");
+    }, 50);
+
+    return () => {
+      window.clearTimeout(timer);
+      walkthroughTargetEl.classList.remove("wt-spotlight-target");
     };
   }, [walkthroughActive, walkthroughTargetEl]);
 
@@ -2473,10 +2496,10 @@ function RegionBracket({
                           possibleWinners={possibleWinners}
                           onPick={onPick}
                           lastPickedKey={lastPickedKey}
-                        displayMode={displayMode}
-                        onOpenProbabilityPopup={onOpenProbabilityPopup}
-                        onUnavailableRoundClick={onUnavailableRoundClick}
-                      />
+                          displayMode={displayMode}
+                          onOpenProbabilityPopup={onOpenProbabilityPopup}
+                          onUnavailableRoundClick={onUnavailableRoundClick}
+                        />
                       </div>
                     );
                   })}
@@ -2546,7 +2569,7 @@ function GameCard({
       (team.id === game.teamAId || team.id === game.teamBId)
     );
   });
-  const useShowdownSplit = (game.round === "CHAMP" || game.round === "F4") && finalistRows.length === 2;
+  const useShowdownCard = (game.round === "E8" || game.round === "F4" || game.round === "CHAMP") && finalistRows.length === 2;
   const compactColumns = getCompactColumns(game.round, rows.length);
   const compactDensity = getCompactDensity(game.round, rows.length);
   const compactLongPressTimerRef = useRef<number | null>(null);
@@ -2590,51 +2613,14 @@ function GameCard({
   return (
     <article className={`eg-game-card round-${game.round.toLowerCase()}`}>
       <div className="eg-game-list">
-        {useShowdownSplit ? (
-          <div className={`eg-champ-split ${game.round === "CHAMP" ? "championship" : "semifinal"}`}>
-            {finalistRows.map((candidate) => {
-              const team = candidate.team!;
-              const selected = game.winnerId === team.id;
-              const outcome =
-                game.lockedByUser && game.winnerId
-                  ? game.winnerId === team.id
-                    ? "win"
-                    : "loss"
-                  : null;
-              const { primary, secondary } = formatOddsDisplay(candidate.prob, displayMode);
-              return (
-                <button
-                  key={`${game.id}-${team.id}-split`}
-                  type="button"
-                  className={`eg-title-choice ${selected ? "selected" : ""} ${lastPickedKey === `${game.id}:${team.id}` ? "fresh-pick" : ""} ${outcome === "win" ? "result-win" : ""} ${outcome === "loss" ? "result-loss" : ""}`}
-                  onClick={() => onPick(game, team.id)}
-                  title={`Chance to win title: ${(candidate.prob * 100).toFixed(1)}%`}
-                >
-                  <span className="title-choice-left">
-                    <span className="chip-seed">{team.seed}</span>
-                    <TeamHoverAnchor teamName={team.name} logoSrc={teamLogoUrl(team)}>
-                      <TeamLogo teamName={team.name} src={teamLogoUrl(team)} />
-                    </TeamHoverAnchor>
-                    <TeamHoverAnchor teamName={team.name} logoSrc={teamLogoUrl(team)}>
-                      <span className={`title-choice-name ${game.round === "CHAMP" ? "full-team-name" : ""}`}>
-                        {team.name}
-                      </span>
-                    </TeamHoverAnchor>
-                  </span>
-                  <span className="title-choice-odds">
-                    {outcome ? (
-                      <span className={`outcome-badge ${outcome}`}>{outcome === "win" ? "✓" : "✕"}</span>
-                    ) : (
-                      <>
-                        <span className="title-choice-prob">{primary}</span>
-                        {secondary ? <span className="title-choice-sub">{secondary}</span> : null}
-                      </>
-                    )}
-                  </span>
-                </button>
-              );
-            })}
-          </div>
+        {useShowdownCard ? (
+          <ShowdownCard
+            game={game}
+            finalists={finalistRows}
+            displayMode={displayMode}
+            lastPickedKey={lastPickedKey}
+            onPick={onPick}
+          />
         ) : rows.length > 0 ? (
           game.round === "R64" ? (
             rows.map((candidate) => {
@@ -2844,6 +2830,61 @@ function CompactTeamRow({
   );
 }
 
+function ShowdownCard({
+  game,
+  finalists,
+  displayMode,
+  lastPickedKey,
+  onPick,
+}: {
+  game: ResolvedGame;
+  finalists: CandidateRow[];
+  displayMode: OddsDisplayMode;
+  lastPickedKey: string | null;
+  onPick: (game: ResolvedGame, teamId: string | null) => void;
+}) {
+  const roundClass = game.round === "CHAMP" ? "round-champ" : game.round === "F4" ? "round-f4" : "round-e8";
+  const roundLabel = game.round === "CHAMP" ? "National Championship" : game.round === "F4" ? "Final Four" : "Elite 8";
+
+  return (
+    <div className={`eg-showdown-card ${roundClass} eg-showdown-card--entering`}>
+      <p className="eg-showdown-label">{roundLabel}</p>
+      <div className="eg-showdown-matchup">
+        {finalists.map((candidate, index) => {
+          const team = candidate.team;
+          const selected = game.winnerId === team.id;
+          const outcome =
+            game.lockedByUser && game.winnerId
+              ? game.winnerId === team.id
+                ? "win"
+                : "loss"
+              : null;
+          const { primary } = formatOddsDisplay(candidate.prob, displayMode);
+          return (
+            <Fragment key={`${game.id}-${team.id}-showdown`}>
+              {index === 1 ? <span className="eg-showdown-vs">VS</span> : null}
+              <button
+                type="button"
+                className={`eg-showdown-team ${selected ? "picked" : ""} ${lastPickedKey === `${game.id}:${team.id}` ? "fresh-pick" : ""}`}
+                onClick={() => onPick(game, team.id)}
+                title={`Chance to advance from this game: ${(candidate.prob * 100).toFixed(1)}%`}
+              >
+                <span className="eg-showdown-seed">#{team.seed}</span>
+                <TeamLogo teamName={team.name} src={teamLogoUrl(team)} />
+                <span className="eg-showdown-name">{showdownTeamName(team.name)}</span>
+                <span className="eg-showdown-odds">{primary}</span>
+                {outcome ? (
+                  <span className="eg-showdown-result">{outcome === "win" ? "✓ Advances" : "✕ Eliminated"}</span>
+                ) : null}
+              </button>
+            </Fragment>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 function getCompactColumns(round: ResolvedGame["round"], count: number): number {
   if (round === "R32") return 1;
   if (round === "S16") return 1;
@@ -3031,6 +3072,15 @@ function normalizeTeamName(name: string): string {
     "Saint Mary's": "Saint Mary's",
   };
   return dictionary[name] ?? name;
+}
+
+function showdownTeamName(name: string): string {
+  return fullTeamName(name)
+    .replace(/^University of\s+/i, "")
+    .replace(/^University\s+/i, "")
+    .replace(/\s+University\s+/gi, " ")
+    .replace(/\s+University$/gi, "")
+    .trim();
 }
 
 function AdaptiveTeamLabel({ className, fullName }: { className: string; fullName: string }) {
