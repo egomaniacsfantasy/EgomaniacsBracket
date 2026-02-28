@@ -2723,7 +2723,8 @@ function GameCard({
                 const selected = game.winnerId === team.id;
                 const { primary, secondary } = formatOddsDisplay(candidate.prob, displayMode);
                 const showLogo = true;
-                const teamLabel = normalizeTeamName(team.name);
+                const normalizedTeamName = normalizeTeamName(team.name);
+                const teamLabel = game.round === "E8" ? abbreviationForTeam(normalizedTeamName) : normalizedTeamName;
                 const outcome =
                   game.lockedByUser && game.winnerId
                     ? game.winnerId === team.id

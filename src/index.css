@@ -3743,6 +3743,59 @@ body {
 
 /* ===== BracketLab Fixes v2 overrides ===== */
 @media (min-width: 768px) {
+  .eg-shell.compact-desktop .eg-team-row {
+    display: grid;
+    grid-template-columns: 14px auto minmax(0, 1fr) auto;
+    column-gap: 3px;
+    align-items: center;
+    overflow: hidden;
+  }
+
+  .eg-shell.compact-desktop .eg-compact-chip {
+    display: grid;
+    grid-template-columns: 14px auto minmax(0, 1fr) auto;
+    column-gap: 3px;
+    align-items: center;
+    overflow: hidden;
+  }
+
+  .eg-shell.compact-desktop .team-hover-anchor,
+  .eg-shell.compact-desktop .team-name-wrap {
+    min-width: 0;
+    overflow: hidden;
+  }
+
+  .eg-shell.compact-desktop .team-logo {
+    width: 11px;
+    height: 11px;
+    max-width: 11px;
+    max-height: 11px;
+    object-fit: contain;
+    flex-shrink: 0;
+  }
+
+  .eg-shell.compact-desktop .team-odds-wrap,
+  .eg-shell.compact-desktop .chip-odds {
+    justify-self: end;
+    text-align: right;
+    white-space: nowrap;
+    font-variant-numeric: tabular-nums;
+    min-width: 0;
+    padding-right: 0;
+  }
+
+  .eg-shell.compact-desktop .eg-team-row.matchup-row,
+  .eg-shell.compact-desktop .eg-compact-chip.matchup-row {
+    padding-right: 32px;
+  }
+
+  .eg-shell.compact-desktop .chip-code {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
   .eg-region-grid.bracket-style {
     grid-template-columns: 1fr 1fr;
     gap: 0;
@@ -3823,7 +3876,15 @@ body {
     display: none;
   }
 
-  @container round-col (min-width: 160px) {
+  .btw-abbrev-name {
+    display: block !important;
+  }
+
+  .btw-fullname {
+    display: none !important;
+  }
+
+  @container round-col (min-width: 200px) {
     .team-name-wrap .btw-abbrev-name {
       display: none !important;
     }
@@ -3831,6 +3892,11 @@ body {
     .team-name-wrap .btw-fullname {
       display: block !important;
     }
+  }
+
+  .eg-round-col.lane-e8 .eg-compact-grid .chip-code,
+  .eg-round-col--e8 .eg-compact-grid .chip-code {
+    display: block !important;
   }
 }
 
