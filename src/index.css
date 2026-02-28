@@ -3404,10 +3404,6 @@ body {
   gap: 16px;
 }
 
-.eg-showdown-card.round-e8 {
-  min-height: 360px;
-}
-
 .eg-showdown-label {
   margin: 0;
   font-size: 11px;
@@ -3443,7 +3439,6 @@ body {
 }
 
 .eg-showdown-card.round-e8 .eg-showdown-team {
-  min-height: 236px;
   justify-content: flex-start;
 }
 
@@ -3499,11 +3494,15 @@ body {
 }
 
 .eg-showdown-odds {
-  font-size: 17px;
+  font-size: 18px;
   font-weight: 700;
   color: rgba(231, 191, 114, 0.8);
   font-family: "SF Mono", "Fira Code", monospace;
   line-height: 1.1;
+}
+
+.eg-showdown-card.round-e8 .eg-showdown-odds {
+  font-size: 20px;
 }
 
 .eg-showdown-vs {
