@@ -2925,7 +2925,7 @@ function ShowdownCard({
                 <span className="eg-showdown-seed">#{team.seed}</span>
                 <TeamLogo teamName={team.name} src={teamLogoUrl(team)} className="eg-showdown-logo" />
                 <span className="eg-showdown-name">{showdownTeamName(team.name)}</span>
-                <span className="eg-showdown-odds">{primary}</span>
+                {!decided ? <span className="eg-showdown-odds">{primary}</span> : null}
                 {outcome ? (
                   <span className="eg-showdown-result">{outcome === "win" ? "✓ Advances" : "✕ Eliminated"}</span>
                 ) : null}

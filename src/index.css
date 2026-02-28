@@ -3802,13 +3802,12 @@ body {
 
 .eg-side-panel:not(.open),
 .eg-side-panel.collapsed {
-  flex-basis: 0;
+  flex-basis: 46px;
   margin: 0;
   overflow: hidden;
-  padding: 0;
-  border: 0;
-  opacity: 0;
-  pointer-events: none;
+  padding: 7px 6px;
+  opacity: 1;
+  pointer-events: auto;
 }
 
 .eg-team-row,
