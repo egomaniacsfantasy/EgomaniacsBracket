@@ -534,17 +534,17 @@ body {
 }
 
 .eg-shell.compact-desktop .eg-round-grid {
-  grid-template-columns: minmax(0, 0.92fr) minmax(0, 1.2fr) minmax(0, 1.32fr) minmax(0, 1.56fr);
+  grid-template-columns: minmax(0, 1.08fr) minmax(0, 1.18fr) minmax(0, 1.26fr) minmax(0, 1.34fr);
   min-height: 742px;
   gap: 6px;
 }
 
 .eg-shell.compact-desktop .eg-layout.panel-open .eg-round-grid {
-  grid-template-columns: minmax(0, 0.86fr) minmax(0, 1.12fr) minmax(0, 1.26fr) minmax(0, 1.52fr);
+  grid-template-columns: minmax(0, 1.02fr) minmax(0, 1.12fr) minmax(0, 1.2fr) minmax(0, 1.28fr);
 }
 
 .eg-shell.compact-desktop .region-inverted .eg-round-grid {
-  grid-template-columns: minmax(0, 1.56fr) minmax(0, 1.32fr) minmax(0, 1.2fr) minmax(0, 0.92fr);
+  grid-template-columns: minmax(0, 1.34fr) minmax(0, 1.26fr) minmax(0, 1.18fr) minmax(0, 1.08fr);
 }
 
 .eg-shell.compact-desktop .eg-round-grid.r64-collapsed {
@@ -2789,7 +2789,11 @@ body.og-onboarding-open {
 
 .matchup-row {
   position: relative;
-  padding-right: 40px;
+  padding-right: 10px;
+}
+
+.matchup-row:not(.matchup-row--picked) {
+  padding-right: 28px;
 }
 
 .matchup-row:not(.matchup-row--picked):hover .matchup-edit-btn {
@@ -3314,7 +3318,12 @@ body {
 .eg-team-row.matchup-row,
 .eg-compact-chip.matchup-row {
   position: relative;
-  padding-right: 40px;
+  padding-right: 10px;
+}
+
+.eg-team-row.matchup-row:not(.matchup-row--picked),
+.eg-compact-chip.matchup-row:not(.matchup-row--picked) {
+  padding-right: 28px;
 }
 
 .matchup-row .team-seed,
@@ -3346,8 +3355,8 @@ body {
 
 .team-odds-wrap,
 .chip-odds {
-  min-width: 52px;
-  padding-right: 24px;
+  min-width: 44px;
+  padding-right: 0;
 }
 
 .eg-team-row.result-win,
@@ -3786,7 +3795,12 @@ body {
 
   .eg-shell.compact-desktop .eg-team-row.matchup-row,
   .eg-shell.compact-desktop .eg-compact-chip.matchup-row {
-    padding-right: 32px;
+    padding-right: 10px;
+  }
+
+  .eg-shell.compact-desktop .eg-team-row.matchup-row:not(.matchup-row--picked),
+  .eg-shell.compact-desktop .eg-compact-chip.matchup-row:not(.matchup-row--picked) {
+    padding-right: 28px;
   }
 
   .eg-shell.compact-desktop .chip-code {
@@ -3819,7 +3833,7 @@ body {
   }
 
   .eg-round-grid {
-    grid-template-columns: var(--r64-width, 0.92fr) var(--r32-width, 1.2fr) var(--s16-width, 1.32fr) var(--e8-width, 1.56fr);
+    grid-template-columns: var(--r64-width, 1.08fr) var(--r32-width, 1.18fr) var(--s16-width, 1.26fr) var(--e8-width, 1.34fr);
     gap: 6px;
     width: 100%;
     will-change: auto;
@@ -3838,7 +3852,7 @@ body {
   }
 
   .region-inverted .eg-round-grid {
-    grid-template-columns: var(--e8-width, 1.56fr) var(--s16-width, 1.32fr) var(--r32-width, 1.2fr) var(--r64-width, 0.92fr);
+    grid-template-columns: var(--e8-width, 1.34fr) var(--s16-width, 1.26fr) var(--r32-width, 1.18fr) var(--r64-width, 1.08fr);
   }
 
   .region-inverted .eg-round-grid.r64-collapsed {
