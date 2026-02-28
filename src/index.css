@@ -534,17 +534,17 @@ body {
 }
 
 .eg-shell.compact-desktop .eg-round-grid {
-  grid-template-columns: minmax(0, 2.05fr) minmax(0, 1.7fr) minmax(0, 1.66fr) minmax(0, 1.62fr);
+  grid-template-columns: minmax(0, 1.18fr) minmax(0, 1.22fr) minmax(0, 1.28fr) minmax(0, 1.36fr);
   min-height: 742px;
-  gap: 4px;
+  gap: 6px;
 }
 
 .eg-shell.compact-desktop .eg-layout.panel-open .eg-round-grid {
-  grid-template-columns: minmax(0, 1.92fr) minmax(0, 1.56fr) minmax(0, 1.5fr) minmax(0, 1.46fr);
+  grid-template-columns: minmax(0, 1.1fr) minmax(0, 1.16fr) minmax(0, 1.24fr) minmax(0, 1.34fr);
 }
 
 .eg-shell.compact-desktop .region-inverted .eg-round-grid {
-  grid-template-columns: minmax(0, 1.62fr) minmax(0, 1.66fr) minmax(0, 1.7fr) minmax(0, 2.05fr);
+  grid-template-columns: minmax(0, 1.36fr) minmax(0, 1.28fr) minmax(0, 1.22fr) minmax(0, 1.18fr);
 }
 
 .eg-shell.compact-desktop .eg-games-lane {
@@ -609,7 +609,7 @@ body {
 }
 
 .eg-shell.compact-desktop .eg-layout.panel-open .eg-region-grid.bracket-style {
-  grid-template-columns: 1fr;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
 .eg-shell.compact-desktop .eg-layout.panel-open .eg-section-head {
@@ -622,7 +622,7 @@ body {
 
 @media (max-width: 1750px) {
   .eg-layout.panel-open .eg-region-grid.bracket-style {
-    grid-template-columns: 1fr;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
 
@@ -3726,38 +3726,38 @@ body {
   }
 
   .eg-round-grid {
-    grid-template-columns: var(--r64-width, 1.8fr) var(--r32-width, 1.2fr) var(--s16-width, 1fr) var(--e8-width, 0.8fr);
-    gap: 2px;
+    grid-template-columns: var(--r64-width, 1.18fr) var(--r32-width, 1.22fr) var(--s16-width, 1.28fr) var(--e8-width, 1.36fr);
+    gap: 6px;
     width: 100%;
     will-change: auto;
   }
 
   .eg-round-grid.r64-collapsed {
-    grid-template-columns: minmax(0, 0fr) var(--r32-width-expanded, 1.6fr) var(--s16-width-expanded, 1.2fr) var(--e8-width-expanded, 1fr);
+    grid-template-columns: minmax(68px, 68px) var(--r32-width-expanded, 1.22fr) var(--s16-width-expanded, 1.34fr) var(--e8-width-expanded, 1.7fr);
   }
 
   .eg-round-grid.r64-collapsed.r32-collapsed {
-    grid-template-columns: minmax(0, 0fr) minmax(0, 0fr) var(--s16-width-full, 1.5fr) var(--e8-width-full, 1.2fr);
+    grid-template-columns: minmax(68px, 68px) minmax(68px, 68px) var(--s16-width-full, 1.24fr) var(--e8-width-full, 1.92fr);
   }
 
   .eg-round-grid.r64-collapsed.r32-collapsed.s16-collapsed {
-    grid-template-columns: minmax(0, 0fr) minmax(0, 0fr) minmax(0, 0fr) 1fr;
+    grid-template-columns: minmax(68px, 68px) minmax(68px, 68px) minmax(68px, 68px) minmax(280px, 1fr);
   }
 
   .region-inverted .eg-round-grid {
-    grid-template-columns: var(--e8-width, 0.8fr) var(--s16-width, 1fr) var(--r32-width, 1.2fr) var(--r64-width, 1.8fr);
+    grid-template-columns: var(--e8-width, 1.36fr) var(--s16-width, 1.28fr) var(--r32-width, 1.22fr) var(--r64-width, 1.18fr);
   }
 
   .region-inverted .eg-round-grid.r64-collapsed {
-    grid-template-columns: var(--e8-width-expanded, 1fr) var(--s16-width-expanded, 1.2fr) var(--r32-width-expanded, 1.6fr) minmax(0, 0fr);
+    grid-template-columns: var(--e8-width-expanded, 1.7fr) var(--s16-width-expanded, 1.34fr) var(--r32-width-expanded, 1.22fr) minmax(68px, 68px);
   }
 
   .region-inverted .eg-round-grid.r64-collapsed.r32-collapsed {
-    grid-template-columns: var(--e8-width-full, 1.2fr) var(--s16-width-full, 1.5fr) minmax(0, 0fr) minmax(0, 0fr);
+    grid-template-columns: var(--e8-width-full, 1.92fr) var(--s16-width-full, 1.24fr) minmax(68px, 68px) minmax(68px, 68px);
   }
 
   .region-inverted .eg-round-grid.r64-collapsed.r32-collapsed.s16-collapsed {
-    grid-template-columns: 1fr minmax(0, 0fr) minmax(0, 0fr) minmax(0, 0fr);
+    grid-template-columns: minmax(280px, 1fr) minmax(68px, 68px) minmax(68px, 68px) minmax(68px, 68px);
   }
 
   .eg-round-col {

@@ -3051,7 +3051,6 @@ function TeamRow({
         <TeamHoverAnchor teamName={fullLabel} logoSrc={logoSrc ?? fallbackLogo(fullLabel)}>
           <span className="team-name-wrap">
             <AdaptiveTeamLabel className="team-name btw-abbrev-name" fullName={fullLabel} />
-            <span className="team-name btw-fullname">{fullLabel}</span>
             {formatted.secondary ? <span className="btw-title-odds">{formatted.secondary}</span> : null}
           </span>
         </TeamHoverAnchor>
