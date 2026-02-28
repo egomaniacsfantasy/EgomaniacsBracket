@@ -5102,3 +5102,8 @@ body.walkthrough-active .eg-title-choice:hover {
   outline: 2px solid rgba(184, 125, 24, 0.6);
   outline-offset: 2px;
 }
+
+.copy-link-btn[data-copied="true"] {
+  color: var(--amber);
+  border-color: rgba(184, 125, 24, 0.4);
+}

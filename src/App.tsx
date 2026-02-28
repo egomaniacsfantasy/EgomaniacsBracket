@@ -2,7 +2,7 @@ import { Fragment, Suspense, useEffect, useLayoutEffect, useMemo, useRef, useSta
 import { createPortal } from "react-dom";
 import "./index.css";
 import { teamsById } from "./data/teams";
-import { BRACKET_HALVES, regionRounds } from "./data/bracket";
+import { BRACKET_HALVES, gameTemplates, regionRounds } from "./data/bracket";
 import {
   finalRounds,
   gamesByRegionAndRound,
@@ -70,6 +70,115 @@ const MOBILE_ROUND_ORDER: Record<"R64" | "R32" | "S16" | "E8", number> = {
   S16: 2,
   E8: 3,
 };
+
+const URL_REGION_ORDER: Region[] = ["South", "West", "East", "Midwest"];
+const URL_ROUND_ORDER: ResolvedGame["round"][] = ["R64", "R32", "S16", "E8", "F4", "CHAMP"];
+const URL_EXPECTED_BITS = 126;
+const URL_EXPECTED_GAME_COUNT = 63;
+
+const canonicalGameTemplates = (() => {
+  const regional: typeof gameTemplates = [];
+  for (const region of URL_REGION_ORDER) {
+    for (const round of ["R64", "R32", "S16", "E8"] as const) {
+      regional.push(
+        ...gameTemplates
+          .filter((game) => game.region === region && game.round === round)
+          .sort((a, b) => a.slot - b.slot)
+      );
+    }
+  }
+
+  const finalFour = gameTemplates.filter((game) => game.round === "F4").sort((a, b) => a.slot - b.slot);
+  const championship = gameTemplates.filter((game) => game.round === "CHAMP").sort((a, b) => a.slot - b.slot);
+  return [...regional, ...finalFour, ...championship];
+})();
+
+const canonicalGameIds = canonicalGameTemplates.map((game) => game.id);
+const canonicalTemplateById = new Map(canonicalGameTemplates.map((game) => [game.id, game]));
+
+function bitsToBase64Url(bitString: string): string {
+  const padded = bitString.padEnd(Math.ceil(bitString.length / 8) * 8, "0");
+  const bytes: number[] = [];
+
+  for (let i = 0; i < padded.length; i += 8) {
+    bytes.push(Number.parseInt(padded.slice(i, i + 8), 2));
+  }
+
+  const binary = String.fromCharCode(...bytes);
+  return btoa(binary).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+}
+
+function base64UrlToBits(encoded: string): string {
+  let base64 = encoded.replace(/-/g, "+").replace(/_/g, "/");
+  while (base64.length % 4) base64 += "=";
+
+  const decoded = atob(base64);
+  let bits = "";
+  for (let i = 0; i < decoded.length; i += 1) {
+    bits += decoded.charCodeAt(i).toString(2).padStart(8, "0");
+  }
+
+  return bits;
+}
+
+function encodeBracketState(locks: LockedPicks): string {
+  let pickedBits = "";
+  let winnerBits = "";
+
+  const { games } = resolveGames(locks);
+  const gameById = new Map(games.map((game) => [game.id, game]));
+
+  for (const gameId of canonicalGameIds) {
+    const game = gameById.get(gameId);
+    if (!game || !game.winnerId || !game.teamAId || !game.teamBId) {
+      pickedBits += "0";
+      winnerBits += "0";
+      continue;
+    }
+
+    pickedBits += "1";
+    winnerBits += game.winnerId === game.teamAId ? "0" : "1";
+  }
+
+  return bitsToBase64Url(pickedBits + winnerBits);
+}
+
+function decodeBracketState(hash: string): LockedPicks | null {
+  if (!hash) return null;
+
+  let bits: string;
+  try {
+    bits = base64UrlToBits(hash);
+  } catch {
+    return null;
+  }
+
+  if (bits.length < URL_EXPECTED_BITS || canonicalGameIds.length !== URL_EXPECTED_GAME_COUNT) return null;
+
+  const pickedBits = bits.slice(0, URL_EXPECTED_GAME_COUNT);
+  const winnerBits = bits.slice(URL_EXPECTED_GAME_COUNT, URL_EXPECTED_GAME_COUNT * 2);
+
+  const decodedByGame = new Map<string, "A" | "B">();
+  for (let i = 0; i < canonicalGameIds.length; i += 1) {
+    if (pickedBits[i] !== "1") continue;
+    decodedByGame.set(canonicalGameIds[i], winnerBits[i] === "1" ? "B" : "A");
+  }
+
+  const nextLocks: LockedPicks = {};
+  for (const round of URL_ROUND_ORDER) {
+    const roundGames = canonicalGameIds.filter((gameId) => canonicalTemplateById.get(gameId)?.round === round);
+    for (const gameId of roundGames) {
+      const side = decodedByGame.get(gameId);
+      if (!side) continue;
+
+      const resolvedGame = resolveGames(nextLocks).games.find((game) => game.id === gameId);
+      if (!resolvedGame || !resolvedGame.teamAId || !resolvedGame.teamBId) return null;
+      nextLocks[gameId] = side === "A" ? resolvedGame.teamAId : resolvedGame.teamBId;
+    }
+  }
+
+  return sanitizeLockedPicks(nextLocks);
+}
 
 type ProbabilityPopupState = {
   gameId: string;
@@ -215,6 +324,7 @@ function App() {
   });
   const [activeHint, setActiveHint] = useState<ActiveHint | null>(null);
   const [resetModalConfig, setResetModalConfig] = useState<ResetModalConfig | null>(null);
+  const [linkCopied, setLinkCopied] = useState(false);
   const [probPopup, setProbPopup] = useState<ProbabilityPopupState | null>(null);
   const [simResult, setSimResult] = useState<SimulationOutput>({
     futures: [],
@@ -240,6 +350,8 @@ function App() {
   const walkthroughAdvanceTimerRef = useRef<number | null>(null);
   const walkthroughResolveTokenRef = useRef(0);
   const contextualHintTimerRef = useRef<number | null>(null);
+  const copyLinkTimerRef = useRef<number | null>(null);
+  const suppressHashSyncRef = useRef(true);
 
   const { games, sanitized } = useMemo(
     () => resolveGames(lockedPicks, customProbByGame),
@@ -284,6 +396,39 @@ function App() {
     if (typeof window === "undefined") return;
     window.localStorage.setItem(HINTS_STORAGE_KEY, JSON.stringify(hintsShown));
   }, [hintsShown]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const rawHash = window.location.hash.startsWith("#") ? window.location.hash.slice(1) : "";
+    if (!rawHash) {
+      suppressHashSyncRef.current = false;
+      return;
+    }
+
+    const decoded = decodeBracketState(rawHash);
+    if (!decoded) {
+      window.history.replaceState(null, "", window.location.pathname + window.location.search);
+      suppressHashSyncRef.current = false;
+      return;
+    }
+
+    setLockedPicks(decoded);
+    trackEvent("shared_bracket_loaded", {
+      total_picks: Object.keys(decoded).length,
+    });
+    suppressHashSyncRef.current = false;
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === "undefined" || suppressHashSyncRef.current) return;
+    if (Object.keys(sanitized).length === 0) {
+      window.history.replaceState(null, "", window.location.pathname + window.location.search);
+      return;
+    }
+
+    const encoded = encodeBracketState(sanitized);
+    window.history.replaceState(null, "", `${window.location.pathname}${window.location.search}#${encoded}`);
+  }, [sanitized]);
 
   useEffect(() => {
     if (!sidePanelOpen) return;
@@ -941,6 +1086,35 @@ function App() {
     });
   };
 
+  const onCopyShareLink = async () => {
+    if (typeof window === "undefined") return;
+    const shareUrl = window.location.href;
+    try {
+      await navigator.clipboard.writeText(shareUrl);
+    } catch {
+      const textarea = document.createElement("textarea");
+      textarea.value = shareUrl;
+      document.body.appendChild(textarea);
+      textarea.select();
+      document.execCommand("copy");
+      document.body.removeChild(textarea);
+    }
+
+    setLinkCopied(true);
+    trackEvent("bracket_link_copied", {
+      total_picks: Object.keys(sanitized).length,
+      bracket_complete: Object.keys(sanitized).length === URL_EXPECTED_GAME_COUNT,
+    });
+
+    if (copyLinkTimerRef.current !== null) {
+      window.clearTimeout(copyLinkTimerRef.current);
+    }
+    copyLinkTimerRef.current = window.setTimeout(() => {
+      setLinkCopied(false);
+      copyLinkTimerRef.current = null;
+    }, 2000);
+  };
+
   const onModelSim = () => {
     trackEvent("instant_sim_clicked", {
       existing_picks: Object.keys(lockedPicks).length,
@@ -1066,6 +1240,9 @@ function App() {
       }
       if (contextualHintTimerRef.current !== null) {
         window.clearTimeout(contextualHintTimerRef.current);
+      }
+      if (copyLinkTimerRef.current !== null) {
+        window.clearTimeout(copyLinkTimerRef.current);
       }
     },
     []
@@ -1381,6 +1558,14 @@ function App() {
       </button>
       <button onClick={onModelSimStaggered} className="eg-btn" disabled={staggeredSimRunning}>
         {staggeredSimRunning ? "Staggered Sim Running..." : "Staggered Sim Bracket"}
+      </button>
+      <button
+        onClick={onCopyShareLink}
+        className="eg-btn copy-link-btn"
+        data-copied={linkCopied ? "true" : "false"}
+        aria-label="Copy shareable bracket link"
+      >
+        {linkCopied ? "Copied!" : "Copy Link"}
       </button>
       {staggeredSimRunning ? (
         <button
