@@ -4991,3 +4991,114 @@ body.walkthrough-active .eg-title-choice:hover {
     opacity: 0;
   }
 }
+
+.reset-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 2000;
+  animation: resetOverlayIn 150ms ease-out;
+}
+
+@keyframes resetOverlayIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.reset-modal {
+  background: #1a1510;
+  border: 1px solid rgba(184, 125, 24, 0.3);
+  border-radius: 10px;
+  padding: 24px;
+  max-width: 340px;
+  width: calc(100% - 32px);
+  box-shadow: 0 12px 48px rgba(0, 0, 0, 0.7);
+  animation: resetModalIn 150ms ease-out;
+}
+
+@keyframes resetModalIn {
+  from {
+    opacity: 0;
+    transform: scale(0.95) translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+.reset-modal-header {
+  margin-bottom: 12px;
+}
+
+.reset-modal-title {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-primary);
+  letter-spacing: 0.04em;
+}
+
+.reset-modal-message {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  line-height: 1.6;
+  color: var(--text-secondary);
+  margin: 0 0 20px;
+}
+
+.reset-modal-actions {
+  display: flex;
+  gap: 10px;
+}
+
+.reset-modal-btn {
+  flex: 1;
+  padding: 10px 16px;
+  border-radius: 8px;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  cursor: pointer;
+}
+
+.reset-modal-btn--cancel {
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  color: var(--text-secondary);
+  transition: border-color 140ms, color 140ms;
+}
+
+.reset-modal-btn--cancel:hover {
+  border-color: rgba(255, 255, 255, 0.3);
+  color: var(--text-primary);
+}
+
+.reset-modal-btn--cancel:focus-visible {
+  outline: 2px solid rgba(184, 125, 24, 0.6);
+  outline-offset: 2px;
+}
+
+.reset-modal-btn--confirm {
+  background: rgba(184, 125, 24, 0.85);
+  border: none;
+  color: #0a0806;
+  transition: filter 140ms;
+}
+
+.reset-modal-btn--confirm:hover {
+  filter: brightness(1.15);
+}
+
+.reset-modal-btn--confirm:focus-visible {
+  outline: 2px solid rgba(184, 125, 24, 0.6);
+  outline-offset: 2px;
+}

@@ -93,6 +93,12 @@ type ActiveHint = {
   message: string;
   rect: DOMRect;
 };
+type ResetModalConfig = {
+  title: string;
+  message: string;
+  confirmLabel: string;
+  onConfirm: () => void;
+};
 type WalkthroughStepConfig = {
   id: WalkthroughStepId;
   heading: string;
@@ -208,6 +214,7 @@ function App() {
     }
   });
   const [activeHint, setActiveHint] = useState<ActiveHint | null>(null);
+  const [resetModalConfig, setResetModalConfig] = useState<ResetModalConfig | null>(null);
   const [probPopup, setProbPopup] = useState<ProbabilityPopupState | null>(null);
   const [simResult, setSimResult] = useState<SimulationOutput>({
     futures: [],
@@ -861,6 +868,24 @@ function App() {
     setLockedPicks(resetRegionPicks(lockedPicks, region));
   };
 
+  const onRequestResetAll = () => {
+    setResetModalConfig({
+      title: "Reset Bracket",
+      message: "Clear all picks and custom odds? This cannot be undone.",
+      confirmLabel: "Clear All",
+      onConfirm: onResetAll,
+    });
+  };
+
+  const onRequestResetRegion = (region: Region) => {
+    setResetModalConfig({
+      title: `Reset ${region}`,
+      message: `Clear all picks in ${region}? This cannot be undone.`,
+      confirmLabel: "Clear Region",
+      onConfirm: () => onResetRegion(region),
+    });
+  };
+
   const onModelSim = () => {
     trackEvent("instant_sim_clicked", {
       existing_picks: Object.keys(lockedPicks).length,
@@ -1293,7 +1318,7 @@ function App() {
       <button onClick={onUndo} disabled={undoStack.length === 0} className="eg-btn">
         Undo
       </button>
-      <button onClick={onResetAll} className="eg-btn">
+      <button onClick={onRequestResetAll} className="eg-btn">
         Reset All
       </button>
       <button onClick={onModelSim} className="eg-btn">
@@ -1616,7 +1641,7 @@ function App() {
                           possibleWinners={possibleWinners}
                           onPick={onPick}
                           lastPickedKey={lastPickedKey}
-                          onResetRegion={onResetRegion}
+                          onResetRegion={onRequestResetRegion}
                           inverted={invertedRegions.has(region)}
                           displayMode={displayMode}
                           onOpenProbabilityPopup={openProbabilityPopup}
@@ -1643,7 +1668,7 @@ function App() {
                           possibleWinners={possibleWinners}
                           onPick={onPick}
                           lastPickedKey={lastPickedKey}
-                          onResetRegion={onResetRegion}
+                          onResetRegion={onRequestResetRegion}
                           inverted={invertedRegions.has(region)}
                           displayMode={displayMode}
                           onOpenProbabilityPopup={openProbabilityPopup}
@@ -1755,6 +1780,15 @@ function App() {
       {welcomeGateOpen ? (
         <WelcomeGate onStart={() => startWalkthrough()} onSkip={() => skipWalkthrough()} />
       ) : null}
+
+      <ConfirmResetModal
+        visible={Boolean(resetModalConfig)}
+        title={resetModalConfig?.title ?? ""}
+        message={resetModalConfig?.message ?? ""}
+        confirmLabel={resetModalConfig?.confirmLabel ?? "Confirm"}
+        onConfirm={resetModalConfig?.onConfirm ?? (() => {})}
+        onCancel={() => setResetModalConfig(null)}
+      />
 
       {walkthroughActive && walkthroughTargetRect && currentWalkthroughStep ? (
         <Suspense fallback={null}>
@@ -3443,6 +3477,65 @@ function ProbabilityPopup({
       >
         {isEdited ? "Apply" : "No changes"}
       </button>
+    </div>,
+    document.body
+  );
+}
+
+function ConfirmResetModal({
+  visible,
+  title,
+  message,
+  confirmLabel,
+  onConfirm,
+  onCancel,
+}: {
+  visible: boolean;
+  title: string;
+  message: string;
+  confirmLabel: string;
+  onConfirm: () => void;
+  onCancel: () => void;
+}) {
+  const cancelRef = useRef<HTMLButtonElement | null>(null);
+
+  useEffect(() => {
+    if (!visible) return;
+    cancelRef.current?.focus();
+  }, [visible]);
+
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape" && visible) onCancel();
+    };
+    document.addEventListener("keydown", onKeyDown);
+    return () => document.removeEventListener("keydown", onKeyDown);
+  }, [onCancel, visible]);
+
+  if (!visible) return null;
+
+  return createPortal(
+    <div className="reset-modal-overlay" onClick={onCancel}>
+      <div className="reset-modal" onClick={(event) => event.stopPropagation()} role="dialog" aria-modal="true" aria-label={title}>
+        <div className="reset-modal-header">
+          <span className="reset-modal-title">{title}</span>
+        </div>
+        <p className="reset-modal-message">{message}</p>
+        <div className="reset-modal-actions">
+          <button ref={cancelRef} className="reset-modal-btn reset-modal-btn--cancel" onClick={onCancel}>
+            Cancel
+          </button>
+          <button
+            className="reset-modal-btn reset-modal-btn--confirm"
+            onClick={() => {
+              onConfirm();
+              onCancel();
+            }}
+          >
+            {confirmLabel}
+          </button>
+        </div>
+      </div>
     </div>,
     document.body
   );
