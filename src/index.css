@@ -2766,24 +2766,25 @@ body.og-onboarding-open {
 
 .matchup-edit-btn {
   position: absolute;
-  right: 8px;
+  right: 0px;
   top: 50%;
   transform: translateY(-50%);
-  width: 20px;
-  height: 20px;
+  width: 18px;
+  height: 18px;
   display: flex;
   align-items: center;
   justify-content: center;
   opacity: 0;
   transition: opacity 140ms ease;
   cursor: pointer;
-  background: none;
+  background: rgba(35, 24, 12, 0.85);
   border: none;
   padding: 0;
   color: rgba(240, 230, 208, 0.4);
   font-size: 12px;
-  border-radius: 3px;
-  z-index: 100;
+  border-radius: 4px;
+  z-index: 10;
+  pointer-events: auto;
   isolation: isolate;
 }
 
@@ -2793,7 +2794,7 @@ body.og-onboarding-open {
 }
 
 .matchup-row:not(.matchup-row--picked) {
-  padding-right: 28px;
+  padding-right: 4px;
 }
 
 .matchup-row:not(.matchup-row--picked):hover .matchup-edit-btn {
@@ -3815,7 +3816,7 @@ body {
 
   .eg-shell.compact-desktop .eg-team-row.matchup-row:not(.matchup-row--picked),
   .eg-shell.compact-desktop .eg-compact-chip.matchup-row:not(.matchup-row--picked) {
-    padding-right: 24px !important;
+    padding-right: 4px !important;
   }
 
   .eg-shell.compact-desktop .chip-code {
