@@ -114,7 +114,7 @@ const WALKTHROUGH_STEPS: WalkthroughStepConfig[] = [
     id: "make-pick",
     heading: "Make your first pick",
     body: "Tap a team to lock them as the winner of this game. Try picking the 1-seed.",
-    ctaText: "",
+    ctaText: "Got it →",
     advanceOn: "pick-detected",
     allowSkip: true,
   },
@@ -1210,6 +1210,38 @@ function App() {
     window.addEventListener("popstate", onNavigate);
     return () => window.removeEventListener("popstate", onNavigate);
   }, [walkthroughActive]);
+
+  useEffect(() => {
+    if (walkthroughActive) {
+      document.body.classList.add("walkthrough-active");
+    } else {
+      document.body.classList.remove("walkthrough-active");
+    }
+    return () => document.body.classList.remove("walkthrough-active");
+  }, [walkthroughActive]);
+
+  useEffect(() => {
+    const targets = Array.from(
+      document.querySelectorAll<HTMLElement>(".eg-region-card, .eg-finals-card")
+    );
+    if (targets.length === 0) return;
+    if (!("IntersectionObserver" in window)) {
+      targets.forEach((el) => el.classList.add("in-view"));
+      return;
+    }
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (!entry.isIntersecting) return;
+          entry.target.classList.add("in-view");
+          observer.unobserve(entry.target);
+        });
+      },
+      { threshold: 0.1 }
+    );
+    targets.forEach((el) => observer.observe(el));
+    return () => observer.disconnect();
+  }, [isMobile, sidePanelOpen]);
 
   const toolbar = (
     <div className="eg-main-actions toolbar">
@@ -2432,26 +2464,43 @@ function RegionBracket({
   onUnavailableRoundClick: (round: ResolvedGame["round"]) => void;
 }) {
   const rounds = inverted ? [...regionRounds].reverse() : [...regionRounds];
-  const collapseByRound = useMemo(
-    () =>
-      Object.fromEntries(
-        rounds.map((round) => {
-          const roundGames = gamesByRegionAndRound(games, region, round);
-          return [round, roundGames.length > 0 && roundGames.every((game) => Boolean(game.winnerId))];
-        })
-      ) as Partial<Record<ResolvedGame["round"], boolean>>,
-    [games, region, rounds]
-  );
-  const buildGridTemplate = (): string => {
-    const orderedRounds: Array<"R64" | "R32" | "S16" | "E8"> = ["R64", "R32", "S16", "E8"];
-    const baseFractions = [1.4, 1.3, 1.6, 2.1];
-    const parts = orderedRounds.map((round, idx) =>
-      collapseByRound[round] ? "minmax(0, 68px)" : `minmax(0, ${baseFractions[idx]}fr)`
-    );
-    if (inverted) parts.reverse();
-    return parts.join(" ");
-  };
-  const gridTemplateColumns = buildGridTemplate();
+  const collapseByRound = useMemo(() => {
+    const r64Games = gamesByRegionAndRound(games, region, "R64");
+    const r32Games = gamesByRegionAndRound(games, region, "R32");
+    const s16Games = gamesByRegionAndRound(games, region, "S16");
+    const e8Games = gamesByRegionAndRound(games, region, "E8");
+
+    const regionState = {
+      r32FullyDetermined: r32Games.length > 0 && r32Games.every((game) => Boolean(game.teamAId && game.teamBId)),
+      s16FullyDetermined: s16Games.length > 0 && s16Games.every((game) => Boolean(game.teamAId && game.teamBId)),
+      e8FullyDetermined: e8Games.length > 0 && e8Games.every((game) => Boolean(game.teamAId && game.teamBId)),
+      r64HasGames: r64Games.length > 0,
+      r32HasGames: r32Games.length > 0,
+      s16HasGames: s16Games.length > 0,
+    };
+
+    const shouldCollapseRound = (round: "R64" | "R32" | "S16" | "E8") => {
+      if (round === "E8") return false;
+      if (round === "R64") return regionState.r64HasGames && regionState.r32FullyDetermined;
+      if (round === "R32") return regionState.r32HasGames && regionState.s16FullyDetermined;
+      if (round === "S16") return regionState.s16HasGames && regionState.e8FullyDetermined;
+      return false;
+    };
+
+    return {
+      R64: shouldCollapseRound("R64"),
+      R32: shouldCollapseRound("R32"),
+      S16: shouldCollapseRound("S16"),
+      E8: false,
+    } as Record<"R64" | "R32" | "S16" | "E8", boolean>;
+  }, [games, region]);
+  const gridStateClasses = [
+    collapseByRound.R64 ? "r64-collapsed" : "",
+    collapseByRound.R32 ? "r32-collapsed" : "",
+    collapseByRound.S16 ? "s16-collapsed" : "",
+  ]
+    .filter(Boolean)
+    .join(" ");
   const shortRoundLabel: Record<ResolvedGame["round"], string> = {
     R64: "R64",
     R32: "R32",
@@ -2470,10 +2519,13 @@ function RegionBracket({
         </button>
       </div>
 
-      <div className="eg-round-grid bracket-grid" style={{ gridTemplateColumns }}>
+      <div className={`eg-round-grid bracket-grid ${gridStateClasses}`}>
         {rounds.map((round) => {
           const roundGames = gamesByRegionAndRound(games, region, round);
-          const collapsed = Boolean(collapseByRound[round]);
+          const collapsed =
+            round === "R64" || round === "R32" || round === "S16" || round === "E8"
+              ? Boolean(collapseByRound[round])
+              : false;
           const e8Game = round === "E8" ? roundGames[0] : null;
           const e8Confirmed = Boolean(e8Game?.teamAId && e8Game?.teamBId);
           return (
@@ -2845,9 +2897,10 @@ function ShowdownCard({
 }) {
   const roundClass = game.round === "CHAMP" ? "round-champ" : game.round === "F4" ? "round-f4" : "round-e8";
   const roundLabel = game.round === "CHAMP" ? "National Championship" : game.round === "F4" ? "Final Four" : "Elite 8";
+  const decided = Boolean(game.lockedByUser && game.winnerId);
 
   return (
-    <div className={`eg-showdown-card ${roundClass} eg-showdown-card--entering`}>
+    <div className={`eg-showdown-card ${roundClass} eg-showdown-card--entering ${decided ? "decided" : ""}`}>
       <p className="eg-showdown-label">{roundLabel}</p>
       <div className="eg-showdown-matchup">
         {finalists.map((candidate, index) => {
@@ -2865,12 +2918,12 @@ function ShowdownCard({
               {index === 1 ? <span className="eg-showdown-vs">VS</span> : null}
               <button
                 type="button"
-                className={`eg-showdown-team ${selected ? "picked" : ""} ${lastPickedKey === `${game.id}:${team.id}` ? "fresh-pick" : ""}`}
+                className={`eg-showdown-team ${selected ? "picked winner" : ""} ${decided && !selected ? "loser" : ""} ${lastPickedKey === `${game.id}:${team.id}` ? "fresh-pick" : ""}`}
                 onClick={() => onPick(game, team.id)}
                 title={`Chance to advance from this game: ${(candidate.prob * 100).toFixed(1)}%`}
               >
                 <span className="eg-showdown-seed">#{team.seed}</span>
-                <TeamLogo teamName={team.name} src={teamLogoUrl(team)} />
+                <TeamLogo teamName={team.name} src={teamLogoUrl(team)} className="eg-showdown-logo" />
                 <span className="eg-showdown-name">{showdownTeamName(team.name)}</span>
                 <span className="eg-showdown-odds">{primary}</span>
                 {outcome ? (
@@ -3042,13 +3095,13 @@ function TeamRow({
   );
 }
 
-function TeamLogo({ teamName, src }: { teamName: string; src: string }) {
+function TeamLogo({ teamName, src, className }: { teamName: string; src: string; className?: string }) {
   const [failed, setFailed] = useState(false);
   const fallback = fallbackLogo(teamName);
 
   return (
     <img
-      className="team-logo"
+      className={className ? `team-logo ${className}` : "team-logo"}
       src={failed ? fallback : src}
       alt={`${teamName} logo`}
       loading="lazy"
@@ -3368,6 +3421,7 @@ function SpotlightWalkthrough({
 }) {
   const tooltipRef = useRef<HTMLDivElement | null>(null);
   const ctaRef = useRef<HTMLButtonElement | null>(null);
+  const buttonLabel = step.ctaText?.trim() || "Next →";
   const padded = {
     top: Math.max(8, targetRect.top - 8),
     left: Math.max(8, targetRect.left - 8),
@@ -3426,8 +3480,8 @@ function SpotlightWalkthrough({
   })();
 
   return createPortal(
-    <div className="walkthrough-layer" role="dialog" aria-modal="true" aria-label="Bracket walkthrough">
-      <div className="walkthrough-mask" />
+    <div className="walkthrough-layer wt-spotlight-overlay" role="dialog" aria-modal="true" aria-label="Bracket walkthrough">
+      <div className="walkthrough-mask wt-spotlight-overlay" />
       <div
         className="walkthrough-cutout"
         style={{
@@ -3448,7 +3502,7 @@ function SpotlightWalkthrough({
         </div>
         <div className="walkthrough-actions">
           <button type="button" className="walkthrough-cta-btn" ref={ctaRef} onClick={onAdvance}>
-            {step.ctaText}
+            {buttonLabel}
           </button>
           {step.allowSkip ? (
             <button type="button" className="walkthrough-skip-link" onClick={onSkip}>

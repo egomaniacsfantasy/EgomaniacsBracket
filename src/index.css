@@ -3705,6 +3705,255 @@ body {
   }
 }
 
+/* ===== BracketLab Fixes v2 overrides ===== */
+@media (min-width: 768px) {
+  .eg-region-grid.bracket-style {
+    grid-template-columns: 1fr 1fr;
+    gap: 0;
+    width: 100%;
+  }
+
+  .eg-region-card.bracket-region {
+    width: 100%;
+    min-width: 0;
+    overflow: hidden;
+  }
+
+  .eg-region-scroll,
+  .eg-bracket-stack {
+    width: 100%;
+  }
+
+  .eg-main-panel {
+    overflow-x: hidden;
+    overflow-y: auto;
+  }
+
+  .eg-round-grid {
+    grid-template-columns: var(--r64-width, 1.8fr) var(--r32-width, 1.2fr) var(--s16-width, 1fr) var(--e8-width, 0.8fr);
+    gap: 2px;
+    width: 100%;
+    will-change: auto;
+  }
+
+  .eg-round-grid.r64-collapsed {
+    grid-template-columns: minmax(0, 0fr) var(--r32-width-expanded, 1.6fr) var(--s16-width-expanded, 1.2fr) var(--e8-width-expanded, 1fr);
+  }
+
+  .eg-round-grid.r64-collapsed.r32-collapsed {
+    grid-template-columns: minmax(0, 0fr) minmax(0, 0fr) var(--s16-width-full, 1.5fr) var(--e8-width-full, 1.2fr);
+  }
+
+  .eg-round-grid.r64-collapsed.r32-collapsed.s16-collapsed {
+    grid-template-columns: minmax(0, 0fr) minmax(0, 0fr) minmax(0, 0fr) 1fr;
+  }
+
+  .region-inverted .eg-round-grid {
+    grid-template-columns: var(--e8-width, 0.8fr) var(--s16-width, 1fr) var(--r32-width, 1.2fr) var(--r64-width, 1.8fr);
+  }
+
+  .region-inverted .eg-round-grid.r64-collapsed {
+    grid-template-columns: var(--e8-width-expanded, 1fr) var(--s16-width-expanded, 1.2fr) var(--r32-width-expanded, 1.6fr) minmax(0, 0fr);
+  }
+
+  .region-inverted .eg-round-grid.r64-collapsed.r32-collapsed {
+    grid-template-columns: var(--e8-width-full, 1.2fr) var(--s16-width-full, 1.5fr) minmax(0, 0fr) minmax(0, 0fr);
+  }
+
+  .region-inverted .eg-round-grid.r64-collapsed.r32-collapsed.s16-collapsed {
+    grid-template-columns: 1fr minmax(0, 0fr) minmax(0, 0fr) minmax(0, 0fr);
+  }
+
+  .eg-round-col {
+    contain: layout style;
+  }
+
+  .eg-round-col--will-collapse,
+  .eg-round-col--expanding,
+  .eg-round-col--collapsing {
+    contain: none;
+  }
+
+  .eg-round-col--collapsed {
+    overflow: hidden;
+    pointer-events: none;
+  }
+
+  .team-name-wrap .btw-abbrev-name {
+    display: block;
+  }
+
+  .team-name-wrap .btw-fullname {
+    display: none;
+  }
+
+  @container round-col (min-width: 160px) {
+    .team-name-wrap .btw-abbrev-name {
+      display: none !important;
+    }
+
+    .team-name-wrap .btw-fullname {
+      display: block !important;
+    }
+  }
+}
+
+@media (max-width: 900px) {
+  .eg-region-grid.bracket-style {
+    grid-template-columns: 1fr;
+  }
+}
+
+.eg-side-panel:not(.open),
+.eg-side-panel.collapsed {
+  flex-basis: 0;
+  margin: 0;
+  overflow: hidden;
+  padding: 0;
+  border: 0;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.eg-team-row,
+.eg-compact-chip {
+  position: relative;
+}
+
+.eg-team-row::after,
+.eg-compact-chip::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  box-shadow: 0 0 18px rgba(184, 125, 24, 0.14);
+  opacity: 0;
+  transition: opacity 0.15s ease;
+  pointer-events: none;
+}
+
+.eg-team-row:hover::after,
+.eg-compact-chip:hover::after {
+  opacity: 1;
+}
+
+.eg-region-card,
+.eg-finals-card {
+  animation: none;
+  opacity: 0;
+}
+
+.eg-region-card.in-view,
+.eg-finals-card.in-view {
+  animation: fade-up 0.36s ease-out both;
+}
+
+.wt-spotlight-overlay,
+.walkthrough-layer {
+  pointer-events: all;
+}
+
+.wt-spotlight-overlay,
+.walkthrough-mask {
+  pointer-events: all;
+  background: rgba(8, 12, 18, 0.82);
+}
+
+.wt-spotlight-target {
+  position: relative !important;
+  z-index: 9999 !important;
+  pointer-events: auto !important;
+  filter: brightness(1.5) saturate(1.2) !important;
+  -webkit-filter: brightness(1.5) saturate(1.2) !important;
+  box-shadow:
+    0 0 0 3px rgba(231, 191, 114, 0.8),
+    0 0 0 6px rgba(231, 191, 114, 0.3),
+    0 0 40px 10px rgba(184, 125, 24, 0.3) !important;
+  border-radius: 12px;
+  transition: filter 0.3s, box-shadow 0.3s;
+}
+
+body.walkthrough-active .eg-team-row,
+body.walkthrough-active .eg-compact-chip,
+body.walkthrough-active .eg-title-choice,
+body.walkthrough-active .eg-side-panel {
+  pointer-events: none !important;
+}
+
+body.walkthrough-active .wt-spotlight-target,
+body.walkthrough-active .wt-spotlight-target * {
+  pointer-events: auto !important;
+}
+
+body.walkthrough-active .eg-team-row:hover,
+body.walkthrough-active .eg-compact-chip:hover,
+body.walkthrough-active .eg-title-choice:hover {
+  border-color: transparent !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+.wt-tooltip-btn,
+.wt-tooltip .wt-btn,
+.onboarding-flow .step-btn,
+[class*="walkthrough"] button[class*="btn"],
+[class*="walkthrough"] button[class*="next"],
+[class*="walkthrough"] button[class*="got-it"],
+.walkthrough-cta-btn {
+  color: #1a1408 !important;
+  font-weight: 700;
+  font-size: 14px;
+  -webkit-text-fill-color: #1a1408;
+}
+
+.eg-showdown-logo {
+  object-fit: contain;
+  image-rendering: -webkit-optimize-contrast;
+  filter: drop-shadow(0 2px 10px rgba(0, 0, 0, 0.5));
+}
+
+.eg-showdown-card.round-e8 .eg-showdown-logo {
+  width: 72px !important;
+  height: 72px !important;
+}
+
+.eg-showdown-card.round-f4 .eg-showdown-logo {
+  width: 88px !important;
+  height: 88px !important;
+}
+
+.eg-showdown-card.round-champ .eg-showdown-logo {
+  width: 100px !important;
+  height: 100px !important;
+}
+
+.eg-showdown-card.decided {
+  opacity: 1;
+}
+
+.eg-showdown-card.decided .eg-showdown-team.loser {
+  opacity: 0.35;
+  filter: grayscale(0.7);
+  transform: scale(0.92);
+  transition: opacity 0.4s, filter 0.4s, transform 0.4s;
+}
+
+.eg-showdown-card.decided .eg-showdown-team.winner {
+  box-shadow:
+    0 0 0 2px rgba(231, 191, 114, 0.5),
+    0 0 20px rgba(184, 125, 24, 0.15);
+}
+
+.eg-showdown-card.decided .eg-showdown-team.winner::after {
+  content: "ADVANCES";
+  display: block;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 2px;
+  color: #e7bf72;
+  margin-top: 6px;
+}
+
 .og-top-nav-mobile {
   display: none;
 }
