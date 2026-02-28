@@ -1,5 +1,6 @@
 import { Fragment, Suspense, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
+import html2canvas from "html2canvas";
 import "./index.css";
 import { teamsById } from "./data/teams";
 import { BRACKET_HALVES, gameTemplates, regionRounds } from "./data/bracket";
@@ -218,6 +219,28 @@ type WalkthroughStepConfig = {
   allowSkip: boolean;
 };
 
+type ShareFinalFourTeam = {
+  id: string;
+  seed: number;
+  name: string;
+  logoUrl: string;
+  champOdds: string;
+};
+
+type ShareBoldPick = {
+  winnerLabel: string;
+  loserLabel: string;
+  winProbPct: number;
+};
+
+type ShareCardData = {
+  f4Teams: ShareFinalFourTeam[];
+  boldestPicks: ShareBoldPick[];
+  totalPicks: number;
+  chalkScore: number;
+  bracketLikelihood: string | null;
+};
+
 const DEFAULT_HINTS_SHOWN: HintsShown = {
   undo: false,
   sim: false,
@@ -331,6 +354,10 @@ function App() {
   const [activeHint, setActiveHint] = useState<ActiveHint | null>(null);
   const [resetModalConfig, setResetModalConfig] = useState<ResetModalConfig | null>(null);
   const [linkCopied, setLinkCopied] = useState(false);
+  const [shareToastVisible, setShareToastVisible] = useState(false);
+  const [shareCardData, setShareCardData] = useState<ShareCardData | null>(null);
+  const [shareExportNonce, setShareExportNonce] = useState(0);
+  const [shareExporting, setShareExporting] = useState(false);
   const [probPopup, setProbPopup] = useState<ProbabilityPopupState | null>(null);
   const [simResult, setSimResult] = useState<SimulationOutput>({
     futures: [],
@@ -357,6 +384,8 @@ function App() {
   const walkthroughResolveTokenRef = useRef(0);
   const contextualHintTimerRef = useRef<number | null>(null);
   const copyLinkTimerRef = useRef<number | null>(null);
+  const shareToastTimerRef = useRef<number | null>(null);
+  const shareCardRef = useRef<HTMLDivElement | null>(null);
   const suppressHashSyncRef = useRef(true);
 
   const { games, sanitized } = useMemo(
@@ -873,6 +902,68 @@ function App() {
 
   const gameById = useMemo(() => new Map(games.map((game) => [game.id, game])), [games]);
 
+  const shareCardComputedData = useMemo<ShareCardData>(() => {
+    const finalGamesById = new Map(finalRounds(games).map((game) => [game.id, game]));
+    const leftSemi = finalGamesById.get("F4-Left-0") ?? null;
+    const rightSemi = finalGamesById.get("F4-Right-0") ?? null;
+    const f4Participants = [leftSemi?.teamAId, leftSemi?.teamBId, rightSemi?.teamAId, rightSemi?.teamBId]
+      .filter((teamId): teamId is string => Boolean(teamId));
+
+    const f4Teams: ShareFinalFourTeam[] = f4Participants
+      .map((teamId) => {
+        const team = teamsById.get(teamId);
+        if (!team) return null;
+        const futuresRow = simResult.futures.find((row) => row.teamId === team.id);
+        const champProb = futuresRow?.champProb ?? 0;
+        return {
+          id: team.id,
+          seed: team.seed,
+          name: team.name,
+          logoUrl: teamLogoUrl(team),
+          champOdds: formatOddsDisplay(champProb, displayMode).primary,
+        };
+      })
+      .filter((team): team is ShareFinalFourTeam => Boolean(team));
+
+    const pickRows = games
+      .filter((game) => Boolean(game.winnerId && game.teamAId && game.teamBId))
+      .map((game) => {
+        const winnerId = game.winnerId as string;
+        const winnerIsA = winnerId === game.teamAId;
+        const winnerTeam = teamsById.get(winnerId) ?? null;
+        const loserTeam = teamsById.get(winnerIsA ? (game.teamBId as string) : (game.teamAId as string)) ?? null;
+        const modelProbA = getModelGameWinProb(game, game.teamAId as string);
+        const winnerWinProb = modelProbA === null ? null : winnerIsA ? modelProbA : 1 - modelProbA;
+        if (!winnerTeam || !loserTeam || winnerWinProb === null) return null;
+        return {
+          winnerLabel: `${winnerTeam.seed} ${winnerTeam.name}`,
+          loserLabel: `${loserTeam.seed} ${loserTeam.name}`,
+          winProb: winnerWinProb,
+        };
+      })
+      .filter((row): row is { winnerLabel: string; loserLabel: string; winProb: number } => Boolean(row))
+      .sort((a, b) => a.winProb - b.winProb);
+
+    const boldestPicks: ShareBoldPick[] = pickRows.slice(0, 3).map((row) => ({
+      winnerLabel: row.winnerLabel,
+      loserLabel: row.loserLabel,
+      winProbPct: Math.round(row.winProb * 100),
+    }));
+
+    const totalPicks = Object.keys(sanitized).length;
+    const chalkScore =
+      pickRows.length > 0 ? Math.round((pickRows.reduce((sum, row) => sum + row.winProb, 0) / pickRows.length) * 100) : 0;
+    const bracketLikelihood = simResult.likelihoodSimulation > 0 ? toOneInX(simResult.likelihoodSimulation) : null;
+
+    return {
+      f4Teams,
+      boldestPicks,
+      totalPicks,
+      chalkScore,
+      bracketLikelihood,
+    };
+  }, [displayMode, games, sanitized, simResult.futures, simResult.likelihoodSimulation]);
+
   const applyCustomProbability = (gameId: string, customProbA: number | null) => {
     setCustomProbByGame((prev) => {
       const next = { ...prev };
@@ -1176,6 +1267,12 @@ function App() {
     }, 2000);
   };
 
+  const onShareBracketImage = () => {
+    if (shareExporting || shareCardComputedData.totalPicks === 0) return;
+    setShareCardData(shareCardComputedData);
+    setShareExportNonce((prev) => prev + 1);
+  };
+
   const onModelSim = () => {
     trackEvent("instant_sim_clicked", {
       existing_picks: Object.keys(lockedPicks).length,
@@ -1305,9 +1402,65 @@ function App() {
       if (copyLinkTimerRef.current !== null) {
         window.clearTimeout(copyLinkTimerRef.current);
       }
+      if (shareToastTimerRef.current !== null) {
+        window.clearTimeout(shareToastTimerRef.current);
+      }
     },
     []
   );
+
+  useEffect(() => {
+    if (shareExportNonce === 0 || !shareCardData || !shareCardRef.current) return;
+    let cancelled = false;
+
+    const exportCard = async () => {
+      setShareExporting(true);
+      await new Promise((resolve) => window.requestAnimationFrame(() => resolve(undefined)));
+      await new Promise((resolve) => window.requestAnimationFrame(() => resolve(undefined)));
+      if (cancelled || !shareCardRef.current) return;
+
+      const canvas = await html2canvas(shareCardRef.current, {
+        backgroundColor: "#0e0c09",
+        scale: 2,
+        useCORS: true,
+        width: 1080,
+        height: 1080,
+        windowWidth: 1080,
+        windowHeight: 1080,
+      });
+      if (cancelled) return;
+
+      const link = document.createElement("a");
+      link.download = "my-bracket-lab.png";
+      link.href = canvas.toDataURL("image/png");
+      link.click();
+
+      trackEvent("bracket_image_exported", {
+        total_picks: shareCardData.totalPicks,
+        chalk_score: shareCardData.chalkScore,
+        f4_count: shareCardData.f4Teams.length,
+      });
+
+      setShareToastVisible(true);
+      if (shareToastTimerRef.current !== null) window.clearTimeout(shareToastTimerRef.current);
+      shareToastTimerRef.current = window.setTimeout(() => {
+        setShareToastVisible(false);
+        shareToastTimerRef.current = null;
+      }, 3000);
+      setShareExporting(false);
+    };
+
+    void exportCard().finally(() => {
+      if (!cancelled) {
+        setShareExporting(false);
+        setShareCardData(null);
+      }
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [shareCardData, shareExportNonce]);
 
   useEffect(() => {
     if (!probPopup) return;
@@ -1670,6 +1823,14 @@ function App() {
         aria-label="Copy shareable bracket link"
       >
         {linkCopied ? "Copied!" : "Copy Link"}
+      </button>
+      <button
+        onClick={onShareBracketImage}
+        className="eg-btn share-bracket-btn"
+        disabled={shareCardComputedData.totalPicks === 0 || shareExporting}
+        aria-label="Export a shareable bracket image"
+      >
+        {shareExporting ? "Exporting..." : "Share Bracket"}
       </button>
       {staggeredSimRunning ? (
         <button
@@ -2175,6 +2336,72 @@ function App() {
           rect={activeHint.rect}
           onDismiss={() => setActiveHint(null)}
         />
+      ) : null}
+
+      {shareToastVisible ? <div className="share-toast">Image saved! Share it on social media.</div> : null}
+
+      {shareCardData ? (
+        <div className="share-card-container" aria-hidden="true">
+          <div ref={shareCardRef} className="share-card">
+            <div className="share-card-header">
+              <span className="share-card-brand">ODDS GODS</span>
+              <span className="share-card-title">The Bracket Lab</span>
+              <span className="share-card-subtitle">My Bracket</span>
+            </div>
+
+            {shareCardData.f4Teams.length > 0 ? (
+              <div className="share-card-section">
+                <span className="share-card-section-label">FINAL FOUR</span>
+                <div className="share-card-f4-grid">
+                  {shareCardData.f4Teams.map((team) => (
+                    <div key={team.id} className="share-card-f4-team">
+                      <img
+                        src={team.logoUrl}
+                        className="share-card-f4-logo"
+                        alt=""
+                        crossOrigin="anonymous"
+                        onError={(event) => {
+                          event.currentTarget.style.display = "none";
+                        }}
+                      />
+                      <span className="share-card-f4-name">
+                        {team.seed} {team.name}
+                      </span>
+                      <span className="share-card-f4-odds">CHAMP: {team.champOdds}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ) : null}
+
+            {shareCardData.boldestPicks.length > 0 ? (
+              <div className="share-card-section">
+                <span className="share-card-section-label">BOLDEST PICKS</span>
+                {shareCardData.boldestPicks.map((pick, index) => (
+                  <div key={`${pick.winnerLabel}-${pick.loserLabel}-${index}`} className="share-card-upset-row">
+                    <span className="share-card-upset-winner">{pick.winnerLabel}</span>
+                    <span className="share-card-upset-over"> over </span>
+                    <span className="share-card-upset-loser">{pick.loserLabel}</span>
+                    <span className="share-card-upset-prob"> ({pick.winProbPct}%)</span>
+                  </div>
+                ))}
+              </div>
+            ) : null}
+
+            <div className="share-card-stats">
+              <span className="share-card-stat-pill">{shareCardData.chalkScore}% Chalk</span>
+              <span className="share-card-stat-pill">{shareCardData.totalPicks}/63 Picks</span>
+              {shareCardData.bracketLikelihood ? (
+                <span className="share-card-likelihood">Bracket Likelihood: {shareCardData.bracketLikelihood}</span>
+              ) : null}
+            </div>
+
+            <div className="share-card-footer">
+              <span className="share-card-tagline">Every pick changes everything.</span>
+              <span className="share-card-url">bracket.oddsgods.net</span>
+            </div>
+          </div>
+        </div>
       ) : null}
     </div>
   );

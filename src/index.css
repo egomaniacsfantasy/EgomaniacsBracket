@@ -5118,3 +5118,191 @@ body.walkthrough-active .eg-title-choice:hover {
   color: var(--amber);
   border-color: rgba(184, 125, 24, 0.4);
 }
+
+.share-card-container {
+  position: fixed;
+  left: -9999px;
+  top: 0;
+  width: 1080px;
+  height: 1080px;
+  pointer-events: none;
+  z-index: -1;
+}
+
+.share-card {
+  width: 1080px;
+  height: 1080px;
+  background: #0e0c09;
+  padding: 60px;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  gap: 34px;
+  justify-content: space-between;
+  font-family: var(--font-mono);
+}
+
+.share-card-header {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.share-card-brand {
+  font-size: 14px;
+  color: #b87d18;
+  letter-spacing: 4px;
+  text-transform: uppercase;
+}
+
+.share-card-title {
+  font-family: var(--font-serif);
+  font-size: 46px;
+  font-weight: 700;
+  color: #f0e6d0;
+}
+
+.share-card-subtitle {
+  font-size: 16px;
+  color: rgba(240, 230, 208, 0.45);
+}
+
+.share-card-section {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.share-card-section-label {
+  font-size: 11px;
+  color: #b87d18;
+  letter-spacing: 3px;
+  text-transform: uppercase;
+}
+
+.share-card-f4-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+
+.share-card-f4-team {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(184, 125, 24, 0.2);
+  border-radius: 10px;
+  padding: 20px 16px;
+}
+
+.share-card-f4-logo {
+  width: 48px;
+  height: 48px;
+  object-fit: contain;
+}
+
+.share-card-f4-name {
+  font-size: 16px;
+  font-weight: 700;
+  color: #f0e6d0;
+  text-align: center;
+}
+
+.share-card-f4-odds {
+  font-size: 12px;
+  color: #b87d18;
+}
+
+.share-card-upset-row {
+  font-size: 14px;
+  color: rgba(240, 230, 208, 0.75);
+  line-height: 1.8;
+}
+
+.share-card-upset-winner {
+  color: #f0e6d0;
+  font-weight: 700;
+}
+
+.share-card-upset-over {
+  color: rgba(240, 230, 208, 0.35);
+  font-style: italic;
+}
+
+.share-card-upset-loser {
+  color: rgba(240, 230, 208, 0.5);
+}
+
+.share-card-upset-prob {
+  color: #b87d18;
+}
+
+.share-card-stats {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.share-card-stat-pill {
+  background: rgba(184, 125, 24, 0.12);
+  border: 1px solid rgba(184, 125, 24, 0.3);
+  border-radius: 100px;
+  padding: 8px 18px;
+  font-size: 14px;
+  font-weight: 700;
+  color: #b87d18;
+}
+
+.share-card-likelihood {
+  font-size: 13px;
+  color: rgba(240, 230, 208, 0.45);
+}
+
+.share-card-footer {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+}
+
+.share-card-tagline {
+  font-size: 14px;
+  color: #b87d18;
+  font-style: italic;
+}
+
+.share-card-url {
+  font-size: 12px;
+  color: rgba(240, 230, 208, 0.3);
+  letter-spacing: 2px;
+}
+
+.share-toast {
+  position: fixed;
+  bottom: 120px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(184, 125, 24, 0.12);
+  border: 1px solid rgba(184, 125, 24, 0.3);
+  border-radius: 8px;
+  padding: 10px 18px;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--amber);
+  z-index: 1000;
+  animation: toastIn 200ms ease-out;
+}
+
+@keyframes toastIn {
+  from {
+    opacity: 0;
+    transform: translateX(-50%) translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+}
