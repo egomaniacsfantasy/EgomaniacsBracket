@@ -534,17 +534,17 @@ body {
 }
 
 .eg-shell.compact-desktop .eg-round-grid {
-  grid-template-columns: minmax(0, 1.18fr) minmax(0, 1.22fr) minmax(0, 1.28fr) minmax(0, 1.36fr);
+  grid-template-columns: minmax(0, 0.92fr) minmax(0, 1.2fr) minmax(0, 1.32fr) minmax(0, 1.56fr);
   min-height: 742px;
   gap: 6px;
 }
 
 .eg-shell.compact-desktop .eg-layout.panel-open .eg-round-grid {
-  grid-template-columns: minmax(0, 1.1fr) minmax(0, 1.16fr) minmax(0, 1.24fr) minmax(0, 1.34fr);
+  grid-template-columns: minmax(0, 0.86fr) minmax(0, 1.12fr) minmax(0, 1.26fr) minmax(0, 1.52fr);
 }
 
 .eg-shell.compact-desktop .region-inverted .eg-round-grid {
-  grid-template-columns: minmax(0, 1.36fr) minmax(0, 1.28fr) minmax(0, 1.22fr) minmax(0, 1.18fr);
+  grid-template-columns: minmax(0, 1.56fr) minmax(0, 1.32fr) minmax(0, 1.2fr) minmax(0, 0.92fr);
 }
 
 .eg-shell.compact-desktop .eg-games-lane {
@@ -3726,7 +3726,7 @@ body {
   }
 
   .eg-round-grid {
-    grid-template-columns: var(--r64-width, 1.18fr) var(--r32-width, 1.22fr) var(--s16-width, 1.28fr) var(--e8-width, 1.36fr);
+    grid-template-columns: var(--r64-width, 0.92fr) var(--r32-width, 1.2fr) var(--s16-width, 1.32fr) var(--e8-width, 1.56fr);
     gap: 6px;
     width: 100%;
     will-change: auto;
@@ -3745,7 +3745,7 @@ body {
   }
 
   .region-inverted .eg-round-grid {
-    grid-template-columns: var(--e8-width, 1.36fr) var(--s16-width, 1.28fr) var(--r32-width, 1.22fr) var(--r64-width, 1.18fr);
+    grid-template-columns: var(--e8-width, 1.56fr) var(--s16-width, 1.32fr) var(--r32-width, 1.2fr) var(--r64-width, 0.92fr);
   }
 
   .region-inverted .eg-round-grid.r64-collapsed {
