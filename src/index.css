@@ -3726,38 +3726,38 @@ body {
   }
 
   .eg-round-grid {
-    grid-template-columns: var(--r64-width, 1.8fr) var(--r32-width, 1.2fr) var(--s16-width, 1fr) var(--e8-width, 0.8fr);
+    grid-template-columns: minmax(0px, 2.05fr) minmax(0px, 1.7fr) minmax(0px, 1.66fr) minmax(0px, 1.62fr);
     gap: 2px;
     width: 100%;
-    will-change: auto;
+    transition: grid-template-columns 0.35s cubic-bezier(0.4, 0, 0.2, 1);
   }
 
-  .eg-round-grid.r64-collapsed {
-    grid-template-columns: minmax(0, 0fr) var(--r32-width-expanded, 1.6fr) var(--s16-width-expanded, 1.2fr) var(--e8-width-expanded, 1fr);
+  .eg-round-grid.r64-done {
+    grid-template-columns: minmax(0px, 0.12fr) minmax(0px, 2.1fr) minmax(0px, 1.9fr) minmax(0px, 1.8fr);
   }
 
-  .eg-round-grid.r64-collapsed.r32-collapsed {
-    grid-template-columns: minmax(0, 0fr) minmax(0, 0fr) var(--s16-width-full, 1.5fr) var(--e8-width-full, 1.2fr);
+  .eg-round-grid.r64-done.r32-done {
+    grid-template-columns: minmax(0px, 0.12fr) minmax(0px, 0.12fr) minmax(0px, 2.2fr) minmax(0px, 2fr);
   }
 
-  .eg-round-grid.r64-collapsed.r32-collapsed.s16-collapsed {
-    grid-template-columns: minmax(0, 0fr) minmax(0, 0fr) minmax(0, 0fr) 1fr;
+  .eg-round-grid.r64-done.r32-done.s16-done {
+    grid-template-columns: minmax(0px, 0.12fr) minmax(0px, 0.12fr) minmax(0px, 0.12fr) minmax(0px, 3fr);
   }
 
   .region-inverted .eg-round-grid {
-    grid-template-columns: var(--e8-width, 0.8fr) var(--s16-width, 1fr) var(--r32-width, 1.2fr) var(--r64-width, 1.8fr);
+    grid-template-columns: minmax(0px, 1.62fr) minmax(0px, 1.66fr) minmax(0px, 1.7fr) minmax(0px, 2.05fr);
   }
 
-  .region-inverted .eg-round-grid.r64-collapsed {
-    grid-template-columns: var(--e8-width-expanded, 1fr) var(--s16-width-expanded, 1.2fr) var(--r32-width-expanded, 1.6fr) minmax(0, 0fr);
+  .region-inverted .eg-round-grid.r64-done {
+    grid-template-columns: minmax(0px, 1.8fr) minmax(0px, 1.9fr) minmax(0px, 2.1fr) minmax(0px, 0.12fr);
   }
 
-  .region-inverted .eg-round-grid.r64-collapsed.r32-collapsed {
-    grid-template-columns: var(--e8-width-full, 1.2fr) var(--s16-width-full, 1.5fr) minmax(0, 0fr) minmax(0, 0fr);
+  .region-inverted .eg-round-grid.r64-done.r32-done {
+    grid-template-columns: minmax(0px, 2fr) minmax(0px, 2.2fr) minmax(0px, 0.12fr) minmax(0px, 0.12fr);
   }
 
-  .region-inverted .eg-round-grid.r64-collapsed.r32-collapsed.s16-collapsed {
-    grid-template-columns: 1fr minmax(0, 0fr) minmax(0, 0fr) minmax(0, 0fr);
+  .region-inverted .eg-round-grid.r64-done.r32-done.s16-done {
+    grid-template-columns: minmax(0px, 3fr) minmax(0px, 0.12fr) minmax(0px, 0.12fr) minmax(0px, 0.12fr);
   }
 
   .eg-round-col {
@@ -3770,9 +3770,41 @@ body {
     contain: none;
   }
 
-  .eg-round-col--collapsed {
+  .eg-round-col--done {
     overflow: hidden;
+  }
+
+  .eg-round-grid.r64-done .eg-round-col.lane-r64 .eg-game-card,
+  .eg-round-grid.r32-done .eg-round-col.lane-r32 .eg-game-card,
+  .eg-round-grid.s16-done .eg-round-col.lane-s16 .eg-game-card {
+    opacity: 0;
     pointer-events: none;
+    transition: opacity 0.15s ease-out;
+  }
+
+  .eg-round-grid.r64-done .eg-round-col.lane-r64 .eg-round-label,
+  .eg-round-grid.r32-done .eg-round-col.lane-r32 .eg-round-label,
+  .eg-round-grid.s16-done .eg-round-col.lane-s16 .eg-round-label {
+    writing-mode: vertical-lr;
+    text-orientation: mixed;
+    font-size: 9px;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: rgba(231, 191, 114, 0.3);
+    text-align: center;
+    padding: 8px 2px;
+    white-space: nowrap;
+    overflow: hidden;
+  }
+
+  .eg-round-col--will-collapse .eg-game-card,
+  .eg-round-col--will-collapse .eg-round-col-content {
+    transition: opacity 0.2s ease-out;
+    opacity: 0;
+  }
+
+  .eg-round-col .team-name-wrap {
+    transition: opacity 0.2s ease;
   }
 
   .team-name-wrap .btw-abbrev-name {
@@ -3791,6 +3823,30 @@ body {
     .team-name-wrap .btw-fullname {
       display: block !important;
     }
+  }
+
+  .eg-shell.compact-desktop .eg-layout.panel-open .eg-round-grid.r64-done {
+    grid-template-columns: minmax(0px, 0.12fr) minmax(0px, 2fr) minmax(0px, 1.8fr) minmax(0px, 1.7fr);
+  }
+
+  .eg-shell.compact-desktop .eg-layout.panel-open .eg-round-grid.r64-done.r32-done {
+    grid-template-columns: minmax(0px, 0.12fr) minmax(0px, 0.12fr) minmax(0px, 2.1fr) minmax(0px, 1.9fr);
+  }
+
+  .eg-shell.compact-desktop .eg-layout.panel-open .eg-round-grid.r64-done.r32-done.s16-done {
+    grid-template-columns: minmax(0px, 0.12fr) minmax(0px, 0.12fr) minmax(0px, 0.12fr) minmax(0px, 3fr);
+  }
+
+  .eg-shell.compact-desktop .eg-layout.panel-open .region-inverted .eg-round-grid.r64-done {
+    grid-template-columns: minmax(0px, 1.7fr) minmax(0px, 1.8fr) minmax(0px, 2fr) minmax(0px, 0.12fr);
+  }
+
+  .eg-shell.compact-desktop .eg-layout.panel-open .region-inverted .eg-round-grid.r64-done.r32-done {
+    grid-template-columns: minmax(0px, 1.9fr) minmax(0px, 2.1fr) minmax(0px, 0.12fr) minmax(0px, 0.12fr);
+  }
+
+  .eg-shell.compact-desktop .eg-layout.panel-open .region-inverted .eg-round-grid.r64-done.r32-done.s16-done {
+    grid-template-columns: minmax(0px, 3fr) minmax(0px, 0.12fr) minmax(0px, 0.12fr) minmax(0px, 0.12fr);
   }
 }
 

@@ -2464,7 +2464,7 @@ function RegionBracket({
   onUnavailableRoundClick: (round: ResolvedGame["round"]) => void;
 }) {
   const rounds = inverted ? [...regionRounds].reverse() : [...regionRounds];
-  const collapseByRound = useMemo(() => {
+  const targetDoneByRound = useMemo(() => {
     const r64Games = gamesByRegionAndRound(games, region, "R64");
     const r32Games = gamesByRegionAndRound(games, region, "R32");
     const s16Games = gamesByRegionAndRound(games, region, "S16");
@@ -2494,10 +2494,62 @@ function RegionBracket({
       E8: false,
     } as Record<"R64" | "R32" | "S16" | "E8", boolean>;
   }, [games, region]);
+  const [doneByRound, setDoneByRound] = useState<Record<"R64" | "R32" | "S16", boolean>>({
+    R64: false,
+    R32: false,
+    S16: false,
+  });
+  const [fadingRounds, setFadingRounds] = useState<Set<"R64" | "R32" | "S16">>(new Set());
+  const doneTimersRef = useRef<number[]>([]);
+
+  useEffect(() => {
+    doneTimersRef.current.forEach((timer) => window.clearTimeout(timer));
+    doneTimersRef.current = [];
+    setDoneByRound((prev) => {
+      const immediate: Record<"R64" | "R32" | "S16", boolean> = { ...prev };
+      (["R64", "R32", "S16"] as const).forEach((round) => {
+        if (!targetDoneByRound[round] && prev[round]) immediate[round] = false;
+      });
+      return immediate;
+    });
+    setFadingRounds((prev) => {
+      const next = new Set(prev);
+      (["R64", "R32", "S16"] as const).forEach((round) => {
+        if (!targetDoneByRound[round]) next.delete(round);
+      });
+      return next;
+    });
+
+    const newlyDoneRounds = (["R64", "R32", "S16"] as const).filter(
+      (round) => targetDoneByRound[round] && !doneByRound[round]
+    );
+    if (newlyDoneRounds.length === 0) return () => undefined;
+
+    newlyDoneRounds.forEach((round, idx) => {
+      const fadeTimer = window.setTimeout(() => {
+        setFadingRounds((prev) => new Set(prev).add(round));
+      }, idx * 400);
+      const doneTimer = window.setTimeout(() => {
+        setDoneByRound((prev) => ({ ...prev, [round]: true }));
+        setFadingRounds((prev) => {
+          const next = new Set(prev);
+          next.delete(round);
+          return next;
+        });
+      }, idx * 400 + 220);
+      doneTimersRef.current.push(fadeTimer, doneTimer);
+    });
+
+    return () => {
+      doneTimersRef.current.forEach((timer) => window.clearTimeout(timer));
+      doneTimersRef.current = [];
+    };
+  }, [targetDoneByRound, doneByRound]);
+
   const gridStateClasses = [
-    collapseByRound.R64 ? "r64-collapsed" : "",
-    collapseByRound.R32 ? "r32-collapsed" : "",
-    collapseByRound.S16 ? "s16-collapsed" : "",
+    doneByRound.R64 ? "r64-done" : "",
+    doneByRound.R32 ? "r32-done" : "",
+    doneByRound.S16 ? "s16-done" : "",
   ]
     .filter(Boolean)
     .join(" ");
@@ -2523,15 +2575,18 @@ function RegionBracket({
         {rounds.map((round) => {
           const roundGames = gamesByRegionAndRound(games, region, round);
           const collapsed =
-            round === "R64" || round === "R32" || round === "S16" || round === "E8"
-              ? Boolean(collapseByRound[round])
+            round === "R64" || round === "R32" || round === "S16"
+              ? doneByRound[round]
               : false;
+          const isFading =
+            (round === "R64" || round === "R32" || round === "S16") &&
+            fadingRounds.has(round);
           const e8Game = round === "E8" ? roundGames[0] : null;
           const e8Confirmed = Boolean(e8Game?.teamAId && e8Game?.teamBId);
           return (
             <div
               key={`${region}-${round}`}
-              className={`eg-round-col lane-${round.toLowerCase()} ${collapsed ? "eg-round-col--collapsed" : ""} ${round === "E8" && e8Confirmed ? "eg-round-col--e8" : ""} ${round === "E8" && !e8Confirmed ? "eg-round-col--e8-pending" : ""}`}
+              className={`eg-round-col lane-${round.toLowerCase()} ${collapsed ? "eg-round-col--done" : ""} ${isFading ? "eg-round-col--will-collapse" : ""} ${round === "E8" && e8Confirmed ? "eg-round-col--e8" : ""} ${round === "E8" && !e8Confirmed ? "eg-round-col--e8-pending" : ""}`}
             >
               <div className="eg-round-col-content">
                 <p className="eg-round-label">{collapsed ? shortRoundLabel[round] : gameRoundLabel[round]}</p>
