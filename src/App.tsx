@@ -3479,9 +3479,31 @@ function SpotlightWalkthrough({
     return { top, left, maxWidth };
   })();
 
+  const viewportWidth = window.innerWidth;
+  const viewportHeight = window.innerHeight;
+  const shadeStyles = {
+    top: { left: 0, top: 0, width: viewportWidth, height: padded.top },
+    left: { left: 0, top: padded.top, width: padded.left, height: padded.height },
+    right: {
+      left: padded.left + padded.width,
+      top: padded.top,
+      width: Math.max(0, viewportWidth - (padded.left + padded.width)),
+      height: padded.height,
+    },
+    bottom: {
+      left: 0,
+      top: padded.top + padded.height,
+      width: viewportWidth,
+      height: Math.max(0, viewportHeight - (padded.top + padded.height)),
+    },
+  };
+
   return createPortal(
-    <div className="walkthrough-layer wt-spotlight-overlay" role="dialog" aria-modal="true" aria-label="Bracket walkthrough">
-      <div className="walkthrough-mask wt-spotlight-overlay" />
+    <div className="walkthrough-layer" role="dialog" aria-modal="true" aria-label="Bracket walkthrough">
+      <div className="walkthrough-shade walkthrough-shade--top" style={shadeStyles.top} />
+      <div className="walkthrough-shade walkthrough-shade--left" style={shadeStyles.left} />
+      <div className="walkthrough-shade walkthrough-shade--right" style={shadeStyles.right} />
+      <div className="walkthrough-shade walkthrough-shade--bottom" style={shadeStyles.bottom} />
       <div
         className="walkthrough-cutout"
         style={{

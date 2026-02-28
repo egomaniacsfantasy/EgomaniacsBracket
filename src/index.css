@@ -1954,10 +1954,11 @@ input[type="range"] {
 .walkthrough-cutout {
   position: fixed;
   border-radius: 8px;
-  box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.65);
+  box-shadow: none;
   border: 2px solid rgba(232, 220, 200, 0.4);
   animation: walkthrough-pulse 2s ease-in-out infinite;
   will-change: transform;
+  pointer-events: none;
 }
 
 .walkthrough-tooltip {
@@ -3850,13 +3851,24 @@ body {
 
 .wt-spotlight-overlay,
 .walkthrough-layer {
-  pointer-events: all;
+  pointer-events: none !important;
 }
 
 .wt-spotlight-overlay,
 .walkthrough-mask {
-  pointer-events: all;
+  pointer-events: auto;
   background: rgba(8, 12, 18, 0.82);
+}
+
+.walkthrough-shade {
+  position: fixed;
+  background: rgba(8, 12, 18, 0.82);
+  pointer-events: auto;
+  z-index: 9998;
+}
+
+.walkthrough-tooltip {
+  z-index: 9999;
 }
 
 .wt-spotlight-target {
