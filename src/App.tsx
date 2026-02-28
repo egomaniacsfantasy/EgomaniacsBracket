@@ -243,6 +243,21 @@ type ShareCardData = {
 
 type FuturesSortMode = "champ_desc" | "champ_asc" | "delta_desc";
 
+function getChalkLabel(score: number): string {
+  if (score >= 80) return "Chalk";
+  if (score >= 60) return "Mild Chalk";
+  if (score >= 40) return "Balanced";
+  if (score >= 20) return "Upset Heavy";
+  return "Chaos Agent";
+}
+
+function getChalkColor(score: number): string {
+  if (score >= 80) return "rgba(76,175,80,0.85)";
+  if (score >= 40) return "rgba(184,125,24,0.85)";
+  if (score >= 20) return "rgba(220,120,50,0.85)";
+  return "rgba(239,83,80,0.85)";
+}
+
 const DEFAULT_HINTS_SHOWN: HintsShown = {
   undo: false,
   sim: false,
@@ -395,6 +410,8 @@ function App() {
   const [shareCardData, setShareCardData] = useState<ShareCardData | null>(null);
   const [shareExportNonce, setShareExportNonce] = useState(0);
   const [shareExporting, setShareExporting] = useState(false);
+  const [chalkScoreChanged, setChalkScoreChanged] = useState(false);
+  const [chalkTooltipVisible, setChalkTooltipVisible] = useState(false);
   const [probPopup, setProbPopup] = useState<ProbabilityPopupState | null>(null);
   const [simResult, setSimResult] = useState<SimulationOutput>({
     futures: [],
@@ -424,6 +441,9 @@ function App() {
   const shareToastTimerRef = useRef<number | null>(null);
   const shareCardRef = useRef<HTMLDivElement | null>(null);
   const suppressHashSyncRef = useRef(true);
+  const chalkScoreTimerRef = useRef<number | null>(null);
+  const chalkTooltipTimerRef = useRef<number | null>(null);
+  const previousChalkScoreRef = useRef<number | null>(null);
 
   const { games, sanitized } = useMemo(
     () => resolveGames(lockedPicks, customProbByGame),
@@ -1024,6 +1044,24 @@ function App() {
     };
   }, [displayMode, games, sanitized, simResult.futures, simResult.likelihoodSimulation]);
 
+  const pickCount = useMemo(
+    () => games.filter((game) => Boolean(game.winnerId && game.teamAId && game.teamBId)).length,
+    [games]
+  );
+
+  const chalkScore = useMemo(() => {
+    const pickedGames = games.filter((game) => Boolean(game.winnerId && game.teamAId && game.teamBId));
+    if (pickedGames.length === 0) return null;
+    const totalProb = pickedGames.reduce((sum, game) => {
+      const winnerId = game.winnerId as string;
+      const teamAId = game.teamAId as string;
+      const modelProbA = getModelGameWinProb(game, teamAId) ?? 0.5;
+      const winnerProb = winnerId === teamAId ? modelProbA : 1 - modelProbA;
+      return sum + winnerProb;
+    }, 0);
+    return Math.round((totalProb / pickedGames.length) * 100);
+  }, [games]);
+
   const applyCustomProbability = (gameId: string, customProbA: number | null) => {
     setCustomProbByGame((prev) => {
       const next = { ...prev };
@@ -1333,6 +1371,44 @@ function App() {
     setShareExportNonce((prev) => prev + 1);
   };
 
+  useEffect(() => {
+    const previous = previousChalkScoreRef.current;
+    if (chalkScore === null) {
+      previousChalkScoreRef.current = null;
+      return;
+    }
+    if (previous !== null && previous !== chalkScore) {
+      setChalkScoreChanged(true);
+      if (chalkScoreTimerRef.current !== null) window.clearTimeout(chalkScoreTimerRef.current);
+      chalkScoreTimerRef.current = window.setTimeout(() => {
+        setChalkScoreChanged(false);
+        chalkScoreTimerRef.current = null;
+      }, 300);
+      trackEvent("chalk_score_updated", {
+        score: chalkScore,
+        label: getChalkLabel(chalkScore),
+        total_picks: pickCount,
+      });
+      if (pickCount > 0 && pickCount % 5 === 0) {
+        trackEvent("chalk_score_milestone", {
+          score: chalkScore,
+          picks: pickCount,
+        });
+      }
+    }
+    previousChalkScoreRef.current = chalkScore;
+  }, [chalkScore, pickCount]);
+
+  const onChalkPillTap = () => {
+    if (!isMobile || chalkScore === null) return;
+    setChalkTooltipVisible(true);
+    if (chalkTooltipTimerRef.current !== null) window.clearTimeout(chalkTooltipTimerRef.current);
+    chalkTooltipTimerRef.current = window.setTimeout(() => {
+      setChalkTooltipVisible(false);
+      chalkTooltipTimerRef.current = null;
+    }, 3000);
+  };
+
   const onCycleFuturesSort = () => {
     setFuturesSortMode((prev) => {
       const next: FuturesSortMode =
@@ -1475,6 +1551,12 @@ function App() {
       }
       if (shareToastTimerRef.current !== null) {
         window.clearTimeout(shareToastTimerRef.current);
+      }
+      if (chalkScoreTimerRef.current !== null) {
+        window.clearTimeout(chalkScoreTimerRef.current);
+      }
+      if (chalkTooltipTimerRef.current !== null) {
+        window.clearTimeout(chalkTooltipTimerRef.current);
       }
     },
     []
@@ -1953,6 +2035,28 @@ function App() {
           </button>
         ))}
       </div>
+      {chalkScore !== null ? (
+        <div
+          className={`chalk-score-wrap ${chalkScoreChanged ? "chalk-score-pill--changed" : ""}`}
+        >
+          <button
+            type="button"
+            className="chalk-score-pill"
+            title="How closely your picks agree with the model. Lower = more upsets."
+            onClick={onChalkPillTap}
+          >
+            <span className="chalk-score-value" style={{ color: getChalkColor(chalkScore) }}>
+              {chalkScore}%
+            </span>
+            <span className="chalk-score-label">{getChalkLabel(chalkScore)}</span>
+          </button>
+          {isMobile && chalkTooltipVisible ? (
+            <span className="chalk-score-tooltip">
+              How closely your picks agree with the model. Lower = more upsets.
+            </span>
+          ) : null}
+        </div>
+      ) : null}
     </div>
   );
 

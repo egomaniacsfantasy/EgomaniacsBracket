@@ -5153,6 +5153,84 @@ body.walkthrough-active .eg-title-choice:hover {
   border-color: rgba(184, 125, 24, 0.4);
 }
 
+.chalk-score-wrap {
+  position: relative;
+  display: inline-flex;
+}
+
+.chalk-score-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  border-radius: 100px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.04);
+  cursor: default;
+  white-space: nowrap;
+  transition: border-color 300ms ease-out;
+}
+
+.chalk-score-value {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  font-weight: 700;
+  transition: color 300ms ease-out;
+}
+
+.chalk-score-label {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--text-tertiary);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+@keyframes chalkFlash {
+  0% {
+    transform: scale(1);
+  }
+  30% {
+    transform: scale(1.06);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+.chalk-score-pill--changed .chalk-score-pill {
+  animation: chalkFlash 300ms ease-out;
+}
+
+.chalk-score-tooltip {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 50%;
+  transform: translateX(-50%);
+  background: #1a1510;
+  border: 1px solid rgba(184, 125, 24, 0.25);
+  border-radius: 6px;
+  padding: 6px 12px;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--text-secondary);
+  white-space: nowrap;
+  z-index: 100;
+  pointer-events: none;
+  animation: tooltipIn 150ms ease-out;
+}
+
+@keyframes tooltipIn {
+  from {
+    opacity: 0;
+    transform: translateX(-50%) translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+}
+
 .share-card-container {
   position: fixed;
   left: -9999px;
