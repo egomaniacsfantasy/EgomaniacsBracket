@@ -2775,7 +2775,7 @@ function GameCard({
                   >
                     <span className="chip-seed">{team.seed}</span>
                     {showLogo ? (
-                      <TeamHoverAnchor teamName={team.name} logoSrc={teamLogoUrl(team)}>
+                      <TeamHoverAnchor teamName={team.name} logoSrc={teamLogoUrl(team)} className="team-logo-cell">
                         <TeamLogo teamName={team.name} src={teamLogoUrl(team)} />
                       </TeamHoverAnchor>
                     ) : null}
@@ -3050,7 +3050,7 @@ function TeamRow({
         {seed !== null ? seed : "--"}
       </span>
       {teamName && logoSrc ? (
-        <TeamHoverAnchor teamName={teamName} logoSrc={logoSrc}>
+        <TeamHoverAnchor teamName={teamName} logoSrc={logoSrc} className="team-logo-cell">
           <TeamLogo teamName={teamName} src={logoSrc} />
         </TeamHoverAnchor>
       ) : (
@@ -3220,10 +3220,12 @@ function AdaptiveTeamLabel({ className, fullName }: { className: string; fullNam
 function TeamHoverAnchor({
   teamName,
   logoSrc,
+  className,
   children,
 }: {
   teamName: string;
   logoSrc: string;
+  className?: string;
   children: React.ReactNode;
 }) {
   const anchorRef = useRef<HTMLSpanElement | null>(null);
@@ -3255,7 +3257,7 @@ function TeamHoverAnchor({
   return (
     <span
       ref={anchorRef}
-      className="team-hover-anchor"
+      className={className ? `team-hover-anchor ${className}` : "team-hover-anchor"}
       onMouseEnter={() => setOpen(true)}
       onMouseLeave={() => setOpen(false)}
       onFocus={() => setOpen(true)}

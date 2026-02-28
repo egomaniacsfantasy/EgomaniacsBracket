@@ -3774,6 +3774,14 @@ body {
     overflow: hidden;
   }
 
+  .eg-shell.compact-desktop .team-hover-anchor.team-logo-cell {
+    width: 11px;
+    min-width: 11px;
+    max-width: 11px;
+    overflow: hidden;
+    flex-shrink: 0;
+  }
+
   .eg-shell.compact-desktop .team-logo {
     width: 11px;
     height: 11px;
@@ -3789,22 +3797,30 @@ body {
     text-align: right;
     white-space: nowrap;
     font-variant-numeric: tabular-nums;
-    min-width: 0;
-    padding-right: 0;
+    min-width: 36px;
+    padding-right: 0 !important;
+  }
+
+  .eg-shell.compact-desktop .team-odds,
+  .eg-shell.compact-desktop .chip-prob {
+    text-align: right;
+    justify-self: end;
+    width: 100%;
   }
 
   .eg-shell.compact-desktop .eg-team-row.matchup-row,
   .eg-shell.compact-desktop .eg-compact-chip.matchup-row {
-    padding-right: 10px;
+    padding-right: 4px !important;
   }
 
   .eg-shell.compact-desktop .eg-team-row.matchup-row:not(.matchup-row--picked),
   .eg-shell.compact-desktop .eg-compact-chip.matchup-row:not(.matchup-row--picked) {
-    padding-right: 28px;
+    padding-right: 24px !important;
   }
 
   .eg-shell.compact-desktop .chip-code {
     min-width: 0;
+    width: 100%;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
