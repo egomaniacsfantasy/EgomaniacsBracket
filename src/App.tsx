@@ -25,6 +25,7 @@ import {
 } from "./lib/simulation";
 import { fallbackLogo, teamLogoUrl } from "./lib/logo";
 import { fullTeamName } from "./lib/teamNames";
+import { trackEvent } from "./lib/analytics";
 import type { OddsDisplayMode, Region, ResolvedGame, SimulationOutput } from "./types";
 
 const DEFAULT_SIM_RUNS = 5000;
@@ -278,7 +279,17 @@ function App() {
     window.localStorage.setItem(HINTS_STORAGE_KEY, JSON.stringify(hintsShown));
   }, [hintsShown]);
 
+  useEffect(() => {
+    if (!sidePanelOpen) return;
+    trackEvent("futures_opened", {
+      source: isMobile ? "mobile" : "desktop",
+    });
+  }, [isMobile, sidePanelOpen]);
+
   const completeWalkthrough = () => {
+    trackEvent("onboarding_completed", {
+      step_index: walkthroughStep,
+    });
     if (walkthroughAdvanceTimerRef.current !== null) {
       window.clearTimeout(walkthroughAdvanceTimerRef.current);
       walkthroughAdvanceTimerRef.current = null;
@@ -293,10 +304,16 @@ function App() {
   };
 
   const skipWalkthrough = () => {
+    trackEvent("onboarding_skipped", {
+      step_index: walkthroughStep,
+    });
     completeWalkthrough();
   };
 
   const startWalkthrough = (opts?: { replay?: boolean }) => {
+    trackEvent("onboarding_started", {
+      replay: Boolean(opts?.replay),
+    });
     if (opts?.replay) {
       window.localStorage.setItem(ONBOARDING_STORAGE_KEY, "false");
       setHintsShown(DEFAULT_HINTS_SHOWN);
@@ -711,6 +728,17 @@ function App() {
   const onPick = (game: ResolvedGame, teamId: string | null) => {
     if (!teamId) return;
     if (teamId !== game.teamAId && teamId !== game.teamBId) return;
+    const previousWinnerId = lockedPicks[game.id] ?? null;
+    const pickAction = previousWinnerId === teamId ? "remove" : previousWinnerId ? "switch" : "set";
+    const pickedTeam = teamsById.get(teamId);
+    trackEvent("pick_made", {
+      game_id: game.id,
+      round: game.round,
+      region: game.region,
+      team_id: teamId,
+      team_name: pickedTeam?.name ?? null,
+      action: pickAction,
+    });
     const isFirstPick =
       Object.keys(sanitized).length === 0 &&
       lockedPicks[game.id] !== teamId &&
@@ -741,6 +769,9 @@ function App() {
   };
 
   const onUndo = () => {
+    trackEvent("undo_clicked", {
+      undo_depth: undoStack.length,
+    });
     showContextualHint(
       "undo",
       "Undo reverts your last pick. You can undo multiple times to step back through your bracket.",
@@ -800,6 +831,9 @@ function App() {
   };
 
   const onResetAll = () => {
+    trackEvent("reset_all_clicked", {
+      picks_count: Object.keys(lockedPicks).length,
+    });
     cancelStaggeredSim();
     if (Object.keys(lockedPicks).length === 0 && Object.keys(customProbByGame).length === 0) return;
     pendingPickMetaRef.current = null;
@@ -813,6 +847,9 @@ function App() {
   };
 
   const onResetRegion = (region: Region) => {
+    trackEvent("reset_region_clicked", {
+      region,
+    });
     cancelStaggeredSim();
     pendingPickMetaRef.current = null;
     setFirstPickNudgeVisible(false);
@@ -826,6 +863,9 @@ function App() {
   };
 
   const onModelSim = () => {
+    trackEvent("instant_sim_clicked", {
+      existing_picks: Object.keys(lockedPicks).length,
+    });
     showContextualHint(
       "sim",
       "Simulation fills out the bracket randomly using the model probabilities. Your locked picks are preserved. Try Staggered Sim to watch it fill round by round.",
@@ -847,6 +887,9 @@ function App() {
   };
 
   const onModelSimStaggered = () => {
+    trackEvent("staggered_sim_clicked", {
+      existing_picks: Object.keys(lockedPicks).length,
+    });
     showContextualHint(
       "sim",
       "Simulation fills out the bracket randomly using the model probabilities. Your locked picks are preserved. Try Staggered Sim to watch it fill round by round.",
@@ -896,6 +939,9 @@ function App() {
   };
 
   const onToggleStaggeredPause = () => {
+    trackEvent("staggered_sim_pause_toggled", {
+      paused: !staggeredSimPaused,
+    });
     if (!staggeredSimRunning) return;
     if (!staggeredSimPaused) {
       if (staggeredTimeoutRef.current !== null) {
@@ -1296,6 +1342,10 @@ function App() {
                 ".eg-mode-toggle",
                 4000
               );
+              trackEvent("odds_mode_toggled", {
+                from: displayMode,
+                to: mode.id,
+              });
               setDisplayMode(mode.id);
             }}
           >
@@ -1677,7 +1727,16 @@ function App() {
               <button
                 type="button"
                 className="eg-side-toggle"
-                onClick={() => setSidePanelOpen((v) => !v)}
+                onClick={() =>
+                  setSidePanelOpen((v) => {
+                    const next = !v;
+                    trackEvent("futures_toggle_clicked", {
+                      next_open: next,
+                      source: isMobile ? "mobile" : "desktop",
+                    });
+                    return next;
+                  })
+                }
                 aria-expanded={sidePanelOpen}
               >
                 {sidePanelOpen ? "Collapse ▸" : "Futures ▾"}
