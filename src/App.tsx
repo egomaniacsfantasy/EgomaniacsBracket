@@ -37,7 +37,6 @@ const MIN_STAGGERED_SIM_DELAY_MS = 1000;
 const MAX_STAGGERED_SIM_DELAY_MS = 5000;
 const LANDING_URL = "https://oddsgods.net";
 const BRACKET_URL = "https://bracket.oddsgods.net/";
-const WATO_URL = "https://wato.oddsgods.net/";
 
 const formatModes: { id: OddsDisplayMode; label: string }[] = [
   { id: "american", label: "American" },
@@ -1518,10 +1517,6 @@ function App() {
                 The Bracket Lab
                 <span className="beta-badge">BETA</span>
               </a>
-              <a className="og-top-nav-link" href={WATO_URL}>
-                What Are the Odds?
-                <span className="beta-badge">BETA</span>
-              </a>
             </div>
           </div>
           <div className="og-top-nav-mobile">
@@ -1529,9 +1524,7 @@ function App() {
               <img className="nav-logo-icon" src="/logo-icon.png?v=20260225" alt="Odds Gods" />
             </a>
             <span className="nav-product-title">The Bracket Lab</span>
-            <a className="nav-mobile-alt" href={WATO_URL}>
-              WATO
-            </a>
+            <span className="nav-mobile-alt" aria-hidden="true"></span>
           </div>
         </nav>
         <header className={`eg-header ${isMobile ? "mobile-hidden" : ""}`}>
