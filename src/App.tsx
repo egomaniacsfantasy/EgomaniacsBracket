@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { Suspense, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import "./index.css";
 import { teamsById } from "./data/teams";
@@ -29,6 +29,7 @@ import type { OddsDisplayMode, Region, ResolvedGame, SimulationOutput } from "./
 
 const DEFAULT_SIM_RUNS = 5000;
 const ONBOARDING_STORAGE_KEY = "oddsGods_onboardingDismissed";
+const HINTS_STORAGE_KEY = "oddsGods_hintsShown";
 const FIRST_PICK_NUDGE_SESSION_KEY = "oddsGods_firstPickCascadeNudgeSeen";
 const STAGGERED_SIM_DELAY_MS = 2000;
 const MIN_STAGGERED_SIM_DELAY_MS = 1000;
@@ -70,23 +71,6 @@ const MOBILE_ROUND_ORDER: Record<"R64" | "R32" | "S16" | "E8", number> = {
   E8: 3,
 };
 
-type OnboardingStage = 1 | 2 | 3;
-
-type DemoTitleShiftRow = {
-  teamId: string;
-  name: string;
-  seed: number;
-  before: number;
-  after: number;
-  direction: "up" | "down";
-};
-
-type DemoSimulationOutput = {
-  before: SimulationOutput;
-  after: SimulationOutput;
-  titleOddsShift: DemoTitleShiftRow[];
-};
-
 type ProbabilityPopupState = {
   gameId: string;
   anchorEl: HTMLElement;
@@ -99,6 +83,74 @@ type MobileRegionRound = "R64" | "R32" | "S16" | "E8";
 type MobileFfRound = "F4" | "CHAMP" | "WIN";
 type CandidateRow = { teamId: string; prob: number; team: NonNullable<ReturnType<typeof teamsById.get>> };
 const MAJOR_SHIFT_NUDGE_COOLDOWN = 3;
+type WalkthroughStepId = "make-pick" | "watch-reprice" | "see-futures" | "edit-odds" | "ready";
+type WalkthroughStepAdvance = "pick-detected" | "button-click";
+type TooltipPlacement = "above" | "below" | "left" | "right";
+type HintKey = "undo" | "sim" | "toggle" | "r32";
+type HintsShown = Record<HintKey, boolean>;
+type ActiveHint = {
+  key: HintKey;
+  message: string;
+  rect: DOMRect;
+};
+type WalkthroughStepConfig = {
+  id: WalkthroughStepId;
+  heading: string;
+  body: string;
+  ctaText: string;
+  advanceOn: WalkthroughStepAdvance;
+  allowSkip: boolean;
+};
+
+const DEFAULT_HINTS_SHOWN: HintsShown = {
+  undo: false,
+  sim: false,
+  toggle: false,
+  r32: false,
+};
+
+const WALKTHROUGH_STEPS: WalkthroughStepConfig[] = [
+  {
+    id: "make-pick",
+    heading: "Make your first pick",
+    body: "Tap a team to lock them as the winner of this game. Try picking the 1-seed.",
+    ctaText: "",
+    advanceOn: "pick-detected",
+    allowSkip: true,
+  },
+  {
+    id: "watch-reprice",
+    heading: "Everything just changed",
+    body: "Your pick updated odds across the entire bracket — Round of 32, Sweet 16, Elite 8, all the way to the championship. These aren't static numbers. Every pick you make recalculates everything.",
+    ctaText: "Got it →",
+    advanceOn: "button-click",
+    allowSkip: true,
+  },
+  {
+    id: "see-futures",
+    heading: "Meet the Futures panel",
+    body: "This shows every team's chances of reaching each round — updated live based on YOUR picks. Scroll down to see the Pre-Tournament Baseline and compare how your picks shifted the odds.",
+    ctaText: "Got it →",
+    advanceOn: "button-click",
+    allowSkip: true,
+  },
+  {
+    id: "edit-odds",
+    heading: "Think the model is wrong?",
+    body: 'Hover over any game to see the edit icon, or tap "Edit odds" on mobile. Drag the slider to set your own win probability — the entire bracket reprices to match.',
+    ctaText: "Got it →",
+    advanceOn: "button-click",
+    allowSkip: true,
+  },
+  {
+    id: "ready",
+    heading: "Your toolkit",
+    body: "Undo picks, reset a region, or simulate an entire bracket. Switch between American odds and implied percentages anytime. Now go build your bracket.",
+    ctaText: "Start picking →",
+    advanceOn: "button-click",
+    allowSkip: false,
+  },
+];
 
 function App() {
   const [lockedPicks, setLockedPicks] = useState<LockedPicks>({});
@@ -134,10 +186,28 @@ function App() {
   const [staggeredSimPaused, setStaggeredSimPaused] = useState(false);
   const [staggeredSimDelayMs, setStaggeredSimDelayMs] = useState(STAGGERED_SIM_DELAY_MS);
   const [showStaggeredControls, setShowStaggeredControls] = useState(false);
-  const [onboardingOpen, setOnboardingOpen] = useState(() => {
+  const [welcomeGateOpen, setWelcomeGateOpen] = useState(() => {
     if (typeof window === "undefined") return false;
     return window.localStorage.getItem(ONBOARDING_STORAGE_KEY) !== "true";
   });
+  const [walkthroughActive, setWalkthroughActive] = useState(false);
+  const [walkthroughStep, setWalkthroughStep] = useState(0);
+  const [walkthroughTargetEl, setWalkthroughTargetEl] = useState<HTMLElement | null>(null);
+  const [walkthroughTargetRect, setWalkthroughTargetRect] = useState<DOMRect | null>(null);
+  const [tooltipPlacement, setTooltipPlacement] = useState<TooltipPlacement>("below");
+  const [walkthroughFirstPickedTeamId, setWalkthroughFirstPickedTeamId] = useState<string | null>(null);
+  const [hintsShown, setHintsShown] = useState<HintsShown>(() => {
+    if (typeof window === "undefined") return DEFAULT_HINTS_SHOWN;
+    try {
+      const raw = window.localStorage.getItem(HINTS_STORAGE_KEY);
+      if (!raw) return DEFAULT_HINTS_SHOWN;
+      const parsed = JSON.parse(raw) as Partial<HintsShown>;
+      return { ...DEFAULT_HINTS_SHOWN, ...parsed };
+    } catch {
+      return DEFAULT_HINTS_SHOWN;
+    }
+  });
+  const [activeHint, setActiveHint] = useState<ActiveHint | null>(null);
   const [probPopup, setProbPopup] = useState<ProbabilityPopupState | null>(null);
   const [simResult, setSimResult] = useState<SimulationOutput>({
     futures: [],
@@ -160,10 +230,9 @@ function App() {
   const staggeredIndexRef = useRef(0);
   const staggeredDelayRef = useRef(STAGGERED_SIM_DELAY_MS);
   const simGeneratedGameIdsRef = useRef<Set<string>>(new Set());
-  const demoGame = useMemo(
-    () => resolveGames({}).games.find((game) => game.id === "South-R64-0") ?? null,
-    []
-  );
+  const walkthroughAdvanceTimerRef = useRef<number | null>(null);
+  const walkthroughResolveTokenRef = useRef(0);
+  const contextualHintTimerRef = useRef<number | null>(null);
 
   const { games, sanitized } = useMemo(
     () => resolveGames(lockedPicks, customProbByGame),
@@ -203,6 +272,59 @@ function App() {
     if (!hasSeenFirstPickNudge || typeof window === "undefined") return;
     window.sessionStorage.setItem(FIRST_PICK_NUDGE_SESSION_KEY, "1");
   }, [hasSeenFirstPickNudge]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    window.localStorage.setItem(HINTS_STORAGE_KEY, JSON.stringify(hintsShown));
+  }, [hintsShown]);
+
+  const completeWalkthrough = () => {
+    if (walkthroughAdvanceTimerRef.current !== null) {
+      window.clearTimeout(walkthroughAdvanceTimerRef.current);
+      walkthroughAdvanceTimerRef.current = null;
+    }
+    setWalkthroughActive(false);
+    setWalkthroughStep(0);
+    setWalkthroughTargetEl(null);
+    setWalkthroughTargetRect(null);
+    setWalkthroughFirstPickedTeamId(null);
+    window.localStorage.setItem(ONBOARDING_STORAGE_KEY, "true");
+    setWelcomeGateOpen(false);
+  };
+
+  const skipWalkthrough = () => {
+    completeWalkthrough();
+  };
+
+  const startWalkthrough = (opts?: { replay?: boolean }) => {
+    if (opts?.replay) {
+      window.localStorage.setItem(ONBOARDING_STORAGE_KEY, "false");
+      setHintsShown(DEFAULT_HINTS_SHOWN);
+      if (Object.keys(lockedPicks).length > 0 || Object.keys(customProbByGame).length > 0) {
+        onResetAll();
+      }
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    }
+    setWelcomeGateOpen(false);
+    setWalkthroughStep(0);
+    setWalkthroughTargetEl(null);
+    setWalkthroughTargetRect(null);
+    setWalkthroughFirstPickedTeamId(null);
+    setWalkthroughActive(true);
+  };
+
+  const showContextualHint = (key: HintKey, message: string, selector: string, durationMs: number) => {
+    if (hintsShown[key]) return;
+    const el = document.querySelector<HTMLElement>(selector);
+    if (!el) return;
+    const rect = el.getBoundingClientRect();
+    setActiveHint({ key, message, rect });
+    setHintsShown((prev) => ({ ...prev, [key]: true }));
+    if (contextualHintTimerRef.current !== null) {
+      window.clearTimeout(contextualHintTimerRef.current);
+    }
+    contextualHintTimerRef.current = window.setTimeout(() => setActiveHint(null), durationMs);
+  };
 
   useEffect(() => {
     const statsCanvas = document.getElementById("bg-stats") as HTMLCanvasElement | null;
@@ -619,6 +741,12 @@ function App() {
   };
 
   const onUndo = () => {
+    showContextualHint(
+      "undo",
+      "Undo reverts your last pick. You can undo multiple times to step back through your bracket.",
+      ".eg-main-actions.toolbar .eg-btn:first-child",
+      4000
+    );
     cancelStaggeredSim();
     if (undoStack.length === 0) return;
     pendingPickMetaRef.current = null;
@@ -661,6 +789,16 @@ function App() {
     setLockedPicks(sanitizeLockedPicks({ ...lockedPicks, [game.id]: teamId }));
   };
 
+  const onUnavailableRoundClick = (round: ResolvedGame["round"]) => {
+    if (round !== "R32") return;
+    showContextualHint(
+      "r32",
+      "This matchup isn't decided yet. Pick the winners of both feeder games in Round of 64 first.",
+      ".eg-main-actions.toolbar",
+      4000
+    );
+  };
+
   const onResetAll = () => {
     cancelStaggeredSim();
     if (Object.keys(lockedPicks).length === 0 && Object.keys(customProbByGame).length === 0) return;
@@ -688,6 +826,12 @@ function App() {
   };
 
   const onModelSim = () => {
+    showContextualHint(
+      "sim",
+      "Simulation fills out the bracket randomly using the model probabilities. Your locked picks are preserved. Try Staggered Sim to watch it fill round by round.",
+      ".eg-main-actions.toolbar .eg-btn:nth-child(3)",
+      5000
+    );
     cancelStaggeredSim();
     pendingPickMetaRef.current = null;
     setFirstPickNudgeVisible(false);
@@ -703,6 +847,12 @@ function App() {
   };
 
   const onModelSimStaggered = () => {
+    showContextualHint(
+      "sim",
+      "Simulation fills out the bracket randomly using the model probabilities. Your locked picks are preserved. Try Staggered Sim to watch it fill round by round.",
+      ".eg-main-actions.toolbar .eg-btn:nth-child(4)",
+      5000
+    );
     cancelStaggeredSim();
     pendingPickMetaRef.current = null;
     setFirstPickNudgeVisible(false);
@@ -772,49 +922,6 @@ function App() {
     staggeredTimeoutRef.current = window.setTimeout(resume, staggeredDelayRef.current);
   };
 
-  const runDemoSimulation = (gameId: string, winnerId: string): DemoSimulationOutput => {
-    const baseLocks: LockedPicks = {};
-    const before = runSimulation(baseLocks, simRuns, {});
-    const after = runSimulation({ [gameId]: winnerId }, simRuns, {});
-    const game = before.gameWinProbs[gameId] ? resolveGames(baseLocks).games.find((g) => g.id === gameId) : null;
-    const excludedTeams = new Set<string>();
-    if (game?.teamAId) excludedTeams.add(game.teamAId);
-    if (game?.teamBId) excludedTeams.add(game.teamBId);
-
-    const beforeMap = new Map(before.futures.map((row) => [row.teamId, row.champProb]));
-    const titleOddsShift = after.futures
-      .filter((row) => !excludedTeams.has(row.teamId) && row.champProb > 0)
-      .sort((a, b) => b.champProb - a.champProb)
-      .slice(0, 5)
-      .map((row) => {
-        const team = teamsById.get(row.teamId);
-        const previous = beforeMap.get(row.teamId) ?? 0;
-        return {
-          teamId: row.teamId,
-          name: team?.name ?? row.teamId,
-          seed: team?.seed ?? 99,
-          before: previous,
-          after: row.champProb,
-          direction: (row.champProb >= previous ? "up" : "down") as "up" | "down",
-        };
-      });
-    return { before, after, titleOddsShift };
-  };
-
-  const dismissOnboarding = (dontShowAgain: boolean) => {
-    if (dontShowAgain) {
-      window.localStorage.setItem(ONBOARDING_STORAGE_KEY, "true");
-    }
-    setOnboardingOpen(false);
-  };
-
-  const skipOnboarding = (dontShowAgain: boolean) => {
-    if (dontShowAgain) {
-      window.localStorage.setItem(ONBOARDING_STORAGE_KEY, "true");
-    }
-    setOnboardingOpen(false);
-  };
-
   useEffect(
     () => () => {
       if (staggeredTimeoutRef.current !== null) {
@@ -828,6 +935,12 @@ function App() {
       }
       if (firstPickNudgeTimeoutRef.current !== null) {
         window.clearTimeout(firstPickNudgeTimeoutRef.current);
+      }
+      if (walkthroughAdvanceTimerRef.current !== null) {
+        window.clearTimeout(walkthroughAdvanceTimerRef.current);
+      }
+      if (contextualHintTimerRef.current !== null) {
+        window.clearTimeout(contextualHintTimerRef.current);
       }
     },
     []
@@ -890,6 +1003,191 @@ function App() {
     );
   }, [mobileSection, allRegionE8Complete, allFinalFourComplete, championshipComplete]);
 
+  const currentWalkthroughStep = WALKTHROUGH_STEPS[walkthroughStep] ?? null;
+
+  useEffect(() => {
+    if (!walkthroughActive || !currentWalkthroughStep) return;
+
+    const token = ++walkthroughResolveTokenRef.current;
+    let cancelled = false;
+
+    const resolveSouthRegion = () =>
+      Array.from(document.querySelectorAll<HTMLElement>(".eg-region-card.bracket-region")).find((card) =>
+        card.querySelector("h2")?.textContent?.trim().toLowerCase().includes("south")
+      ) ?? null;
+
+    const getTargetElement = (): HTMLElement | null => {
+      const southRegion = resolveSouthRegion();
+      switch (currentWalkthroughStep.id) {
+        case "make-pick": {
+          if (isMobile) {
+            return document.querySelector<HTMLElement>(".mobile-matchup-card, .m-card, .mobile-matchup-full");
+          }
+          return southRegion?.querySelector<HTMLElement>(".eg-game-card.round-r64") ?? null;
+        }
+        case "watch-reprice": {
+          if (isMobile) {
+            return document.querySelector<HTMLElement>(".mobile-round-pill.active + * .m-card, .m-card, .mobile-prob-card");
+          }
+          if (southRegion && walkthroughFirstPickedTeamId) {
+            const teamName = teamsById.get(walkthroughFirstPickedTeamId)?.name ?? "";
+            const rows = Array.from(
+              southRegion.querySelectorAll<HTMLElement>(".lane-r32 .matchup-row, .lane-r32 .eg-compact-chip")
+            );
+            const matched = rows.find((row) => row.textContent?.toLowerCase().includes(teamName.toLowerCase()));
+            if (matched) return matched;
+          }
+          return southRegion?.querySelector<HTMLElement>(".lane-r32 .eg-game-card, .lane-r32 .matchup-row") ?? null;
+        }
+        case "see-futures": {
+          if (isMobile) {
+            return document.querySelector<HTMLElement>(".mobile-futures-view");
+          }
+          return document.querySelector<HTMLElement>(".eg-side-panel.open, .eg-side-panel");
+        }
+        case "edit-odds": {
+          if (isMobile) {
+            return document.querySelector<HTMLElement>(".m-edit-prob-btn");
+          }
+          const r64Cards = southRegion?.querySelectorAll<HTMLElement>(".eg-game-card.round-r64");
+          return r64Cards?.[1] ?? r64Cards?.[0] ?? null;
+        }
+        case "ready":
+          return document.querySelector<HTMLElement>(".eg-main-actions.toolbar");
+        default:
+          return null;
+      }
+    };
+
+    const runPreAction = () => {
+      if (!isMobile) {
+        if (currentWalkthroughStep.id === "see-futures" && !sidePanelOpen) {
+          setSidePanelOpen(true);
+        }
+        return;
+      }
+      if (currentWalkthroughStep.id === "make-pick") {
+        setMobileTab("bracket");
+        setMobileSection("South");
+        setMobileRound("R64");
+      }
+      if (currentWalkthroughStep.id === "watch-reprice") {
+        setMobileTab("bracket");
+        setMobileSection("South");
+        setMobileRound("R32");
+      }
+      if (currentWalkthroughStep.id === "see-futures") {
+        setMobileTab("futures");
+      }
+      if (currentWalkthroughStep.id === "edit-odds") {
+        setMobileTab("bracket");
+        setMobileSection("South");
+        setMobileRound("R64");
+      }
+      if (currentWalkthroughStep.id === "ready") {
+        window.scrollTo({ top: 0, behavior: "smooth" });
+      }
+    };
+
+    const wait = (ms: number) => new Promise((resolve) => window.setTimeout(resolve, ms));
+
+    const resolveTarget = async () => {
+      runPreAction();
+      const maxAttempts = 15;
+      for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
+        if (cancelled || token !== walkthroughResolveTokenRef.current) return;
+        const target = getTargetElement();
+        if (target) {
+          target.scrollIntoView({ behavior: "smooth", block: "center", inline: "nearest" });
+          await wait(400);
+          if (cancelled || token !== walkthroughResolveTokenRef.current) return;
+          setWalkthroughTargetEl(target);
+          setWalkthroughTargetRect(target.getBoundingClientRect());
+          return;
+        }
+        await wait(200);
+      }
+      // eslint-disable-next-line no-console
+      console.warn(`Walkthrough: target not found for step ${currentWalkthroughStep.id}, skipping.`);
+      setWalkthroughStep((prev) => Math.min(prev + 1, WALKTHROUGH_STEPS.length - 1));
+    };
+
+    void resolveTarget();
+    return () => {
+      cancelled = true;
+    };
+  }, [currentWalkthroughStep, isMobile, mobileRound, mobileSection, sidePanelOpen, walkthroughActive, walkthroughFirstPickedTeamId]);
+
+  useEffect(() => {
+    if (!walkthroughActive || !walkthroughTargetEl) return;
+    let raf = 0;
+    let debounceTimer: number | null = null;
+    const update = () => {
+      if (!walkthroughTargetEl) return;
+      setWalkthroughTargetRect(walkthroughTargetEl.getBoundingClientRect());
+    };
+    const onScrollOrResize = () => {
+      if (debounceTimer !== null) window.clearTimeout(debounceTimer);
+      debounceTimer = window.setTimeout(() => {
+        raf = window.requestAnimationFrame(update);
+      }, 100);
+    };
+    window.addEventListener("scroll", onScrollOrResize, true);
+    window.addEventListener("resize", onScrollOrResize);
+    onScrollOrResize();
+    return () => {
+      window.removeEventListener("scroll", onScrollOrResize, true);
+      window.removeEventListener("resize", onScrollOrResize);
+      if (debounceTimer !== null) window.clearTimeout(debounceTimer);
+      if (raf) window.cancelAnimationFrame(raf);
+    };
+  }, [walkthroughActive, walkthroughTargetEl]);
+
+  useEffect(() => {
+    if (!walkthroughActive || !walkthroughTargetRect) return;
+    const vw = window.innerWidth;
+    const vh = window.innerHeight;
+    const rect = walkthroughTargetRect;
+    const tooltipWidth = isMobile ? Math.min(vw * 0.9, 340) : 340;
+    const tooltipHeight = 200;
+    const canPlaceBelow = rect.bottom + 16 + tooltipHeight < vh;
+    const canPlaceAbove = rect.top - 16 - tooltipHeight > 0;
+    const canPlaceRight = rect.right + 16 + tooltipWidth < vw;
+    const placement: TooltipPlacement =
+      canPlaceBelow && canPlaceRight ? "below" : canPlaceAbove ? "above" : canPlaceRight ? "right" : "left";
+    setTooltipPlacement(placement);
+  }, [isMobile, walkthroughActive, walkthroughTargetRect]);
+
+  useEffect(() => {
+    if (!walkthroughActive || currentWalkthroughStep?.id !== "make-pick") return;
+    const selected = document.querySelector(".eg-team-row.selected.result-win, .mobile-team-btn.winner");
+    if (!selected) return;
+    if (walkthroughAdvanceTimerRef.current !== null) window.clearTimeout(walkthroughAdvanceTimerRef.current);
+    const winnerGame = Object.entries(lockedPicks)[0];
+    if (winnerGame?.[1]) setWalkthroughFirstPickedTeamId(winnerGame[1]);
+    walkthroughAdvanceTimerRef.current = window.setTimeout(() => {
+      setWalkthroughStep(1);
+    }, 600);
+    return () => {
+      if (walkthroughAdvanceTimerRef.current !== null) {
+        window.clearTimeout(walkthroughAdvanceTimerRef.current);
+      }
+    };
+  }, [currentWalkthroughStep?.id, lockedPicks, walkthroughActive]);
+
+  useEffect(() => {
+    if (!walkthroughActive) return;
+    const onNavigate = () => {
+      setWalkthroughActive(false);
+      setWalkthroughStep(0);
+      setWalkthroughTargetEl(null);
+      setWalkthroughTargetRect(null);
+      setWalkthroughFirstPickedTeamId(null);
+    };
+    window.addEventListener("popstate", onNavigate);
+    return () => window.removeEventListener("popstate", onNavigate);
+  }, [walkthroughActive]);
+
   const toolbar = (
     <div className="eg-main-actions toolbar">
       <button onClick={onUndo} disabled={undoStack.length === 0} className="eg-btn">
@@ -936,7 +1234,15 @@ function App() {
           <button
             key={mode.id}
             className={`eg-chip ${displayMode === mode.id ? "active" : ""}`}
-            onClick={() => setDisplayMode(mode.id)}
+            onClick={() => {
+              showContextualHint(
+                "toggle",
+                "Switch between American odds (+300) and implied win probability (25.0%) across the entire product.",
+                ".eg-mode-toggle",
+                4000
+              );
+              setDisplayMode(mode.id);
+            }}
           >
             {mode.label}
           </button>
@@ -1079,7 +1385,7 @@ function App() {
 
         <p className="eg-setting-label">Current lock count</p>
         <p className="eg-setting-value">{Object.keys(sanitized).length} picks</p>
-        <button className="eg-mini-btn onboarding-replay-btn" onClick={() => setOnboardingOpen(true)}>
+        <button className="eg-mini-btn onboarding-replay-btn" onClick={() => startWalkthrough({ replay: true })}>
           Replay Intro
         </button>
       </section>
@@ -1216,6 +1522,7 @@ function App() {
                           inverted={invertedRegions.has(region)}
                           displayMode={displayMode}
                           onOpenProbabilityPopup={openProbabilityPopup}
+                          onUnavailableRoundClick={onUnavailableRoundClick}
                         />
                       ))}
                     </div>
@@ -1242,6 +1549,7 @@ function App() {
                           inverted={invertedRegions.has(region)}
                           displayMode={displayMode}
                           onOpenProbabilityPopup={openProbabilityPopup}
+                          onUnavailableRoundClick={onUnavailableRoundClick}
                         />
                       ))}
                     </div>
@@ -1264,6 +1572,7 @@ function App() {
                           lastPickedKey={lastPickedKey}
                           displayMode={displayMode}
                           onOpenProbabilityPopup={openProbabilityPopup}
+                          onUnavailableRoundClick={onUnavailableRoundClick}
                         />
                       ) : null}
                     </div>
@@ -1281,6 +1590,7 @@ function App() {
                             lastPickedKey={lastPickedKey}
                             displayMode={displayMode}
                             onOpenProbabilityPopup={openProbabilityPopup}
+                            onUnavailableRoundClick={onUnavailableRoundClick}
                           />
                         </div>
                       ) : null}
@@ -1299,6 +1609,7 @@ function App() {
                           lastPickedKey={lastPickedKey}
                           displayMode={displayMode}
                           onOpenProbabilityPopup={openProbabilityPopup}
+                          onUnavailableRoundClick={onUnavailableRoundClick}
                         />
                       ) : null}
                     </div>
@@ -1334,12 +1645,34 @@ function App() {
         />
       ) : null}
 
-      {onboardingOpen && demoGame ? (
-        <OnboardingFlow
-          demoGame={demoGame}
-          runDemoSimulation={runDemoSimulation}
-          onComplete={dismissOnboarding}
-          onSkip={skipOnboarding}
+      {welcomeGateOpen ? (
+        <WelcomeGate onStart={() => startWalkthrough()} onSkip={() => skipWalkthrough()} />
+      ) : null}
+
+      {walkthroughActive && walkthroughTargetRect && currentWalkthroughStep ? (
+        <Suspense fallback={null}>
+          <SpotlightWalkthrough
+            step={currentWalkthroughStep}
+            stepIndex={walkthroughStep}
+            targetRect={walkthroughTargetRect}
+            placement={tooltipPlacement}
+            onAdvance={() => {
+              if (currentWalkthroughStep.id === "ready") {
+                completeWalkthrough();
+                return;
+              }
+              setWalkthroughStep((prev) => Math.min(prev + 1, WALKTHROUGH_STEPS.length - 1));
+            }}
+            onSkip={() => skipWalkthrough()}
+          />
+        </Suspense>
+      ) : null}
+
+      {activeHint ? (
+        <ContextualHint
+          message={activeHint.message}
+          rect={activeHint.rect}
+          onDismiss={() => setActiveHint(null)}
         />
       ) : null}
     </div>
@@ -2061,6 +2394,7 @@ function RegionBracket({
   inverted,
   displayMode,
   onOpenProbabilityPopup,
+  onUnavailableRoundClick,
 }: {
   region: Region;
   games: ResolvedGame[];
@@ -2072,6 +2406,7 @@ function RegionBracket({
   inverted: boolean;
   displayMode: OddsDisplayMode;
   onOpenProbabilityPopup: (game: ResolvedGame, anchorEl: HTMLElement) => void;
+  onUnavailableRoundClick: (round: ResolvedGame["round"]) => void;
 }) {
   const rounds = inverted ? [...regionRounds].reverse() : [...regionRounds];
   const collapseByRound = useMemo(
@@ -2138,9 +2473,10 @@ function RegionBracket({
                           possibleWinners={possibleWinners}
                           onPick={onPick}
                           lastPickedKey={lastPickedKey}
-                          displayMode={displayMode}
-                          onOpenProbabilityPopup={onOpenProbabilityPopup}
-                        />
+                        displayMode={displayMode}
+                        onOpenProbabilityPopup={onOpenProbabilityPopup}
+                        onUnavailableRoundClick={onUnavailableRoundClick}
+                      />
                       </div>
                     );
                   })}
@@ -2163,6 +2499,7 @@ function GameCard({
   lastPickedKey,
   displayMode,
   onOpenProbabilityPopup,
+  onUnavailableRoundClick,
 }: {
   game: ResolvedGame;
   collapsed?: boolean;
@@ -2172,6 +2509,7 @@ function GameCard({
   lastPickedKey: string | null;
   displayMode: OddsDisplayMode;
   onOpenProbabilityPopup: (game: ResolvedGame, anchorEl: HTMLElement) => void;
+  onUnavailableRoundClick?: (round: ResolvedGame["round"]) => void;
 }) {
   type CandidateRow = { teamId: string; prob: number; team: NonNullable<ReturnType<typeof teamsById.get>> };
 
@@ -2359,11 +2697,14 @@ function GameCard({
                     key={`${game.id}-${team.id}`}
                     type="button"
                     className={`eg-compact-chip matchup-row ${game.winnerId ? "matchup-row--picked" : ""} ${selected ? "selected" : ""} ${lastPickedKey === `${game.id}:${team.id}` ? "fresh-pick" : ""} ${outcome === "win" ? "result-win" : ""} ${outcome === "loss" ? "result-loss" : ""}`}
-                    disabled={!canPick}
                     onClick={(event) => {
                       if (compactLongPressFiredRef.current) {
                         compactLongPressFiredRef.current = false;
                         event.preventDefault();
+                        return;
+                      }
+                      if (!canPick) {
+                        onUnavailableRoundClick?.(game.round);
                         return;
                       }
                       onPick(game, canPick ? team.id : null);
@@ -2942,313 +3283,153 @@ function ProbabilityPopup({
   );
 }
 
-function pct(prob: number): string {
-  return `${(prob * 100).toFixed(1)}%`;
-}
-
-function useCountUp(from: number, to: number, duration = 400, delay = 0): number {
-  const [value, setValue] = useState(from);
-  useEffect(() => {
-    let raf = 0;
-    const timer = window.setTimeout(() => {
-      const start = performance.now();
-      const tick = (now: number) => {
-        const t = Math.min((now - start) / duration, 1);
-        const ease = 1 - Math.pow(1 - t, 3);
-        setValue(from + (to - from) * ease);
-        if (t < 1) raf = window.requestAnimationFrame(tick);
-      };
-      raf = window.requestAnimationFrame(tick);
-    }, delay);
-
-    return () => {
-      window.clearTimeout(timer);
-      window.cancelAnimationFrame(raf);
-    };
-  }, [from, to, duration, delay]);
-  return value;
-}
-
-function OnboardingOddsRow({ row, index }: { row: DemoTitleShiftRow; index: number }) {
-  const implied = useCountUp(row.before, row.after, 400, index * 50);
-  const american = formatOddsDisplay(implied, "american").primary;
-  const delta = row.after - row.before;
-  const hasShift = Math.abs(delta) > 0.01;
-  return (
-    <div className="odds-table-row">
-      <span className="seed">{row.seed}</span>
-      <span className="team-name">{row.name}</span>
-      <span className="american">{american}</span>
-      <span className={`implied ${hasShift ? row.direction : ""}`}>
-        {pct(implied)} {hasShift ? (row.direction === "up" ? "↑" : "↓") : ""}
-      </span>
-    </div>
-  );
-}
-
-function OnboardingFlow({
-  demoGame,
-  runDemoSimulation,
-  onComplete,
-  onSkip,
-}: {
-  demoGame: ResolvedGame;
-  runDemoSimulation: (gameId: string, winnerId: string) => DemoSimulationOutput;
-  onComplete: (dontShowAgain: boolean) => void;
-  onSkip: (dontShowAgain: boolean) => void;
-}) {
-  const [stage, setStage] = useState<OnboardingStage>(1);
-  const [isStageTransitioning, setIsStageTransitioning] = useState(false);
-  const [dontShowAgain, setDontShowAgain] = useState(false);
-  const [activePick, setActivePick] = useState<string | null>(null);
-  const [firstPick, setFirstPick] = useState<string | null>(null);
-  const [seenWinners, setSeenWinners] = useState<string[]>([]);
-  const [exiting, setExiting] = useState(false);
-
-  useEffect(() => {
-    document.body.classList.add("og-onboarding-open");
-    return () => document.body.classList.remove("og-onboarding-open");
-  }, []);
-
-  const teamA = demoGame.teamAId ? teamsById.get(demoGame.teamAId) ?? null : null;
-  const teamB = demoGame.teamBId ? teamsById.get(demoGame.teamBId) ?? null : null;
-  const teamAProb = teamA ? getGameWinProb(demoGame, teamA.id) ?? 0 : 0;
-  const teamBProb = teamB ? getGameWinProb(demoGame, teamB.id) ?? 0 : 0;
-  const [baselineResult] = useState<DemoSimulationOutput | null>(() => {
-    if (!demoGame.teamAId) return null;
-    return runDemoSimulation(demoGame.id, demoGame.teamAId);
-  });
-  const demoResultByWinner = useMemo(() => {
-    const map = new Map<string, DemoSimulationOutput>();
-    if (teamA?.id) map.set(teamA.id, runDemoSimulation(demoGame.id, teamA.id));
-    if (teamB?.id) map.set(teamB.id, runDemoSimulation(demoGame.id, teamB.id));
-    return map;
-  }, [demoGame.id, runDemoSimulation, teamA?.id, teamB?.id]);
-  const baselineRows = useMemo(
-    () =>
-      (baselineResult?.titleOddsShift ?? []).map((row) => ({
-        ...row,
-        after: row.before,
-        direction: "up" as const,
-      })),
-    [baselineResult]
-  );
-
-  const transitionToStage = (nextStage: OnboardingStage) => {
-    setIsStageTransitioning(true);
-    window.setTimeout(() => {
-      setStage(nextStage);
-      setIsStageTransitioning(false);
-    }, 180);
-  };
-
-  const commitStage2Pick = (winnerId: string) => {
-    if (!winnerId) return;
-    if (!firstPick) {
-      setFirstPick(winnerId);
-    }
-    setSeenWinners((prev) => (prev.includes(winnerId) ? prev : [...prev, winnerId]));
-    setActivePick(winnerId);
-  };
-
-  const handleTryOpposite = () => {
-    if (!firstPick || !teamA || !teamB) return;
-    commitStage2Pick(firstPick === teamA.id ? teamB.id : teamA.id);
-  };
-
-  const handleStage2TeamClick = (winnerId: string) => {
-    if (!teamA || !teamB) return;
-    commitStage2Pick(winnerId);
-  };
-
-  const handleOpenBracket = () => {
-    setExiting(true);
-    window.setTimeout(() => onComplete(dontShowAgain), 560);
-  };
-
-  const hasFirstPick = Boolean(firstPick);
-  const hasSeenBothOutcomes =
-    teamA?.id && teamB?.id ? seenWinners.includes(teamA.id) && seenWinners.includes(teamB.id) : false;
-  const oppositeWinnerId =
-    activePick && teamA?.id && teamB?.id ? (activePick === teamA.id ? teamB.id : teamA.id) : null;
-  const oppositeWinnerName =
-    oppositeWinnerId && teamA?.id && teamB?.id
-      ? oppositeWinnerId === teamA.id
-        ? teamA.name
-        : teamB.name
-      : null;
-
-  const visibleRows = activePick
-    ? (demoResultByWinner.get(activePick)?.titleOddsShift ?? baselineRows).filter(
-        (row) => row.after > 0.0001
-      )
-    : baselineRows;
-
-  const overlay = (
-    <div
-      className={`onboarding-flow ${exiting ? "is-exiting" : ""}`}
-      role="dialog"
-      aria-modal="true"
-      aria-label="Odds Gods onboarding"
-    >
-      <div className="backdrop-bracket" />
-      <div className="backdrop-scrim" />
-      <div className="backdrop-grain" />
-      <div className="backdrop-glow" />
-      <div className={`onboarding-stage ${isStageTransitioning ? "stage-exit" : "stage-enter"}`} key={stage}>
-        {stage === 1 ? (
-          <section className="onboarding-stage-content stage-hook">
-            <p className="stage-kicker">
-              <span className="kicker-intro">Introducing</span>{" "}
-              <span className="kicker-brand">The Bracket Lab</span>
-            </p>
-            <h2 className="stage-title">
-              <span className="headline-word" style={{ animationDelay: "0ms" }}>
-                Every
-              </span>{" "}
-              <span className="headline-word" style={{ animationDelay: "80ms" }}>
-                pick
-              </span>{" "}
-              <span className="headline-word" style={{ animationDelay: "160ms" }}>
-                changes
-              </span>{" "}
-              <span className="headline-word" style={{ animationDelay: "240ms" }}>
-                everything.
-              </span>
-            </h2>
-            <p className="stage-subtitle">
-              Choose an outcome, and the entire tournament reprices around it, every round, every
-              contender, all the way to the championship.
-            </p>
-            <p className="stage-subtitle secondary">
-              Understand the fragility and leverage in your bracket before it counts.
-            </p>
-            <button className="cta-stage1" onClick={() => transitionToStage(2)}>
-              Show me how →
-            </button>
-          </section>
-        ) : null}
-
-        {stage === 2 ? (
-          <section className="onboarding-stage-content stage-pick">
-            <div className="stage-copy">
-              <p className="stage-counter">Step 2 of 3</p>
-              <h3>Pick a side. Watch the field reprice.</h3>
-              <p>
-                Pick either side and watch contender title odds reprice in real time.
-              </p>
-            </div>
-            <div className="stage-demo">
-              {!hasFirstPick ? <p className="pick-prompt-label">↓ Pick a side</p> : null}
-              <p className="stage-label">Round of 64 — South</p>
-              {teamA ? (
-                <button
-                  type="button"
-                  className={`team-row-active ${!hasFirstPick ? "pre-pick" : ""} ${activePick === teamA.id ? "team-row-locked-win" : ""} ${activePick && activePick !== teamA.id ? "team-row-loss" : ""}`}
-                  onClick={() => handleStage2TeamClick(teamA.id)}
-                >
-                  <span className="seed">{teamA.seed}</span>
-                  <TeamLogo teamName={teamA.name} src={teamLogoUrl(teamA)} />
-                  <span className="name">{teamA.name}</span>
-                  <span className="odds">{formatOddsDisplay(teamAProb, "american").primary}</span>
-                  {activePick === teamA.id ? <span className="outcome-badge win">✓</span> : null}
-                  {activePick && activePick !== teamA.id ? <span className="outcome-badge loss">✕</span> : null}
-                </button>
-              ) : null}
-              {teamB ? (
-                <button
-                  type="button"
-                  className={`team-row-active ${!hasFirstPick ? "pre-pick" : ""} ${activePick === teamB.id ? "team-row-locked-win" : ""} ${activePick && activePick !== teamB.id ? "team-row-loss" : ""}`}
-                  onClick={() => handleStage2TeamClick(teamB.id)}
-                >
-                  <span className="seed">{teamB.seed}</span>
-                  <TeamLogo teamName={teamB.name} src={teamLogoUrl(teamB)} />
-                  <span className="name">{teamB.name}</span>
-                  <span className="odds">{formatOddsDisplay(teamBProb, "american").primary}</span>
-                  {activePick === teamB.id ? <span className="outcome-badge win">✓</span> : null}
-                  {activePick && activePick !== teamB.id ? <span className="outcome-badge loss">✕</span> : null}
-                </button>
-              ) : null}
-              <p className="stage-label odds-header">Title odds — top contenders</p>
-              <div className="odds-table">
-                <div className="odds-table-head">
-                  <span />
-                  <span />
-                  <span>American</span>
-                  <span>Implied</span>
-                </div>
-                {visibleRows.map((row, idx) => (
-                  <OnboardingOddsRow key={row.teamId} row={row} index={idx} />
-                ))}
-              </div>
-              <div
-                className={`stage2-footer-block ${hasFirstPick ? "is-visible" : ""} ${hasSeenBothOutcomes ? "has-advance" : ""}`}
-              >
-                {hasFirstPick && activePick && oppositeWinnerName ? (
-                  <div className="reversal-prompt">
-                    <p>
-                      {activePick === teamA?.id
-                        ? `${teamA.name} advances, the favorite holds. Now flip it and see the other side.`
-                        : `${teamB?.name ?? "The underdog"} wins, the bracket is in chaos. Now see the opposite outcome.`}
-                    </p>
-                    <button className="reversal-link" onClick={handleTryOpposite}>
-                      ↩ Try {oppositeWinnerName} instead
-                    </button>
-                  </div>
-                ) : (
-                  <div className="reversal-prompt placeholder" aria-hidden="true" />
-                )}
-                {hasSeenBothOutcomes ? (
-                  <button className="cta-advance stage2-advance" onClick={() => transitionToStage(3)}>
-                    See your full scenario →
-                  </button>
-                ) : (
-                  <div className="stage2-advance placeholder" aria-hidden="true" />
-                )}
-              </div>
-            </div>
-          </section>
-        ) : null}
-
-        {stage === 3 ? (
-          <section className="onboarding-stage-content stage-handoff">
-            <p className="stage-counter">Step 3 of 3</p>
-            <h3>You&apos;re in. Build your scenario.</h3>
-            <p className="stage-subtitle">
-              You&apos;ve seen how one result moves the entire field. Now do it for real, every
-              pick reshapes the tournament around it.
-            </p>
-            <div className="suggestion-box">
-              <span className="suggestion-label">Suggested first move</span>
-              <p className="suggestion-body">
-                Pick any 1-seed to lose in Round 1. Open Futures. Watch title odds redistribute.
-              </p>
-            </div>
-            <button className="cta-open-bracket" onClick={handleOpenBracket}>
-              Enter The Bracket Lab
-            </button>
-            <p className="replay-note">Replay this intro from the Help menu.</p>
-            <label className="dont-show-inline">
-              <input
-                type="checkbox"
-                checked={dontShowAgain}
-                onChange={(event) => setDontShowAgain(event.target.checked)}
-              />
-              <span>Don&apos;t show again</span>
-            </label>
-          </section>
-        ) : null}
-      </div>
-
-      <div className="onboarding-bottom">
-        <button className="skip-link" onClick={() => onSkip(dontShowAgain)}>
-          Skip intro
+function WelcomeGate({ onStart, onSkip }: { onStart: () => void; onSkip: () => void }) {
+  return createPortal(
+    <div className="wlcm-gate" role="dialog" aria-modal="true" aria-label="Welcome to The Bracket Lab">
+      <div className="wlcm-gate-card">
+        <h2>THE BRACKET LAB</h2>
+        <p>Pick outcomes. Watch the entire tournament reprice in real time.</p>
+        <button type="button" className="wlcm-start-btn" onClick={onStart}>
+          Show me how →
+        </button>
+        <button type="button" className="wlcm-skip-btn" onClick={onSkip}>
+          Skip — I&apos;ll figure it out
         </button>
       </div>
-    </div>
+    </div>,
+    document.body
   );
+}
 
-  return createPortal(overlay, document.body);
+function SpotlightWalkthrough({
+  step,
+  stepIndex,
+  targetRect,
+  placement,
+  onAdvance,
+  onSkip,
+}: {
+  step: WalkthroughStepConfig;
+  stepIndex: number;
+  targetRect: DOMRect;
+  placement: TooltipPlacement;
+  onAdvance: () => void;
+  onSkip: () => void;
+}) {
+  const tooltipRef = useRef<HTMLDivElement | null>(null);
+  const ctaRef = useRef<HTMLButtonElement | null>(null);
+  const padded = {
+    top: Math.max(8, targetRect.top - 8),
+    left: Math.max(8, targetRect.left - 8),
+    width: targetRect.width + 16,
+    height: targetRect.height + 16,
+  };
+
+  useEffect(() => {
+    ctaRef.current?.focus();
+  }, [step.id]);
+
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        event.preventDefault();
+        onSkip();
+        return;
+      }
+      if (event.key === "Enter" && document.activeElement === ctaRef.current) {
+        event.preventDefault();
+        onAdvance();
+        return;
+      }
+      if (event.key !== "Tab" || !tooltipRef.current) return;
+      const focusables = Array.from(
+        tooltipRef.current.querySelectorAll<HTMLElement>("button, a, [tabindex]:not([tabindex='-1'])")
+      ).filter((el) => !el.hasAttribute("disabled"));
+      if (focusables.length === 0) return;
+      const first = focusables[0];
+      const last = focusables[focusables.length - 1];
+      if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault();
+        first.focus();
+      } else if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault();
+        last.focus();
+      }
+    };
+    document.addEventListener("keydown", onKeyDown);
+    return () => document.removeEventListener("keydown", onKeyDown);
+  }, [onAdvance, onSkip]);
+
+  const tooltipStyle: React.CSSProperties = (() => {
+    const gap = 14;
+    const maxWidth = window.innerWidth < 768 ? Math.min(window.innerWidth * 0.9, 340) : 340;
+    const approxHeight = 220;
+    let top = padded.top + padded.height + gap;
+    let left = padded.left;
+    if (placement === "above") top = padded.top - approxHeight - gap;
+    if (placement === "left") left = padded.left - maxWidth - gap;
+    if (placement === "right") left = padded.left + padded.width + gap;
+    if (placement === "below") left = padded.left + Math.min(24, padded.width / 4);
+    left = Math.max(8, Math.min(window.innerWidth - maxWidth - 8, left));
+    top = Math.max(8, Math.min(window.innerHeight - approxHeight - 8, top));
+    return { top, left, maxWidth };
+  })();
+
+  return createPortal(
+    <div className="walkthrough-layer" role="dialog" aria-modal="true" aria-label="Bracket walkthrough">
+      <div className="walkthrough-mask" />
+      <div
+        className="walkthrough-cutout"
+        style={{
+          top: `${padded.top}px`,
+          left: `${padded.left}px`,
+          width: `${padded.width}px`,
+          height: `${padded.height}px`,
+        }}
+      />
+      <div className={`walkthrough-tooltip placement-${placement}`} ref={tooltipRef} style={tooltipStyle}>
+        <p className="walkthrough-step-label">STEP {stepIndex + 1} OF {WALKTHROUGH_STEPS.length}</p>
+        <h3>{step.heading}</h3>
+        <p>{step.body}</p>
+        <div className="walkthrough-dots" aria-hidden="true">
+          {WALKTHROUGH_STEPS.map((_, i) => (
+            <span key={i} className={i === stepIndex ? "active" : ""} />
+          ))}
+        </div>
+        <div className="walkthrough-actions">
+          <button type="button" className="walkthrough-cta-btn" ref={ctaRef} onClick={onAdvance}>
+            {step.ctaText}
+          </button>
+          {step.allowSkip ? (
+            <button type="button" className="walkthrough-skip-link" onClick={onSkip}>
+              Skip walkthrough
+            </button>
+          ) : null}
+        </div>
+      </div>
+    </div>,
+    document.body
+  );
+}
+
+function ContextualHint({ message, rect, onDismiss }: { message: string; rect: DOMRect; onDismiss: () => void }) {
+  useEffect(() => {
+    const handler = () => onDismiss();
+    document.addEventListener("click", handler, { once: true });
+    return () => document.removeEventListener("click", handler);
+  }, [onDismiss]);
+
+  const style: React.CSSProperties = {
+    top: Math.min(window.innerHeight - 100, rect.bottom + 8),
+    left: Math.max(8, Math.min(window.innerWidth - 360, rect.left)),
+  };
+
+  return createPortal(
+    <div className="contextual-hint" style={style}>
+      {message}
+    </div>,
+    document.body
+  );
 }
 
 export default App;
