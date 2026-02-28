@@ -3223,11 +3223,6 @@ body {
   box-shadow: none;
 }
 
-.eg-game-card.round-e8 {
-  max-height: 380px;
-  overflow-y: auto;
-}
-
 .eg-game-card.round-e8 .eg-team-row {
   padding-top: 3px;
   padding-bottom: 3px;
