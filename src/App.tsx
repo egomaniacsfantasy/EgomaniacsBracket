@@ -224,22 +224,38 @@ type ShareFinalFourTeam = {
   seed: number;
   name: string;
   logoUrl: string;
-  champOdds: string;
+  champProbLabel: string;
+  isChampion: boolean;
+};
+
+type ShareChampionTeam = {
+  id: string;
+  seed: number;
+  name: string;
+  logoUrl: string;
+  champProbLabel: string;
+  baselineProb: number | null;
+  flavor: string;
 };
 
 type ShareBoldPick = {
-  winnerLabel: string;
-  loserLabel: string;
+  winnerSeed: number;
+  winnerName: string;
+  loserSeed: number;
+  loserName: string;
   winProbPct: number;
 };
 
 type ShareCardData = {
+  champion: ShareChampionTeam | null;
   f4Teams: ShareFinalFourTeam[];
   boldestPicks: ShareBoldPick[];
   totalPicks: number;
   chalkScore: number;
   bracketLikelihood: string | null;
 };
+
+type ShareFormat = "story" | "twitter";
 
 type FuturesSortMode = "champ_desc" | "champ_asc" | "delta_desc";
 
@@ -256,6 +272,16 @@ function getChalkColor(score: number): string {
   if (score >= 40) return "rgba(184,125,24,0.85)";
   if (score >= 20) return "rgba(220,120,50,0.85)";
   return "rgba(239,83,80,0.85)";
+}
+
+function getChampionFlavor(baselineProb: number | null): string {
+  if (baselineProb === null) return "Finish your bracket to crown a champion.";
+  const pct = baselineProb * 100;
+  if (pct < 5) return "Cinderella story";
+  if (pct < 15) return "Against all odds";
+  if (pct < 30) return "Bold call";
+  if (pct < 50) return "Strong conviction";
+  return "Chalk champion";
 }
 
 const DEFAULT_HINTS_SHOWN: HintsShown = {
@@ -407,9 +433,8 @@ function App() {
   const [resetModalConfig, setResetModalConfig] = useState<ResetModalConfig | null>(null);
   const [linkCopied, setLinkCopied] = useState(false);
   const [shareToastVisible, setShareToastVisible] = useState(false);
-  const [shareCardData, setShareCardData] = useState<ShareCardData | null>(null);
-  const [shareExportNonce, setShareExportNonce] = useState(0);
-  const [shareExporting, setShareExporting] = useState(false);
+  const [shareModalVisible, setShareModalVisible] = useState(false);
+  const [shareExporting, setShareExporting] = useState<ShareFormat | null>(null);
   const [chalkScoreChanged, setChalkScoreChanged] = useState(false);
   const [chalkTooltipVisible, setChalkTooltipVisible] = useState(false);
   const [probPopup, setProbPopup] = useState<ProbabilityPopupState | null>(null);
@@ -439,7 +464,8 @@ function App() {
   const contextualHintTimerRef = useRef<number | null>(null);
   const copyLinkTimerRef = useRef<number | null>(null);
   const shareToastTimerRef = useRef<number | null>(null);
-  const shareCardRef = useRef<HTMLDivElement | null>(null);
+  const shareStoryRef = useRef<HTMLDivElement | null>(null);
+  const shareTwitterRef = useRef<HTMLDivElement | null>(null);
   const suppressHashSyncRef = useRef(true);
   const chalkScoreTimerRef = useRef<number | null>(null);
   const chalkTooltipTimerRef = useRef<number | null>(null);
@@ -986,6 +1012,22 @@ function App() {
     const finalGamesById = new Map(finalRounds(games).map((game) => [game.id, game]));
     const leftSemi = finalGamesById.get("F4-Left-0") ?? null;
     const rightSemi = finalGamesById.get("F4-Right-0") ?? null;
+    const championshipGame = Array.from(finalGamesById.values()).find((game) => game.round === "CHAMP") ?? null;
+    const championTeamId = championshipGame?.winnerId ?? null;
+    const championTeam = championTeamId ? teamsById.get(championTeamId) ?? null : null;
+    const championBaseline = championTeam ? baselineByTeamId.get(championTeam.id)?.champProb ?? null : null;
+    const championFuturesRow = championTeam ? simResult.futures.find((row) => row.teamId === championTeam.id) : null;
+    const champion: ShareChampionTeam | null = championTeam
+      ? {
+          id: championTeam.id,
+          seed: championTeam.seed,
+          name: championTeam.name,
+          logoUrl: teamLogoUrl(championTeam),
+          champProbLabel: toImpliedLabel(championFuturesRow?.champProb ?? 0),
+          baselineProb: championBaseline,
+          flavor: getChampionFlavor(championBaseline),
+        }
+      : null;
     const f4Participants = [leftSemi?.teamAId, leftSemi?.teamBId, rightSemi?.teamAId, rightSemi?.teamBId]
       .filter((teamId): teamId is string => Boolean(teamId));
 
@@ -1000,7 +1042,8 @@ function App() {
           seed: team.seed,
           name: team.name,
           logoUrl: teamLogoUrl(team),
-          champOdds: formatOddsDisplay(champProb, displayMode).primary,
+          champProbLabel: toImpliedLabel(champProb),
+          isChampion: championTeamId === team.id,
         };
       })
       .filter((team): team is ShareFinalFourTeam => Boolean(team));
@@ -1016,17 +1059,21 @@ function App() {
         const winnerWinProb = modelProbA === null ? null : winnerIsA ? modelProbA : 1 - modelProbA;
         if (!winnerTeam || !loserTeam || winnerWinProb === null) return null;
         return {
-          winnerLabel: `${winnerTeam.seed} ${winnerTeam.name}`,
-          loserLabel: `${loserTeam.seed} ${loserTeam.name}`,
+          winnerSeed: winnerTeam.seed,
+          winnerName: winnerTeam.name,
+          loserSeed: loserTeam.seed,
+          loserName: loserTeam.name,
           winProb: winnerWinProb,
         };
       })
-      .filter((row): row is { winnerLabel: string; loserLabel: string; winProb: number } => Boolean(row))
+      .filter((row): row is { winnerSeed: number; winnerName: string; loserSeed: number; loserName: string; winProb: number } => Boolean(row))
       .sort((a, b) => a.winProb - b.winProb);
 
     const boldestPicks: ShareBoldPick[] = pickRows.slice(0, 3).map((row) => ({
-      winnerLabel: row.winnerLabel,
-      loserLabel: row.loserLabel,
+      winnerSeed: row.winnerSeed,
+      winnerName: row.winnerName,
+      loserSeed: row.loserSeed,
+      loserName: row.loserName,
       winProbPct: Math.round(row.winProb * 100),
     }));
 
@@ -1036,13 +1083,14 @@ function App() {
     const bracketLikelihood = simResult.likelihoodSimulation > 0 ? toOneInX(simResult.likelihoodSimulation) : null;
 
     return {
+      champion,
       f4Teams,
       boldestPicks,
       totalPicks,
       chalkScore,
       bracketLikelihood,
     };
-  }, [displayMode, games, sanitized, simResult.futures, simResult.likelihoodSimulation]);
+  }, [baselineByTeamId, games, sanitized, simResult.futures, simResult.likelihoodSimulation]);
 
   const pickCount = useMemo(
     () => games.filter((game) => Boolean(game.winnerId && game.teamAId && game.teamBId)).length,
@@ -1367,8 +1415,63 @@ function App() {
 
   const onShareBracketImage = () => {
     if (shareExporting || shareCardComputedData.totalPicks === 0) return;
-    setShareCardData(shareCardComputedData);
-    setShareExportNonce((prev) => prev + 1);
+    setShareModalVisible(true);
+  };
+
+  const onCloseShareModal = () => {
+    if (shareExporting) return;
+    setShareModalVisible(false);
+  };
+
+  const onExportShareFormat = async (format: ShareFormat) => {
+    if (shareExporting || shareCardComputedData.totalPicks === 0) return;
+    const targetRef = format === "story" ? shareStoryRef.current : shareTwitterRef.current;
+    if (!targetRef) return;
+
+    const width = format === "story" ? 1080 : 1200;
+    const height = format === "story" ? 1920 : 630;
+    const filename = format === "story" ? "my-bracket-lab-story.png" : "my-bracket-lab.png";
+
+    setShareExporting(format);
+    await new Promise((resolve) => window.requestAnimationFrame(() => resolve(undefined)));
+    await new Promise((resolve) => window.requestAnimationFrame(() => resolve(undefined)));
+
+    try {
+      const canvas = await html2canvas(targetRef, {
+        backgroundColor: null,
+        scale: 2,
+        useCORS: true,
+        allowTaint: false,
+        width,
+        height,
+        windowWidth: width,
+        windowHeight: height,
+        logging: false,
+      });
+
+      const link = document.createElement("a");
+      link.download = filename;
+      link.href = canvas.toDataURL("image/png");
+      link.click();
+
+      trackEvent("bracket_image_exported", {
+        format,
+        total_picks: shareCardComputedData.totalPicks,
+        chalk_score: shareCardComputedData.chalkScore,
+        champion: shareCardComputedData.champion?.name ?? null,
+      });
+
+      setShareToastVisible(true);
+      if (shareToastTimerRef.current !== null) window.clearTimeout(shareToastTimerRef.current);
+      shareToastTimerRef.current = window.setTimeout(() => {
+        setShareToastVisible(false);
+        shareToastTimerRef.current = null;
+      }, 3000);
+
+      setShareModalVisible(false);
+    } finally {
+      setShareExporting(null);
+    }
   };
 
   useEffect(() => {
@@ -1563,57 +1666,15 @@ function App() {
   );
 
   useEffect(() => {
-    if (shareExportNonce === 0 || !shareCardData || !shareCardRef.current) return;
-    let cancelled = false;
-
-    const exportCard = async () => {
-      setShareExporting(true);
-      await new Promise((resolve) => window.requestAnimationFrame(() => resolve(undefined)));
-      await new Promise((resolve) => window.requestAnimationFrame(() => resolve(undefined)));
-      if (cancelled || !shareCardRef.current) return;
-
-      const canvas = await html2canvas(shareCardRef.current, {
-        backgroundColor: "#0e0c09",
-        scale: 2,
-        useCORS: true,
-        width: 1080,
-        height: 1080,
-        windowWidth: 1080,
-        windowHeight: 1080,
-      });
-      if (cancelled) return;
-
-      const link = document.createElement("a");
-      link.download = "my-bracket-lab.png";
-      link.href = canvas.toDataURL("image/png");
-      link.click();
-
-      trackEvent("bracket_image_exported", {
-        total_picks: shareCardData.totalPicks,
-        chalk_score: shareCardData.chalkScore,
-        f4_count: shareCardData.f4Teams.length,
-      });
-
-      setShareToastVisible(true);
-      if (shareToastTimerRef.current !== null) window.clearTimeout(shareToastTimerRef.current);
-      shareToastTimerRef.current = window.setTimeout(() => {
-        setShareToastVisible(false);
-        shareToastTimerRef.current = null;
-      }, 3000);
-      setShareExporting(false);
+    if (!shareModalVisible) return;
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== "Escape") return;
+      if (shareExporting) return;
+      setShareModalVisible(false);
     };
-
-    void exportCard().finally(() => {
-      if (!cancelled) {
-        setShareExporting(false);
-        setShareCardData(null);
-      }
-    });
-
-    return () => {
-      cancelled = true;
-    };
-  }, [shareCardData, shareExportNonce]);
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [shareModalVisible, shareExporting]);
 
   useEffect(() => {
     if (!probPopup) return;
@@ -1980,7 +2041,7 @@ function App() {
       <button
         onClick={onShareBracketImage}
         className="eg-btn share-bracket-btn"
-        disabled={shareCardComputedData.totalPicks === 0 || shareExporting}
+        disabled={shareCardComputedData.totalPicks === 0 || Boolean(shareExporting)}
         aria-label="Export a shareable bracket image"
       >
         {shareExporting ? "Exporting..." : "Share Bracket"}
@@ -2536,69 +2597,252 @@ function App() {
 
       {shareToastVisible ? <div className="share-toast">Image saved! Share it on social media.</div> : null}
 
-      {shareCardData ? (
-        <div className="share-card-container" aria-hidden="true">
-          <div ref={shareCardRef} className="share-card">
-            <div className="share-card-header">
-              <span className="share-card-brand">ODDS GODS</span>
-              <span className="share-card-title">The Bracket Lab</span>
-              <span className="share-card-subtitle">My Bracket</span>
-            </div>
+      {shareModalVisible ? (
+        <>
+          <div className="share-card-renderers" aria-hidden="true">
+            <StoryShareCard cardRef={shareStoryRef} data={shareCardComputedData} />
+            <TwitterShareCard cardRef={shareTwitterRef} data={shareCardComputedData} />
+          </div>
 
-            {shareCardData.f4Teams.length > 0 ? (
-              <div className="share-card-section">
-                <span className="share-card-section-label">FINAL FOUR</span>
-                <div className="share-card-f4-grid">
-                  {shareCardData.f4Teams.map((team) => (
-                    <div key={team.id} className="share-card-f4-team">
-                      <img
-                        src={team.logoUrl}
-                        className="share-card-f4-logo"
-                        alt=""
-                        crossOrigin="anonymous"
-                        onError={(event) => {
-                          event.currentTarget.style.display = "none";
-                        }}
-                      />
-                      <span className="share-card-f4-name">
-                        {team.seed} {team.name}
-                      </span>
-                      <span className="share-card-f4-odds">CHAMP: {team.champOdds}</span>
-                    </div>
-                  ))}
+          <div className="share-modal-overlay" onClick={onCloseShareModal}>
+            <div className="share-modal" onClick={(event) => event.stopPropagation()}>
+              <div className="share-modal-header">
+                <span className="share-modal-title">Share Your Bracket</span>
+                <button className="share-modal-close" onClick={onCloseShareModal} disabled={Boolean(shareExporting)}>
+                  ✕
+                </button>
+              </div>
+
+              <div className="share-modal-options">
+                <button
+                  className="share-format-btn"
+                  onClick={() => void onExportShareFormat("story")}
+                  disabled={Boolean(shareExporting)}
+                >
+                  <span className="share-format-icon">📱</span>
+                  <span className="share-format-label">Story / Text</span>
+                  <span className="share-format-size">1080×1920</span>
+                </button>
+                <button
+                  className="share-format-btn"
+                  onClick={() => void onExportShareFormat("twitter")}
+                  disabled={Boolean(shareExporting)}
+                >
+                  <span className="share-format-icon">🐦</span>
+                  <span className="share-format-label">Twitter / Link</span>
+                  <span className="share-format-size">1200×630</span>
+                </button>
+              </div>
+
+              {shareExporting ? (
+                <div className="share-modal-loading">
+                  <span>Generating image...</span>
                 </div>
-              </div>
-            ) : null}
-
-            {shareCardData.boldestPicks.length > 0 ? (
-              <div className="share-card-section">
-                <span className="share-card-section-label">BOLDEST PICKS</span>
-                {shareCardData.boldestPicks.map((pick, index) => (
-                  <div key={`${pick.winnerLabel}-${pick.loserLabel}-${index}`} className="share-card-upset-row">
-                    <span className="share-card-upset-winner">{pick.winnerLabel}</span>
-                    <span className="share-card-upset-over"> over </span>
-                    <span className="share-card-upset-loser">{pick.loserLabel}</span>
-                    <span className="share-card-upset-prob"> ({pick.winProbPct}%)</span>
-                  </div>
-                ))}
-              </div>
-            ) : null}
-
-            <div className="share-card-stats">
-              <span className="share-card-stat-pill">{shareCardData.chalkScore}% Chalk</span>
-              <span className="share-card-stat-pill">{shareCardData.totalPicks}/63 Picks</span>
-              {shareCardData.bracketLikelihood ? (
-                <span className="share-card-likelihood">Bracket Likelihood: {shareCardData.bracketLikelihood}</span>
               ) : null}
             </div>
-
-            <div className="share-card-footer">
-              <span className="share-card-tagline">Every pick changes everything.</span>
-              <span className="share-card-url">bracket.oddsgods.net</span>
-            </div>
           </div>
-        </div>
+        </>
       ) : null}
+    </div>
+  );
+}
+
+function ShareTeamLogo({
+  seed,
+  name,
+  logoUrl,
+  size,
+  className = "",
+}: {
+  seed: number;
+  name: string;
+  logoUrl: string;
+  size: number;
+  className?: string;
+}) {
+  const [failed, setFailed] = useState(false);
+
+  if (failed || !logoUrl) {
+    return (
+      <div className={`share-logo-fallback ${className}`.trim()} style={{ width: size, height: size }}>
+        <span>{seed}</span>
+      </div>
+    );
+  }
+
+  return (
+    <img
+      className={`share-logo ${className}`.trim()}
+      src={logoUrl}
+      alt={name}
+      loading="lazy"
+      crossOrigin="anonymous"
+      style={{ width: size, height: size }}
+      onError={() => setFailed(true)}
+    />
+  );
+}
+
+function StoryShareCard({
+  cardRef,
+  data,
+}: {
+  cardRef: { current: HTMLDivElement | null };
+  data: ShareCardData;
+}) {
+  return (
+    <div ref={cardRef} className="share-story-card">
+      <div className="share-story-bg-glow" />
+      <header className="share-story-header">
+        <span className="share-brand">ODDS GODS</span>
+        <span className="share-product-name">The Bracket Lab</span>
+      </header>
+
+      <div className="share-amber-rule" />
+
+      <section className="share-story-champion">
+        <span className="share-section-label">CHAMPION</span>
+        {data.champion ? (
+          <>
+            <div className="share-champion-logo-wrap">
+              <ShareTeamLogo
+                seed={data.champion.seed}
+                name={data.champion.name}
+                logoUrl={data.champion.logoUrl}
+                size={120}
+              />
+            </div>
+            <span className="share-champion-name">
+              <span className="share-champion-seed">{data.champion.seed}</span> {data.champion.name}
+            </span>
+            <span className="share-champion-odds">CHAMP: {data.champion.champProbLabel}</span>
+            <span className="share-champion-flavor">{data.champion.flavor}</span>
+          </>
+        ) : (
+          <span className="share-champion-placeholder">Pick a champion to unlock this card.</span>
+        )}
+      </section>
+
+      <section className="share-story-section">
+        <span className="share-section-label">FINAL FOUR</span>
+        <div className="share-f4-grid">
+          {data.f4Teams.map((team) => (
+            <div key={`story-f4-${team.id}`} className={`share-f4-card ${team.isChampion ? "share-f4-card--champion" : ""}`}>
+              <ShareTeamLogo seed={team.seed} name={team.name} logoUrl={team.logoUrl} size={40} />
+              <div className="share-f4-text">
+                <span className="share-f4-team-name">
+                  {team.seed} {team.name}
+                </span>
+                <span className="share-f4-odds">CHAMP: {team.champProbLabel}</span>
+              </div>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      <section className="share-story-section">
+        <span className="share-section-label">BOLDEST PICKS</span>
+        <div className="share-upset-list">
+          {data.boldestPicks.map((pick, index) => (
+            <div key={`story-upset-${index}-${pick.winnerName}`} className="share-upset-row">
+              <span className="share-upset-winner">
+                {pick.winnerSeed} {pick.winnerName}
+              </span>
+              <span className="share-upset-over"> over </span>
+              <span className="share-upset-loser">
+                {pick.loserSeed} {pick.loserName}
+              </span>
+              <span className="share-upset-prob">{pick.winProbPct}%</span>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      <div className="share-amber-rule" />
+
+      <section className="share-story-stats">
+        <span className="share-stat-pill" style={{ color: getChalkColor(data.chalkScore) }}>
+          {data.chalkScore}% Chalk
+        </span>
+        <span className="share-stat-pill">{data.totalPicks}/63 Picks</span>
+      </section>
+
+      <footer className="share-story-footer">
+        <span className="share-tagline">Every pick changes everything.</span>
+        <span className="share-url">bracket.oddsgods.net</span>
+      </footer>
+    </div>
+  );
+}
+
+function TwitterShareCard({
+  cardRef,
+  data,
+}: {
+  cardRef: { current: HTMLDivElement | null };
+  data: ShareCardData;
+}) {
+  return (
+    <div ref={cardRef} className="share-twitter-card">
+      <header className="share-twitter-header">
+        <span className="share-brand">ODDS GODS</span>
+        <span className="share-product-name">The Bracket Lab</span>
+      </header>
+
+      <div className="share-twitter-main">
+        <section className="share-twitter-champion">
+          <span className="share-section-label">CHAMPION</span>
+          {data.champion ? (
+            <>
+              <ShareTeamLogo
+                seed={data.champion.seed}
+                name={data.champion.name}
+                logoUrl={data.champion.logoUrl}
+                size={84}
+              />
+              <span className="share-twitter-champ-name">
+                {data.champion.seed} {data.champion.name}
+              </span>
+              <span className="share-twitter-champ-odds">CHAMP: {data.champion.champProbLabel}</span>
+              <span className="share-champion-flavor">{data.champion.flavor}</span>
+            </>
+          ) : (
+            <span className="share-champion-placeholder">Pick a champion to unlock this card.</span>
+          )}
+        </section>
+
+        <section className="share-twitter-f4">
+          <span className="share-section-label">FINAL FOUR</span>
+          <div className="share-twitter-f4-list">
+            {data.f4Teams.map((team) => (
+              <div key={`twitter-f4-${team.id}`} className={`share-twitter-f4-row ${team.isChampion ? "share-f4-card--champion" : ""}`}>
+                <ShareTeamLogo seed={team.seed} name={team.name} logoUrl={team.logoUrl} size={28} />
+                <span className="share-twitter-f4-name">
+                  {team.seed} {team.name}
+                </span>
+                <span className="share-twitter-f4-odds">{team.champProbLabel}</span>
+              </div>
+            ))}
+          </div>
+        </section>
+      </div>
+
+      <section className="share-twitter-bottom">
+        {data.boldestPicks[0] ? (
+          <span className="share-twitter-boldest">
+            BOLDEST: {data.boldestPicks[0].winnerSeed} {data.boldestPicks[0].winnerName} over {data.boldestPicks[0].loserSeed}{" "}
+            {data.boldestPicks[0].loserName} ({data.boldestPicks[0].winProbPct}%)
+          </span>
+        ) : null}
+        <span className="share-stat-pill" style={{ color: getChalkColor(data.chalkScore) }}>
+          {data.chalkScore}% Chalk
+        </span>
+      </section>
+
+      <footer className="share-twitter-footer">
+        <span className="share-tagline">Every pick changes everything.</span>
+        <span className="share-url">bracket.oddsgods.net</span>
+      </footer>
     </div>
   );
 }

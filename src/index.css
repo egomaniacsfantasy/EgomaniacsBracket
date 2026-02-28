@@ -5231,165 +5231,498 @@ body.walkthrough-active .eg-title-choice:hover {
   }
 }
 
-.share-card-container {
+.share-card-renderers {
   position: fixed;
   left: -9999px;
   top: 0;
-  width: 1080px;
-  height: 1080px;
+  width: 1200px;
+  height: 1920px;
   pointer-events: none;
   z-index: -1;
 }
 
-.share-card {
-  width: 1080px;
-  height: 1080px;
-  background: #0e0c09;
-  padding: 60px;
-  box-sizing: border-box;
+.share-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.6);
   display: flex;
-  flex-direction: column;
-  gap: 34px;
+  align-items: center;
+  justify-content: center;
+  z-index: 2000;
+}
+
+.share-modal {
+  background: #1a1510;
+  border: 1px solid rgba(184, 125, 24, 0.3);
+  border-radius: 12px;
+  padding: 24px;
+  max-width: 360px;
+  width: calc(100% - 32px);
+  box-shadow: 0 12px 48px rgba(0, 0, 0, 0.7);
+}
+
+.share-modal-header {
+  display: flex;
+  align-items: center;
   justify-content: space-between;
-  font-family: var(--font-mono);
+  margin-bottom: 20px;
 }
 
-.share-card-header {
+.share-modal-title {
+  font-family: var(--font-mono);
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.share-modal-close {
+  background: none;
+  border: none;
+  color: rgba(240, 230, 208, 0.4);
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.share-modal-close:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.share-modal-options {
+  display: flex;
+  gap: 12px;
+}
+
+.share-format-btn {
+  flex: 1;
   display: flex;
   flex-direction: column;
+  align-items: center;
   gap: 6px;
+  padding: 20px 16px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(184, 125, 24, 0.2);
+  border-radius: 10px;
+  cursor: pointer;
+  transition: border-color 140ms, background 140ms;
 }
 
-.share-card-brand {
+.share-format-btn:hover {
+  border-color: rgba(184, 125, 24, 0.5);
+  background: rgba(184, 125, 24, 0.06);
+}
+
+.share-format-btn:disabled {
+  opacity: 0.5;
+  cursor: wait;
+}
+
+.share-format-icon {
+  font-size: 24px;
+}
+
+.share-format-label {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.share-format-size {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--text-tertiary);
+}
+
+.share-modal-loading {
+  text-align: center;
+  padding: 12px 0 0;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--amber);
+}
+
+.share-story-card,
+.share-twitter-card {
+  box-sizing: border-box;
+  position: relative;
+  overflow: hidden;
+  background:
+    radial-gradient(circle at 50% 18%, #141210 0%, #0a0806 72%),
+    repeating-linear-gradient(
+      0deg,
+      rgba(255, 255, 255, 0.02) 0px,
+      rgba(255, 255, 255, 0.02) 1px,
+      transparent 1px,
+      transparent 3px
+    );
+  color: #f0e6d0;
+}
+
+.share-story-card {
+  width: 1080px;
+  height: 1920px;
+  padding: 72px 78px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 24px;
+}
+
+.share-twitter-card {
+  width: 1200px;
+  height: 630px;
+  margin-top: 24px;
+  padding: 34px 40px 30px;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.share-story-bg-glow {
+  position: absolute;
+  width: 320px;
+  height: 320px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(184, 125, 24, 0.08) 0%, transparent 72%);
+  top: 220px;
+  left: 50%;
+  transform: translateX(-50%);
+  pointer-events: none;
+}
+
+.share-brand {
+  font-family: var(--font-mono);
   font-size: 14px;
   color: #b87d18;
   letter-spacing: 4px;
   text-transform: uppercase;
 }
 
-.share-card-title {
+.share-product-name {
   font-family: var(--font-serif);
-  font-size: 46px;
+  font-size: 40px;
   font-weight: 700;
   color: #f0e6d0;
 }
 
-.share-card-subtitle {
-  font-size: 16px;
-  color: rgba(240, 230, 208, 0.45);
-}
-
-.share-card-section {
+.share-story-header,
+.share-twitter-header {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 6px;
 }
 
-.share-card-section-label {
+.share-twitter-header .share-product-name {
+  font-size: 32px;
+}
+
+.share-amber-rule {
+  width: 70%;
+  height: 1px;
+  background: rgba(184, 125, 24, 0.2);
+  margin: 0 auto;
+}
+
+.share-section-label {
+  font-family: var(--font-mono);
   font-size: 11px;
   color: #b87d18;
   letter-spacing: 3px;
   text-transform: uppercase;
 }
 
-.share-card-f4-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 16px;
-}
-
-.share-card-f4-team {
+.share-story-champion {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 8px;
-  background: rgba(255, 255, 255, 0.03);
-  border: 1px solid rgba(184, 125, 24, 0.2);
-  border-radius: 10px;
-  padding: 20px 16px;
-}
-
-.share-card-f4-logo {
-  width: 48px;
-  height: 48px;
-  object-fit: contain;
-}
-
-.share-card-f4-name {
-  font-size: 16px;
-  font-weight: 700;
-  color: #f0e6d0;
+  gap: 12px;
   text-align: center;
 }
 
-.share-card-f4-odds {
-  font-size: 12px;
+.share-champion-logo-wrap {
+  padding: 12px;
+}
+
+.share-logo {
+  object-fit: contain;
+}
+
+.share-logo-fallback {
+  border-radius: 50%;
+  background: rgba(184, 125, 24, 0.2);
+  border: 1px solid rgba(184, 125, 24, 0.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-mono);
+  font-weight: 700;
   color: #b87d18;
 }
 
-.share-card-upset-row {
-  font-size: 14px;
-  color: rgba(240, 230, 208, 0.75);
-  line-height: 1.8;
-}
-
-.share-card-upset-winner {
-  color: #f0e6d0;
+.share-champion-name {
+  font-family: var(--font-serif);
+  font-size: 52px;
   font-weight: 700;
+  color: #f0e6d0;
+  line-height: 1.05;
 }
 
-.share-card-upset-over {
+.share-champion-seed {
+  font-family: var(--font-mono);
+  font-size: 26px;
+  color: rgba(240, 230, 208, 0.6);
+  margin-right: 8px;
+}
+
+.share-champion-odds {
+  font-family: var(--font-mono);
+  font-size: 21px;
+  color: #b87d18;
+  letter-spacing: 0.04em;
+}
+
+.share-champion-flavor {
+  font-family: var(--font-mono);
+  font-size: 16px;
+  color: rgba(184, 125, 24, 0.75);
+  font-style: italic;
+}
+
+.share-champion-placeholder {
+  font-family: var(--font-mono);
+  color: rgba(240, 230, 208, 0.45);
+}
+
+.share-story-section {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.share-f4-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.share-f4-card {
+  border: 1px solid rgba(184, 125, 24, 0.2);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.03);
+  padding: 14px 12px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.share-f4-card--champion {
+  border-left: 3px solid rgba(184, 125, 24, 0.6);
+  background: rgba(184, 125, 24, 0.04);
+}
+
+.share-f4-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.share-f4-team-name {
+  font-family: var(--font-serif);
+  font-size: 20px;
+  font-weight: 600;
+  color: #f0e6d0;
+  line-height: 1.05;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.share-f4-odds {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  color: rgba(240, 230, 208, 0.55);
+}
+
+.share-upset-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.share-upset-row {
+  display: flex;
+  align-items: baseline;
+  gap: 4px;
+  flex-wrap: wrap;
+}
+
+.share-upset-winner {
+  font-family: var(--font-serif);
+  font-size: 21px;
+  font-weight: 700;
+  color: #f0e6d0;
+}
+
+.share-upset-over {
+  font-family: var(--font-serif);
+  font-size: 20px;
   color: rgba(240, 230, 208, 0.35);
   font-style: italic;
 }
 
-.share-card-upset-loser {
+.share-upset-loser {
+  font-family: var(--font-serif);
+  font-size: 20px;
   color: rgba(240, 230, 208, 0.5);
 }
 
-.share-card-upset-prob {
-  color: #b87d18;
-}
-
-.share-card-stats {
-  display: flex;
-  gap: 12px;
-  align-items: center;
-  flex-wrap: wrap;
-}
-
-.share-card-stat-pill {
-  background: rgba(184, 125, 24, 0.12);
-  border: 1px solid rgba(184, 125, 24, 0.3);
-  border-radius: 100px;
-  padding: 8px 18px;
-  font-size: 14px;
+.share-upset-prob {
+  margin-left: auto;
+  font-family: var(--font-mono);
+  font-size: 20px;
   font-weight: 700;
   color: #b87d18;
 }
 
-.share-card-likelihood {
-  font-size: 13px;
-  color: rgba(240, 230, 208, 0.45);
+.share-story-stats {
+  display: flex;
+  justify-content: center;
+  gap: 14px;
+  flex-wrap: wrap;
 }
 
-.share-card-footer {
+.share-stat-pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 10px 24px;
+  border: 1px solid rgba(184, 125, 24, 0.3);
+  background: rgba(184, 125, 24, 0.08);
+  border-radius: 100px;
+  font-family: var(--font-mono);
+  font-size: 20px;
+  font-weight: 700;
+  color: #b87d18;
+}
+
+.share-story-footer,
+.share-twitter-footer {
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 6px;
 }
 
-.share-card-tagline {
-  font-size: 14px;
+.share-tagline {
+  font-family: var(--font-mono);
+  font-size: 18px;
   color: #b87d18;
   font-style: italic;
 }
 
-.share-card-url {
-  font-size: 12px;
-  color: rgba(240, 230, 208, 0.3);
+.share-url {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  color: rgba(240, 230, 208, 0.32);
   letter-spacing: 2px;
+}
+
+.share-twitter-main {
+  display: grid;
+  grid-template-columns: 320px minmax(0, 1fr);
+  gap: 18px;
+}
+
+.share-twitter-champion,
+.share-twitter-f4 {
+  border: 1px solid rgba(184, 125, 24, 0.25);
+  background: rgba(255, 255, 255, 0.03);
+  border-radius: 12px;
+  padding: 14px;
+}
+
+.share-twitter-champion {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 8px;
+}
+
+.share-twitter-champ-name {
+  font-family: var(--font-serif);
+  font-size: 34px;
+  font-weight: 700;
+  line-height: 0.98;
+}
+
+.share-twitter-champ-odds {
+  font-family: var(--font-mono);
+  font-size: 16px;
+  color: #b87d18;
+}
+
+.share-twitter-f4-list {
+  margin-top: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.share-twitter-f4-row {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid rgba(184, 125, 24, 0.16);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.02);
+  padding: 5px 8px;
+}
+
+.share-twitter-f4-name {
+  font-family: var(--font-serif);
+  font-size: 20px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.share-twitter-f4-odds {
+  font-family: var(--font-mono);
+  font-size: 14px;
+  color: rgba(240, 230, 208, 0.55);
+}
+
+.share-twitter-bottom {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.share-twitter-boldest {
+  font-family: var(--font-mono);
+  font-size: 15px;
+  color: rgba(240, 230, 208, 0.76);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.share-twitter-bottom .share-stat-pill {
+  font-size: 14px;
+  padding: 8px 16px;
+}
+
+.share-twitter-footer .share-tagline {
+  font-size: 14px;
+}
+
+.share-twitter-footer .share-url {
+  font-size: 11px;
 }
 
 .share-toast {
