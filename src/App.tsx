@@ -41,6 +41,8 @@ const ONBOARDING_STORAGE_KEY = "oddsGods_onboardingDismissed";
 const HINTS_STORAGE_KEY = "oddsGods_hintsShown";
 const FIRST_PICK_NUDGE_SESSION_KEY = "oddsGods_firstPickCascadeNudgeSeen";
 const PROMO_DISMISSED_KEY = "bracketlab-promo-dismissed";
+const DESKTOP_FIRST_SEEN_KEY = "bracketlab-desktop-first-seen";
+const MOBILE_ONBOARDING_KEY = "bracketlab-mobile-onboarding-done";
 const ODDS_FORMAT_STORAGE_KEY = "bracketlab-odds-format";
 const STAGGERED_SIM_DELAY_MS = 2000;
 const MIN_STAGGERED_SIM_DELAY_MS = 1000;
@@ -472,6 +474,8 @@ function App() {
     if (typeof window === "undefined") return false;
     return window.localStorage.getItem(ONBOARDING_STORAGE_KEY) !== "true";
   });
+  const [showDesktopFirst, setShowDesktopFirst] = useState(false);
+  const [mobileOnboardingOpen, setMobileOnboardingOpen] = useState(false);
   const [walkthroughActive, setWalkthroughActive] = useState(false);
   const [walkthroughStep, setWalkthroughStep] = useState(0);
   const [walkthroughTargetEl, setWalkthroughTargetEl] = useState<HTMLElement | null>(null);
@@ -630,6 +634,24 @@ function App() {
     media.addEventListener("change", apply);
     return () => media.removeEventListener("change", apply);
   }, []);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    if (!isMobile) {
+      setShowDesktopFirst(false);
+      setMobileOnboardingOpen(false);
+      setWelcomeGateOpen(window.localStorage.getItem(ONBOARDING_STORAGE_KEY) !== "true");
+      return;
+    }
+
+    // Mobile uses a dedicated onboarding flow and never runs the desktop walkthrough.
+    setWelcomeGateOpen(false);
+    setWalkthroughActive(false);
+    const desktopFirstSeen = window.localStorage.getItem(DESKTOP_FIRST_SEEN_KEY) === "1";
+    const mobileOnboardingDone = window.localStorage.getItem(MOBILE_ONBOARDING_KEY) === "1";
+    setShowDesktopFirst(!desktopFirstSeen);
+    setMobileOnboardingOpen(desktopFirstSeen && !mobileOnboardingDone);
+  }, [isMobile]);
 
   useEffect(() => {
     if (!hasSeenFirstPickNudge || typeof window === "undefined") return;
@@ -799,7 +821,33 @@ function App() {
     setWalkthroughActive(true);
   };
 
-  const replayIntro = () => startWalkthrough({ replay: true });
+  const replayIntro = () => {
+    if (isMobile) {
+      if (typeof window !== "undefined") {
+        window.localStorage.removeItem(MOBILE_ONBOARDING_KEY);
+      }
+      setPromoCTAVisible(false);
+      setShowDesktopFirst(false);
+      setMobileOnboardingOpen(true);
+      return;
+    }
+    startWalkthrough({ replay: true });
+  };
+
+  const handleDismissDesktopFirst = () => {
+    setShowDesktopFirst(false);
+    if (typeof window !== "undefined") {
+      window.localStorage.setItem(DESKTOP_FIRST_SEEN_KEY, "1");
+      const mobileOnboardingDone = window.localStorage.getItem(MOBILE_ONBOARDING_KEY) === "1";
+      if (!mobileOnboardingDone) setMobileOnboardingOpen(true);
+    }
+  };
+
+  const handleMobileOnboardingComplete = (source: "completed" | "skipped") => {
+    setMobileOnboardingOpen(false);
+    trackEvent(source === "completed" ? "mobile_onboarding_completed" : "mobile_onboarding_skipped");
+    maybeShowPromoCTA();
+  };
 
   const showContextualHint = (key: HintKey, message: string, selector: string, durationMs: number) => {
     if (hintsShown[key]) return;
@@ -2989,7 +3037,6 @@ function App() {
           <section className="eg-mobile-shell">
             <div className="mobile-toolbar-wrapper">{toolbar}</div>
             {chaosTrackerBar}
-            <DesktopNudgeToast />
             {mobileTab === "bracket" ? (
               <>
                 <MobileRegionTabs activeSection={mobileSection} onChange={setMobileSection} />
@@ -3219,7 +3266,7 @@ function App() {
         />
       ) : null}
 
-      {welcomeGateOpen ? (
+      {!isMobile && welcomeGateOpen ? (
         <WelcomeGate onStart={() => startWalkthrough()} onSkip={() => skipWalkthrough()} />
       ) : null}
 
@@ -3297,7 +3344,7 @@ function App() {
         onSignUp={handlePromoSignUp}
       />
 
-      {walkthroughActive && walkthroughTargetRect && walkthroughDisplayStep ? (
+      {!isMobile && walkthroughActive && walkthroughTargetRect && walkthroughDisplayStep ? (
         <Suspense fallback={null}>
           <SpotlightWalkthrough
             step={walkthroughDisplayStep}
@@ -3333,6 +3380,12 @@ function App() {
             onSkip={() => skipWalkthrough()}
           />
         </Suspense>
+      ) : null}
+
+      {showDesktopFirst && isMobile ? <DesktopFirstModal onDismiss={handleDismissDesktopFirst} /> : null}
+
+      {!showDesktopFirst && isMobile && mobileOnboardingOpen ? (
+        <MobileOnboarding onComplete={handleMobileOnboardingComplete} />
       ) : null}
 
       {activeHint ? (
@@ -4208,47 +4261,99 @@ function MobileFinalFourView({
   );
 }
 
-function DesktopNudgeToast() {
-  const [visible, setVisible] = useState(false);
-  const NUDGE_KEY = "bracketlab-desktop-nudge-seen";
+function DesktopFirstModal({ onDismiss }: { onDismiss: () => void }) {
+  return (
+    <div className="dfm-overlay">
+      <div className="dfm-card">
+        <div className="dfm-icon">💻</div>
+        <h2 className="dfm-headline">Quick heads up.</h2>
+        <p className="dfm-body">
+          BracketLab was built for the big screen. You can absolutely use it here, but the full bracket view,
+          probability editor, and real-time odds cascades are way better on desktop.
+        </p>
+        <p className="dfm-sub">Grab your laptop when you can. You won&apos;t regret it.</p>
+        <button className="dfm-btn" onClick={onDismiss}>
+          Got it - continue on mobile
+        </button>
+      </div>
+    </div>
+  );
+}
 
-  useEffect(() => {
-    if (window.innerWidth > 767) return;
-    if (localStorage.getItem(NUDGE_KEY)) return;
+function MobileOnboarding({ onComplete }: { onComplete: (source: "completed" | "skipped") => void }) {
+  const [step, setStep] = useState(0);
 
-    let hideTimer: number | null = null;
-    const showTimer = window.setTimeout(() => {
-      setVisible(true);
-      hideTimer = window.setTimeout(() => {
-        setVisible(false);
-        localStorage.setItem(NUDGE_KEY, "1");
-      }, 5000);
-    }, 1500);
+  const steps = [
+    {
+      icon: "🏀",
+      title: "Every pick changes everything.",
+      body: "This isn't a regular bracket tool. Every time you pick a winner, the odds for every other team - in every round - update in real time. You're not just filling in a bracket. You're watching the entire tournament reprice around your choices.",
+    },
+    {
+      icon: "👆",
+      title: "Tap a team to pick them.",
+      body: "Each card shows two teams and their win probability. Tap the team you think wins. Changed your mind? Just tap the other team to switch - no undo needed.",
+    },
+    {
+      icon: "📊",
+      title: "Swipe through the rounds.",
+      body: "Use the round pills (R64, R32, S16, E8) to jump between rounds. Rounds you haven't reached yet show live probabilities - who could end up in each slot based on your picks so far.",
+    },
+    {
+      icon: "🔮",
+      title: "Watch the odds cascade.",
+      body: "Switch to the Futures tab at the bottom to see every team's championship odds update as you pick. The bigger the upset you pick, the more the whole field reshuffles.",
+    },
+    {
+      icon: "🏆",
+      title: "Save your bracket. Win $100.",
+      body: "When you're done, save your bracket to enter the leaderboard. Most accurate bracket when the tournament ends wins $100. You can save up to 25 different brackets.",
+    },
+  ] as const;
 
-    return () => {
-      window.clearTimeout(showTimer);
-      if (hideTimer !== null) window.clearTimeout(hideTimer);
-    };
-  }, []);
-
-  const handleDismiss = () => {
-    setVisible(false);
-    localStorage.setItem(NUDGE_KEY, "1");
+  const handleNext = () => {
+    if (step >= steps.length - 1) {
+      if (typeof window !== "undefined") window.localStorage.setItem(MOBILE_ONBOARDING_KEY, "1");
+      onComplete("completed");
+      return;
+    }
+    setStep((prev) => prev + 1);
   };
 
-  if (!visible) return null;
+  const handleSkip = () => {
+    if (typeof window !== "undefined") window.localStorage.setItem(MOBILE_ONBOARDING_KEY, "1");
+    onComplete("skipped");
+  };
+
+  const currentStep = steps[step];
 
   return (
-    <div className="desktop-nudge" role="status" aria-live="polite">
-      <span className="desktop-nudge-icon" aria-hidden="true">
-        💻
-      </span>
-      <span className="desktop-nudge-text">
-        Heads up - this thing really sings on desktop. Mobile works, but desktop is the full experience.
-      </span>
-      <button className="desktop-nudge-dismiss" type="button" onClick={handleDismiss} aria-label="Dismiss">
-        ✕
-      </button>
+    <div className="mob-onboard-overlay">
+      <div className="mob-onboard-card" key={step}>
+        <div className="mob-onboard-progress">
+          {steps.map((_, index) => (
+            <div
+              key={index}
+              className={`mob-onboard-dot ${index === step ? "mob-onboard-dot--active" : ""} ${
+                index < step ? "mob-onboard-dot--done" : ""
+              }`}
+            />
+          ))}
+        </div>
+        <div className="mob-onboard-icon">{currentStep.icon}</div>
+        <h3 className="mob-onboard-title">{currentStep.title}</h3>
+        <p className="mob-onboard-body">{currentStep.body}</p>
+        <div className="mob-onboard-actions">
+          <button className="mob-onboard-btn-primary" onClick={handleNext}>
+            {step === steps.length - 1 ? "Let's go" : "Next"}
+          </button>
+          {step < steps.length - 1 ? (
+            <button className="mob-onboard-btn-skip" onClick={handleSkip}>
+              Skip
+            </button>
+          ) : null}
+        </div>
+      </div>
     </div>
   );
 }
