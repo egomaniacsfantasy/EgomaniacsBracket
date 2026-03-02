@@ -222,7 +222,8 @@ type ResetModalConfig = {
   confirmLabel: string;
   onConfirm: () => void;
 };
-type ManualRoundExpansionState = Partial<Record<`${Region}-R64` | `${Region}-R32` | `${Region}-S16`, boolean>>;
+type RegionalRound = "R64" | "R32" | "S16" | "E8";
+type ManualRoundExpansionState = Partial<Record<`${Region}-${RegionalRound}`, boolean>>;
 type WalkthroughStepConfig = {
   id: WalkthroughStepId;
   heading: string;
@@ -474,6 +475,8 @@ function App() {
   const [manuallyExpandedRounds, setManuallyExpandedRounds] = useState<ManualRoundExpansionState>({});
   const [topHalfManuallyExpanded, setTopHalfManuallyExpanded] = useState(false);
   const [bottomHalfManuallyExpanded, setBottomHalfManuallyExpanded] = useState(false);
+  const [topHalfRenderEpoch, setTopHalfRenderEpoch] = useState(0);
+  const [bottomHalfRenderEpoch, setBottomHalfRenderEpoch] = useState(0);
   const [shareToastVisible, setShareToastVisible] = useState(false);
   const [shareModalVisible, setShareModalVisible] = useState(false);
   const [shareExporting, setShareExporting] = useState<ShareFormat | null>(null);
@@ -1861,12 +1864,25 @@ function App() {
     };
   }, [probPopup]);
 
-  const isRoundComplete = (region: Region, round: "R64" | "R32" | "S16"): boolean => {
+  const getHalfForRegion = (region: Region): "top" | "bottom" =>
+    region === "South" || region === "West" ? "top" : "bottom";
+
+  const isRoundComplete = (region: Region, round: RegionalRound): boolean => {
     const roundGames = gamesByRegionAndRound(games, region, round);
     return roundGames.length > 0 && roundGames.every((game) => Boolean(game.winnerId));
   };
 
-  const toggleRoundExpansion = (region: Region, round: "R64" | "R32" | "S16") => {
+  const isRoundVisuallyCollapsed = (region: Region, round: RegionalRound): boolean => {
+    if (round === "E8") return false;
+    if (!isRoundComplete(region, round)) return false;
+    const half = getHalfForRegion(region);
+    const halfManuallyExpanded = half === "top" ? topHalfManuallyExpanded : bottomHalfManuallyExpanded;
+    if (halfManuallyExpanded) return false;
+    const key = `${region}-${round}` as const;
+    return !Boolean(manuallyExpandedRounds[key]);
+  };
+
+  const toggleRoundExpansion = (region: Region, round: Exclude<RegionalRound, "E8">) => {
     const key = `${region}-${round}` as const;
     const currentlyExpanded = Boolean(manuallyExpandedRounds[key]);
     const nextExpanded = !currentlyExpanded;
@@ -1897,13 +1913,52 @@ function App() {
     setManuallyExpandedRounds((prev) => {
       const next = { ...prev };
       for (const region of regions) {
-        (["R64", "R32", "S16"] as const).forEach((round) => {
+        (["R64", "R32", "S16", "E8"] as const).forEach((round) => {
           const key = `${region}-${round}` as const;
           next[key] = expanded;
         });
       }
       return next;
     });
+  };
+
+  const forceHalfDomVisible = (half: "top" | "bottom") => {
+    if (typeof window === "undefined") return;
+    window.requestAnimationFrame(() => {
+      window.requestAnimationFrame(() => {
+        const section = document.querySelector<HTMLElement>(
+          half === "top" ? ".eg-bracket-section.top-half" : ".eg-bracket-section.bottom-half"
+        );
+        if (!section) return;
+        section.style.display = "";
+        section.style.opacity = "1";
+        section.style.maxHeight = "none";
+        section.style.overflow = "visible";
+        section.querySelectorAll<HTMLElement>(".eg-round-col").forEach((col) => {
+          col.classList.remove("eg-round-col--collapsed", "eg-round-col--collapsing", "eg-round-col--pre-expanding", "eg-round-col--expanding");
+        });
+        section.querySelectorAll<HTMLElement>(".eg-round-col-content, .eg-games-lane").forEach((el) => {
+          el.style.opacity = "1";
+          el.style.maxHeight = "none";
+          el.style.overflow = "visible";
+          el.style.display = "";
+          el.style.visibility = "visible";
+        });
+      });
+    });
+  };
+
+  const handleExpandHalf = (half: "top" | "bottom") => {
+    if (half === "top") {
+      setTopHalfManuallyExpanded(true);
+      setTopHalfRenderEpoch((prev) => prev + 1);
+    } else {
+      setBottomHalfManuallyExpanded(true);
+      setBottomHalfRenderEpoch((prev) => prev + 1);
+    }
+    setHalfRoundExpansion(half, true);
+    forceHalfDomVisible(half);
+    trackEvent("bracket_half_expanded", { half });
   };
 
   useEffect(() => {
@@ -2649,14 +2704,10 @@ function App() {
                   <CollapsedHalfSummary
                     half="top"
                     games={games}
-                    onExpand={() => {
-                      setTopHalfManuallyExpanded(true);
-                      setHalfRoundExpansion("top", true);
-                      trackEvent("bracket_half_expanded", { half: "top" });
-                    }}
+                    onExpand={() => handleExpandHalf("top")}
                   />
                 ) : (
-                  <section className="eg-bracket-section top-half">
+                  <section className="eg-bracket-section top-half" data-half-expanded={topHalfManuallyExpanded ? "true" : "false"}>
                     <div className="eg-section-head">
                       <h2>Top Half Bracket</h2>
                       <p>{regionSections[0][0]} + {regionSections[0][1]}</p>
@@ -2676,7 +2727,7 @@ function App() {
                       <div className="eg-region-grid bracket-style">
                         {regionSections[0].map((region) => (
                           <RegionBracket
-                            key={region}
+                            key={`${region}-top-${topHalfRenderEpoch}-${topHalfManuallyExpanded ? "expanded" : "auto"}`}
                             region={region}
                             games={games}
                             gameWinProbs={simResult.gameWinProbs}
@@ -2685,12 +2736,12 @@ function App() {
                             lastPickedKey={lastPickedKey}
                             onResetRegion={onRequestResetRegion}
                             inverted={invertedRegions.has(region)}
-                            displayMode={displayMode}
-                            onOpenProbabilityPopup={openProbabilityPopup}
+                          displayMode={displayMode}
+                          onOpenProbabilityPopup={openProbabilityPopup}
                           onUnavailableRoundClick={onUnavailableRoundClick}
-                          manuallyExpandedRounds={manuallyExpandedRounds}
                           onToggleRoundExpansion={toggleRoundExpansion}
                           isRoundComplete={isRoundComplete}
+                          isRoundVisuallyCollapsed={isRoundVisuallyCollapsed}
                           forceAllRoundsExpanded={topHalfManuallyExpanded}
                         />
                       ))}
@@ -2703,14 +2754,10 @@ function App() {
                   <CollapsedHalfSummary
                     half="bottom"
                     games={games}
-                    onExpand={() => {
-                      setBottomHalfManuallyExpanded(true);
-                      setHalfRoundExpansion("bottom", true);
-                      trackEvent("bracket_half_expanded", { half: "bottom" });
-                    }}
+                    onExpand={() => handleExpandHalf("bottom")}
                   />
                 ) : (
-                  <section className="eg-bracket-section">
+                  <section className="eg-bracket-section bottom-half" data-half-expanded={bottomHalfManuallyExpanded ? "true" : "false"}>
                     <div className="eg-section-head">
                       <h2>Bottom Half Bracket</h2>
                       <p>{regionSections[1][0]} + {regionSections[1][1]}</p>
@@ -2730,7 +2777,7 @@ function App() {
                       <div className="eg-region-grid bracket-style">
                         {regionSections[1].map((region) => (
                           <RegionBracket
-                            key={region}
+                            key={`${region}-bottom-${bottomHalfRenderEpoch}-${bottomHalfManuallyExpanded ? "expanded" : "auto"}`}
                             region={region}
                             games={games}
                             gameWinProbs={simResult.gameWinProbs}
@@ -2739,12 +2786,12 @@ function App() {
                             lastPickedKey={lastPickedKey}
                             onResetRegion={onRequestResetRegion}
                             inverted={invertedRegions.has(region)}
-                            displayMode={displayMode}
-                            onOpenProbabilityPopup={openProbabilityPopup}
+                          displayMode={displayMode}
+                          onOpenProbabilityPopup={openProbabilityPopup}
                           onUnavailableRoundClick={onUnavailableRoundClick}
-                          manuallyExpandedRounds={manuallyExpandedRounds}
                           onToggleRoundExpansion={toggleRoundExpansion}
                           isRoundComplete={isRoundComplete}
+                          isRoundVisuallyCollapsed={isRoundVisuallyCollapsed}
                           forceAllRoundsExpanded={bottomHalfManuallyExpanded}
                         />
                       ))}
@@ -3950,9 +3997,9 @@ function RegionBracket({
   displayMode,
   onOpenProbabilityPopup,
   onUnavailableRoundClick,
-  manuallyExpandedRounds,
   onToggleRoundExpansion,
   isRoundComplete,
+  isRoundVisuallyCollapsed,
   forceAllRoundsExpanded = false,
 }: {
   region: Region;
@@ -3966,9 +4013,9 @@ function RegionBracket({
   displayMode: OddsDisplayMode;
   onOpenProbabilityPopup: (game: ResolvedGame, anchorEl: HTMLElement) => void;
   onUnavailableRoundClick: (round: ResolvedGame["round"]) => void;
-  manuallyExpandedRounds: ManualRoundExpansionState;
   onToggleRoundExpansion: (region: Region, round: "R64" | "R32" | "S16") => void;
-  isRoundComplete: (region: Region, round: "R64" | "R32" | "S16") => boolean;
+  isRoundComplete: (region: Region, round: RegionalRound) => boolean;
+  isRoundVisuallyCollapsed: (region: Region, round: RegionalRound) => boolean;
   forceAllRoundsExpanded?: boolean;
 }) {
   const rounds = inverted ? [...regionRounds].reverse() : [...regionRounds];
@@ -3982,12 +4029,13 @@ function RegionBracket({
       } as Record<"R64" | "R32" | "S16" | "E8", boolean>;
     }
     return {
-      R64: isRoundComplete(region, "R64") && !manuallyExpandedRounds[`${region}-R64`],
-      R32: isRoundComplete(region, "R32") && !manuallyExpandedRounds[`${region}-R32`],
-      S16: isRoundComplete(region, "S16") && !manuallyExpandedRounds[`${region}-S16`],
+      R64: isRoundVisuallyCollapsed(region, "R64"),
+      R32: isRoundVisuallyCollapsed(region, "R32"),
+      S16: isRoundVisuallyCollapsed(region, "S16"),
       E8: false,
     } as Record<"R64" | "R32" | "S16" | "E8", boolean>;
-  }, [forceAllRoundsExpanded, isRoundComplete, manuallyExpandedRounds, region]);
+  }, [forceAllRoundsExpanded, isRoundVisuallyCollapsed, region]);
+
   const gridStateClasses = [
     collapseByRound.R64 ? "r64-collapsed" : "",
     collapseByRound.R32 ? "r32-collapsed" : "",
@@ -4467,7 +4515,19 @@ function ShowdownCard({
   const roundClass = game.round === "CHAMP" ? "round-champ" : game.round === "F4" ? "round-f4" : "round-e8";
   const roundLabel = game.round === "CHAMP" ? "National Championship" : game.round === "F4" ? "Final Four" : "Elite 8";
   const decided = Boolean(game.lockedByUser && game.winnerId);
-  const showdownLogoSize = game.round === "CHAMP" ? 168 : game.round === "F4" ? 140 : 116;
+  const isMobileViewport = typeof window !== "undefined" && window.matchMedia("(max-width: 767px)").matches;
+  const showdownLogoSize =
+    game.round === "CHAMP"
+      ? isMobileViewport
+        ? 96
+        : 208
+      : game.round === "F4"
+        ? isMobileViewport
+          ? 84
+          : 176
+        : isMobileViewport
+          ? 72
+          : 148;
 
   return (
     <div className={`eg-showdown-card ${roundClass} eg-showdown-card--entering ${decided ? "decided" : ""}`}>
@@ -4503,10 +4563,9 @@ function ShowdownCard({
                 title={`Chance to advance from this game: ${(candidate.prob * 100).toFixed(1)}%`}
               >
                 <span className="eg-showdown-seed">#{team.seed}</span>
-                <TeamLogo
+                <ShowdownTeamLogo
                   teamName={team.name}
                   src={teamLogoUrl(team)}
-                  className="eg-showdown-logo"
                   sizePx={showdownLogoSize}
                 />
                 <span className="eg-showdown-name">{showdownTeamName(team.name)}</span>
@@ -4700,6 +4759,57 @@ function TeamLogo({
       style={sizePx ? { width: `${sizePx}px`, height: `${sizePx}px`, objectFit: "contain" } : undefined}
       onError={() => setFailed(true)}
     />
+  );
+}
+
+function ShowdownTeamLogo({
+  teamName,
+  src,
+  sizePx,
+}: {
+  teamName: string;
+  src: string;
+  sizePx: number;
+}) {
+  const [failed, setFailed] = useState(false);
+  const fallback = fallbackLogo(teamName);
+  const size = `${sizePx}px`;
+
+  return (
+    <span
+      className="eg-showdown-logo-wrap"
+      style={{
+        width: size,
+        height: size,
+        minWidth: size,
+        minHeight: size,
+        maxWidth: size,
+        maxHeight: size,
+        display: "inline-flex",
+        alignItems: "center",
+        justifyContent: "center",
+        flexShrink: 0,
+      }}
+    >
+      <img
+        className="eg-showdown-logo-img"
+        src={failed ? fallback : src}
+        alt={`${teamName} logo`}
+        loading="lazy"
+        onError={() => setFailed(true)}
+        style={{
+          width: "100%",
+          height: "100%",
+          minWidth: "100%",
+          minHeight: "100%",
+          maxWidth: "100%",
+          maxHeight: "100%",
+          objectFit: "contain",
+          display: "block",
+          flexShrink: 0,
+        }}
+      />
+    </span>
   );
 }
 

@@ -233,6 +233,14 @@ body {
   max-width: 100%;
 }
 
+.eg-bracket-section[data-half-expanded="true"] .eg-round-col-content,
+.eg-bracket-section[data-half-expanded="true"] .eg-games-lane {
+  opacity: 1 !important;
+  max-height: none !important;
+  overflow: visible !important;
+  visibility: visible !important;
+}
+
 .eg-section-head {
   display: flex;
   justify-content: space-between;
@@ -3699,17 +3707,10 @@ body {
   box-shadow: 0 0 0 2px rgba(231, 191, 114, 0.4);
 }
 
+/* DISABLED: showdown logo sizing is now controlled inline by ShowdownTeamLogo in App.tsx. */
 .eg-showdown-team .team-logo {
-  width: 110px;
-  height: 110px;
   object-fit: contain;
   filter: drop-shadow(0 2px 8px rgba(0, 0, 0, 0.4));
-}
-
-.eg-showdown-card.round-f4 .eg-showdown-team .team-logo,
-.eg-showdown-card.round-champ .eg-showdown-team .team-logo {
-  width: 132px;
-  height: 132px;
 }
 
 .eg-showdown-seed {
@@ -4300,47 +4301,18 @@ body.walkthrough-active .eg-title-choice:hover {
   filter: drop-shadow(0 2px 10px rgba(0, 0, 0, 0.5));
 }
 
-.eg-showdown-card.round-e8 .eg-showdown-logo {
-  width: 110px !important;
-  height: 110px !important;
+/* DISABLED: showdown logo dimensions are now controlled inline by ShowdownTeamLogo in App.tsx. */
+.eg-showdown-logo-wrap {
+  filter: drop-shadow(0 2px 10px rgba(0, 0, 0, 0.5));
 }
 
-.eg-showdown-card.round-f4 .eg-showdown-logo {
-  width: 132px !important;
-  height: 132px !important;
-}
-
-.eg-showdown-card.round-champ .eg-showdown-logo {
-  width: 156px !important;
-  height: 156px !important;
+.eg-showdown-logo-img {
+  image-rendering: -webkit-optimize-contrast;
+  object-fit: contain;
 }
 
 @media (max-width: 767px) {
-  .eg-showdown-team .team-logo {
-    width: 72px;
-    height: 72px;
-  }
-
-  .eg-showdown-card.round-f4 .eg-showdown-team .team-logo,
-  .eg-showdown-card.round-champ .eg-showdown-team .team-logo {
-    width: 88px;
-    height: 88px;
-  }
-
-  .eg-showdown-card.round-e8 .eg-showdown-logo {
-    width: 72px !important;
-    height: 72px !important;
-  }
-
-  .eg-showdown-card.round-f4 .eg-showdown-logo {
-    width: 88px !important;
-    height: 88px !important;
-  }
-
-  .eg-showdown-card.round-champ .eg-showdown-logo {
-    width: 100px !important;
-    height: 100px !important;
-  }
+  /* DISABLED: mobile showdown logo dimensions are now controlled inline by ShowdownTeamLogo in App.tsx. */
 }
 
 .eg-showdown-card.decided {
