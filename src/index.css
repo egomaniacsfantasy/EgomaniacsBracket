@@ -5654,12 +5654,13 @@ body.walkthrough-active .eg-title-choice:hover {
   .og-top-nav {
     height: calc(48px + env(safe-area-inset-top, 0px));
     margin: 0;
-    padding: env(safe-area-inset-top, 0px) 16px 0;
+    padding: env(safe-area-inset-top, 0px) 14px 0;
     width: 100%;
     max-width: 100%;
     border-radius: 0;
     background: #0e0c09;
     box-shadow: none;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
     position: fixed;
     top: 0;
     left: 0;
@@ -5672,21 +5673,26 @@ body.walkthrough-active .eg-title-choice:hover {
   }
 
   .og-top-nav-mobile {
-    display: grid;
-    grid-template-columns: 36px 1fr 52px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
     align-items: center;
     width: 100%;
   }
 
-  .nav-signin-btn--mobile {
-    justify-self: end;
-    padding: 4px 10px;
-    font-size: 10px;
+  .nav-left {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    min-width: 0;
   }
 
-  .nav-signout-btn--mobile {
-    justify-self: end;
-    font-size: 10px;
+  .nav-right {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-shrink: 0;
   }
 
   .og-mobile-logo-link {
@@ -5695,32 +5701,71 @@ body.walkthrough-active .eg-title-choice:hover {
     justify-content: flex-start;
   }
 
-  .nav-logo-icon {
+  .nav-logo-icon,
+  .nav-logo {
     width: 28px;
     height: 28px;
+    flex-shrink: 0;
     object-fit: contain;
   }
 
-  .nav-product-title {
-    font-family: var(--font-serif);
-    font-size: 15px;
+  .nav-product-title,
+  .nav-wordmark {
+    font-family: var(--font-mono);
+    font-size: 13px;
     font-weight: 700;
+    letter-spacing: 0.1em;
     color: var(--text-primary);
-    text-align: center;
+    white-space: nowrap;
   }
 
-  .nav-mobile-alt {
+  .nav-beta {
     font-family: var(--font-mono);
-    font-size: 9px;
+    font-size: 8px;
+    font-weight: 700;
     letter-spacing: 0.12em;
-    color: var(--amber);
-    border: 1px solid rgba(184, 125, 24, 0.3);
+    color: var(--text-amber);
+    border: 1px solid rgba(184, 125, 24, 0.35);
     border-radius: 3px;
-    padding: 4px 7px;
-    text-decoration: none;
-    text-align: right;
+    padding: 1px 4px;
     white-space: nowrap;
-    justify-self: end;
+    flex-shrink: 0;
+    line-height: 1.2;
+    align-self: flex-start;
+    margin-top: 2px;
+  }
+
+  .nav-user-name--mobile {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--text-secondary);
+    white-space: nowrap;
+    max-width: 80px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .nav-auth-btn {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--text-amber);
+    background: none;
+    border: 1px solid rgba(184, 125, 24, 0.3);
+    border-radius: 100px;
+    padding: 5px 12px;
+    cursor: pointer;
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+
+  .nav-signout-btn--mobile {
+    font-size: 11px;
+    text-decoration: none;
+  }
+
+  .nav-signin-btn--mobile {
+    font-size: 11px;
+    text-decoration: none;
   }
 
   .eg-header.mobile-hidden {
@@ -5739,19 +5784,39 @@ body.walkthrough-active .eg-title-choice:hover {
 
   .toolbar {
     display: flex;
-    flex-wrap: nowrap;
+    align-items: center;
     gap: 8px;
-    padding: 10px 16px;
+    flex-wrap: nowrap;
+    padding: 8px 14px;
     overflow-x: auto;
+    overflow-y: hidden;
     -webkit-overflow-scrolling: touch;
     scrollbar-width: none;
     margin: 0;
-    background: rgba(14, 12, 9, 1);
-    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    background: #0e0c09;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+    box-shadow: none !important;
   }
 
   .toolbar::-webkit-scrollbar {
     display: none;
+  }
+
+  .mobile-toolbar-wrapper {
+    position: relative;
+    background: #0e0c09;
+  }
+
+  .mobile-toolbar-wrapper::after {
+    content: "";
+    position: absolute;
+    right: 0;
+    top: 0;
+    bottom: 0;
+    width: 32px;
+    background: linear-gradient(to right, transparent, #0e0c09);
+    pointer-events: none;
+    z-index: 2;
   }
 
   .toolbar .eg-btn,
@@ -5782,16 +5847,62 @@ body.walkthrough-active .eg-title-choice:hover {
     flex-shrink: 0;
   }
 
+  .toolbar-btn--undo {
+    order: 1;
+  }
+
+  .toolbar-btn--reset {
+    order: 2;
+  }
+
+  .toolbar-btn--save-action {
+    order: 3;
+  }
+
+  .toolbar-btn--mybrackets {
+    order: 4;
+  }
+
+  .toolbar-btn--leaderboard {
+    order: 5;
+  }
+
+  .toolbar-btn--instant {
+    order: 6;
+  }
+
+  .toolbar-btn--staggered {
+    order: 7;
+  }
+
+  .toolbar-btn--copy {
+    order: 8;
+  }
+
+  .toolbar-btn--odds {
+    order: 9;
+  }
+
+  .toolbar-btn--staggered-toggle {
+    order: 10;
+  }
+
+  .toolbar-btn--stagger-controls {
+    order: 11;
+  }
+
   .mobile-region-tabs {
     display: flex;
     position: sticky;
     top: calc(48px + env(safe-area-inset-top, 0px));
     z-index: 60;
-    background: rgba(14, 12, 9, 1);
+    background: #0e0c09;
     backdrop-filter: blur(8px);
     border-bottom: 1px solid rgba(255, 255, 255, 0.07);
     padding: 0 16px;
     overflow-x: auto;
+    margin: 0 !important;
+    box-shadow: none !important;
     scrollbar-width: none;
   }
 
@@ -6991,6 +7102,105 @@ body.walkthrough-active .eg-title-choice:hover {
   .chaos-badge-score,
   .chaos-badge-pct {
     font-size: 9px;
+  }
+
+  .toolbar .chaos-badge {
+    display: none;
+  }
+
+  .chaos-badge--mobile {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin: 8px 16px 4px;
+    padding: 6px 12px;
+    background: rgba(184, 125, 24, 0.05);
+    border: 1px solid rgba(184, 125, 24, 0.15);
+    border-radius: 8px;
+    cursor: pointer;
+    width: calc(100% - 32px);
+    max-width: calc(100% - 32px);
+  }
+
+  .chaos-badge--mobile .chaos-badge-bottom {
+    padding-left: 0;
+    margin-left: auto;
+  }
+
+  .chaos-badge--mobile .chaos-badge-emoji {
+    font-size: 14px;
+  }
+
+  .chaos-badge--mobile .chaos-badge-label {
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    color: var(--text-amber);
+  }
+
+  .chaos-badge--mobile .chaos-badge-score {
+    font-size: 10px;
+    color: var(--text-secondary);
+  }
+
+  .chaos-badge--mobile .chaos-badge-pct {
+    font-size: 10px;
+    color: var(--text-tertiary);
+    margin-left: auto;
+  }
+
+  .desktop-nudge {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    margin: 0 12px 8px;
+    padding: 10px 12px;
+    background: rgba(184, 125, 24, 0.07);
+    border: 1px solid rgba(184, 125, 24, 0.18);
+    border-radius: 8px;
+    animation: nudge-slide-in 300ms ease-out;
+  }
+
+  .desktop-nudge-icon {
+    font-size: 14px;
+    flex-shrink: 0;
+    line-height: 1.4;
+  }
+
+  .desktop-nudge-text {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: rgba(184, 125, 24, 0.75);
+    line-height: 1.5;
+    flex: 1;
+  }
+
+  .desktop-nudge-dismiss {
+    font-size: 12px;
+    color: rgba(184, 125, 24, 0.4);
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 0;
+    flex-shrink: 0;
+    line-height: 1;
+  }
+}
+
+@keyframes nudge-slide-in {
+  from {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (min-width: 768px) {
+  .desktop-nudge {
+    display: none;
   }
 }
 

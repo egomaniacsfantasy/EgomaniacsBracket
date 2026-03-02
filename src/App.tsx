@@ -2167,7 +2167,7 @@ function App() {
   );
   const allFinalFourComplete = [leftSemi, rightSemi].every((game) => game?.winnerId);
   const championshipComplete = Boolean(titleGame?.winnerId);
-  const liveOddsTopContenders = sortedFutures.slice(0, 5).map((row) => {
+  const liveOddsTopContenders = sortedFutures.map((row) => {
     const team = teamsById.get(row.teamId);
     return {
       id: row.teamId,
@@ -2531,20 +2531,28 @@ function App() {
       <button
         onClick={onUndo}
         disabled={undoStack.length === 0}
-        className="eg-btn"
+        className="eg-btn toolbar-btn--undo"
         style={!isMobile && mainView === "leaderboard" ? { display: "none" } : undefined}
       >
         Undo
       </button>
-      <button onClick={onRequestResetAll} className="eg-btn" style={!isMobile && mainView === "leaderboard" ? { display: "none" } : undefined}>
+      <button
+        onClick={onRequestResetAll}
+        className="eg-btn toolbar-btn--reset"
+        style={!isMobile && mainView === "leaderboard" ? { display: "none" } : undefined}
+      >
         Reset All
       </button>
-      <button onClick={onModelSim} className="eg-btn" style={!isMobile && mainView === "leaderboard" ? { display: "none" } : undefined}>
+      <button
+        onClick={onModelSim}
+        className="eg-btn toolbar-btn--instant"
+        style={!isMobile && mainView === "leaderboard" ? { display: "none" } : undefined}
+      >
         Instant Sim
       </button>
       <button
         onClick={onModelSimStaggered}
-        className="eg-btn"
+        className="eg-btn toolbar-btn--staggered"
         disabled={staggeredSimRunning}
         style={!isMobile && mainView === "leaderboard" ? { display: "none" } : undefined}
       >
@@ -2552,7 +2560,7 @@ function App() {
       </button>
       <button
         onClick={onSaveBracket}
-        className="eg-btn toolbar-btn--save"
+        className="eg-btn toolbar-btn--save toolbar-btn--save-action"
         disabled={saveStatus === "saving"}
         style={!isMobile && mainView === "leaderboard" ? { display: "none" } : undefined}
       >
@@ -2567,23 +2575,30 @@ function App() {
       {isAuthenticated ? (
         <button
           onClick={() => setMyBracketsOpen(true)}
-          className="eg-btn"
+          className="eg-btn toolbar-btn--mybrackets"
           style={!isMobile && mainView === "leaderboard" ? { display: "none" } : undefined}
         >
           My Brackets
         </button>
       ) : null}
-      {!isMobile ? (
+      {isMobile ? (
+        <button
+          onClick={() => setMobileTab("leaderboard")}
+          className="eg-btn toolbar-btn--leaderboard"
+        >
+          🏆 Leaderboard
+        </button>
+      ) : (
         <button
           onClick={() => setMainView((prev) => (prev === "leaderboard" ? "bracket" : "leaderboard"))}
-          className={`eg-btn ${mainView === "leaderboard" ? "toolbar-btn--active-view" : ""}`}
+          className={`eg-btn toolbar-btn--leaderboard ${mainView === "leaderboard" ? "toolbar-btn--active-view" : ""}`}
         >
           {mainView === "leaderboard" ? "← Bracket" : "🏆 Leaderboard"}
         </button>
-      ) : null}
+      )}
       <button
         onClick={onCopyShareLink}
-        className="eg-btn copy-link-btn"
+        className="eg-btn copy-link-btn toolbar-btn--copy"
         data-copied={linkCopied ? "true" : "false"}
         aria-label="Copy shareable bracket link"
         style={!isMobile && mainView === "leaderboard" ? { display: "none" } : undefined}
@@ -2593,7 +2608,7 @@ function App() {
       {staggeredSimRunning ? (
         <button
           onClick={onToggleStaggeredPause}
-          className="eg-btn"
+          className="eg-btn toolbar-btn--staggered-toggle"
           aria-label={staggeredSimPaused ? "Resume staggered simulation" : "Pause staggered simulation"}
           title={staggeredSimPaused ? "Resume staggered simulation" : "Pause staggered simulation"}
           style={!isMobile && mainView === "leaderboard" ? { display: "none" } : undefined}
@@ -2602,7 +2617,10 @@ function App() {
         </button>
       ) : null}
       {staggeredSimRunning ? (
-        <div className="eg-stagger-controls" style={!isMobile && mainView === "leaderboard" ? { display: "none" } : undefined}>
+        <div
+          className="eg-stagger-controls toolbar-btn--stagger-controls"
+          style={!isMobile && mainView === "leaderboard" ? { display: "none" } : undefined}
+        >
           <label htmlFor="stagger-delay" className="eg-stagger-label">
             Stagger Delay: {(staggeredSimDelayMs / 1000).toFixed(1)}s
           </label>
@@ -2618,7 +2636,10 @@ function App() {
           />
         </div>
       ) : null}
-      <div className="odds-mode-toggle" style={!isMobile && mainView === "leaderboard" ? { display: "none" } : undefined}>
+      <div
+        className="odds-mode-toggle toolbar-btn--odds"
+        style={!isMobile && mainView === "leaderboard" ? { display: "none" } : undefined}
+      >
         <button
           className={`odds-mode-btn ${displayMode === "american" ? "odds-mode-btn--active" : ""}`}
           onClick={() => {
@@ -2658,7 +2679,7 @@ function App() {
           %
         </button>
       </div>
-      {chaosScore !== null ? (
+      {!isMobile && chaosScore !== null ? (
         <div
           className={`chaos-score-wrap ${chaosScoreChanged ? "chaos-score-pill--changed" : ""}`}
         >
@@ -2714,6 +2735,23 @@ function App() {
           <span className="chaos-tracker-count-label">games</span>
         </div>
       </div>
+    ) : null;
+
+  const mobileChaosBadge =
+    chaosScore !== null ? (
+      <button
+        type="button"
+        className={`chaos-badge chaos-badge--mobile ${chaosScoreChanged ? "chaos-score-pill--changed" : ""}`}
+        title={`Chaos Score: ${chaosScore.toFixed(1)} across ${pickCount} games. Higher = more unlikely bracket.`}
+        onClick={onChaosPillTap}
+      >
+        <span className="chaos-badge-emoji">{getChaosLabel(chaosScore, pickCount)?.emoji ?? "📋"}</span>
+        <span className="chaos-badge-label">{getChaosLabel(chaosScore, pickCount)?.label ?? "Chalk"}</span>
+        <span className="chaos-badge-score">{chaosScore.toFixed(1)}</span>
+        {chaosPercentile !== null ? (
+          <span className="chaos-badge-pct">Top {Math.max(1, Math.round(100 - chaosPercentile))}%</span>
+        ) : null}
+      </button>
     ) : null;
 
   const futuresSections = (
@@ -2908,20 +2946,27 @@ function App() {
             </div>
           </div>
           <div className="og-top-nav-mobile">
-            <a className="og-mobile-logo-link" href={LANDING_URL} aria-label="Odds Gods home">
-              <img className="nav-logo-icon" src="/logo-icon.png?v=20260225" alt="Odds Gods" />
-            </a>
-            <span className="nav-product-title">ODDS GODS</span>
-            <span className="beta-badge">BETA</span>
-            {isAuthenticated ? (
-              <button className="nav-signout-btn nav-signout-btn--mobile" onClick={() => signOut()}>
-                Out
-              </button>
-            ) : (
-              <button className="nav-signin-btn nav-signin-btn--mobile" onClick={() => setAuthModalOpen(true)}>
-                Log in
-              </button>
-            )}
+            <div className="nav-left">
+              <a className="og-mobile-logo-link" href={LANDING_URL} aria-label="Odds Gods home">
+                <img className="nav-logo-icon nav-logo" src="/logo-icon.png?v=20260225" alt="Odds Gods" />
+              </a>
+              <span className="nav-product-title nav-wordmark">ODDS GODS</span>
+              <span className="beta-badge nav-beta">BETA</span>
+            </div>
+            <div className="nav-right">
+              {isAuthenticated ? (
+                <>
+                  <span className="nav-user-name nav-user-name--mobile">{profile?.display_name || user?.email || "User"}</span>
+                  <button className="nav-signout-btn nav-signout-btn--mobile nav-auth-btn" onClick={() => signOut()}>
+                    Sign out
+                  </button>
+                </>
+              ) : (
+                <button className="nav-signin-btn nav-signin-btn--mobile nav-auth-btn" onClick={() => setAuthModalOpen(true)}>
+                  Log in
+                </button>
+              )}
+            </div>
           </div>
         </nav>
         {!isMobile ? (
@@ -2942,8 +2987,9 @@ function App() {
         </header>
         {isMobile ? (
           <section className="eg-mobile-shell">
-            {toolbar}
+            <div className="mobile-toolbar-wrapper">{toolbar}</div>
             {chaosTrackerBar}
+            <DesktopNudgeToast />
             {mobileTab === "bracket" ? (
               <>
                 <MobileRegionTabs activeSection={mobileSection} onChange={setMobileSection} />
@@ -2964,6 +3010,7 @@ function App() {
                       onSwitchPick={onSwitchPick}
                       onUndoPick={onUndoGame}
                       onEditProb={openProbabilityPopup}
+                      mobileChaosBadge={mobileChaosBadge}
                     />
                   ) : (
                     <MobileRegionView
@@ -2987,6 +3034,7 @@ function App() {
                       onSwitchPick={onSwitchPick}
                       onUndoPick={onUndoGame}
                       onEditProb={openProbabilityPopup}
+                      mobileChaosBadge={mobileChaosBadge}
                     />
                   )}
                 </div>
@@ -3926,6 +3974,7 @@ function MobileRegionView({
   onSwitchPick,
   onUndoPick,
   onEditProb,
+  mobileChaosBadge,
 }: {
   region: Region;
   activeRound: MobileRegionRound;
@@ -3947,6 +3996,7 @@ function MobileRegionView({
   onSwitchPick: (game: ResolvedGame, teamId: string) => void;
   onUndoPick: (gameId: string) => void;
   onEditProb: (game: ResolvedGame, anchorEl: HTMLElement) => void;
+  mobileChaosBadge?: React.ReactNode;
 }) {
   const roundOrder: Array<{ id: MobileRegionRound; label: string }> = [
     { id: "R64", label: "R64" },
@@ -3988,6 +4038,7 @@ function MobileRegionView({
         deltaByRound={roundDeltas}
         onRoundChange={(roundId) => onRoundChange(roundId as MobileRegionRound)}
       />
+      {mobileChaosBadge}
       <CascadeFirstPickNudge
         visible={firstPickNudgeVisible}
         changedRounds={firstPickChangedRounds}
@@ -4051,6 +4102,7 @@ function MobileFinalFourView({
   onSwitchPick,
   onUndoPick,
   onEditProb,
+  mobileChaosBadge,
 }: {
   activeRound: MobileFfRound;
   allE8sComplete: boolean;
@@ -4066,6 +4118,7 @@ function MobileFinalFourView({
   onSwitchPick: (game: ResolvedGame, teamId: string) => void;
   onUndoPick: (gameId: string) => void;
   onEditProb: (game: ResolvedGame, anchorEl: HTMLElement) => void;
+  mobileChaosBadge?: React.ReactNode;
 }) {
   const rounds: Array<{ id: MobileFfRound; label: string }> = [
     { id: "F4", label: "F4" },
@@ -4126,6 +4179,7 @@ function MobileFinalFourView({
         }}
         onRoundChange={(roundId) => onRoundChange(roundId as MobileFfRound)}
       />
+      {mobileChaosBadge}
       {activeRound === "F4"
         ? semifinals.map((game) => (
             <MobileMatchupCard
@@ -4151,6 +4205,51 @@ function MobileFinalFourView({
       ) : null}
       {activeRound === "WIN" ? <MobileChampionCard titleGame={titleGame} /> : null}
     </>
+  );
+}
+
+function DesktopNudgeToast() {
+  const [visible, setVisible] = useState(false);
+  const NUDGE_KEY = "bracketlab-desktop-nudge-seen";
+
+  useEffect(() => {
+    if (window.innerWidth > 767) return;
+    if (localStorage.getItem(NUDGE_KEY)) return;
+
+    let hideTimer: number | null = null;
+    const showTimer = window.setTimeout(() => {
+      setVisible(true);
+      hideTimer = window.setTimeout(() => {
+        setVisible(false);
+        localStorage.setItem(NUDGE_KEY, "1");
+      }, 5000);
+    }, 1500);
+
+    return () => {
+      window.clearTimeout(showTimer);
+      if (hideTimer !== null) window.clearTimeout(hideTimer);
+    };
+  }, []);
+
+  const handleDismiss = () => {
+    setVisible(false);
+    localStorage.setItem(NUDGE_KEY, "1");
+  };
+
+  if (!visible) return null;
+
+  return (
+    <div className="desktop-nudge" role="status" aria-live="polite">
+      <span className="desktop-nudge-icon" aria-hidden="true">
+        💻
+      </span>
+      <span className="desktop-nudge-text">
+        Heads up - this thing really sings on desktop. Mobile works, but desktop is the full experience.
+      </span>
+      <button className="desktop-nudge-dismiss" type="button" onClick={handleDismiss} aria-label="Dismiss">
+        ✕
+      </button>
+    </div>
   );
 }
 
@@ -4284,13 +4383,14 @@ function LiveOddsStrip({
   onOpenFutures: () => void;
 }) {
   const isMobileViewport = typeof window !== "undefined" && window.matchMedia("(max-width: 767px)").matches;
-  const tickerTeams = topContenders.slice(0, 5);
-  const loopingTeams = [...tickerTeams, ...tickerTeams];
+  const mobileTeams = topContenders.slice(0, 5);
+  const desktopTeams = topContenders;
+  const loopingTeams = [...desktopTeams, ...desktopTeams];
   return (
     <div className="live-odds-strip">
       {isMobileViewport ? <span className="live-odds-strip-label">Title</span> : null}
       <div className={isMobileViewport ? "live-odds-strip-chips" : "live-odds-inner"}>
-        {(isMobileViewport ? tickerTeams : loopingTeams).map((team, index) => (
+        {(isMobileViewport ? mobileTeams : loopingTeams).map((team, index) => (
           <div key={`${team.id}-${index}`} className={`live-odds-item ${justChangedIds.has(team.id) ? "live-odds-chip--changed" : ""}`}>
             <span className="team-abbr">{team.shortName}</span>
             <span className="odds-val">{displayMode === "implied" ? team.titleImpliedPct : team.titleOdds}</span>
