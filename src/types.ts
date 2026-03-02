@@ -48,9 +48,15 @@ export interface GameWinProbability {
   prob: number;
 }
 
+export interface ChaosDistribution {
+  scores: number[];
+  percentiles: Record<number, number>;
+}
+
 export interface SimulationOutput {
   futures: FuturesRow[];
   gameWinProbs: Record<string, GameWinProbability[]>;
   likelihoodSimulation: number;
   likelihoodApprox: number;
+  chaosDistribution?: ChaosDistribution;
 }

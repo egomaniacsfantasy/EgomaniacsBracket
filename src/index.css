@@ -6164,6 +6164,8 @@ body.walkthrough-active .eg-title-choice:hover {
 .chaos-score-wrap {
   position: relative;
   display: inline-flex;
+  align-items: center;
+  gap: 6px;
 }
 
 .chaos-score-pill {
@@ -6226,6 +6228,14 @@ body.walkthrough-active .eg-title-choice:hover {
   z-index: 100;
   pointer-events: none;
   animation: tooltipIn 150ms ease-out;
+}
+
+.chaos-score-percentile {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.04em;
+  color: rgba(184, 125, 24, 0.9);
+  white-space: nowrap;
 }
 
 .chaos-tracker-bar {

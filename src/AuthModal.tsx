@@ -18,7 +18,6 @@ export function AuthModal({
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [submittedMode, setSubmittedMode] = useState<"signup" | "signin">("signup");
-  const [usePassword, setUsePassword] = useState(false);
   const [password, setPassword] = useState("");
   const [signinUsePassword, setSigninUsePassword] = useState(false);
   const [signinPassword, setSigninPassword] = useState("");
@@ -32,7 +31,6 @@ export function AuthModal({
     setError("");
     setSubmitting(false);
     setSubmittedMode("signup");
-    setUsePassword(false);
     setPassword("");
     setSigninUsePassword(false);
     setSigninPassword("");
@@ -57,19 +55,10 @@ export function AuthModal({
     if (!email.trim()) return setError("Email is required");
     if (!displayName.trim()) return setError("Display name is required");
     if (displayName.trim().length > 30) return setError("Display name must be 30 characters or less");
-    if (usePassword && password.length < 6) return setError("Password must be at least 6 characters");
+    if (password.length < 6) return setError("Password must be at least 6 characters");
 
     setSubmitting(true);
-    const authResult = usePassword
-      ? await supabase.auth.signUp({
-          email: email.trim(),
-          password,
-          options: {
-            data: { display_name: displayName.trim() },
-            emailRedirectTo: window.location.origin,
-          },
-        })
-      : await signUp(email.trim(), displayName.trim());
+    const authResult = await signUp(email.trim(), displayName.trim(), password);
     const authError = authResult.error;
     setSubmitting(false);
     if (authError) return setError((authError as { message?: string })?.message ?? "Unable to sign up");
@@ -127,7 +116,7 @@ export function AuthModal({
           <form onSubmit={handleSignUp} className="auth-modal-form">
             <h3 className="auth-modal-title">Save your bracket</h3>
             <p className="auth-modal-subtitle">
-              Create an account to save up to 25 brackets and compete on the leaderboard.
+              Create an account to save up to 25 brackets and compete on the leaderboard. Password required.
             </p>
 
             <label className="auth-modal-label">Display name</label>
@@ -150,41 +139,15 @@ export function AuthModal({
               onChange={(event) => setEmail(event.target.value)}
             />
 
-            {!usePassword ? (
-              <button
-                className="auth-modal-password-toggle"
-                type="button"
-                onClick={() => {
-                  setUsePassword(true);
-                  setError("");
-                }}
-              >
-                Or set a password instead
-              </button>
-            ) : (
-              <>
-                <label className="auth-modal-label">Password</label>
-                <input
-                  className="auth-modal-input"
-                  type="password"
-                  placeholder="At least 6 characters"
-                  value={password}
-                  onChange={(event) => setPassword(event.target.value)}
-                  minLength={6}
-                />
-                <button
-                  className="auth-modal-password-toggle"
-                  type="button"
-                  onClick={() => {
-                    setUsePassword(false);
-                    setPassword("");
-                    setError("");
-                  }}
-                >
-                  Use magic link instead (no password needed)
-                </button>
-              </>
-            )}
+            <label className="auth-modal-label">Password</label>
+            <input
+              className="auth-modal-input"
+              type="password"
+              placeholder="At least 6 characters"
+              value={password}
+              onChange={(event) => setPassword(event.target.value)}
+              minLength={6}
+            />
 
             {error ? <p className="auth-modal-error">{error}</p> : null}
 
@@ -199,6 +162,7 @@ export function AuthModal({
                 onClick={() => {
                   setMode("signin");
                   setError("");
+                  setPassword("");
                   setSigninUsePassword(false);
                   setSigninPassword("");
                 }}
@@ -260,7 +224,6 @@ export function AuthModal({
                 onClick={() => {
                   setMode("signup");
                   setError("");
-                  setUsePassword(false);
                   setPassword("");
                 }}
               >

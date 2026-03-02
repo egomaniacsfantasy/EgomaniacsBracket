@@ -21,6 +21,7 @@ import { formatOddsDisplay, toAmericanOdds, toImpliedLabel, toOneInX } from "./l
 import {
   generateSimulatedBracket,
   generateSimulatedBracketSteps,
+  getChaosScorePercentile,
   hashLocks,
   runSimulation,
 } from "./lib/simulation";
@@ -35,6 +36,7 @@ import { deserializePicks, getUserBrackets, saveBracket, serializePicks, type Sa
 import type { OddsDisplayMode, Region, ResolvedGame, SimulationOutput } from "./types";
 
 const DEFAULT_SIM_RUNS = 5000;
+const CHAOS_DISTRIBUTION_SIM_RUNS = 10000;
 const ONBOARDING_STORAGE_KEY = "oddsGods_onboardingDismissed";
 const HINTS_STORAGE_KEY = "oddsGods_hintsShown";
 const FIRST_PICK_NUDGE_SESSION_KEY = "oddsGods_firstPickCascadeNudgeSeen";
@@ -507,6 +509,7 @@ function App() {
     likelihoodApprox: 0,
     likelihoodSimulation: 0,
   });
+  const [chaosDistribution, setChaosDistribution] = useState<SimulationOutput["chaosDistribution"] | null>(null);
 
   const simulationCacheRef = useRef<Map<string, SimulationOutput>>(new Map());
   const previousFuturesRef = useRef<SimulationOutput["futures"] | null>(null);
@@ -994,6 +997,37 @@ function App() {
   }, [sanitized, simRuns, customProbByGame]);
 
   useEffect(() => {
+    let active = true;
+    let idleHandle: number | null = null;
+
+    const computeDistribution = () => {
+      if (!active) return;
+      const distribution =
+        runSimulation({}, CHAOS_DISTRIBUTION_SIM_RUNS, {}, { trackChaosDistribution: true }).chaosDistribution ?? null;
+      if (active) setChaosDistribution(distribution);
+    };
+
+    const w = window as Window & {
+      requestIdleCallback?: (callback: IdleRequestCallback, options?: IdleRequestOptions) => number;
+      cancelIdleCallback?: (handle: number) => void;
+    };
+
+    if (w.requestIdleCallback) {
+      idleHandle = w.requestIdleCallback(() => computeDistribution(), { timeout: 700 });
+    } else {
+      idleHandle = window.setTimeout(computeDistribution, 250);
+    }
+
+    return () => {
+      active = false;
+      if (idleHandle !== null) {
+        if (w.cancelIdleCallback) w.cancelIdleCallback(idleHandle);
+        else window.clearTimeout(idleHandle);
+      }
+    };
+  }, []);
+
+  useEffect(() => {
     const previous = previousFuturesRef.current;
     previousFuturesRef.current = simResult.futures;
     if (!previous) return;
@@ -1273,6 +1307,10 @@ function App() {
   );
 
   const chaosScore = useMemo(() => computeChaosScoreFromGames(games), [games]);
+  const chaosPercentile = useMemo(() => {
+    if (chaosScore === null || pickCount !== URL_EXPECTED_GAME_COUNT || !chaosDistribution) return null;
+    return getChaosScorePercentile(chaosScore, chaosDistribution);
+  }, [chaosDistribution, chaosScore, pickCount]);
 
   const applyCustomProbability = (gameId: string, customProbA: number | null) => {
     setCustomProbByGame((prev) => {
@@ -2583,6 +2621,11 @@ function App() {
           {isMobile && chaosTooltipVisible ? (
             <span className="chaos-score-tooltip">
               Chaos Score sums -ln(model win probability) for picked winners. Higher = more unlikely.
+            </span>
+          ) : null}
+          {chaosPercentile !== null ? (
+            <span className="chaos-score-percentile">
+              {`${Math.round(chaosPercentile)}th percentile (Top ${Math.max(1, Math.round(100 - chaosPercentile))}%)`}
             </span>
           ) : null}
         </div>

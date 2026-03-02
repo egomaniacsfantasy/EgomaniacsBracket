@@ -12,7 +12,7 @@ type AuthContextValue = {
   user: User | null;
   profile: Profile | null;
   loading: boolean;
-  signUp: (email: string, displayName: string) => Promise<{ data: unknown; error: unknown }>;
+  signUp: (email: string, displayName: string, password: string) => Promise<{ data: unknown; error: unknown }>;
   signIn: (email: string) => Promise<{ data: unknown; error: unknown }>;
   signOut: () => Promise<void>;
   isAuthenticated: boolean;
@@ -69,12 +69,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     };
   }, []);
 
-  const signUp = async (email: string, displayName: string) => {
-    // Passwordless signup: create user via magic link flow.
-    const { data, error } = await supabase.auth.signInWithOtp({
+  const signUp = async (email: string, displayName: string, password: string) => {
+    const { data, error } = await supabase.auth.signUp({
       email,
+      password,
       options: {
-        shouldCreateUser: true,
         data: { display_name: displayName },
         emailRedirectTo: window.location.origin,
       },

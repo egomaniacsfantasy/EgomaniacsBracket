@@ -1,6 +1,6 @@
 import { gameTemplates } from "../data/bracket";
 import { teams, teamsById } from "../data/teams";
-import type { FuturesRow, GameWinProbability, Region, ResolvedGame, Round, SimulationOutput } from "../types";
+import type { ChaosDistribution, FuturesRow, GameWinProbability, Region, ResolvedGame, Round, SimulationOutput } from "../types";
 import type { CustomProbByGame, LockedPicks } from "./bracket";
 import { getGameWinProb, resolveGames } from "./bracket";
 
@@ -13,6 +13,7 @@ const gameOrder = [...gameTemplates].sort((a, b) => {
   return a.slot - b.slot;
 });
 const templateById = new Map(gameTemplates.map((game) => [game.id, game]));
+const CHAOS_MIN_PROB = 1e-12;
 
 const fnv1aHash = (input: string): number => {
   let hash = 0x811c9dc5;
@@ -87,14 +88,53 @@ const sampleWinner = (game: ResolvedGame, random: () => number): string => {
   return random() < pA ? game.teamAId : game.teamBId;
 };
 
+const computeChaosContribution = (winProb: number): number => -Math.log(Math.max(CHAOS_MIN_PROB, winProb));
+
+const buildChaosDistribution = (scores: number[]): ChaosDistribution => {
+  const sorted = [...scores].sort((a, b) => a - b);
+  const percentiles: Record<number, number> = {};
+  const total = sorted.length;
+
+  for (let pct = 5; pct <= 100; pct += 5) {
+    if (total === 0) {
+      percentiles[pct] = 0;
+      continue;
+    }
+    const index = Math.max(0, Math.min(total - 1, Math.ceil((pct / 100) * total) - 1));
+    percentiles[pct] = sorted[index];
+  }
+
+  return { scores: sorted, percentiles };
+};
+
+export const getChaosScorePercentile = (
+  score: number,
+  chaosDistribution?: ChaosDistribution | null
+): number | null => {
+  if (!chaosDistribution || chaosDistribution.scores.length === 0 || !Number.isFinite(score)) return null;
+  const scores = chaosDistribution.scores;
+
+  let lo = 0;
+  let hi = scores.length;
+  while (lo < hi) {
+    const mid = Math.floor((lo + hi) / 2);
+    if (scores[mid] <= score) lo = mid + 1;
+    else hi = mid;
+  }
+
+  return (lo / scores.length) * 100;
+};
+
 const simulateBracket = (
   locks: LockedPicks,
   forceLocks: boolean,
   customProbByGame: CustomProbByGame = {},
-  random: () => number
-): { winners: Record<string, string>; lockSuccess: boolean } => {
+  random: () => number,
+  options?: { trackChaos?: boolean }
+): { winners: Record<string, string>; lockSuccess: boolean; chaosScore: number } => {
   const winners: Record<string, string> = {};
   let lockSuccess = true;
+  let chaosScore = 0;
 
   for (const game of gameOrder) {
     let teamAId: string | null = null;
@@ -137,10 +177,18 @@ const simulateBracket = (
       lockSuccess = false;
     }
 
-    winners[game.id] = forceLocks && lock ? lock : naturalWinner;
+    const winnerId = forceLocks && lock ? lock : naturalWinner;
+    winners[game.id] = winnerId;
+
+    if (options?.trackChaos) {
+      const winnerProb = getGameWinProb(resolvedGame, winnerId, { ignoreCustom: true });
+      if (winnerProb !== null) {
+        chaosScore += computeChaosContribution(winnerProb);
+      }
+    }
   }
 
-  return { winners, lockSuccess };
+  return { winners, lockSuccess, chaosScore };
 };
 
 const computeApproxLikelihood = (locks: LockedPicks, customProbByGame: CustomProbByGame = {}): number => {
@@ -226,7 +274,8 @@ const normalizeGameWinProbs = (
 export const runSimulation = (
   locks: LockedPicks,
   simRuns: number,
-  customProbByGame: CustomProbByGame = {}
+  customProbByGame: CustomProbByGame = {},
+  options?: { trackChaosDistribution?: boolean }
 ): SimulationOutput => {
   const seedInput = hashLocks(locks, simRuns, customProbByGame);
   const rootSeed = fnv1aHash(`${DEFAULT_SIM_SEED}::${seedInput}`);
@@ -244,12 +293,18 @@ export const runSimulation = (
   }
 
   let lockSuccesses = 0;
+  const chaosScores: number[] = options?.trackChaosDistribution ? [] : [];
 
   for (let i = 0; i < simRuns; i += 1) {
     const forced = simulateBracket(locks, true, customProbByGame, forcedRng);
-    const natural = simulateBracket(locks, false, customProbByGame, naturalRng);
+    const natural = simulateBracket(locks, false, customProbByGame, naturalRng, {
+      trackChaos: options?.trackChaosDistribution,
+    });
 
     if (natural.lockSuccess) lockSuccesses += 1;
+    if (options?.trackChaosDistribution) {
+      chaosScores.push(natural.chaosScore);
+    }
 
     for (const game of gameTemplates) {
       const winnerId = forced.winners[game.id];
@@ -286,6 +341,7 @@ export const runSimulation = (
     gameWinProbs: normalizeGameWinProbs(gameWinCounts, simRuns, resolvedById),
     likelihoodSimulation: lockSuccesses / simRuns,
     likelihoodApprox: computeApproxLikelihood(locks, customProbByGame),
+    chaosDistribution: options?.trackChaosDistribution ? buildChaosDistribution(chaosScores) : undefined,
   };
 };
 
