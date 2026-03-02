@@ -1892,6 +1892,20 @@ function App() {
   const topHalfVisuallyCollapsed = topHalfComplete && !topHalfManuallyExpanded;
   const bottomHalfVisuallyCollapsed = bottomHalfComplete && !bottomHalfManuallyExpanded;
 
+  const setHalfRoundExpansion = (half: "top" | "bottom", expanded: boolean) => {
+    const regions = half === "top" ? (["South", "West"] as const) : (["East", "Midwest"] as const);
+    setManuallyExpandedRounds((prev) => {
+      const next = { ...prev };
+      for (const region of regions) {
+        (["R64", "R32", "S16"] as const).forEach((round) => {
+          const key = `${region}-${round}` as const;
+          next[key] = expanded;
+        });
+      }
+      return next;
+    });
+  };
+
   useEffect(() => {
     if (!topHalfComplete && topHalfManuallyExpanded) {
       setTopHalfManuallyExpanded(false);
@@ -2637,6 +2651,7 @@ function App() {
                     games={games}
                     onExpand={() => {
                       setTopHalfManuallyExpanded(true);
+                      setHalfRoundExpansion("top", true);
                       trackEvent("bracket_half_expanded", { half: "top" });
                     }}
                   />
@@ -2646,7 +2661,13 @@ function App() {
                       <h2>Top Half Bracket</h2>
                       <p>{regionSections[0][0]} + {regionSections[0][1]}</p>
                       {topHalfComplete ? (
-                        <button className="half-section-collapse-btn" onClick={() => setTopHalfManuallyExpanded(false)}>
+                        <button
+                          className="half-section-collapse-btn"
+                          onClick={() => {
+                            setTopHalfManuallyExpanded(false);
+                            setHalfRoundExpansion("top", false);
+                          }}
+                        >
                           Collapse
                         </button>
                       ) : null}
@@ -2683,6 +2704,7 @@ function App() {
                     games={games}
                     onExpand={() => {
                       setBottomHalfManuallyExpanded(true);
+                      setHalfRoundExpansion("bottom", true);
                       trackEvent("bracket_half_expanded", { half: "bottom" });
                     }}
                   />
@@ -2692,7 +2714,13 @@ function App() {
                       <h2>Bottom Half Bracket</h2>
                       <p>{regionSections[1][0]} + {regionSections[1][1]}</p>
                       {bottomHalfComplete ? (
-                        <button className="half-section-collapse-btn" onClick={() => setBottomHalfManuallyExpanded(false)}>
+                        <button
+                          className="half-section-collapse-btn"
+                          onClick={() => {
+                            setBottomHalfManuallyExpanded(false);
+                            setHalfRoundExpansion("bottom", false);
+                          }}
+                        >
                           Collapse
                         </button>
                       ) : null}

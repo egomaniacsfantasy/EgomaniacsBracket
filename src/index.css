@@ -4301,18 +4301,35 @@ body.walkthrough-active .eg-title-choice:hover {
 }
 
 .eg-showdown-card.round-e8 .eg-showdown-logo {
-  width: 72px !important;
-  height: 72px !important;
+  width: 110px !important;
+  height: 110px !important;
 }
 
 .eg-showdown-card.round-f4 .eg-showdown-logo {
-  width: 88px !important;
-  height: 88px !important;
+  width: 132px !important;
+  height: 132px !important;
 }
 
 .eg-showdown-card.round-champ .eg-showdown-logo {
-  width: 100px !important;
-  height: 100px !important;
+  width: 156px !important;
+  height: 156px !important;
+}
+
+@media (max-width: 767px) {
+  .eg-showdown-card.round-e8 .eg-showdown-logo {
+    width: 72px !important;
+    height: 72px !important;
+  }
+
+  .eg-showdown-card.round-f4 .eg-showdown-logo {
+    width: 88px !important;
+    height: 88px !important;
+  }
+
+  .eg-showdown-card.round-champ .eg-showdown-logo {
+    width: 100px !important;
+    height: 100px !important;
+  }
 }
 
 .eg-showdown-card.decided {
