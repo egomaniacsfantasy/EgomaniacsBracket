@@ -61,9 +61,11 @@ export async function saveBracket(
 ) {
   const serialized = serializePicks(picks);
   const derivedChaosScore = typeof chaosScore === "number" ? chaosScore : computeChaosScoreForPicks(serialized);
+  const isMissingChaosColumn = (message?: string) =>
+    Boolean(message && message.toLowerCase().includes("chaos_score"));
 
   if (bracketId) {
-    const { data, error } = await supabase
+    const withChaos = await supabase
       .from("brackets")
       .update({
         picks: serialized,
@@ -75,10 +77,25 @@ export async function saveBracket(
       .eq("user_id", userId)
       .select()
       .single();
+    if (!withChaos.error || !isMissingChaosColumn(withChaos.error.message)) {
+      return { data: withChaos.data as SavedBracket | null, error: withChaos.error };
+    }
+
+    const { data, error } = await supabase
+      .from("brackets")
+      .update({
+        picks: serialized,
+        bracket_name: bracketName,
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", bracketId)
+      .eq("user_id", userId)
+      .select()
+      .single();
     return { data: data as SavedBracket | null, error };
   }
 
-  const { data, error } = await supabase
+  const withChaos = await supabase
     .from("brackets")
     .insert({
       user_id: userId,
@@ -88,14 +105,40 @@ export async function saveBracket(
     })
     .select()
     .single();
+  if (!withChaos.error || !isMissingChaosColumn(withChaos.error.message)) {
+    return { data: withChaos.data as SavedBracket | null, error: withChaos.error };
+  }
+
+  const { data, error } = await supabase
+    .from("brackets")
+    .insert({
+      user_id: userId,
+      picks: serialized,
+      bracket_name: bracketName,
+    })
+    .select()
+    .single();
 
   return { data: data as SavedBracket | null, error };
 }
 
 export async function getUserBrackets(userId: string) {
-  const { data, error } = await supabase
+  const withChaos = await supabase
     .from("brackets")
     .select("id, user_id, bracket_name, picks, chaos_score, created_at, updated_at, is_locked")
+    .eq("user_id", userId)
+    .order("created_at", { ascending: true });
+  if (!withChaos.error) {
+    return { data: (withChaos.data as SavedBracket[] | null) ?? [], error: null };
+  }
+
+  if (!withChaos.error.message?.toLowerCase().includes("chaos_score")) {
+    return { data: [], error: withChaos.error };
+  }
+
+  const { data, error } = await supabase
+    .from("brackets")
+    .select("id, user_id, bracket_name, picks, created_at, updated_at, is_locked")
     .eq("user_id", userId)
     .order("created_at", { ascending: true });
 
