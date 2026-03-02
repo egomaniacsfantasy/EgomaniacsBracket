@@ -38,6 +38,7 @@ const DEFAULT_SIM_RUNS = 5000;
 const ONBOARDING_STORAGE_KEY = "oddsGods_onboardingDismissed";
 const HINTS_STORAGE_KEY = "oddsGods_hintsShown";
 const FIRST_PICK_NUDGE_SESSION_KEY = "oddsGods_firstPickCascadeNudgeSeen";
+const PROMO_DISMISSED_KEY = "bracketlab-promo-dismissed";
 const ODDS_FORMAT_STORAGE_KEY = "bracketlab-odds-format";
 const STAGGERED_SIM_DELAY_MS = 2000;
 const MIN_STAGGERED_SIM_DELAY_MS = 1000;
@@ -414,7 +415,7 @@ const formatDelta = (delta: number, displayMode: OddsDisplayMode): string => {
 };
 
 function App() {
-  const { user, profile, isAuthenticated, signOut } = useAuth();
+  const { user, profile, isAuthenticated, signOut, loading: authLoading } = useAuth();
   const [lockedPicks, setLockedPicks] = useState<LockedPicks>({});
   const [customProbByGame, setCustomProbByGame] = useState<CustomProbByGame>({});
   const [undoStack, setUndoStack] = useState<LockedPicks[]>([]);
@@ -483,6 +484,8 @@ function App() {
   const [authModalOpen, setAuthModalOpen] = useState(false);
   const [myBracketsOpen, setMyBracketsOpen] = useState(false);
   const [userBrackets, setUserBrackets] = useState<SavedBracket[]>([]);
+  const [promoCTAVisible, setPromoCTAVisible] = useState(false);
+  const [promoShown, setPromoShown] = useState(false);
   const [manuallyExpandedRounds, setManuallyExpandedRounds] = useState<ManualRoundExpansionState>({});
   const [topHalfManuallyExpanded, setTopHalfManuallyExpanded] = useState(false);
   const [bottomHalfManuallyExpanded, setBottomHalfManuallyExpanded] = useState(false);
@@ -523,6 +526,7 @@ function App() {
   const contextualHintTimerRef = useRef<number | null>(null);
   const copyLinkTimerRef = useRef<number | null>(null);
   const saveStatusTimerRef = useRef<number | null>(null);
+  const promoCTATimerRef = useRef<number | null>(null);
   const shareToastTimerRef = useRef<number | null>(null);
   const shareStoryRef = useRef<HTMLDivElement | null>(null);
   const shareTwitterRef = useRef<HTMLDivElement | null>(null);
@@ -648,6 +652,10 @@ function App() {
   }, [isAuthenticated]);
 
   useEffect(() => {
+    if (isAuthenticated && promoCTAVisible) setPromoCTAVisible(false);
+  }, [isAuthenticated, promoCTAVisible]);
+
+  useEffect(() => {
     if (typeof window === "undefined") return;
     const rawHash = window.location.hash.startsWith("#") ? window.location.hash.slice(1) : "";
     if (!rawHash) {
@@ -702,9 +710,37 @@ function App() {
     setWelcomeGateOpen(false);
   };
 
+  const maybeShowPromoCTA = () => {
+    if (typeof window === "undefined") return;
+    if (authLoading || isAuthenticated || promoShown) return;
+    if (window.localStorage.getItem(PROMO_DISMISSED_KEY)) return;
+    if (promoCTATimerRef.current !== null) window.clearTimeout(promoCTATimerRef.current);
+    promoCTATimerRef.current = window.setTimeout(() => {
+      setPromoCTAVisible(true);
+      setPromoShown(true);
+      promoCTATimerRef.current = null;
+    }, 600);
+  };
+
+  const handlePromoDismiss = () => {
+    setPromoCTAVisible(false);
+    if (typeof window !== "undefined") {
+      window.localStorage.setItem(PROMO_DISMISSED_KEY, "1");
+    }
+  };
+
+  const handlePromoSignUp = () => {
+    setPromoCTAVisible(false);
+    if (typeof window !== "undefined") {
+      window.localStorage.setItem(PROMO_DISMISSED_KEY, "1");
+    }
+    setAuthModalOpen(true);
+  };
+
   const completeWalkthrough = () => {
     trackEvent("onboarding_completed");
     closeWalkthrough();
+    maybeShowPromoCTA();
   };
 
   const skipWalkthrough = () => {
@@ -712,6 +748,7 @@ function App() {
       skipped_at_step: walkthroughStep + 1,
     });
     closeWalkthrough();
+    maybeShowPromoCTA();
   };
 
   const startWalkthrough = (opts?: { replay?: boolean }) => {
@@ -1901,6 +1938,9 @@ function App() {
       if (saveStatusTimerRef.current !== null) {
         window.clearTimeout(saveStatusTimerRef.current);
       }
+      if (promoCTATimerRef.current !== null) {
+        window.clearTimeout(promoCTATimerRef.current);
+      }
       if (shareToastTimerRef.current !== null) {
         window.clearTimeout(shareToastTimerRef.current);
       }
@@ -2708,7 +2748,9 @@ function App() {
               </a>
             </div>
             <div className="og-top-nav-auth">
-              {isAuthenticated ? (
+              {authLoading ? (
+                <span className="nav-auth-loading">...</span>
+              ) : isAuthenticated ? (
                 <div className="nav-user-info">
                   <span className="nav-user-name">{profile?.display_name || user?.email || "User"}</span>
                   <button className="nav-signout-btn" onClick={() => signOut()}>
@@ -2717,7 +2759,7 @@ function App() {
                 </div>
               ) : (
                 <button className="nav-signin-btn" onClick={() => setAuthModalOpen(true)}>
-                  Sign in
+                  Log in / Sign up
                 </button>
               )}
             </div>
@@ -2733,7 +2775,7 @@ function App() {
               </button>
             ) : (
               <button className="nav-signin-btn nav-signin-btn--mobile" onClick={() => setAuthModalOpen(true)}>
-                In
+                Log in
               </button>
             )}
           </div>
@@ -3029,6 +3071,12 @@ function App() {
         currentPicks={sanitized}
       />
 
+      <PromoCTA
+        visible={promoCTAVisible}
+        onDismiss={handlePromoDismiss}
+        onSignUp={handlePromoSignUp}
+      />
+
       {walkthroughActive && walkthroughTargetRect && walkthroughDisplayStep ? (
         <Suspense fallback={null}>
           <SpotlightWalkthrough
@@ -3120,6 +3168,50 @@ function App() {
           </div>
         </>
       ) : null}
+    </div>
+  );
+}
+
+function PromoCTA({
+  visible,
+  onDismiss,
+  onSignUp,
+}: {
+  visible: boolean;
+  onDismiss: () => void;
+  onSignUp: () => void;
+}) {
+  useEffect(() => {
+    if (!visible) return;
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") onDismiss();
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [visible, onDismiss]);
+
+  if (!visible) return null;
+
+  return (
+    <div className="promo-cta-backdrop" onClick={onDismiss}>
+      <div className="promo-cta" onClick={(event) => event.stopPropagation()}>
+        <button className="promo-cta-close" onClick={onDismiss}>
+          ✕
+        </button>
+        <div className="promo-cta-trophy">🏆</div>
+        <h3 className="promo-cta-title">Win $100</h3>
+        <p className="promo-cta-body">
+          Save your bracket and compete against everyone on our leaderboard. The most accurate bracket wins $100
+          after the championship.
+        </p>
+        <p className="promo-cta-detail">Free to enter. Up to 3 brackets per account.</p>
+        <button className="promo-cta-button" onClick={onSignUp}>
+          Sign up &amp; save my bracket
+        </button>
+        <button className="promo-cta-skip" onClick={onDismiss}>
+          Maybe later
+        </button>
+      </div>
     </div>
   );
 }

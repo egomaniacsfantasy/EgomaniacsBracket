@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, type FormEvent, type MouseEvent } from "react";
 import { useAuth } from "./AuthContext";
+import { supabase } from "./supabaseClient";
 
 type Mode = "signup" | "signin" | "check-email";
 
@@ -17,6 +18,10 @@ export function AuthModal({
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [submittedMode, setSubmittedMode] = useState<"signup" | "signin">("signup");
+  const [usePassword, setUsePassword] = useState(false);
+  const [password, setPassword] = useState("");
+  const [signinUsePassword, setSigninUsePassword] = useState(false);
+  const [signinPassword, setSigninPassword] = useState("");
   const modalRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
@@ -27,6 +32,10 @@ export function AuthModal({
     setError("");
     setSubmitting(false);
     setSubmittedMode("signup");
+    setUsePassword(false);
+    setPassword("");
+    setSigninUsePassword(false);
+    setSigninPassword("");
   }, [isOpen]);
 
   useEffect(() => {
@@ -48,9 +57,20 @@ export function AuthModal({
     if (!email.trim()) return setError("Email is required");
     if (!displayName.trim()) return setError("Display name is required");
     if (displayName.trim().length > 30) return setError("Display name must be 30 characters or less");
+    if (usePassword && password.length < 6) return setError("Password must be at least 6 characters");
 
     setSubmitting(true);
-    const { error: authError } = await signUp(email.trim(), displayName.trim());
+    const authResult = usePassword
+      ? await supabase.auth.signUp({
+          email: email.trim(),
+          password,
+          options: {
+            data: { display_name: displayName.trim() },
+            emailRedirectTo: window.location.origin,
+          },
+        })
+      : await signUp(email.trim(), displayName.trim());
+    const authError = authResult.error;
     setSubmitting(false);
     if (authError) return setError((authError as { message?: string })?.message ?? "Unable to sign up");
     setSubmittedMode("signup");
@@ -61,11 +81,22 @@ export function AuthModal({
     event.preventDefault();
     setError("");
     if (!email.trim()) return setError("Email is required");
+    if (signinUsePassword && !signinPassword) return setError("Password is required");
 
     setSubmitting(true);
-    const { error: authError } = await signIn(email.trim());
+    const authResult = signinUsePassword
+      ? await supabase.auth.signInWithPassword({
+          email: email.trim(),
+          password: signinPassword,
+        })
+      : await signIn(email.trim());
+    const authError = authResult.error;
     setSubmitting(false);
-    if (authError) return setError((authError as { message?: string })?.message ?? "Unable to sign in");
+    if (authError) return setError((authError as { message?: string })?.message ?? "Unable to log in");
+    if (signinUsePassword) {
+      onClose();
+      return;
+    }
     setSubmittedMode("signin");
     setMode("check-email");
   };
@@ -85,7 +116,10 @@ export function AuthModal({
             <h3 className="auth-modal-title">Check your email</h3>
             <p className="auth-modal-subtitle">
               We sent a confirmation link to <strong>{email}</strong>. Click the link to{" "}
-              {submittedMode === "signup" ? "create your account" : "sign in"}.
+              {submittedMode === "signup" ? "create your account" : "log in"}.
+            </p>
+            <p className="auth-modal-same-device-warning">
+              ⚠️ Open the link on THIS device. Opening it on a different device won&apos;t log you in here.
             </p>
             <p className="auth-modal-hint">Don&apos;t see it? Check your spam folder.</p>
           </div>
@@ -116,6 +150,42 @@ export function AuthModal({
               onChange={(event) => setEmail(event.target.value)}
             />
 
+            {!usePassword ? (
+              <button
+                className="auth-modal-password-toggle"
+                type="button"
+                onClick={() => {
+                  setUsePassword(true);
+                  setError("");
+                }}
+              >
+                Or set a password instead
+              </button>
+            ) : (
+              <>
+                <label className="auth-modal-label">Password</label>
+                <input
+                  className="auth-modal-input"
+                  type="password"
+                  placeholder="At least 6 characters"
+                  value={password}
+                  onChange={(event) => setPassword(event.target.value)}
+                  minLength={6}
+                />
+                <button
+                  className="auth-modal-password-toggle"
+                  type="button"
+                  onClick={() => {
+                    setUsePassword(false);
+                    setPassword("");
+                    setError("");
+                  }}
+                >
+                  Use magic link instead (no password needed)
+                </button>
+              </>
+            )}
+
             {error ? <p className="auth-modal-error">{error}</p> : null}
 
             <button className="auth-modal-submit" type="submit" disabled={submitting}>
@@ -129,16 +199,18 @@ export function AuthModal({
                 onClick={() => {
                   setMode("signin");
                   setError("");
+                  setSigninUsePassword(false);
+                  setSigninPassword("");
                 }}
               >
-                Sign in
+                Log in
               </button>
             </p>
           </form>
         ) : (
           <form onSubmit={handleSignIn} className="auth-modal-form">
             <h3 className="auth-modal-title">Welcome back</h3>
-            <p className="auth-modal-subtitle">Enter your email and we&apos;ll send you a sign-in link.</p>
+            <p className="auth-modal-subtitle">Enter your email and we&apos;ll send you a log-in link.</p>
 
             <label className="auth-modal-label">Email</label>
             <input
@@ -150,10 +222,35 @@ export function AuthModal({
               autoFocus
             />
 
+            {signinUsePassword ? (
+              <>
+                <label className="auth-modal-label">Password</label>
+                <input
+                  className="auth-modal-input"
+                  type="password"
+                  placeholder="Your password"
+                  value={signinPassword}
+                  onChange={(event) => setSigninPassword(event.target.value)}
+                />
+              </>
+            ) : null}
+
+            <button
+              className="auth-modal-password-toggle"
+              type="button"
+              onClick={() => {
+                setSigninUsePassword((prev) => !prev);
+                setSigninPassword("");
+                setError("");
+              }}
+            >
+              {signinUsePassword ? "Use magic link instead" : "Log in with password"}
+            </button>
+
             {error ? <p className="auth-modal-error">{error}</p> : null}
 
             <button className="auth-modal-submit" type="submit" disabled={submitting}>
-              {submitting ? "Sending..." : "Send Magic Link"}
+              {submitting ? "Sending..." : signinUsePassword ? "Log In" : "Send Magic Link"}
             </button>
 
             <p className="auth-modal-toggle">
@@ -163,6 +260,8 @@ export function AuthModal({
                 onClick={() => {
                   setMode("signup");
                   setError("");
+                  setUsePassword(false);
+                  setPassword("");
                 }}
               >
                 Create one
