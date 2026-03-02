@@ -2503,19 +2503,34 @@ function App() {
 
   const toolbar = (
     <div className="eg-main-actions toolbar">
-      <button onClick={onUndo} disabled={undoStack.length === 0} className="eg-btn">
+      <button
+        onClick={onUndo}
+        disabled={undoStack.length === 0}
+        className="eg-btn"
+        style={!isMobile && mainView === "leaderboard" ? { display: "none" } : undefined}
+      >
         Undo
       </button>
-      <button onClick={onRequestResetAll} className="eg-btn">
+      <button onClick={onRequestResetAll} className="eg-btn" style={!isMobile && mainView === "leaderboard" ? { display: "none" } : undefined}>
         Reset All
       </button>
-      <button onClick={onModelSim} className="eg-btn">
+      <button onClick={onModelSim} className="eg-btn" style={!isMobile && mainView === "leaderboard" ? { display: "none" } : undefined}>
         Instant Sim
       </button>
-      <button onClick={onModelSimStaggered} className="eg-btn" disabled={staggeredSimRunning}>
+      <button
+        onClick={onModelSimStaggered}
+        className="eg-btn"
+        disabled={staggeredSimRunning}
+        style={!isMobile && mainView === "leaderboard" ? { display: "none" } : undefined}
+      >
         {staggeredSimRunning ? "Staggered Sim Running..." : "Staggered Sim"}
       </button>
-      <button onClick={onSaveBracket} className="eg-btn toolbar-btn--save" disabled={saveStatus === "saving"}>
+      <button
+        onClick={onSaveBracket}
+        className="eg-btn toolbar-btn--save"
+        disabled={saveStatus === "saving"}
+        style={!isMobile && mainView === "leaderboard" ? { display: "none" } : undefined}
+      >
         {saveStatus === "saving"
           ? "Saving..."
           : saveStatus === "saved"
@@ -2525,7 +2540,11 @@ function App() {
               : "Save Bracket"}
       </button>
       {isAuthenticated ? (
-        <button onClick={() => setMyBracketsOpen(true)} className="eg-btn">
+        <button
+          onClick={() => setMyBracketsOpen(true)}
+          className="eg-btn"
+          style={!isMobile && mainView === "leaderboard" ? { display: "none" } : undefined}
+        >
           My Brackets
         </button>
       ) : null}
@@ -2542,6 +2561,7 @@ function App() {
         className="eg-btn copy-link-btn"
         data-copied={linkCopied ? "true" : "false"}
         aria-label="Copy shareable bracket link"
+        style={!isMobile && mainView === "leaderboard" ? { display: "none" } : undefined}
       >
         {linkCopied ? "Copied!" : "Copy Link"}
       </button>
@@ -2551,12 +2571,13 @@ function App() {
           className="eg-btn"
           aria-label={staggeredSimPaused ? "Resume staggered simulation" : "Pause staggered simulation"}
           title={staggeredSimPaused ? "Resume staggered simulation" : "Pause staggered simulation"}
+          style={!isMobile && mainView === "leaderboard" ? { display: "none" } : undefined}
         >
           {staggeredSimPaused ? "▶" : "⏸"}
         </button>
       ) : null}
       {(showStaggeredControls || staggeredSimRunning) ? (
-        <div className="eg-stagger-controls">
+        <div className="eg-stagger-controls" style={!isMobile && mainView === "leaderboard" ? { display: "none" } : undefined}>
           <label htmlFor="stagger-delay" className="eg-stagger-label">
             Stagger Delay: {(staggeredSimDelayMs / 1000).toFixed(1)}s
           </label>
@@ -2943,7 +2964,6 @@ function App() {
                 <LeaderboardFullWidth
                   isVisible={mobileTab === "leaderboard"}
                   refreshKey={leaderboardRefreshKey}
-                  onBack={() => setMobileTab("bracket")}
                 />
               </div>
             )}
@@ -3054,62 +3074,19 @@ function App() {
                 </section>
 
                 <section className="eg-finals-card bracket-finals">
-                  <h2>Final Four & Championship</h2>
-                  <div className="eg-finals-stage">
-                    <div className="eg-semi-col left">
-                      <p className="eg-finals-label">Semifinal</p>
-                      <p className="eg-finals-sub">{regionSections[0][0]} + {regionSections[0][1]}</p>
-                      {leftSemi ? (
-                        <GameCard
-                          key={leftSemi.id}
-                          game={leftSemi}
-                          gameWinProbs={simResult.gameWinProbs}
-                          possibleWinners={possibleWinners}
-                          onPick={onPick}
-                          lastPickedKey={lastPickedKey}
-                          displayMode={displayMode}
-                          onOpenProbabilityPopup={openProbabilityPopup}
-                          onUnavailableRoundClick={onUnavailableRoundClick}
-                        />
-                      ) : null}
-                    </div>
-
-                    <div className="eg-title-col">
-                      <p className="eg-finals-label title">National Championship</p>
-                      {titleGame ? (
-                        <div className="eg-title-hero">
-                          <GameCard
-                            key={titleGame.id}
-                            game={titleGame}
-                            gameWinProbs={simResult.gameWinProbs}
-                            possibleWinners={possibleWinners}
-                            onPick={onPick}
-                            lastPickedKey={lastPickedKey}
-                            displayMode={displayMode}
-                            onOpenProbabilityPopup={openProbabilityPopup}
-                            onUnavailableRoundClick={onUnavailableRoundClick}
-                          />
-                        </div>
-                      ) : null}
-                    </div>
-
-                    <div className="eg-semi-col right">
-                      <p className="eg-finals-label">Semifinal</p>
-                      <p className="eg-finals-sub">{regionSections[1][0]} + {regionSections[1][1]}</p>
-                      {rightSemi ? (
-                        <GameCard
-                          key={rightSemi.id}
-                          game={rightSemi}
-                          gameWinProbs={simResult.gameWinProbs}
-                          possibleWinners={possibleWinners}
-                          onPick={onPick}
-                          lastPickedKey={lastPickedKey}
-                          displayMode={displayMode}
-                          onOpenProbabilityPopup={openProbabilityPopup}
-                          onUnavailableRoundClick={onUnavailableRoundClick}
-                        />
-                      ) : null}
-                    </div>
+                  <h2 className="ff-section-header">Final Four & Championship</h2>
+                  <div className="ff-championship-section">
+                    <FinalsSemifinalCard
+                      game={leftSemi}
+                      regionLabel={`${regionSections[0][0]} + ${regionSections[0][1]}`}
+                      onPick={onPick}
+                    />
+                    <FinalsChampionshipCard game={titleGame} onPick={onPick} />
+                    <FinalsSemifinalCard
+                      game={rightSemi}
+                      regionLabel={`${regionSections[1][0]} + ${regionSections[1][1]}`}
+                      onPick={onPick}
+                    />
                   </div>
                 </section>
               </div>
@@ -3117,7 +3094,6 @@ function App() {
                 <LeaderboardFullWidth
                   isVisible={mainView === "leaderboard"}
                   refreshKey={leaderboardRefreshKey}
-                  onBack={() => setMainView("bracket")}
                 />
               </div>
             </div>
@@ -4315,6 +4291,107 @@ function CollapsedHalfSummary({
       <button type="button" className="half-collapsed-expand-btn" onClick={onExpand}>
         Expand ↓
       </button>
+    </div>
+  );
+}
+
+function FinalsSemifinalCard({
+  game,
+  regionLabel,
+  onPick,
+}: {
+  game: ResolvedGame | null;
+  regionLabel: string;
+  onPick: (game: ResolvedGame, teamId: string | null) => void;
+}) {
+  const teamA = game?.teamAId ? teamsById.get(game.teamAId) ?? null : null;
+  const teamB = game?.teamBId ? teamsById.get(game.teamBId) ?? null : null;
+  const winnerId = game?.winnerId ?? null;
+
+  const renderTeam = (team: NonNullable<typeof teamA>) => {
+    const selected = winnerId === team.id;
+    const lost = Boolean(winnerId && winnerId !== team.id);
+    return (
+      <button
+        type="button"
+        className={`ff-semifinal-team ${selected ? "ff-semifinal-team--winner" : ""} ${lost ? "ff-semifinal-team--loser" : ""}`}
+        onClick={() => {
+          if (!game) return;
+          onPick(game, team.id);
+        }}
+      >
+        <span className="ff-semifinal-seed">#{team.seed}</span>
+        <TeamLogo teamName={team.name} src={teamLogoUrl(team)} className="ff-semifinal-logo" />
+        <span className="ff-semifinal-name">{team.name}</span>
+      </button>
+    );
+  };
+
+  return (
+    <div className="ff-semifinal-card">
+      <div className="ff-semifinal-header">Semifinal</div>
+      <div className="ff-semifinal-matchup">
+        {teamA ? renderTeam(teamA) : <div className="ff-semifinal-team ff-semifinal-team--placeholder">TBD</div>}
+        <span className="ff-semifinal-vs">VS</span>
+        {teamB ? renderTeam(teamB) : <div className="ff-semifinal-team ff-semifinal-team--placeholder">TBD</div>}
+      </div>
+      <div className="ff-semifinal-label">{regionLabel}</div>
+    </div>
+  );
+}
+
+function FinalsChampionshipCard({
+  game,
+  onPick,
+}: {
+  game: ResolvedGame | null;
+  onPick: (game: ResolvedGame, teamId: string | null) => void;
+}) {
+  const teamA = game?.teamAId ? teamsById.get(game.teamAId) ?? null : null;
+  const teamB = game?.teamBId ? teamsById.get(game.teamBId) ?? null : null;
+  const winnerId = game?.winnerId ?? null;
+
+  const renderChampTeam = (team: NonNullable<typeof teamA>) => {
+    const isWinner = winnerId === team.id;
+    const isLoser = Boolean(winnerId && winnerId !== team.id);
+    return (
+      <button
+        type="button"
+        className={`championship-team ${isWinner ? "championship-team--winner" : ""} ${isLoser ? "championship-team--loser" : ""}`}
+        onClick={() => {
+          if (!game) return;
+          onPick(game, team.id);
+        }}
+      >
+        <span className="championship-seed">#{team.seed}</span>
+        <TeamLogo teamName={team.name} src={teamLogoUrl(team)} className="championship-logo" />
+        <span className="championship-team-name">{team.name}</span>
+        {isWinner ? (
+          <span className="championship-winner-tag">
+            <span className="championship-crown">👑</span>
+            NCAA CHAMPION
+          </span>
+        ) : null}
+        {isLoser ? <span className="championship-loser-tag">Runner-up</span> : null}
+      </button>
+    );
+  };
+
+  return (
+    <div className="championship-card">
+      <div className="championship-header">
+        <span className="championship-trophy">🏆</span>
+        <span className="championship-label">National Championship</span>
+      </div>
+      <div className="championship-matchup">
+        {teamA ? renderChampTeam(teamA) : <div className="championship-team championship-team--placeholder">TBD</div>}
+        <div className="championship-vs" aria-hidden="true">
+          <div className="championship-vs-line" />
+          <span className="championship-vs-text">VS</span>
+          <div className="championship-vs-line" />
+        </div>
+        {teamB ? renderChampTeam(teamB) : <div className="championship-team championship-team--placeholder">TBD</div>}
+      </div>
     </div>
   );
 }
