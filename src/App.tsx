@@ -46,7 +46,6 @@ const STAGGERED_SIM_DELAY_MS = 2000;
 const MIN_STAGGERED_SIM_DELAY_MS = 1000;
 const MAX_STAGGERED_SIM_DELAY_MS = 5000;
 const LANDING_URL = "https://oddsgods.net";
-const BRACKET_URL = "https://bracket.oddsgods.net/";
 
 const formatModes: { id: OddsDisplayMode; label: string }[] = [
   { id: "american", label: "American" },
@@ -2860,12 +2859,8 @@ function App() {
             <a className="og-top-nav-brand" href={LANDING_URL}>
               <img className="og-top-nav-logo" src="/logo-icon.png?v=20260225" alt="Odds Gods" />
               <span className="odds">ODDS</span> <span className="gods">GODS</span>
+              <span className="beta-badge">BETA</span>
             </a>
-            <div className="og-top-nav-tabs">
-              <a className="og-top-nav-link active" href={BRACKET_URL} aria-current="page">
-                <span className="beta-badge">BETA</span>
-              </a>
-            </div>
             <div className="og-top-nav-auth">
               {authLoading ? (
                 <span className="nav-auth-loading">...</span>

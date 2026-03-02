@@ -3644,6 +3644,7 @@ body {
   text-decoration: none;
   text-transform: uppercase;
   line-height: 1;
+  white-space: nowrap;
 }
 
 .og-top-nav-logo {
@@ -3656,11 +3657,15 @@ body {
 
 .og-top-nav-brand .odds {
   font-weight: 400;
+  position: relative;
+  top: 1px;
 }
 
 .og-top-nav-brand .gods {
   color: rgba(240, 230, 208, 0.92);
   font-weight: 700;
+  position: relative;
+  top: 1px;
 }
 
 .og-top-nav-tabs {
@@ -3699,9 +3704,10 @@ body {
   border-radius: 3px;
   padding: 1px 5px;
   vertical-align: middle;
-  margin-left: 0;
+  margin-left: 9px;
+  align-self: center;
   position: relative;
-  top: -1px;
+  top: 0;
 }
 
 .og-top-nav-auth {
