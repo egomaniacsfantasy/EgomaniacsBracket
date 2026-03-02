@@ -1,4 +1,5 @@
 import type { Team } from "../types";
+import { getMappedEspnLogoPath } from "./logoMap";
 
 const teamDomains: Record<string, string> = {
   UConn: "uconn.edu",
@@ -112,6 +113,8 @@ export const fallbackLogo = (name: string): string =>
 
 export const teamLogoUrl = (team: Team): string => {
   if (team.logoUrl) return team.logoUrl;
+  const mappedLogoPath = getMappedEspnLogoPath(team.name);
+  if (mappedLogoPath) return mappedLogoPath;
   const domain = teamDomains[team.name];
   if (domain) {
     return `https://www.google.com/s2/favicons?domain=${encodeURIComponent(domain)}&sz=64`;
