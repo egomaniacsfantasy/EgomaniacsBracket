@@ -4345,47 +4345,72 @@ function FinalsChampionshipCard({
   const teamA = game?.teamAId ? teamsById.get(game.teamAId) ?? null : null;
   const teamB = game?.teamBId ? teamsById.get(game.teamBId) ?? null : null;
   const winnerId = game?.winnerId ?? null;
-
-  const renderChampTeam = (team: NonNullable<typeof teamA>) => {
-    const isWinner = winnerId === team.id;
-    const isLoser = Boolean(winnerId && winnerId !== team.id);
-    return (
-      <button
-        type="button"
-        className={`championship-team ${isWinner ? "championship-team--winner" : ""} ${isLoser ? "championship-team--loser" : ""}`}
-        onClick={() => {
-          if (!game) return;
-          onPick(game, team.id);
-        }}
-      >
-        <span className="championship-seed">#{team.seed}</span>
-        <TeamLogo teamName={team.name} src={teamLogoUrl(team)} className="championship-logo" />
-        <span className="championship-team-name">{team.name}</span>
-        {isWinner ? (
-          <span className="championship-winner-tag">
-            <span className="championship-crown">👑</span>
-            NCAA CHAMPION
-          </span>
-        ) : null}
-        {isLoser ? <span className="championship-loser-tag">Runner-up</span> : null}
-      </button>
-    );
-  };
+  const hasPick = Boolean(winnerId);
+  const teamAWon = winnerId === teamA?.id;
+  const teamBWon = winnerId === teamB?.id;
 
   return (
-    <div className="championship-card">
+    <div className="championship-container">
       <div className="championship-header">
         <span className="championship-trophy">🏆</span>
         <span className="championship-label">National Championship</span>
       </div>
       <div className="championship-matchup">
-        {teamA ? renderChampTeam(teamA) : <div className="championship-team championship-team--placeholder">TBD</div>}
-        <div className="championship-vs" aria-hidden="true">
-          <div className="championship-vs-line" />
-          <span className="championship-vs-text">VS</span>
-          <div className="championship-vs-line" />
+        <div
+          className={`championship-team-card ${hasPick ? (teamAWon ? "championship-team-card--winner" : "championship-team-card--loser") : ""}`}
+          onClick={() => {
+            if (!game || !teamA) return;
+            onPick(game, teamA.id);
+          }}
+        >
+          <span className="championship-seed">{teamA ? `#${teamA.seed}` : "#--"}</span>
+          {teamA ? (
+            <TeamLogo teamName={teamA.name} src={teamLogoUrl(teamA)} className="championship-logo" />
+          ) : (
+            <span className="team-logo team-logo-placeholder championship-logo" aria-hidden="true" />
+          )}
+          <span className="championship-team-name">{teamA?.name ?? "TBD"}</span>
+          {hasPick && teamAWon ? (
+            <div className="championship-result championship-result--winner">
+              <span>✓ NCAA Champion</span>
+              <span className="championship-badge">NCAA CHAMPION</span>
+            </div>
+          ) : null}
+          {hasPick && !teamAWon ? (
+            <div className="championship-result championship-result--loser">
+              <span>✗ Runner-up</span>
+            </div>
+          ) : null}
         </div>
-        {teamB ? renderChampTeam(teamB) : <div className="championship-team championship-team--placeholder">TBD</div>}
+
+        <span className="championship-vs">vs</span>
+
+        <div
+          className={`championship-team-card ${hasPick ? (teamBWon ? "championship-team-card--winner" : "championship-team-card--loser") : ""}`}
+          onClick={() => {
+            if (!game || !teamB) return;
+            onPick(game, teamB.id);
+          }}
+        >
+          <span className="championship-seed">{teamB ? `#${teamB.seed}` : "#--"}</span>
+          {teamB ? (
+            <TeamLogo teamName={teamB.name} src={teamLogoUrl(teamB)} className="championship-logo" />
+          ) : (
+            <span className="team-logo team-logo-placeholder championship-logo" aria-hidden="true" />
+          )}
+          <span className="championship-team-name">{teamB?.name ?? "TBD"}</span>
+          {hasPick && teamBWon ? (
+            <div className="championship-result championship-result--winner">
+              <span>✓ NCAA Champion</span>
+              <span className="championship-badge">NCAA CHAMPION</span>
+            </div>
+          ) : null}
+          {hasPick && !teamBWon ? (
+            <div className="championship-result championship-result--loser">
+              <span>✗ Runner-up</span>
+            </div>
+          ) : null}
+        </div>
       </div>
     </div>
   );

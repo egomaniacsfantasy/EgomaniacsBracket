@@ -1650,18 +1650,17 @@ body {
   margin-top: 8px;
 }
 
-.championship-card {
-  position: relative;
-  background: linear-gradient(180deg, rgba(184, 125, 24, 0.08) 0%, rgba(184, 125, 24, 0.02) 100%);
-  border: 2px solid rgba(184, 125, 24, 0.3);
-  border-radius: 14px;
-  padding: 28px 32px;
-  text-align: center;
-  max-width: 520px;
+.championship-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 20px;
+  padding: 24px;
+  background: rgba(184, 125, 24, 0.03);
+  border: 1px solid rgba(184, 125, 24, 0.2);
+  border-radius: 12px;
+  max-width: 560px;
   margin: 0 auto;
-  box-shadow:
-    0 0 40px rgba(184, 125, 24, 0.06),
-    0 4px 20px rgba(0, 0, 0, 0.3);
   align-self: center;
 }
 
@@ -1689,52 +1688,40 @@ body {
 .championship-matchup {
   display: flex;
   align-items: center;
-  justify-content: center;
-  gap: 24px;
+  gap: 20px;
 }
 
-.championship-team {
+.championship-team-card {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 10px;
+  padding: 24px 20px;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 8px;
-  padding: 16px 20px;
-  border-radius: 10px;
+  gap: 10px;
   cursor: pointer;
-  transition: background 200ms, transform 200ms;
-  flex: 1;
-  max-width: 200px;
+  transition: border-color 200ms, background 200ms, opacity 200ms;
+  min-width: 180px;
+  max-width: 220px;
 }
 
-.championship-team:hover {
-  background: rgba(255, 255, 255, 0.03);
-  transform: translateY(-2px);
+.championship-team-card:hover {
+  border-color: rgba(184, 125, 24, 0.3);
+  background: rgba(255, 255, 255, 0.05);
 }
 
-.championship-team--winner {
+.championship-team-card--winner {
   background: rgba(184, 125, 24, 0.08);
+  border: 2px solid rgba(184, 125, 24, 0.5);
+  box-shadow: 0 0 24px rgba(184, 125, 24, 0.1);
+  cursor: default;
 }
 
-.championship-team--winner:hover {
-  background: rgba(184, 125, 24, 0.12);
-}
-
-.championship-team--loser {
-  opacity: 0.35;
-}
-
-.championship-team--loser:hover {
-  opacity: 0.5;
-  transform: none;
-}
-
-.championship-team--placeholder {
-  justify-content: center;
-  color: var(--text-tertiary);
-  font-family: var(--font-mono);
-  font-size: 11px;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
+.championship-team-card--loser {
+  background: rgba(255, 255, 255, 0.02);
+  border-color: rgba(255, 255, 255, 0.06);
+  opacity: 0.55;
   cursor: default;
 }
 
@@ -1745,7 +1732,7 @@ body {
   color: var(--text-tertiary);
   background: rgba(255, 255, 255, 0.06);
   padding: 2px 8px;
-  border-radius: 100px;
+  border-radius: 4px;
 }
 
 .championship-logo {
@@ -1756,68 +1743,57 @@ body {
   max-width: 88px;
   max-height: 88px;
   object-fit: contain;
-  display: block;
-  flex-shrink: 0;
-  filter: drop-shadow(0 2px 8px rgba(0, 0, 0, 0.3));
+  object-fit: contain;
 }
 
 .championship-team-name {
   font-family: var(--font-serif);
-  font-size: 18px;
+  font-size: 16px;
   font-weight: 700;
   color: var(--text-primary);
   text-align: center;
-  line-height: 1.2;
+  line-height: 1.3;
 }
 
-.championship-winner-tag {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  font-family: var(--font-mono);
-  font-size: 10px;
-  font-weight: 700;
-  letter-spacing: 0.12em;
-  color: var(--text-amber);
-  text-transform: uppercase;
-  margin-top: 4px;
-  padding: 4px 10px;
-  background: rgba(184, 125, 24, 0.1);
-  border: 1px solid rgba(184, 125, 24, 0.25);
-  border-radius: 100px;
+.championship-team-card--loser .championship-team-name {
+  color: var(--text-secondary);
 }
 
-.championship-crown {
-  font-size: 12px;
-}
-
-.championship-loser-tag {
-  font-family: var(--font-mono);
-  font-size: 10px;
-  color: var(--text-tertiary);
-  margin-top: 4px;
-}
-
-.championship-vs {
+.championship-result {
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 6px;
-  flex-shrink: 0;
+  margin-top: 4px;
+  font-family: var(--font-mono);
+  font-size: 11px;
 }
 
-.championship-vs-line {
-  width: 1px;
-  height: 20px;
-  background: rgba(184, 125, 24, 0.15);
+.championship-result--winner {
+  color: var(--text-amber);
 }
 
-.championship-vs-text {
+.championship-result--loser {
+  color: var(--text-tertiary);
+}
+
+.championship-badge {
   font-family: var(--font-mono);
   font-size: 10px;
   font-weight: 700;
   letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: #0a0806;
+  background: rgba(184, 125, 24, 0.85);
+  padding: 4px 12px;
+  border-radius: 4px;
+}
+
+.championship-vs {
+  font-family: var(--font-mono);
+  font-size: 13px;
   color: var(--text-tertiary);
+  flex-shrink: 0;
 }
 
 .eg-title-hero .eg-team-row {
@@ -2299,7 +2275,7 @@ input[type="range"] {
     gap: 16px;
   }
 
-  .championship-card {
+  .championship-container {
     order: -1;
     max-width: 100%;
     width: 100%;
