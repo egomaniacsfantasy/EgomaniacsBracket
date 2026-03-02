@@ -21,7 +21,7 @@ import { formatOddsDisplay, toAmericanOdds, toImpliedLabel, toOneInX } from "./l
 import {
   generateSimulatedBracket,
   generateSimulatedBracketSteps,
-  getChaosScorePercentile,
+  getChaosScorePercentileForPickedGames,
   hashLocks,
   runSimulation,
 } from "./lib/simulation";
@@ -300,6 +300,16 @@ function computeChaosScoreFromGames(games: ResolvedGame[]): number | null {
     total += computeGameChaos(winnerProb);
   }
   return total;
+}
+
+function getPickedChaosGameIds(games: ResolvedGame[]): string[] {
+  return games
+    .filter((game) => Boolean(game.id && game.winnerId && game.teamAId && game.teamBId))
+    .filter((game) => {
+      const modelProbA = getModelGameWinProb(game, game.teamAId as string);
+      return modelProbA !== null;
+    })
+    .map((game) => game.id);
 }
 
 function getChaosLabel(score: number | null, decidedCount: number): { label: string; emoji: string } | null {
@@ -1307,10 +1317,11 @@ function App() {
   );
 
   const chaosScore = useMemo(() => computeChaosScoreFromGames(games), [games]);
+  const pickedChaosGameIds = useMemo(() => getPickedChaosGameIds(games), [games]);
   const chaosPercentile = useMemo(() => {
-    if (chaosScore === null || pickCount !== URL_EXPECTED_GAME_COUNT || !chaosDistribution) return null;
-    return getChaosScorePercentile(chaosScore, chaosDistribution);
-  }, [chaosDistribution, chaosScore, pickCount]);
+    if (chaosScore === null || pickedChaosGameIds.length === 0 || !chaosDistribution) return null;
+    return getChaosScorePercentileForPickedGames(chaosScore, pickedChaosGameIds, chaosDistribution);
+  }, [chaosDistribution, chaosScore, pickedChaosGameIds]);
 
   const applyCustomProbability = (gameId: string, customProbA: number | null) => {
     setCustomProbByGame((prev) => {

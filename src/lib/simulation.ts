@@ -90,7 +90,10 @@ const sampleWinner = (game: ResolvedGame, random: () => number): string => {
 
 const computeChaosContribution = (winProb: number): number => -Math.log(Math.max(CHAOS_MIN_PROB, winProb));
 
-const buildChaosDistribution = (scores: number[]): ChaosDistribution => {
+const buildChaosDistribution = (
+  scores: number[],
+  perGameScores?: Record<string, number[]>
+): ChaosDistribution => {
   const sorted = [...scores].sort((a, b) => a - b);
   const percentiles: Record<number, number> = {};
   const total = sorted.length;
@@ -104,7 +107,7 @@ const buildChaosDistribution = (scores: number[]): ChaosDistribution => {
     percentiles[pct] = sorted[index];
   }
 
-  return { scores: sorted, percentiles };
+  return { scores: sorted, percentiles, perGameScores, simRuns: total };
 };
 
 export const getChaosScorePercentile = (
@@ -125,16 +128,59 @@ export const getChaosScorePercentile = (
   return (lo / scores.length) * 100;
 };
 
+export const getChaosScorePercentileForPickedGames = (
+  score: number,
+  pickedGameIds: string[],
+  chaosDistribution?: ChaosDistribution | null
+): number | null => {
+  if (!chaosDistribution || !Number.isFinite(score)) return null;
+  const perGameScores = chaosDistribution.perGameScores;
+  if (!perGameScores) return getChaosScorePercentile(score, chaosDistribution);
+
+  const uniquePickedIds = Array.from(new Set(pickedGameIds.filter((gameId) => Boolean(gameId))));
+  if (uniquePickedIds.length === 0) return null;
+
+  const firstColumn = uniquePickedIds.map((gameId) => perGameScores[gameId]).find((column) => Array.isArray(column));
+  if (!firstColumn || firstColumn.length === 0) return null;
+  const simCount = firstColumn.length;
+
+  const totals = new Array<number>(simCount).fill(0);
+  for (const gameId of uniquePickedIds) {
+    const column = perGameScores[gameId];
+    if (!column || column.length !== simCount) continue;
+    for (let i = 0; i < simCount; i += 1) {
+      totals[i] += column[i];
+    }
+  }
+
+  totals.sort((a, b) => a - b);
+  let lo = 0;
+  let hi = totals.length;
+  while (lo < hi) {
+    const mid = Math.floor((lo + hi) / 2);
+    if (totals[mid] <= score) lo = mid + 1;
+    else hi = mid;
+  }
+
+  return (lo / totals.length) * 100;
+};
+
 const simulateBracket = (
   locks: LockedPicks,
   forceLocks: boolean,
   customProbByGame: CustomProbByGame = {},
   random: () => number,
   options?: { trackChaos?: boolean }
-): { winners: Record<string, string>; lockSuccess: boolean; chaosScore: number } => {
+): {
+  winners: Record<string, string>;
+  lockSuccess: boolean;
+  chaosScore: number;
+  chaosByGameId?: Record<string, number>;
+} => {
   const winners: Record<string, string> = {};
   let lockSuccess = true;
   let chaosScore = 0;
+  const chaosByGameId: Record<string, number> | undefined = options?.trackChaos ? {} : undefined;
 
   for (const game of gameOrder) {
     let teamAId: string | null = null;
@@ -183,12 +229,14 @@ const simulateBracket = (
     if (options?.trackChaos) {
       const winnerProb = getGameWinProb(resolvedGame, winnerId, { ignoreCustom: true });
       if (winnerProb !== null) {
-        chaosScore += computeChaosContribution(winnerProb);
+        const contribution = computeChaosContribution(winnerProb);
+        chaosScore += contribution;
+        if (chaosByGameId) chaosByGameId[game.id] = contribution;
       }
     }
   }
 
-  return { winners, lockSuccess, chaosScore };
+  return { winners, lockSuccess, chaosScore, chaosByGameId };
 };
 
 const computeApproxLikelihood = (locks: LockedPicks, customProbByGame: CustomProbByGame = {}): number => {
@@ -294,6 +342,9 @@ export const runSimulation = (
 
   let lockSuccesses = 0;
   const chaosScores: number[] = options?.trackChaosDistribution ? [] : [];
+  const chaosPerGameScores: Record<string, number[]> | undefined = options?.trackChaosDistribution
+    ? Object.fromEntries(gameOrder.map((game) => [game.id, [] as number[]]))
+    : undefined;
 
   for (let i = 0; i < simRuns; i += 1) {
     const forced = simulateBracket(locks, true, customProbByGame, forcedRng);
@@ -304,6 +355,10 @@ export const runSimulation = (
     if (natural.lockSuccess) lockSuccesses += 1;
     if (options?.trackChaosDistribution) {
       chaosScores.push(natural.chaosScore);
+      for (const game of gameOrder) {
+        const contribution = natural.chaosByGameId?.[game.id] ?? 0;
+        chaosPerGameScores?.[game.id].push(contribution);
+      }
     }
 
     for (const game of gameTemplates) {
@@ -341,7 +396,7 @@ export const runSimulation = (
     gameWinProbs: normalizeGameWinProbs(gameWinCounts, simRuns, resolvedById),
     likelihoodSimulation: lockSuccesses / simRuns,
     likelihoodApprox: computeApproxLikelihood(locks, customProbByGame),
-    chaosDistribution: options?.trackChaosDistribution ? buildChaosDistribution(chaosScores) : undefined,
+    chaosDistribution: options?.trackChaosDistribution ? buildChaosDistribution(chaosScores, chaosPerGameScores) : undefined,
   };
 };
 

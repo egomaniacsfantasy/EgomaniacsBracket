@@ -51,6 +51,8 @@ export interface GameWinProbability {
 export interface ChaosDistribution {
   scores: number[];
   percentiles: Record<number, number>;
+  perGameScores?: Record<string, number[]>;
+  simRuns?: number;
 }
 
 export interface SimulationOutput {
