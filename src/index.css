@@ -2120,6 +2120,40 @@ body {
   background: none;
 }
 
+.futures-head-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.futures-collapse-btn {
+  width: 24px;
+  height: 24px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: none;
+  color: var(--text-tertiary);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.futures-collapse-btn:hover {
+  border-color: rgba(184, 125, 24, 0.3);
+  color: var(--text-secondary);
+}
+
+.futures-collapsible {
+  display: block;
+}
+
+.futures-collapsible.is-collapsed {
+  display: none;
+}
+
 .futures-info-tooltip {
   margin: 8px 0 10px;
   border: 1px solid rgba(184, 125, 24, 0.2);

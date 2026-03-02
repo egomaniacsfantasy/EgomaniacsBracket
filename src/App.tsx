@@ -463,10 +463,10 @@ function App() {
   const [majorShiftTeamName, setMajorShiftTeamName] = useState("");
   const [majorShiftPct, setMajorShiftPct] = useState(0);
   const [majorShiftTargetRound, setMajorShiftTargetRound] = useState<MobileRegionRound>("R32");
+  const [ifYoureRightCollapsed, setIfYoureRightCollapsed] = useState(false);
   const [staggeredSimRunning, setStaggeredSimRunning] = useState(false);
   const [staggeredSimPaused, setStaggeredSimPaused] = useState(false);
   const [staggeredSimDelayMs, setStaggeredSimDelayMs] = useState(STAGGERED_SIM_DELAY_MS);
-  const [showSimMenu, setShowSimMenu] = useState(false);
   const [showFuturesInfo, setShowFuturesInfo] = useState(false);
   const [welcomeGateOpen, setWelcomeGateOpen] = useState(() => {
     if (typeof window === "undefined") return false;
@@ -555,7 +555,6 @@ function App() {
   const previousStaggeredRunningRef = useRef(false);
   const previousTopHalfCollapsedRef = useRef(false);
   const previousBottomHalfCollapsedRef = useRef(false);
-  const simMenuRef = useRef<HTMLDivElement | null>(null);
 
   const { games, sanitized } = useMemo(
     () => resolveGames(lockedPicks, customProbByGame),
@@ -646,16 +645,6 @@ function App() {
     if (typeof window === "undefined") return;
     window.localStorage.setItem(ODDS_FORMAT_STORAGE_KEY, displayMode);
   }, [displayMode]);
-
-  useEffect(() => {
-    const onMouseDown = (event: MouseEvent) => {
-      if (!simMenuRef.current) return;
-      if (simMenuRef.current.contains(event.target as Node)) return;
-      setShowSimMenu(false);
-    };
-    document.addEventListener("mousedown", onMouseDown);
-    return () => document.removeEventListener("mousedown", onMouseDown);
-  }, []);
 
   const refreshUserBrackets = async () => {
     if (!user) {
@@ -1326,6 +1315,11 @@ function App() {
     if (chaosScore === null || pickedChaosGameIds.length === 0 || !chaosDistribution) return null;
     return getChaosScorePercentileForPickedGames(chaosScore, pickedChaosGameIds, chaosDistribution);
   }, [chaosDistribution, chaosScore, pickedChaosGameIds]);
+  const chaosScaleInvertedPct = useMemo(() => {
+    if (chaosScore === null) return 0;
+    const clampedPct = Math.min(100, Math.max(0, (chaosScore / 60) * 100));
+    return 100 - clampedPct;
+  }, [chaosScore]);
 
   const applyCustomProbability = (gameId: string, customProbA: number | null) => {
     setCustomProbByGame((prev) => {
@@ -1856,7 +1850,6 @@ function App() {
   };
 
   const onModelSim = () => {
-    setShowSimMenu(false);
     trackEvent("instant_sim_clicked", {
       existing_picks: Object.keys(lockedPicks).length,
     });
@@ -1882,7 +1875,6 @@ function App() {
   };
 
   const onModelSimStaggered = () => {
-    setShowSimMenu(false);
     trackEvent("staggered_sim_clicked", {
       existing_picks: Object.keys(lockedPicks).length,
     });
@@ -2547,35 +2539,17 @@ function App() {
       <button onClick={onRequestResetAll} className="eg-btn" style={!isMobile && mainView === "leaderboard" ? { display: "none" } : undefined}>
         Reset All
       </button>
-      <div
-        className="sim-split-btn"
-        ref={simMenuRef}
+      <button onClick={onModelSim} className="eg-btn" style={!isMobile && mainView === "leaderboard" ? { display: "none" } : undefined}>
+        Instant Sim
+      </button>
+      <button
+        onClick={onModelSimStaggered}
+        className="eg-btn"
+        disabled={staggeredSimRunning}
         style={!isMobile && mainView === "leaderboard" ? { display: "none" } : undefined}
       >
-        <button onClick={onModelSim} className="eg-btn sim-split-primary">
-          Instant Sim
-        </button>
-        <button
-          onClick={() => setShowSimMenu((prev) => !prev)}
-          className="eg-btn sim-split-trigger"
-          aria-label="Open simulation options"
-        >
-          ▾
-        </button>
-        {showSimMenu ? (
-          <div className="sim-dropdown">
-            <button
-              onClick={() => {
-                onModelSimStaggered();
-                setShowSimMenu(false);
-              }}
-              disabled={staggeredSimRunning}
-            >
-              {staggeredSimRunning ? "Staggered Sim Running..." : "Staggered Sim"}
-            </button>
-          </div>
-        ) : null}
-      </div>
+        {staggeredSimRunning ? "Staggered Sim Running..." : "Staggered Sim"}
+      </button>
       <button
         onClick={onSaveBracket}
         className="eg-btn toolbar-btn--save"
@@ -2757,23 +2731,35 @@ function App() {
               ⓘ
             </button>
           </h3>
-          <button className="futures-sort-btn" onClick={onCycleFuturesSort}>
-            Sort: CHAMP {futuresSortMode === "champ_desc" ? "↓" : "↑"}
-          </button>
-        </div>
-        <p className="eg-metric-label">How your picks shift the odds</p>
-        {showFuturesInfo ? (
-          <div className="futures-info-tooltip">
-            These odds update in real time based on your picks. They show each team&apos;s probability of advancing
-            through each round based on your current bracket.
-            <button type="button" onClick={() => setShowFuturesInfo(false)}>
-              Got it
+          <div className="futures-head-actions">
+            <button className="futures-sort-btn" onClick={onCycleFuturesSort}>
+              Sort: CHAMP {futuresSortMode === "champ_desc" ? "↓" : "↑"}
+            </button>
+            <button
+              type="button"
+              className="futures-collapse-btn"
+              onClick={() => setIfYoureRightCollapsed((prev) => !prev)}
+              aria-expanded={!ifYoureRightCollapsed}
+              aria-label={ifYoureRightCollapsed ? "Expand If You're Right section" : "Collapse If You're Right section"}
+            >
+              {ifYoureRightCollapsed ? "▾" : "▴"}
             </button>
           </div>
-        ) : null}
+        </div>
+        <div className={`futures-collapsible ${ifYoureRightCollapsed ? "is-collapsed" : ""}`}>
+          <p className="eg-metric-label">How your picks shift the odds</p>
+          {showFuturesInfo ? (
+            <div className="futures-info-tooltip">
+              These odds update in real time based on your picks. They show each team&apos;s probability of advancing
+              through each round based on your current bracket.
+              <button type="button" onClick={() => setShowFuturesInfo(false)}>
+                Got it
+              </button>
+            </div>
+          ) : null}
 
-        {isUpdating ? <p className="eg-updating">Updating…</p> : null}
-        <div className="eg-futures-list">
+          {isUpdating ? <p className="eg-updating">Updating…</p> : null}
+          <div className="eg-futures-list">
           {sortedFutures.map((row) => {
             const team = teamsById.get(row.teamId);
             if (!team) return null;
@@ -2852,6 +2838,7 @@ function App() {
               </article>
             );
           })}
+          </div>
         </div>
       </section>
 
@@ -3225,8 +3212,8 @@ function App() {
             </div>
             <div className="chaos-scale">
               <div className="chaos-scale-bar">
-                <div className="chaos-scale-fill" style={{ width: `${Math.min(100, (chaosScore / 60) * 100)}%` }} />
-                <div className="chaos-scale-marker" style={{ left: `${Math.min(100, (chaosScore / 60) * 100)}%` }} />
+                <div className="chaos-scale-fill" style={{ width: `${chaosScaleInvertedPct}%` }} />
+                <div className="chaos-scale-marker" style={{ left: `${chaosScaleInvertedPct}%` }} />
               </div>
               <div className="chaos-scale-labels">
                 <span>🧊 Chalk</span>
