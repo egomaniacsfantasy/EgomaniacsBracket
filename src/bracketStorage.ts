@@ -1,0 +1,130 @@
+import { supabase } from "./supabaseClient";
+import type { LockedPicks } from "./lib/bracket";
+
+export type SavedBracket = {
+  id: string;
+  user_id: string;
+  bracket_name: string;
+  picks: LockedPicks;
+  created_at: string;
+  updated_at: string;
+  is_locked: boolean;
+};
+
+export type LeaderboardEntry = {
+  rank?: number | null;
+  user_id: string;
+  bracket_id: string;
+  bracket_name: string;
+  display_name: string;
+  total_score: number;
+  correct_picks: number;
+  possible_picks?: number | null;
+  max_remaining?: number | null;
+};
+
+export function serializePicks(picks: LockedPicks | Map<string, string> | Array<{ id: string; winner?: string | null }>): LockedPicks {
+  if (picks instanceof Map) return Object.fromEntries(picks);
+  if (Array.isArray(picks)) {
+    return picks.reduce<LockedPicks>((acc, matchup) => {
+      if (matchup.winner) acc[matchup.id] = matchup.winner;
+      return acc;
+    }, {});
+  }
+  return picks ?? {};
+}
+
+export function deserializePicks(storedPicks: unknown): LockedPicks {
+  if (!storedPicks || typeof storedPicks !== "object") return {};
+  const obj = storedPicks as Record<string, unknown>;
+  const out: LockedPicks = {};
+  for (const [key, value] of Object.entries(obj)) {
+    if (typeof value === "string" && value.length > 0) out[key] = value;
+  }
+  return out;
+}
+
+export async function saveBracket(
+  userId: string,
+  picks: LockedPicks,
+  bracketName = "My Bracket",
+  bracketId: string | null = null
+) {
+  const serialized = serializePicks(picks);
+
+  if (bracketId) {
+    const { data, error } = await supabase
+      .from("brackets")
+      .update({
+        picks: serialized,
+        bracket_name: bracketName,
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", bracketId)
+      .eq("user_id", userId)
+      .select()
+      .single();
+    return { data: data as SavedBracket | null, error };
+  }
+
+  const { data, error } = await supabase
+    .from("brackets")
+    .insert({
+      user_id: userId,
+      picks: serialized,
+      bracket_name: bracketName,
+    })
+    .select()
+    .single();
+
+  return { data: data as SavedBracket | null, error };
+}
+
+export async function getUserBrackets(userId: string) {
+  const { data, error } = await supabase
+    .from("brackets")
+    .select("id, user_id, bracket_name, picks, created_at, updated_at, is_locked")
+    .eq("user_id", userId)
+    .order("created_at", { ascending: true });
+
+  return { data: (data as SavedBracket[] | null) ?? [], error };
+}
+
+export async function deleteBracket(bracketId: string, userId: string) {
+  const { error } = await supabase
+    .from("brackets")
+    .delete()
+    .eq("id", bracketId)
+    .eq("user_id", userId);
+
+  return { error };
+}
+
+export async function renameBracket(bracketId: string, userId: string, newName: string) {
+  const { error } = await supabase
+    .from("brackets")
+    .update({ bracket_name: newName, updated_at: new Date().toISOString() })
+    .eq("id", bracketId)
+    .eq("user_id", userId);
+
+  return { error };
+}
+
+export async function getLeaderboard(limit = 50) {
+  const { data, error } = await supabase
+    .from("leaderboard")
+    .select("*")
+    .limit(limit);
+
+  return { data: (data as LeaderboardEntry[] | null) ?? [], error };
+}
+
+export async function getUserScores(userId: string) {
+  const { data, error } = await supabase
+    .from("bracket_scores")
+    .select("*")
+    .eq("user_id", userId);
+
+  return { data: data ?? [], error };
+}
+

@@ -27,6 +27,11 @@ import {
 import { fallbackLogo, teamLogoUrl } from "./lib/logo";
 import { fullTeamName } from "./lib/teamNames";
 import { trackEvent } from "./lib/analytics";
+import { useAuth } from "./AuthContext";
+import { AuthModal } from "./AuthModal";
+import { MyBracketsModal } from "./MyBracketsModal";
+import { Leaderboard } from "./Leaderboard";
+import { deserializePicks, getUserBrackets, saveBracket, serializePicks, type SavedBracket } from "./bracketStorage";
 import type { OddsDisplayMode, Region, ResolvedGame, SimulationOutput } from "./types";
 
 const DEFAULT_SIM_RUNS = 5000;
@@ -200,7 +205,7 @@ type ProbabilityPopupState = {
   savedProbA: number | null;
 };
 
-type MobileTab = "bracket" | "futures";
+type MobileTab = "bracket" | "futures" | "leaderboard";
 type MobileSection = Region | "FF";
 type MobileRegionRound = "R64" | "R32" | "S16" | "E8";
 type MobileFfRound = "F4" | "CHAMP" | "WIN";
@@ -409,6 +414,7 @@ const formatDelta = (delta: number, displayMode: OddsDisplayMode): string => {
 };
 
 function App() {
+  const { user, profile, isAuthenticated, signOut } = useAuth();
   const [lockedPicks, setLockedPicks] = useState<LockedPicks>({});
   const [customProbByGame, setCustomProbByGame] = useState<CustomProbByGame>({});
   const [undoStack, setUndoStack] = useState<LockedPicks[]>([]);
@@ -419,6 +425,7 @@ function App() {
   });
   const [simRuns] = useState<number>(() => getRecommendedSimRuns());
   const [futuresSortMode, setFuturesSortMode] = useState<FuturesSortMode>("champ_desc");
+  const [futuresPanelTab, setFuturesPanelTab] = useState<"futures" | "leaderboard">("futures");
   const [isUpdating, setIsUpdating] = useState(false);
   const [lastPickedKey, setLastPickedKey] = useState<string | null>(null);
   const [sidePanelOpen, setSidePanelOpen] = useState(false);
@@ -472,6 +479,10 @@ function App() {
   const [activeHint, setActiveHint] = useState<ActiveHint | null>(null);
   const [resetModalConfig, setResetModalConfig] = useState<ResetModalConfig | null>(null);
   const [linkCopied, setLinkCopied] = useState(false);
+  const [saveStatus, setSaveStatus] = useState<null | "saving" | "saved" | "error">(null);
+  const [authModalOpen, setAuthModalOpen] = useState(false);
+  const [myBracketsOpen, setMyBracketsOpen] = useState(false);
+  const [userBrackets, setUserBrackets] = useState<SavedBracket[]>([]);
   const [manuallyExpandedRounds, setManuallyExpandedRounds] = useState<ManualRoundExpansionState>({});
   const [topHalfManuallyExpanded, setTopHalfManuallyExpanded] = useState(false);
   const [bottomHalfManuallyExpanded, setBottomHalfManuallyExpanded] = useState(false);
@@ -511,6 +522,7 @@ function App() {
   const walkthroughResolveTokenRef = useRef(0);
   const contextualHintTimerRef = useRef<number | null>(null);
   const copyLinkTimerRef = useRef<number | null>(null);
+  const saveStatusTimerRef = useRef<number | null>(null);
   const shareToastTimerRef = useRef<number | null>(null);
   const shareStoryRef = useRef<HTMLDivElement | null>(null);
   const shareTwitterRef = useRef<HTMLDivElement | null>(null);
@@ -617,6 +629,23 @@ function App() {
     if (typeof window === "undefined") return;
     window.localStorage.setItem(ODDS_FORMAT_STORAGE_KEY, displayMode);
   }, [displayMode]);
+
+  const refreshUserBrackets = async () => {
+    if (!user) {
+      setUserBrackets([]);
+      return;
+    }
+    const { data } = await getUserBrackets(user.id);
+    setUserBrackets(data);
+  };
+
+  useEffect(() => {
+    refreshUserBrackets();
+  }, [user]);
+
+  useEffect(() => {
+    if (isAuthenticated) setAuthModalOpen(false);
+  }, [isAuthenticated]);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -1492,6 +1521,57 @@ function App() {
     });
   };
 
+  const onSaveBracket = async () => {
+    if (!isAuthenticated || !user) {
+      window.sessionStorage.setItem("pendingBracketSave", JSON.stringify(serializePicks(sanitized)));
+      setAuthModalOpen(true);
+      return;
+    }
+
+    setSaveStatus("saving");
+    const bracketCount = userBrackets.length;
+    const defaultName =
+      bracketCount === 0 ? "My Bracket" : bracketCount === 1 ? "Bracket #2" : "Bracket #3";
+    const { error } = await saveBracket(user.id, sanitized, defaultName);
+    if (error) {
+      setSaveStatus("error");
+      if (saveStatusTimerRef.current !== null) window.clearTimeout(saveStatusTimerRef.current);
+      saveStatusTimerRef.current = window.setTimeout(() => {
+        setSaveStatus(null);
+        saveStatusTimerRef.current = null;
+      }, 3000);
+      return;
+    }
+    await refreshUserBrackets();
+    setSaveStatus("saved");
+    if (saveStatusTimerRef.current !== null) window.clearTimeout(saveStatusTimerRef.current);
+    saveStatusTimerRef.current = window.setTimeout(() => {
+      setSaveStatus(null);
+      saveStatusTimerRef.current = null;
+    }, 2000);
+  };
+
+  const onLoadSavedBracket = (bracket: SavedBracket) => {
+    const picks = sanitizeLockedPicks(deserializePicks(bracket.picks));
+    cancelStaggeredSim();
+    chaosScoreSourceRef.current = "manual";
+    pendingPickMetaRef.current = null;
+    setFirstPickNudgeVisible(false);
+    setMajorShiftNudgeVisible(false);
+    pushUndo(lockedPicks);
+    simGeneratedGameIdsRef.current.clear();
+    setProbPopup(null);
+    setCustomProbByGame({});
+    setLockedPicks(picks);
+    setSidePanelOpen(false);
+    setMobileTab("bracket");
+    window.scrollTo({ top: 0, behavior: "smooth" });
+    trackEvent("saved_bracket_loaded", {
+      bracket_id: bracket.id,
+      picks_count: Object.keys(picks).length,
+    });
+  };
+
   const onCopyShareLink = async () => {
     if (typeof window === "undefined") return;
     const shareUrl = window.location.href;
@@ -1817,6 +1897,9 @@ function App() {
       }
       if (copyLinkTimerRef.current !== null) {
         window.clearTimeout(copyLinkTimerRef.current);
+      }
+      if (saveStatusTimerRef.current !== null) {
+        window.clearTimeout(saveStatusTimerRef.current);
       }
       if (shareToastTimerRef.current !== null) {
         window.clearTimeout(shareToastTimerRef.current);
@@ -2286,6 +2369,20 @@ function App() {
       <button onClick={onModelSimStaggered} className="eg-btn" disabled={staggeredSimRunning}>
         {staggeredSimRunning ? "Staggered Sim Running..." : "Staggered Sim Bracket"}
       </button>
+      <button onClick={onSaveBracket} className="eg-btn toolbar-btn--save" disabled={saveStatus === "saving"}>
+        {saveStatus === "saving"
+          ? "Saving..."
+          : saveStatus === "saved"
+            ? "✓ Saved"
+            : saveStatus === "error"
+              ? "Error — try again"
+              : "Save Bracket"}
+      </button>
+      {isAuthenticated ? (
+        <button onClick={() => setMyBracketsOpen(true)} className="eg-btn">
+          My Brackets
+        </button>
+      ) : null}
       <button
         onClick={onCopyShareLink}
         className="eg-btn copy-link-btn"
@@ -2376,6 +2473,9 @@ function App() {
           ) : null}
         </div>
       ) : null}
+      {isAuthenticated && userBrackets.some((bracket) => bracket.is_locked) ? (
+        <div className="bracket-lock-banner">🔒 Brackets are locked. Tournament is live — check the leaderboard!</div>
+      ) : null}
     </div>
   );
 
@@ -2403,7 +2503,7 @@ function App() {
       </div>
     ) : null;
 
-  const futuresContent = (
+  const futuresSections = (
     <>
       <section className="eg-panel-block">
         <div className="eg-panel-head">
@@ -2565,6 +2665,26 @@ function App() {
     </>
   );
 
+  const futuresContent = (
+    <div className="futures-panel">
+      <div className="futures-tab-bar">
+        <button
+          className={`futures-tab ${futuresPanelTab === "futures" ? "futures-tab--active" : ""}`}
+          onClick={() => setFuturesPanelTab("futures")}
+        >
+          Futures
+        </button>
+        <button
+          className={`futures-tab ${futuresPanelTab === "leaderboard" ? "futures-tab--active" : ""}`}
+          onClick={() => setFuturesPanelTab("leaderboard")}
+        >
+          Leaderboard
+        </button>
+      </div>
+      {futuresPanelTab === "futures" ? futuresSections : <Leaderboard />}
+    </div>
+  );
+
   return (
     <div className={`eg-shell ${compactDesktop ? "compact-desktop" : ""}`}>
       <div className="bg-glow" aria-hidden="true" />
@@ -2587,13 +2707,35 @@ function App() {
                 <span className="beta-badge">BETA</span>
               </a>
             </div>
+            <div className="og-top-nav-auth">
+              {isAuthenticated ? (
+                <div className="nav-user-info">
+                  <span className="nav-user-name">{profile?.display_name || user?.email || "User"}</span>
+                  <button className="nav-signout-btn" onClick={() => signOut()}>
+                    Sign out
+                  </button>
+                </div>
+              ) : (
+                <button className="nav-signin-btn" onClick={() => setAuthModalOpen(true)}>
+                  Sign in
+                </button>
+              )}
+            </div>
           </div>
           <div className="og-top-nav-mobile">
             <a className="og-mobile-logo-link" href={LANDING_URL} aria-label="Odds Gods home">
               <img className="nav-logo-icon" src="/logo-icon.png?v=20260225" alt="Odds Gods" />
             </a>
             <span className="nav-product-title">The Bracket Lab</span>
-            <span className="nav-mobile-alt" aria-hidden="true"></span>
+            {isAuthenticated ? (
+              <button className="nav-signout-btn nav-signout-btn--mobile" onClick={() => signOut()}>
+                Out
+              </button>
+            ) : (
+              <button className="nav-signin-btn nav-signin-btn--mobile" onClick={() => setAuthModalOpen(true)}>
+                In
+              </button>
+            )}
           </div>
         </nav>
         <header className={`eg-header ${isMobile ? "mobile-hidden" : ""}`}>
@@ -2653,8 +2795,12 @@ function App() {
                   )}
                 </div>
               </>
-            ) : (
+            ) : mobileTab === "futures" ? (
               <div className="mobile-futures-view">{futuresContent}</div>
+            ) : (
+              <div className="mobile-futures-view">
+                <Leaderboard />
+              </div>
             )}
             <LiveOddsStrip
               topContenders={liveOddsTopContenders}
@@ -2872,6 +3018,15 @@ function App() {
         confirmLabel={resetModalConfig?.confirmLabel ?? "Confirm"}
         onConfirm={resetModalConfig?.onConfirm ?? (() => {})}
         onCancel={() => setResetModalConfig(null)}
+      />
+
+      <AuthModal isOpen={authModalOpen} onClose={() => setAuthModalOpen(false)} />
+
+      <MyBracketsModal
+        isOpen={myBracketsOpen}
+        onClose={() => setMyBracketsOpen(false)}
+        onLoadBracket={onLoadSavedBracket}
+        currentPicks={sanitized}
       />
 
       {walkthroughActive && walkthroughTargetRect && walkthroughDisplayStep ? (
@@ -3383,6 +3538,13 @@ function MobileTabBar({
       >
         <span className="mobile-tab-icon">↗</span>
         <span className="mobile-tab-label">Futures</span>
+      </button>
+      <button
+        className={`mobile-tab ${activeTab === "leaderboard" ? "active" : ""}`}
+        onClick={() => onTabChange("leaderboard")}
+      >
+        <span className="mobile-tab-icon">🏆</span>
+        <span className="mobile-tab-label">Leaders</span>
       </button>
     </div>
   );
