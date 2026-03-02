@@ -3,6 +3,55 @@ import { useAuth } from "./AuthContext";
 
 type Mode = "signup" | "signin" | "check-email";
 
+function getFriendlyAuthError(error: { message?: string } | null | undefined): string {
+  const raw = error?.message ?? "";
+  const msg = raw.toLowerCase();
+
+  if (
+    msg.includes("already registered") ||
+    msg.includes("already been registered") ||
+    msg.includes("duplicate") ||
+    msg.includes("already in use")
+  ) {
+    return "This email already has an account. Try logging in instead.";
+  }
+
+  if (msg.includes("rate limit") || msg.includes("too many requests") || msg.includes("email rate limit")) {
+    return "Too many attempts. Please wait a minute and try again.";
+  }
+
+  if (msg.includes("invalid email") || msg.includes("valid email")) {
+    return "Please enter a valid email address.";
+  }
+
+  if (msg.includes("password") && (msg.includes("short") || msg.includes("least") || msg.includes("characters"))) {
+    return "Password must be at least 6 characters.";
+  }
+
+  if (
+    msg.includes("invalid login") ||
+    msg.includes("invalid credentials") ||
+    msg.includes("wrong password") ||
+    msg.includes("invalid password")
+  ) {
+    return "Incorrect email or password.";
+  }
+
+  if (msg.includes("user not found") || msg.includes("no user")) {
+    return "No account found with this email. Try signing up instead.";
+  }
+
+  if (msg.includes("not confirmed") || msg.includes("confirm")) {
+    return "Please check your email and click the confirmation link first.";
+  }
+
+  if (msg.includes("network") || msg.includes("fetch")) {
+    return "Connection error. Please check your internet and try again.";
+  }
+
+  return raw || "Something went wrong. Please try again.";
+}
+
 export function AuthModal({
   isOpen,
   onClose,
@@ -58,7 +107,7 @@ export function AuthModal({
     const authResult = await signUp(email.trim(), displayName.trim(), password);
     const authError = authResult.error;
     setSubmitting(false);
-    if (authError) return setError((authError as { message?: string })?.message ?? "Unable to sign up");
+    if (authError) return setError(getFriendlyAuthError(authError as { message?: string }));
     setSubmittedMode("signup");
     setMode("check-email");
   };
@@ -73,7 +122,7 @@ export function AuthModal({
     const authResult = await signIn(email.trim(), signinPassword);
     const authError = authResult.error;
     setSubmitting(false);
-    if (authError) return setError((authError as { message?: string })?.message ?? "Unable to log in");
+    if (authError) return setError(getFriendlyAuthError(authError as { message?: string }));
     onClose();
   };
 
@@ -93,9 +142,6 @@ export function AuthModal({
             <p className="auth-modal-subtitle">
               We sent a confirmation link to <strong>{email}</strong>. Click the link to{" "}
               {submittedMode === "signup" ? "create your account" : "log in"}.
-            </p>
-            <p className="auth-modal-same-device-warning">
-              ⚠️ Open the link on THIS device. Opening it on a different device won&apos;t log you in here.
             </p>
             <p className="auth-modal-hint">Don&apos;t see it? Check your spam folder.</p>
           </div>
@@ -136,7 +182,36 @@ export function AuthModal({
               minLength={6}
             />
 
-            {error ? <p className="auth-modal-error">{error}</p> : null}
+            {error ? (
+              <div className="auth-modal-error">
+                <span>{error}</span>
+                {error.includes("Try logging in") ? (
+                  <button
+                    className="auth-modal-error-link"
+                    type="button"
+                    onClick={() => {
+                      setMode("signin");
+                      setError("");
+                      setPassword("");
+                    }}
+                  >
+                    Go to log in →
+                  </button>
+                ) : null}
+                {error.includes("Try signing up") ? (
+                  <button
+                    className="auth-modal-error-link"
+                    type="button"
+                    onClick={() => {
+                      setMode("signup");
+                      setError("");
+                    }}
+                  >
+                    Go to sign up →
+                  </button>
+                ) : null}
+              </div>
+            ) : null}
 
             <button className="auth-modal-submit" type="submit" disabled={submitting}>
               {submitting ? "Sending..." : "Create Account"}
@@ -181,7 +256,36 @@ export function AuthModal({
               onChange={(event) => setSigninPassword(event.target.value)}
             />
 
-            {error ? <p className="auth-modal-error">{error}</p> : null}
+            {error ? (
+              <div className="auth-modal-error">
+                <span>{error}</span>
+                {error.includes("Try logging in") ? (
+                  <button
+                    className="auth-modal-error-link"
+                    type="button"
+                    onClick={() => {
+                      setMode("signin");
+                      setError("");
+                    }}
+                  >
+                    Go to log in →
+                  </button>
+                ) : null}
+                {error.includes("Try signing up") ? (
+                  <button
+                    className="auth-modal-error-link"
+                    type="button"
+                    onClick={() => {
+                      setMode("signup");
+                      setError("");
+                      setSigninPassword("");
+                    }}
+                  >
+                    Go to sign up →
+                  </button>
+                ) : null}
+              </div>
+            ) : null}
 
             <button className="auth-modal-submit" type="submit" disabled={submitting}>
               {submitting ? "Logging in..." : "Log In"}
