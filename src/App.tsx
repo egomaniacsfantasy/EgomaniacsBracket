@@ -4932,7 +4932,7 @@ function FinalsSemifinalCard({
         .filter((team) => regions.includes(team.region))
         .map((team) => ({
           team,
-          prob: futuresByTeamId.get(team.id)?.final4Prob ?? 0,
+          prob: futuresByTeamId.get(team.id)?.titleGameProb ?? 0,
         }))
         .sort((a, b) => (b.prob !== a.prob ? b.prob - a.prob : a.team.seed - b.team.seed)),
     [futuresByTeamId, regions]
