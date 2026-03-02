@@ -4467,6 +4467,7 @@ function ShowdownCard({
   const roundClass = game.round === "CHAMP" ? "round-champ" : game.round === "F4" ? "round-f4" : "round-e8";
   const roundLabel = game.round === "CHAMP" ? "National Championship" : game.round === "F4" ? "Final Four" : "Elite 8";
   const decided = Boolean(game.lockedByUser && game.winnerId);
+  const showdownLogoSize = game.round === "CHAMP" ? 168 : game.round === "F4" ? 140 : 116;
 
   return (
     <div className={`eg-showdown-card ${roundClass} eg-showdown-card--entering ${decided ? "decided" : ""}`}>
@@ -4502,7 +4503,12 @@ function ShowdownCard({
                 title={`Chance to advance from this game: ${(candidate.prob * 100).toFixed(1)}%`}
               >
                 <span className="eg-showdown-seed">#{team.seed}</span>
-                <TeamLogo teamName={team.name} src={teamLogoUrl(team)} className="eg-showdown-logo" />
+                <TeamLogo
+                  teamName={team.name}
+                  src={teamLogoUrl(team)}
+                  className="eg-showdown-logo"
+                  sizePx={showdownLogoSize}
+                />
                 <span className="eg-showdown-name">{showdownTeamName(team.name)}</span>
                 {!decided ? <span className="eg-showdown-odds">{primary}</span> : null}
                 {resultLabel ? <span className="eg-showdown-result">{resultLabel}</span> : null}
@@ -4671,7 +4677,17 @@ function TeamRow({
   );
 }
 
-function TeamLogo({ teamName, src, className }: { teamName: string; src: string; className?: string }) {
+function TeamLogo({
+  teamName,
+  src,
+  className,
+  sizePx,
+}: {
+  teamName: string;
+  src: string;
+  className?: string;
+  sizePx?: number;
+}) {
   const [failed, setFailed] = useState(false);
   const fallback = fallbackLogo(teamName);
 
@@ -4681,6 +4697,7 @@ function TeamLogo({ teamName, src, className }: { teamName: string; src: string;
       src={failed ? fallback : src}
       alt={`${teamName} logo`}
       loading="lazy"
+      style={sizePx ? { width: `${sizePx}px`, height: `${sizePx}px`, objectFit: "contain" } : undefined}
       onError={() => setFailed(true)}
     />
   );
