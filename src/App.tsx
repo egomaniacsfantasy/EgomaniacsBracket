@@ -1862,9 +1862,6 @@ function App() {
     };
   }, [probPopup]);
 
-  const getHalfForRegion = (region: Region): "top" | "bottom" =>
-    region === "South" || region === "West" ? "top" : "bottom";
-
   const isRoundComplete = (region: Region, round: RegionalRound): boolean => {
     const roundGames = gamesByRegionAndRound(games, region, round);
     return roundGames.length > 0 && roundGames.every((game) => Boolean(game.winnerId));
@@ -1873,9 +1870,6 @@ function App() {
   const isRoundVisuallyCollapsed = (region: Region, round: RegionalRound): boolean => {
     if (round === "E8") return false;
     if (!isRoundComplete(region, round)) return false;
-    const half = getHalfForRegion(region);
-    const halfManuallyExpanded = half === "top" ? topHalfManuallyExpanded : bottomHalfManuallyExpanded;
-    if (halfManuallyExpanded) return false;
     const key = `${region}-${round}` as const;
     return !Boolean(manuallyExpandedRounds[key]);
   };
@@ -1926,7 +1920,6 @@ function App() {
     } else {
       setBottomHalfManuallyExpanded(true);
     }
-    setHalfRoundExpansion(half, true);
     trackEvent("bracket_half_expanded", { half });
   };
 
@@ -2718,7 +2711,6 @@ function App() {
                           onToggleRoundExpansion={toggleRoundExpansion}
                           isRoundComplete={isRoundComplete}
                           isRoundVisuallyCollapsed={isRoundVisuallyCollapsed}
-                          forceAllRoundsExpanded={topHalfManuallyExpanded}
                         />
                       ))}
                     </div>
@@ -2765,7 +2757,6 @@ function App() {
                           onToggleRoundExpansion={toggleRoundExpansion}
                           isRoundComplete={isRoundComplete}
                           isRoundVisuallyCollapsed={isRoundVisuallyCollapsed}
-                          forceAllRoundsExpanded={bottomHalfManuallyExpanded}
                         />
                       ))}
                     </div>
@@ -3972,7 +3963,6 @@ function RegionBracket({
   onToggleRoundExpansion,
   isRoundComplete,
   isRoundVisuallyCollapsed,
-  forceAllRoundsExpanded = false,
 }: {
   region: Region;
   games: ResolvedGame[];
@@ -3988,25 +3978,16 @@ function RegionBracket({
   onToggleRoundExpansion: (region: Region, round: "R64" | "R32" | "S16") => void;
   isRoundComplete: (region: Region, round: RegionalRound) => boolean;
   isRoundVisuallyCollapsed: (region: Region, round: RegionalRound) => boolean;
-  forceAllRoundsExpanded?: boolean;
 }) {
   const rounds = inverted ? [...regionRounds].reverse() : [...regionRounds];
   const collapseByRound = useMemo(() => {
-    if (forceAllRoundsExpanded) {
-      return {
-        R64: false,
-        R32: false,
-        S16: false,
-        E8: false,
-      } as Record<"R64" | "R32" | "S16" | "E8", boolean>;
-    }
     return {
       R64: isRoundVisuallyCollapsed(region, "R64"),
       R32: isRoundVisuallyCollapsed(region, "R32"),
       S16: isRoundVisuallyCollapsed(region, "S16"),
       E8: false,
     } as Record<"R64" | "R32" | "S16" | "E8", boolean>;
-  }, [forceAllRoundsExpanded, isRoundVisuallyCollapsed, region]);
+  }, [isRoundVisuallyCollapsed, region]);
 
   const gridStateClasses = [
     collapseByRound.R64 ? "r64-collapsed" : "",
