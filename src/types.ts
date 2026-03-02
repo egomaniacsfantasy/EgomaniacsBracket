@@ -1,6 +1,6 @@
 export type Region = "East" | "West" | "South" | "Midwest";
 
-export type Round = "R64" | "R32" | "S16" | "E8" | "F4" | "CHAMP";
+export type Round = "FF" | "R64" | "R32" | "S16" | "E8" | "F4" | "CHAMP";
 
 export type Side = "Left" | "Right";
 
@@ -10,8 +10,10 @@ export interface Team {
   id: string;
   name: string;
   seed: number;
+  seedLabel?: string;
   region: Region;
   rating: number;
+  isFirstFour?: boolean;
   logoUrl?: string;
 }
 
@@ -21,8 +23,8 @@ export interface GameTemplate {
   region: Region | null;
   side: Side | null;
   slot: number;
-  sourceGameIds: [string, string] | null;
-  initialTeamIds: [string, string] | null;
+  sourceGameIds: [string | null, string | null] | null;
+  initialTeamIds: [string | null, string | null] | null;
 }
 
 export interface ResolvedGame extends GameTemplate {

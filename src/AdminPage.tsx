@@ -6,6 +6,7 @@ import { supabase } from "./supabaseClient";
 const ADMIN_PASSWORD = "oddsgods2026";
 const POINTS: Record<number, number> = { 64: 10, 32: 20, 16: 40, 8: 80, 4: 160, 2: 320 };
 const ROUND_TO_INT: Record<string, number> = { R64: 64, R32: 32, S16: 16, E8: 8, F4: 4, CHAMP: 2 };
+const TOTAL_GAMES = gameTemplates.length;
 
 type ResultRow = {
   matchup_id: string;
@@ -18,8 +19,8 @@ type MatchupRow = {
   id: string;
   round: number;
   region: string;
-  teamA: { id: string; name: string; seed: number } | null;
-  teamB: { id: string; name: string; seed: number } | null;
+  teamA: { id: string; name: string; seed: string } | null;
+  teamB: { id: string; name: string; seed: string } | null;
 };
 
 export function AdminPage() {
@@ -88,8 +89,11 @@ function AdminResultsEntry({ onResultsChange }: { onResultsChange?: () => void }
       let teamBId: string | null = null;
       if (template.initialTeamIds) {
         [teamAId, teamBId] = template.initialTeamIds;
-      } else if (template.sourceGameIds) {
+      }
+      if (!teamAId && template.sourceGameIds?.[0]) {
         teamAId = winnerByGame[template.sourceGameIds[0]] ?? null;
+      }
+      if (!teamBId && template.sourceGameIds?.[1]) {
         teamBId = winnerByGame[template.sourceGameIds[1]] ?? null;
       }
 
@@ -99,8 +103,8 @@ function AdminResultsEntry({ onResultsChange }: { onResultsChange?: () => void }
         id: template.id,
         round: ROUND_TO_INT[template.round],
         region: template.region ?? "Finals",
-        teamA: teamA ? { id: teamA.id, name: teamA.name, seed: teamA.seed } : null,
-        teamB: teamB ? { id: teamB.id, name: teamB.name, seed: teamB.seed } : null,
+        teamA: teamA ? { id: teamA.id, name: teamA.name, seed: teamA.seedLabel ?? String(teamA.seed) } : null,
+        teamB: teamB ? { id: teamB.id, name: teamB.name, seed: teamB.seedLabel ?? String(teamB.seed) } : null,
       });
 
       winnerByGame[template.id] = resultsMap[template.id] ?? null;
@@ -345,7 +349,7 @@ function AdminScoringControls({
         return;
       }
 
-      setScoringStatus(`✓ Scored ${brackets.length} brackets. ${results.length}/63 games entered.`);
+      setScoringStatus(`✓ Scored ${brackets.length} brackets. ${results.length}/${TOTAL_GAMES} games entered.`);
     } catch (error) {
       setScoringStatus(`Error: ${(error as Error).message}`);
     }
@@ -444,7 +448,7 @@ function AdminResultsLog({ refreshKey }: { refreshKey: number }) {
 
   return (
     <div style={{ marginBottom: 40 }}>
-      <h3 style={{ color: "#b87d18" }}>Results Entered ({results.length}/63)</h3>
+      <h3 style={{ color: "#b87d18" }}>Results Entered ({results.length}/{TOTAL_GAMES})</h3>
       <div style={{ maxHeight: 220, overflowY: "auto", fontSize: 11, color: "#888" }}>
         {results.map((result) => (
           <div key={result.matchup_id} style={{ padding: "4px 0", borderBottom: "1px solid rgba(255,255,255,0.04)" }}>

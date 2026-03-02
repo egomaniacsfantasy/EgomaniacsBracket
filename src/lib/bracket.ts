@@ -8,12 +8,13 @@ export type LockedPicks = Record<string, string>;
 export type CustomProbByGame = Record<string, number | null | undefined>;
 
 const roundRank: Record<Round, number> = {
-  R64: 0,
-  R32: 1,
-  S16: 2,
-  E8: 3,
-  F4: 4,
-  CHAMP: 5,
+  FF: 0,
+  R64: 1,
+  R32: 2,
+  S16: 3,
+  E8: 4,
+  F4: 5,
+  CHAMP: 6,
 };
 
 const templatesOrdered = [...gameTemplates].sort((a, b) => {
@@ -34,11 +35,12 @@ export const resolveGames = (
     let teamAId: string | null = null;
     let teamBId: string | null = null;
 
-    if (template.initialTeamIds) {
-      teamAId = template.initialTeamIds[0];
-      teamBId = template.initialTeamIds[1];
-    } else if (template.sourceGameIds) {
+    teamAId = template.initialTeamIds?.[0] ?? null;
+    teamBId = template.initialTeamIds?.[1] ?? null;
+    if (!teamAId && template.sourceGameIds?.[0]) {
       teamAId = winnerByGame[template.sourceGameIds[0]] ?? null;
+    }
+    if (!teamBId && template.sourceGameIds?.[1]) {
       teamBId = winnerByGame[template.sourceGameIds[1]] ?? null;
     }
 
@@ -137,9 +139,13 @@ export const possibleWinnersByGame = (lockedPicks: LockedPicks): Record<string, 
     const entrants = new Set<string>();
 
     if (template.initialTeamIds) {
-      template.initialTeamIds.forEach((id) => entrants.add(id));
-    } else if (template.sourceGameIds) {
+      template.initialTeamIds.forEach((id) => {
+        if (id) entrants.add(id);
+      });
+    }
+    if (template.sourceGameIds) {
       template.sourceGameIds.forEach((sourceId) => {
+        if (!sourceId) return;
         (possible[sourceId] ?? new Set<string>()).forEach((id) => entrants.add(id));
       });
     }
@@ -163,6 +169,7 @@ const collectAncestors = (gameId: string): Set<string> => {
   const set = new Set<string>();
   if (game?.sourceGameIds) {
     for (const sourceId of game.sourceGameIds) {
+      if (!sourceId) continue;
       set.add(sourceId);
       const sourceAncestors = collectAncestors(sourceId);
       sourceAncestors.forEach((ancestor) => set.add(ancestor));

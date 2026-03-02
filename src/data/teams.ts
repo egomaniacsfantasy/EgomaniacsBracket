@@ -1,95 +1,10 @@
-import type { Region, Team } from "../types";
+import type { Team } from "../types";
 
-type SeedEntry = { seed: number; name: string; bump: number };
+export interface Team2026 extends Team {
+  seedLabel: string;
+  isFirstFour?: boolean;
+}
 
-const regionSeeds: Record<Region, SeedEntry[]> = {
-  East: [
-    { seed: 1, name: "Duke", bump: 34 },
-    { seed: 2, name: "Alabama", bump: 23 },
-    { seed: 3, name: "Wisconsin", bump: 14 },
-    { seed: 4, name: "Arizona", bump: 16 },
-    { seed: 5, name: "Oregon", bump: 9 },
-    { seed: 6, name: "BYU", bump: 6 },
-    { seed: 7, name: "Saint Mary's", bump: 3 },
-    { seed: 8, name: "Mississippi State", bump: 1 },
-    { seed: 9, name: "Baylor", bump: 2 },
-    { seed: 10, name: "Vanderbilt", bump: 0 },
-    { seed: 11, name: "VCU", bump: 1 },
-    { seed: 12, name: "Liberty", bump: -8 },
-    { seed: 13, name: "Akron", bump: -11 },
-    { seed: 14, name: "Montana", bump: -15 },
-    { seed: 15, name: "Robert Morris", bump: -19 },
-    { seed: 16, name: "Mount St. Mary's", bump: -24 },
-  ],
-  West: [
-    { seed: 1, name: "Florida", bump: 33 },
-    { seed: 2, name: "St. John's", bump: 21 },
-    { seed: 3, name: "Texas Tech", bump: 14 },
-    { seed: 4, name: "Maryland", bump: 13 },
-    { seed: 5, name: "Memphis", bump: 9 },
-    { seed: 6, name: "Missouri", bump: 6 },
-    { seed: 7, name: "Kansas", bump: 5 },
-    { seed: 8, name: "UConn", bump: 2 },
-    { seed: 9, name: "Oklahoma", bump: 0 },
-    { seed: 10, name: "Arkansas", bump: 2 },
-    { seed: 11, name: "Drake", bump: -2 },
-    { seed: 12, name: "Colorado State", bump: -7 },
-    { seed: 13, name: "Grand Canyon", bump: -11 },
-    { seed: 14, name: "UNC Wilmington", bump: -14 },
-    { seed: 15, name: "Omaha", bump: -19 },
-    { seed: 16, name: "Norfolk State", bump: -25 },
-  ],
-  South: [
-    { seed: 1, name: "Auburn", bump: 35 },
-    { seed: 2, name: "Michigan State", bump: 22 },
-    { seed: 3, name: "Iowa State", bump: 15 },
-    { seed: 4, name: "Texas A&M", bump: 14 },
-    { seed: 5, name: "Michigan", bump: 9 },
-    { seed: 6, name: "Ole Miss", bump: 6 },
-    { seed: 7, name: "Marquette", bump: 4 },
-    { seed: 8, name: "Louisville", bump: 1 },
-    { seed: 9, name: "Creighton", bump: 3 },
-    { seed: 10, name: "New Mexico", bump: 2 },
-    { seed: 11, name: "North Carolina", bump: 0 },
-    { seed: 12, name: "UC San Diego", bump: -7 },
-    { seed: 13, name: "Yale", bump: -11 },
-    { seed: 14, name: "Lipscomb", bump: -15 },
-    { seed: 15, name: "Bryant", bump: -19 },
-    { seed: 16, name: "Alabama State", bump: -24 },
-  ],
-  Midwest: [
-    { seed: 1, name: "Houston", bump: 33 },
-    { seed: 2, name: "Tennessee", bump: 23 },
-    { seed: 3, name: "Kentucky", bump: 15 },
-    { seed: 4, name: "Purdue", bump: 13 },
-    { seed: 5, name: "Clemson", bump: 8 },
-    { seed: 6, name: "Illinois", bump: 6 },
-    { seed: 7, name: "UCLA", bump: 3 },
-    { seed: 8, name: "Gonzaga", bump: 1 },
-    { seed: 9, name: "Georgia", bump: 0 },
-    { seed: 10, name: "Utah State", bump: -1 },
-    { seed: 11, name: "Xavier", bump: 1 },
-    { seed: 12, name: "McNeese", bump: -7 },
-    { seed: 13, name: "High Point", bump: -10 },
-    { seed: 14, name: "Troy", bump: -15 },
-    { seed: 15, name: "Wofford", bump: -20 },
-    { seed: 16, name: "SIU Edwardsville", bump: -24 },
-  ],
-};
-
-const baseSeedRating = (seed: number): number => {
-  const spread = 550;
-  return Math.round(2025 - ((seed - 1) / 15) * spread);
-};
-
-export const teams: Team[] = (Object.keys(regionSeeds) as Region[]).flatMap((region) =>
-  regionSeeds[region].map((entry) => ({
-    id: `${region}-${entry.seed}`,
-    name: entry.name,
-    seed: entry.seed,
-    region,
-    rating: baseSeedRating(entry.seed) + entry.bump,
-  }))
-);
+export const teams: Team2026[] = [{"id": "Midwest-1", "name": "Michigan", "seed": 1, "seedLabel": "1", "region": "Midwest", "rating": 2156, "isFirstFour": false}, {"id": "East-1", "name": "Duke", "seed": 1, "seedLabel": "1", "region": "East", "rating": 2161, "isFirstFour": false}, {"id": "West-1", "name": "Arizona", "seed": 1, "seedLabel": "1", "region": "West", "rating": 2232, "isFirstFour": false}, {"id": "West-2", "name": "Illinois", "seed": 2, "seedLabel": "2", "region": "West", "rating": 2005, "isFirstFour": false}, {"id": "South-2", "name": "Florida", "seed": 2, "seedLabel": "2", "region": "South", "rating": 1980, "isFirstFour": false}, {"id": "South-3", "name": "Houston", "seed": 3, "seedLabel": "3", "region": "South", "rating": 2082, "isFirstFour": false}, {"id": "East-2", "name": "Purdue", "seed": 2, "seedLabel": "2", "region": "East", "rating": 2011, "isFirstFour": false}, {"id": "Midwest-2", "name": "Iowa St", "seed": 2, "seedLabel": "2", "region": "Midwest", "rating": 2053, "isFirstFour": false}, {"id": "West-3", "name": "Gonzaga", "seed": 3, "seedLabel": "3", "region": "West", "rating": 2077, "isFirstFour": false}, {"id": "West-4", "name": "Michigan St", "seed": 4, "seedLabel": "4", "region": "West", "rating": 2028, "isFirstFour": false}, {"id": "South-1", "name": "Connecticut", "seed": 1, "seedLabel": "1", "region": "South", "rating": 2082, "isFirstFour": false}, {"id": "Midwest-3", "name": "Nebraska", "seed": 3, "seedLabel": "3", "region": "Midwest", "rating": 2003, "isFirstFour": false}, {"id": "West-5", "name": "Vanderbilt", "seed": 5, "seedLabel": "5", "region": "West", "rating": 1929, "isFirstFour": false}, {"id": "South-5", "name": "Tennessee", "seed": 5, "seedLabel": "5", "region": "South", "rating": 1924, "isFirstFour": false}, {"id": "East-6", "name": "Louisville", "seed": 6, "seedLabel": "6", "region": "East", "rating": 1839, "isFirstFour": false}, {"id": "South-4", "name": "Texas Tech", "seed": 4, "seedLabel": "4", "region": "South", "rating": 2043, "isFirstFour": false}, {"id": "Midwest-5", "name": "Arkansas", "seed": 5, "seedLabel": "5", "region": "Midwest", "rating": 1936, "isFirstFour": false}, {"id": "Midwest-4", "name": "Virginia", "seed": 4, "seedLabel": "4", "region": "Midwest", "rating": 1953, "isFirstFour": false}, {"id": "East-3", "name": "Kansas", "seed": 3, "seedLabel": "3", "region": "East", "rating": 2003, "isFirstFour": false}, {"id": "East-4", "name": "Alabama", "seed": 4, "seedLabel": "4", "region": "East", "rating": 1972, "isFirstFour": false}, {"id": "West-6", "name": "BYU", "seed": 6, "seedLabel": "6", "region": "West", "rating": 1946, "isFirstFour": false}, {"id": "East-5", "name": "St John's", "seed": 5, "seedLabel": "5", "region": "East", "rating": 1945, "isFirstFour": false}, {"id": "East-7", "name": "Utah St", "seed": 7, "seedLabel": "7", "region": "East", "rating": 1878, "isFirstFour": false}, {"id": "South-7", "name": "St Louis", "seed": 7, "seedLabel": "7", "region": "South", "rating": 1823, "isFirstFour": false}, {"id": "South-8", "name": "NC State", "seed": 8, "seedLabel": "8", "region": "South", "rating": 1770, "isFirstFour": false}, {"id": "East-8", "name": "Iowa", "seed": 8, "seedLabel": "8", "region": "East", "rating": 1876, "isFirstFour": false}, {"id": "West-8", "name": "St Mary's CA", "seed": 8, "seedLabel": "8", "region": "West", "rating": 1856, "isFirstFour": false}, {"id": "South-6", "name": "Villanova", "seed": 6, "seedLabel": "6", "region": "South", "rating": 1822, "isFirstFour": false}, {"id": "Midwest-7", "name": "Wisconsin", "seed": 7, "seedLabel": "7", "region": "Midwest", "rating": 1825, "isFirstFour": false}, {"id": "Midwest-6", "name": "North Carolina", "seed": 6, "seedLabel": "6", "region": "Midwest", "rating": 1905, "isFirstFour": false}, {"id": "West-7", "name": "Kentucky", "seed": 7, "seedLabel": "7", "region": "West", "rating": 1896, "isFirstFour": false}, {"id": "South-10", "name": "Texas", "seed": 10, "seedLabel": "10", "region": "South", "rating": 1765, "isFirstFour": false}, {"id": "West-10", "name": "SMU", "seed": 10, "seedLabel": "10", "region": "West", "rating": 1784, "isFirstFour": false}, {"id": "Midwest-11a", "name": "Auburn", "seed": 11, "seedLabel": "11a", "region": "Midwest", "rating": 1852, "isFirstFour": true}, {"id": "South-11a", "name": "Santa Clara", "seed": 11, "seedLabel": "11a", "region": "South", "rating": 1762, "isFirstFour": true}, {"id": "East-10", "name": "Texas A&M", "seed": 10, "seedLabel": "10", "region": "East", "rating": 1840, "isFirstFour": false}, {"id": "Midwest-9", "name": "Georgia", "seed": 9, "seedLabel": "9", "region": "Midwest", "rating": 1786, "isFirstFour": false}, {"id": "Midwest-8", "name": "Miami FL", "seed": 8, "seedLabel": "8", "region": "Midwest", "rating": 1755, "isFirstFour": false}, {"id": "West-9", "name": "Clemson", "seed": 9, "seedLabel": "9", "region": "West", "rating": 1837, "isFirstFour": false}, {"id": "South-11b", "name": "Indiana", "seed": 11, "seedLabel": "11b", "region": "South", "rating": 1770, "isFirstFour": true}, {"id": "South-9", "name": "UCLA", "seed": 9, "seedLabel": "9", "region": "South", "rating": 1840, "isFirstFour": false}, {"id": "West-11", "name": "San Diego St", "seed": 11, "seedLabel": "11", "region": "West", "rating": 1812, "isFirstFour": false}, {"id": "East-9", "name": "UCF", "seed": 9, "seedLabel": "9", "region": "East", "rating": 1886, "isFirstFour": false}, {"id": "Midwest-11b", "name": "TCU", "seed": 11, "seedLabel": "11b", "region": "Midwest", "rating": 1792, "isFirstFour": true}, {"id": "Midwest-10", "name": "Missouri", "seed": 10, "seedLabel": "10", "region": "Midwest", "rating": 1774, "isFirstFour": false}, {"id": "West-12", "name": "Belmont", "seed": 12, "seedLabel": "12", "region": "West", "rating": 1768, "isFirstFour": false}, {"id": "Midwest-12", "name": "South Florida", "seed": 12, "seedLabel": "12", "region": "Midwest", "rating": 1699, "isFirstFour": false}, {"id": "East-12", "name": "Yale", "seed": 12, "seedLabel": "12", "region": "East", "rating": 1714, "isFirstFour": false}, {"id": "East-11", "name": "Miami OH", "seed": 11, "seedLabel": "11", "region": "East", "rating": 1769, "isFirstFour": false}, {"id": "West-13", "name": "SF Austin", "seed": 13, "seedLabel": "13", "region": "West", "rating": 1560, "isFirstFour": false}, {"id": "Midwest-13", "name": "High Point", "seed": 13, "seedLabel": "13", "region": "Midwest", "rating": 1618, "isFirstFour": false}, {"id": "East-13", "name": "UNC Wilmington", "seed": 13, "seedLabel": "13", "region": "East", "rating": 1694, "isFirstFour": false}, {"id": "South-12", "name": "Liberty", "seed": 12, "seedLabel": "12", "region": "South", "rating": 1745, "isFirstFour": false}, {"id": "West-14", "name": "UC Irvine", "seed": 14, "seedLabel": "14", "region": "West", "rating": 1605, "isFirstFour": false}, {"id": "South-13", "name": "N Dakota St", "seed": 13, "seedLabel": "13", "region": "South", "rating": 1587, "isFirstFour": false}, {"id": "South-14", "name": "ETSU", "seed": 14, "seedLabel": "14", "region": "South", "rating": 1521, "isFirstFour": false}, {"id": "East-14", "name": "Austin Peay", "seed": 14, "seedLabel": "14", "region": "East", "rating": 1475, "isFirstFour": false}, {"id": "Midwest-15", "name": "Portland St", "seed": 15, "seedLabel": "15", "region": "Midwest", "rating": 1461, "isFirstFour": false}, {"id": "Midwest-14", "name": "Navy", "seed": 14, "seedLabel": "14", "region": "Midwest", "rating": 1426, "isFirstFour": false}, {"id": "East-15", "name": "Wright St", "seed": 15, "seedLabel": "15", "region": "East", "rating": 1457, "isFirstFour": false}, {"id": "West-15", "name": "Merrimack", "seed": 15, "seedLabel": "15", "region": "West", "rating": 1515, "isFirstFour": false}, {"id": "West-16", "name": "Utah Tech", "seed": 16, "seedLabel": "16", "region": "West", "rating": 1389, "isFirstFour": false}, {"id": "South-15", "name": "Marshall", "seed": 15, "seedLabel": "15", "region": "South", "rating": 1512, "isFirstFour": false}, {"id": "East-16", "name": "LIU Brooklyn", "seed": 16, "seedLabel": "16", "region": "East", "rating": 1412, "isFirstFour": false}, {"id": "South-16a", "name": "UMBC", "seed": 16, "seedLabel": "16a", "region": "South", "rating": 1385, "isFirstFour": true}, {"id": "Midwest-16a", "name": "Bethune-Cookman", "seed": 16, "seedLabel": "16a", "region": "Midwest", "rating": 1376, "isFirstFour": true}, {"id": "South-16b", "name": "Morehead St", "seed": 16, "seedLabel": "16b", "region": "South", "rating": 1407, "isFirstFour": true}, {"id": "Midwest-16b", "name": "Morgan St", "seed": 16, "seedLabel": "16b", "region": "Midwest", "rating": 1271, "isFirstFour": true}];
 
 export const teamsById = new Map(teams.map((team) => [team.id, team]));

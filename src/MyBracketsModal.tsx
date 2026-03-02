@@ -8,6 +8,7 @@ import {
   renameBracket,
   saveBracket,
 } from "./bracketStorage";
+import { gameTemplates } from "./data/bracket";
 import type { LockedPicks } from "./lib/bracket";
 
 export function MyBracketsModal({
@@ -25,6 +26,7 @@ export function MyBracketsModal({
   currentPicks: LockedPicks;
   currentChaosScore: number;
 }) {
+  const totalGames = gameTemplates.length;
   const { user } = useAuth();
   const [brackets, setBrackets] = useState<SavedBracket[]>([]);
   const [loading, setLoading] = useState(true);
@@ -94,7 +96,7 @@ export function MyBracketsModal({
           <div className="my-brackets-list">
             {brackets.map((bracket) => {
               const pickCount = Object.keys(bracket.picks ?? {}).length;
-              const completionPct = Math.round((pickCount / 63) * 100);
+              const completionPct = Math.round((pickCount / totalGames) * 100);
               const isEditing = editingName === bracket.id;
               return (
                 <div key={bracket.id} className="my-bracket-card-v2">
@@ -124,7 +126,7 @@ export function MyBracketsModal({
 
                   <div className="my-bracket-stats-row">
                     <div className="my-bracket-stat">
-                      <span className="my-bracket-stat-value">{pickCount}/63</span>
+                      <span className="my-bracket-stat-value">{pickCount}/{totalGames}</span>
                       <span className="my-bracket-stat-label">picks</span>
                     </div>
                     <div className="my-bracket-stat">

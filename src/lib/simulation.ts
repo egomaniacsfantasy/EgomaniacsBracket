@@ -5,7 +5,7 @@ import type { CustomProbByGame, LockedPicks } from "./bracket";
 import { getGameWinProb, resolveGames } from "./bracket";
 
 const DEFAULT_SIM_SEED = 42;
-const rounds = ["R64", "R32", "S16", "E8", "F4", "CHAMP"] as const;
+const rounds = ["FF", "R64", "R32", "S16", "E8", "F4", "CHAMP"] as const;
 const gameOrder = [...gameTemplates].sort((a, b) => {
   const rankA = rounds.indexOf(a.round);
   const rankB = rounds.indexOf(b.round);
@@ -56,9 +56,15 @@ const eligibleTeamsForGame = (gameId: string): string[] => {
 
   let teamIds: string[] = [];
   if (template.initialTeamIds) {
-    teamIds = [...template.initialTeamIds];
-  } else if (template.sourceGameIds) {
-    teamIds = template.sourceGameIds.flatMap((sourceId) => eligibleTeamsForGame(sourceId));
+    teamIds = template.initialTeamIds.filter((id): id is string => Boolean(id));
+  }
+  if (template.sourceGameIds) {
+    teamIds = [
+      ...teamIds,
+      ...template.sourceGameIds
+        .filter((sourceId): sourceId is string => Boolean(sourceId))
+        .flatMap((sourceId) => eligibleTeamsForGame(sourceId)),
+    ];
   }
 
   const unique = Array.from(new Set(teamIds)).sort((a, b) => {
@@ -186,11 +192,12 @@ const simulateBracket = (
     let teamAId: string | null = null;
     let teamBId: string | null = null;
 
-    if (game.initialTeamIds) {
-      teamAId = game.initialTeamIds[0];
-      teamBId = game.initialTeamIds[1];
-    } else if (game.sourceGameIds) {
+    teamAId = game.initialTeamIds?.[0] ?? null;
+    teamBId = game.initialTeamIds?.[1] ?? null;
+    if (!teamAId && game.sourceGameIds?.[0]) {
       teamAId = winners[game.sourceGameIds[0]] || null;
+    }
+    if (!teamBId && game.sourceGameIds?.[1]) {
       teamBId = winners[game.sourceGameIds[1]] || null;
     }
 
@@ -407,12 +414,13 @@ export const generateSimulatedBracket = (locks: LockedPicks, customProbByGame: C
 };
 
 const roundRank: Record<Round, number> = {
-  R64: 0,
-  R32: 1,
-  S16: 2,
-  E8: 3,
-  F4: 4,
-  CHAMP: 5,
+  FF: 0,
+  R64: 1,
+  R32: 2,
+  S16: 3,
+  E8: 4,
+  F4: 5,
+  CHAMP: 6,
 };
 
 const defaultRegionOrder: Region[] = ["South", "West", "East", "Midwest"];

@@ -33,6 +33,7 @@ import { AuthModal } from "./AuthModal";
 import { MyBracketsModal } from "./MyBracketsModal";
 import { LeaderboardFullWidth } from "./Leaderboard";
 import { deserializePicks, getUserBrackets, saveBracket, serializePicks, type SavedBracket } from "./bracketStorage";
+import { TEAM_STAT_IMPORTANCE, TEAM_STAT_ORDER, TEAM_STATS_2026, type TeamStatKey } from "./data/teamStats2026";
 import type { OddsDisplayMode, Region, ResolvedGame, SimulationOutput } from "./types";
 
 const DEFAULT_SIM_RUNS = 5000;
@@ -50,10 +51,11 @@ const MAX_STAGGERED_SIM_DELAY_MS = 5000;
 const LANDING_URL = "https://oddsgods.net";
 
 const regionSections: Region[][] = BRACKET_HALVES.map((half) => [...half.regions]);
-const mobileRegionOrder: Region[] = ["South", "East", "West", "Midwest"];
+const mobileRegionOrder: Region[] = ["East", "West", "Midwest", "South"];
 const invertedRegions = new Set<Region>([regionSections[0][1], regionSections[1][1]]);
 
 const gameRoundLabel: Record<string, string> = {
+  FF: "First Four",
   R64: "Round of 64",
   R32: "Round of 32",
   S16: "Sweet 16",
@@ -63,24 +65,26 @@ const gameRoundLabel: Record<string, string> = {
 };
 
 const ROUND_RANK: Record<ResolvedGame["round"], number> = {
-  R64: 0,
-  R32: 1,
-  S16: 2,
-  E8: 3,
-  F4: 4,
-  CHAMP: 5,
+  FF: 0,
+  R64: 1,
+  R32: 2,
+  S16: 3,
+  E8: 4,
+  F4: 5,
+  CHAMP: 6,
 };
-const MOBILE_ROUND_ORDER: Record<"R64" | "R32" | "S16" | "E8", number> = {
-  R64: 0,
-  R32: 1,
-  S16: 2,
-  E8: 3,
+const MOBILE_ROUND_ORDER: Record<"FF" | "R64" | "R32" | "S16" | "E8", number> = {
+  FF: 0,
+  R64: 1,
+  R32: 2,
+  S16: 3,
+  E8: 4,
 };
 
 const URL_REGION_ORDER: Region[] = ["South", "West", "East", "Midwest"];
-const URL_ROUND_ORDER: ResolvedGame["round"][] = ["R64", "R32", "S16", "E8", "F4", "CHAMP"];
-const URL_EXPECTED_BITS = 126;
-const URL_EXPECTED_GAME_COUNT = 63;
+const URL_ROUND_ORDER: ResolvedGame["round"][] = ["FF", "R64", "R32", "S16", "E8", "F4", "CHAMP"];
+const URL_EXPECTED_GAME_COUNT = gameTemplates.length;
+const URL_EXPECTED_BITS = URL_EXPECTED_GAME_COUNT * 2;
 
 const getRecommendedSimRuns = (): number => {
   if (typeof window === "undefined") return DEFAULT_SIM_RUNS;
@@ -97,7 +101,7 @@ const getRecommendedSimRuns = (): number => {
 const canonicalGameTemplates = (() => {
   const regional: typeof gameTemplates = [];
   for (const region of URL_REGION_ORDER) {
-    for (const round of ["R64", "R32", "S16", "E8"] as const) {
+    for (const round of ["FF", "R64", "R32", "S16", "E8"] as const) {
       regional.push(
         ...gameTemplates
           .filter((game) => game.region === region && game.round === round)
@@ -206,7 +210,7 @@ type ProbabilityPopupState = {
 
 type MobileTab = "bracket" | "futures" | "leaderboard";
 type MobileSection = Region | "FF";
-type MobileRegionRound = "R64" | "R32" | "S16" | "E8";
+type MobileRegionRound = "FF" | "R64" | "R32" | "S16" | "E8";
 type MobileFfRound = "F4" | "CHAMP" | "WIN";
 type CandidateRow = { teamId: string; prob: number; team: NonNullable<ReturnType<typeof teamsById.get>> };
 const MAJOR_SHIFT_NUDGE_COOLDOWN = 3;
@@ -226,7 +230,7 @@ type ResetModalConfig = {
   confirmLabel: string;
   onConfirm: () => void;
 };
-type RegionalRound = "R64" | "R32" | "S16" | "E8";
+type RegionalRound = "FF" | "R64" | "R32" | "S16" | "E8";
 type ManualRoundExpansionState = Partial<Record<`${Region}-${RegionalRound}`, boolean>>;
 type WalkthroughStepConfig = {
   id: WalkthroughStepId;
@@ -239,7 +243,7 @@ type WalkthroughStepConfig = {
 
 type ShareFinalFourTeam = {
   id: string;
-  seed: number;
+  seed: string;
   name: string;
   logoUrl: string;
   champProbLabel: string;
@@ -248,7 +252,7 @@ type ShareFinalFourTeam = {
 
 type ShareChampionTeam = {
   id: string;
-  seed: number;
+  seed: string;
   name: string;
   logoUrl: string;
   champProbLabel: string;
@@ -257,9 +261,9 @@ type ShareChampionTeam = {
 };
 
 type ShareBoldPick = {
-  winnerSeed: number;
+  winnerSeed: string;
   winnerName: string;
-  loserSeed: number;
+  loserSeed: string;
   loserName: string;
   winProbPct: number;
 };
@@ -450,7 +454,7 @@ function App() {
   );
   const [mobileTab, setMobileTab] = useState<MobileTab>("bracket");
   const [mobileSection, setMobileSection] = useState<MobileSection>("South");
-  const [mobileRound, setMobileRound] = useState<MobileRegionRound>("R64");
+  const [mobileRound, setMobileRound] = useState<MobileRegionRound>("FF");
   const [mobileFfRound, setMobileFfRound] = useState<MobileFfRound>("F4");
   const [liveOddsChangedIds, setLiveOddsChangedIds] = useState<Set<string>>(new Set());
   const [mobileRoundDeltas, setMobileRoundDeltas] = useState<Partial<Record<MobileRegionRound, number>>>({});
@@ -464,7 +468,7 @@ function App() {
   const [majorShiftNudgeVisible, setMajorShiftNudgeVisible] = useState(false);
   const [majorShiftTeamName, setMajorShiftTeamName] = useState("");
   const [majorShiftPct, setMajorShiftPct] = useState(0);
-  const [majorShiftTargetRound, setMajorShiftTargetRound] = useState<MobileRegionRound>("R32");
+  const [majorShiftTargetRound, setMajorShiftTargetRound] = useState<MobileRegionRound>("R64");
   const [ifYoureRightCollapsed, setIfYoureRightCollapsed] = useState(false);
   const [staggeredSimRunning, setStaggeredSimRunning] = useState(false);
   const [staggeredSimPaused, setStaggeredSimPaused] = useState(false);
@@ -515,6 +519,7 @@ function App() {
   const [showChaosModal, setShowChaosModal] = useState(false);
   const [showCompletionCelebration, setShowCompletionCelebration] = useState(false);
   const [completionCelebrationData, setCompletionCelebrationData] = useState<CompletionCelebrationData | null>(null);
+  const [statsModalGameId, setStatsModalGameId] = useState<string | null>(null);
   const [staggeredChaosTotal, setStaggeredChaosTotal] = useState(0);
   const [staggeredLastGameChaos, setStaggeredLastGameChaos] = useState<number | null>(null);
   const [staggeredLastGameLabel, setStaggeredLastGameLabel] = useState("");
@@ -536,7 +541,7 @@ function App() {
   const mobileDeltaTimeoutRef = useRef<number | null>(null);
   const firstPickNudgeTimeoutRef = useRef<number | null>(null);
   const pendingPickMetaRef = useRef<{ isFirstPick: boolean; section: MobileSection; round: MobileRegionRound | null } | null>(null);
-  const pendingMajorShiftTargetRef = useRef<MobileRegionRound>("R32");
+  const pendingMajorShiftTargetRef = useRef<MobileRegionRound>("R64");
   const picksSinceLastNudgeRef = useRef(0);
   const staggeredTimeoutRef = useRef<number | null>(null);
   const staggeredStepsRef = useRef<Array<{ gameId: string; winnerId: string }>>([]);
@@ -1265,6 +1270,12 @@ function App() {
   };
 
   const gameById = useMemo(() => new Map(games.map((game) => [game.id, game])), [games]);
+  const statsModalGame = statsModalGameId ? gameById.get(statsModalGameId) ?? null : null;
+
+  const openMatchupStats = (game: ResolvedGame) => {
+    if (!game.teamAId || !game.teamBId) return;
+    setStatsModalGameId(game.id);
+  };
 
   const shareCardComputedData = useMemo<ShareCardData>(() => {
     const finalGamesById = new Map(finalRounds(games).map((game) => [game.id, game]));
@@ -1278,7 +1289,7 @@ function App() {
     const champion: ShareChampionTeam | null = championTeam
       ? {
           id: championTeam.id,
-          seed: championTeam.seed,
+          seed: seedLabel(championTeam),
           name: championTeam.name,
           logoUrl: teamLogoUrl(championTeam),
           champProbLabel: toImpliedLabel(championFuturesRow?.champProb ?? 0),
@@ -1297,7 +1308,7 @@ function App() {
         const champProb = futuresRow?.champProb ?? 0;
         return {
           id: team.id,
-          seed: team.seed,
+          seed: seedLabel(team),
           name: team.name,
           logoUrl: teamLogoUrl(team),
           champProbLabel: toImpliedLabel(champProb),
@@ -1317,14 +1328,14 @@ function App() {
         const winnerWinProb = modelProbA === null ? null : winnerIsA ? modelProbA : 1 - modelProbA;
         if (!winnerTeam || !loserTeam || winnerWinProb === null) return null;
         return {
-          winnerSeed: winnerTeam.seed,
+          winnerSeed: seedLabel(winnerTeam),
           winnerName: winnerTeam.name,
-          loserSeed: loserTeam.seed,
+          loserSeed: seedLabel(loserTeam),
           loserName: loserTeam.name,
           winProb: winnerWinProb,
         };
       })
-      .filter((row): row is { winnerSeed: number; winnerName: string; loserSeed: number; loserName: string; winProb: number } => Boolean(row))
+      .filter((row): row is { winnerSeed: string; winnerName: string; loserSeed: string; loserName: string; winProb: number } => Boolean(row))
       .sort((a, b) => a.winProb - b.winProb);
 
     const boldestPicks: ShareBoldPick[] = pickRows.slice(0, 3).map((row) => ({
@@ -2125,7 +2136,7 @@ function App() {
     return !Boolean(manuallyExpandedRounds[key]);
   };
 
-  const toggleRoundExpansion = (region: Region, round: Exclude<RegionalRound, "E8">) => {
+  const toggleRoundExpansion = (region: Region, round: "R64" | "R32" | "S16") => {
     const key = `${region}-${round}` as const;
     const currentlyExpanded = Boolean(manuallyExpandedRounds[key]);
     const nextExpanded = !currentlyExpanded;
@@ -2137,9 +2148,9 @@ function App() {
   };
 
   const isHalfComplete = (half: "top" | "bottom"): boolean => {
-    const regions = half === "top" ? (["South", "West"] as const) : (["East", "Midwest"] as const);
+    const regions = half === "top" ? BRACKET_HALVES[0].regions : BRACKET_HALVES[1].regions;
     return regions.every((region) =>
-      (["R64", "R32", "S16", "E8"] as const).every((round) => {
+      (["FF", "R64", "R32", "S16", "E8"] as const).every((round) => {
         const roundGames = gamesByRegionAndRound(games, region, round);
         return roundGames.length > 0 && roundGames.every((game) => Boolean(game.winnerId));
       })
@@ -2152,11 +2163,11 @@ function App() {
   const bottomHalfVisuallyCollapsed = bottomHalfComplete && !bottomHalfManuallyExpanded;
 
   const setHalfRoundExpansion = (half: "top" | "bottom", expanded: boolean) => {
-    const regions = half === "top" ? (["South", "West"] as const) : (["East", "Midwest"] as const);
+    const regions = half === "top" ? BRACKET_HALVES[0].regions : BRACKET_HALVES[1].regions;
     setManuallyExpandedRounds((prev) => {
       const next = { ...prev };
       for (const region of regions) {
-        (["R64", "R32", "S16", "E8"] as const).forEach((round) => {
+        (["R64", "R32", "S16"] as const).forEach((round) => {
           const key = `${region}-${round}` as const;
           next[key] = expanded;
         });
@@ -2867,7 +2878,7 @@ function App() {
                   <TeamHoverAnchor teamName={team.name} logoSrc={teamLogoUrl(team)}>
                     <TeamLogo teamName={team.name} src={teamLogoUrl(team)} />
                   </TeamHoverAnchor>
-                  <span className="seed">{team.seed}</span>
+                  <span className="seed">{seedLabel(team)}</span>
                   <TeamHoverAnchor teamName={team.name} logoSrc={teamLogoUrl(team)}>
                     <span className="future-team-name">{team.name}</span>
                   </TeamHoverAnchor>
@@ -3057,6 +3068,7 @@ function App() {
                       onSwitchPick={onSwitchPick}
                       onUndoPick={onUndoGame}
                       onEditProb={openProbabilityPopup}
+                      onOpenMatchupStats={openMatchupStats}
                       mobileChaosBadge={mobileChaosBadge}
                     />
                   ) : (
@@ -3081,6 +3093,7 @@ function App() {
                       onSwitchPick={onSwitchPick}
                       onUndoPick={onUndoGame}
                       onEditProb={openProbabilityPopup}
+                      onOpenMatchupStats={openMatchupStats}
                       mobileChaosBadge={mobileChaosBadge}
                     />
                   )}
@@ -3146,6 +3159,7 @@ function App() {
                           inverted={invertedRegions.has(region)}
                           displayMode={displayMode}
                           onOpenProbabilityPopup={openProbabilityPopup}
+                          onOpenMatchupStats={openMatchupStats}
                           onUnavailableRoundClick={onUnavailableRoundClick}
                           onToggleRoundExpansion={toggleRoundExpansion}
                           isRoundComplete={isRoundComplete}
@@ -3192,6 +3206,7 @@ function App() {
                           inverted={invertedRegions.has(region)}
                           displayMode={displayMode}
                           onOpenProbabilityPopup={openProbabilityPopup}
+                          onOpenMatchupStats={openMatchupStats}
                           onUnavailableRoundClick={onUnavailableRoundClick}
                           onToggleRoundExpansion={toggleRoundExpansion}
                           isRoundComplete={isRoundComplete}
@@ -3289,6 +3304,13 @@ function App() {
         currentPicks={sanitized}
         currentChaosScore={chaosScore ?? 0}
       />
+
+      {statsModalGame ? (
+        <MatchupStatsModal
+          game={statsModalGame}
+          onClose={() => setStatsModalGameId(null)}
+        />
+      ) : null}
 
       {showChaosModal && chaosScore !== null ? (
         <div className="chaos-modal-overlay" onClick={() => setShowChaosModal(false)}>
@@ -3548,7 +3570,7 @@ function ShareTeamLogo({
   size,
   className = "",
 }: {
-  seed: number;
+  seed: string;
   name: string;
   logoUrl: string;
   size: number;
@@ -3658,7 +3680,7 @@ function StoryShareCard({
         <span className="share-stat-pill" style={{ color: getChaosColor(data.chaosScore, data.totalPicks) }}>
           {data.chaosScore.toFixed(1)} {data.chaosEmoji} {data.chaosLabel}
         </span>
-        <span className="share-stat-pill">{data.totalPicks}/63 Picks</span>
+        <span className="share-stat-pill">{data.totalPicks}/{gameTemplates.length} Picks</span>
       </section>
 
       <footer className="share-story-footer">
@@ -3748,6 +3770,60 @@ function mobileShortName(name: string) {
   return words.length > 2 ? words[words.length - 1] : name;
 }
 
+function seedLabel(team: NonNullable<ReturnType<typeof teamsById.get>>) {
+  return team.seedLabel ?? String(team.seed);
+}
+
+const TEAM_STAT_LABELS: Record<TeamStatKey, string> = {
+  rank_POM: "rank_POM",
+  rank_WLK: "rank_WLK",
+  rank_MOR: "rank_MOR",
+  elo_last: "elo_last",
+  avg_net_rtg: "avg_net_rtg",
+  rankdiff_MAS: "rankdiff_MAS",
+  elo_trend: "elo_trend",
+  avg_oreb_pct: "avg_oreb_pct",
+  last5_Margin: "last5_Margin",
+  avg_off_rtg: "avg_off_rtg",
+  avg_def_rtg: "avg_def_rtg",
+  rank_NET: "rank_NET",
+};
+
+const LOWER_IS_BETTER_STATS = new Set<TeamStatKey>([
+  "rank_POM",
+  "rank_WLK",
+  "rank_MOR",
+  "rankdiff_MAS",
+  "avg_def_rtg",
+  "rank_NET",
+]);
+
+const formatStatValue = (value: number | null): string => {
+  if (value === null || value === undefined || Number.isNaN(value)) return "—";
+  if (Math.abs(value) >= 1000) return value.toFixed(1);
+  if (Number.isInteger(value)) return `${value}`;
+  if (Math.abs(value) < 1) return value.toFixed(4);
+  return value.toFixed(2);
+};
+
+const formatDiffValue = (value: number): string => {
+  const abs = Math.abs(value);
+  if (Number.isInteger(abs)) return `${abs}`;
+  if (abs < 1) return abs.toFixed(4);
+  return abs.toFixed(2);
+};
+
+const differenceForStat = (teamAName: string, teamAValue: number | null, teamBName: string, teamBValue: number | null, key: TeamStatKey): string => {
+  if (teamAValue === null || teamBValue === null) return "—";
+  if (teamAValue === teamBValue) return "Even";
+
+  const lowerIsBetter = LOWER_IS_BETTER_STATS.has(key);
+  const aBetter = lowerIsBetter ? teamAValue < teamBValue : teamAValue > teamBValue;
+  const betterName = aBetter ? teamAName : teamBName;
+  const delta = aBetter ? teamBValue - teamAValue : teamAValue - teamBValue;
+  return `${betterName} +${formatDiffValue(delta)}`;
+};
+
 function getRegionRoundStatus(games: ResolvedGame[], region: Region, round: MobileRegionRound) {
   const roundGames = gamesByRegionAndRound(games, region, round);
   if (roundGames.every((game) => game.winnerId)) return "complete" as const;
@@ -3756,8 +3832,9 @@ function getRegionRoundStatus(games: ResolvedGame[], region: Region, round: Mobi
 }
 
 function getRegionRoundMode(games: ResolvedGame[], region: Region, round: MobileRegionRound): "interactive" | "probabilistic" {
-  if (round === "R64") return "interactive";
-  const previousRound: Record<Exclude<MobileRegionRound, "R64">, MobileRegionRound> = {
+  if (round === "FF") return "interactive";
+  const previousRound: Record<Exclude<MobileRegionRound, "FF">, MobileRegionRound> = {
+    R64: "FF",
     R32: "R64",
     S16: "R32",
     E8: "S16",
@@ -3772,7 +3849,7 @@ function isRegionRoundAccessible(_games: ResolvedGame[], _region: Region, _round
 }
 
 function getPreferredMobileRegionRound(games: ResolvedGame[], region: Region): MobileRegionRound {
-  for (const round of ["R64", "R32", "S16", "E8"] as const) {
+  for (const round of ["FF", "R64", "R32", "S16", "E8"] as const) {
     const mode = getRegionRoundMode(games, region, round);
     const status = getRegionRoundStatus(games, region, round);
     if (mode === "interactive" && status !== "complete") return round;
@@ -4027,6 +4104,7 @@ function MobileRegionView({
   onSwitchPick,
   onUndoPick,
   onEditProb,
+  onOpenMatchupStats,
   mobileChaosBadge,
 }: {
   region: Region;
@@ -4049,9 +4127,11 @@ function MobileRegionView({
   onSwitchPick: (game: ResolvedGame, teamId: string) => void;
   onUndoPick: (gameId: string) => void;
   onEditProb: (game: ResolvedGame, anchorEl: HTMLElement) => void;
+  onOpenMatchupStats: (game: ResolvedGame) => void;
   mobileChaosBadge?: React.ReactNode;
 }) {
   const roundOrder: Array<{ id: MobileRegionRound; label: string }> = [
+    { id: "FF", label: "FF" },
     { id: "R64", label: "R64" },
     { id: "R32", label: "R32" },
     { id: "S16", label: "S16" },
@@ -4066,6 +4146,7 @@ function MobileRegionView({
     onPick(game, teamId);
     if (allCompleteAfterPick) {
       const nextRound: Record<MobileRegionRound, MobileRegionRound | null> = {
+        FF: "R64",
         R64: "R32",
         R32: "S16",
         S16: "E8",
@@ -4111,8 +4192,8 @@ function MobileRegionView({
         <>
           <div className="m-prob-banner">
             <span>↻</span>
-            <span>These odds update live as you make picks. Tap R64 to continue picking.</span>
-            <button onClick={() => onRoundChange("R64")}>Back to R64 →</button>
+            <span>These odds update live as you make picks. Tap FF/R64 to continue picking.</span>
+            <button onClick={() => onRoundChange("FF")}>Back to picks →</button>
           </div>
           {activeGames.map((game) => (
             <MobileProbSlotCard
@@ -4133,6 +4214,7 @@ function MobileRegionView({
             onSwitchPick={onSwitchPick}
             onUndoPick={onUndoPick}
             onEditProb={onEditProb}
+            onOpenMatchupStats={onOpenMatchupStats}
           />
         ))
       )}
@@ -4155,6 +4237,7 @@ function MobileFinalFourView({
   onSwitchPick,
   onUndoPick,
   onEditProb,
+  onOpenMatchupStats,
   mobileChaosBadge,
 }: {
   activeRound: MobileFfRound;
@@ -4171,6 +4254,7 @@ function MobileFinalFourView({
   onSwitchPick: (game: ResolvedGame, teamId: string) => void;
   onUndoPick: (gameId: string) => void;
   onEditProb: (game: ResolvedGame, anchorEl: HTMLElement) => void;
+  onOpenMatchupStats: (game: ResolvedGame) => void;
   mobileChaosBadge?: React.ReactNode;
 }) {
   const rounds: Array<{ id: MobileFfRound; label: string }> = [
@@ -4243,6 +4327,7 @@ function MobileFinalFourView({
               onSwitchPick={onSwitchPick}
               onUndoPick={onUndoPick}
               onEditProb={onEditProb}
+              onOpenMatchupStats={onOpenMatchupStats}
             />
           ))
         : null}
@@ -4254,6 +4339,7 @@ function MobileFinalFourView({
           onSwitchPick={onSwitchPick}
           onUndoPick={onUndoPick}
           onEditProb={onEditProb}
+          onOpenMatchupStats={onOpenMatchupStats}
         />
       ) : null}
       {activeRound === "WIN" ? <MobileChampionCard titleGame={titleGame} /> : null}
@@ -4389,6 +4475,7 @@ function MobileMatchupCard({
   onSwitchPick,
   onUndoPick,
   onEditProb,
+  onOpenMatchupStats,
 }: {
   game: ResolvedGame;
   displayMode: OddsDisplayMode;
@@ -4396,6 +4483,7 @@ function MobileMatchupCard({
   onSwitchPick: (game: ResolvedGame, teamId: string) => void;
   onUndoPick: (gameId: string) => void;
   onEditProb: (game: ResolvedGame, anchorEl: HTMLElement) => void;
+  onOpenMatchupStats: (game: ResolvedGame) => void;
 }) {
   const cardRef = useRef<HTMLDivElement | null>(null);
   const teamA = game.teamAId ? teamsById.get(game.teamAId) ?? null : null;
@@ -4412,6 +4500,20 @@ function MobileMatchupCard({
 
   return (
     <div className={`m-card ${isPicked ? "m-card--picked" : ""}`} ref={cardRef} data-game-id={game.id} data-seeds={dataSeeds}>
+      {isPicked ? (
+        <button
+          type="button"
+          className="matchup-stats-icon matchup-stats-icon--mobile"
+          onClick={(event) => {
+            event.stopPropagation();
+            onOpenMatchupStats(game);
+          }}
+          title="View matchup stats"
+          aria-label="View matchup stats"
+        >
+          ⓘ
+        </button>
+      ) : null}
       <button
         className={`m-team ${game.winnerId === teamA.id ? "m-team--winner" : ""} ${
           game.winnerId && game.winnerId !== teamA.id ? "m-team--loser" : ""
@@ -4421,7 +4523,7 @@ function MobileMatchupCard({
           if (isPicked && game.winnerId !== teamA.id) onSwitchPick(game, teamA.id);
         }}
       >
-        <span className="m-seed">{teamA.seed}</span>
+        <span className="m-seed">{seedLabel(teamA)}</span>
         <TeamLogo teamName={teamA.name} src={teamLogoUrl(teamA)} />
         <span className="m-name">{teamA.name}</span>
         <div className="m-stats">
@@ -4441,7 +4543,7 @@ function MobileMatchupCard({
           if (isPicked && game.winnerId !== teamB.id) onSwitchPick(game, teamB.id);
         }}
       >
-        <span className="m-seed">{teamB.seed}</span>
+        <span className="m-seed">{seedLabel(teamB)}</span>
         <TeamLogo teamName={teamB.name} src={teamLogoUrl(teamB)} />
         <span className="m-name">{teamB.name}</span>
         <div className="m-stats">
@@ -4536,7 +4638,7 @@ function MobileProbSlotCard({
             <div className="m-prob-rank-bar" style={{ width: `${reach}%` }} />
             <div className="m-prob-row-content">
               <div className="m-prob-row-left">
-                <span className="m-seed">{row.team.seed}</span>
+                <span className="m-seed">{seedLabel(row.team)}</span>
                 <img src={teamLogoUrl(row.team)} className="m-logo-sm" alt="" />
                 <div className="m-prob-row-info">
                   <span className="m-name-sm">{row.team.name}</span>
@@ -4598,7 +4700,7 @@ function CollapsedHalfSummary({
   games: ResolvedGame[];
   onExpand: () => void;
 }) {
-  const regions = half === "top" ? (["South", "West"] as const) : (["East", "Midwest"] as const);
+  const regions = half === "top" ? BRACKET_HALVES[0].regions : BRACKET_HALVES[1].regions;
   const label = half === "top" ? "Top Half Bracket" : "Bottom Half Bracket";
   const winners = regions
     .map((region) => {
@@ -4616,13 +4718,13 @@ function CollapsedHalfSummary({
       </div>
       <div className="half-collapsed-teams">
         {winners.map((team) => (
-          <div key={`${half}-${team.id}`} className="half-collapsed-team">
-            <img src={teamLogoUrl(team)} className="half-collapsed-logo" alt="" loading="lazy" />
-            <span className="half-collapsed-name">
-              {team.seed} {team.name}
-            </span>
-            <span className="half-collapsed-region">{team.region}</span>
-          </div>
+            <div key={`${half}-${team.id}`} className="half-collapsed-team">
+              <img src={teamLogoUrl(team)} className="half-collapsed-logo" alt="" loading="lazy" />
+              <span className="half-collapsed-name">
+                {seedLabel(team)} {team.name}
+              </span>
+              <span className="half-collapsed-region">{team.region}</span>
+            </div>
         ))}
         <span className="half-collapsed-arrow">→ Final Four</span>
       </div>
@@ -4658,7 +4760,7 @@ function FinalsSemifinalCard({
           onPick(game, team.id);
         }}
       >
-        <span className="ff-semifinal-seed">#{team.seed}</span>
+        <span className="ff-semifinal-seed">#{seedLabel(team)}</span>
         <TeamLogo teamName={team.name} src={teamLogoUrl(team)} className="ff-semifinal-logo" />
         <span className="ff-semifinal-name">{team.name}</span>
       </button>
@@ -4770,6 +4872,7 @@ function RegionBracket({
   inverted,
   displayMode,
   onOpenProbabilityPopup,
+  onOpenMatchupStats,
   onUnavailableRoundClick,
   onToggleRoundExpansion,
   isRoundComplete,
@@ -4785,6 +4888,7 @@ function RegionBracket({
   inverted: boolean;
   displayMode: OddsDisplayMode;
   onOpenProbabilityPopup: (game: ResolvedGame, anchorEl: HTMLElement) => void;
+  onOpenMatchupStats: (game: ResolvedGame) => void;
   onUnavailableRoundClick: (round: ResolvedGame["round"]) => void;
   onToggleRoundExpansion: (region: Region, round: "R64" | "R32" | "S16") => void;
   isRoundComplete: (region: Region, round: RegionalRound) => boolean;
@@ -4808,6 +4912,7 @@ function RegionBracket({
     .filter(Boolean)
     .join(" ");
   const shortRoundLabel: Record<ResolvedGame["round"], string> = {
+    FF: "FF",
     R64: "R64",
     R32: "R32",
     S16: "S16",
@@ -4864,6 +4969,7 @@ function RegionBracket({
                           lastPickedKey={lastPickedKey}
                           displayMode={displayMode}
                           onOpenProbabilityPopup={onOpenProbabilityPopup}
+                          onOpenMatchupStats={onOpenMatchupStats}
                           onUnavailableRoundClick={onUnavailableRoundClick}
                         />
                       </div>
@@ -4888,6 +4994,7 @@ function GameCard({
   lastPickedKey,
   displayMode,
   onOpenProbabilityPopup,
+  onOpenMatchupStats,
   onUnavailableRoundClick,
 }: {
   game: ResolvedGame;
@@ -4898,6 +5005,7 @@ function GameCard({
   lastPickedKey: string | null;
   displayMode: OddsDisplayMode;
   onOpenProbabilityPopup: (game: ResolvedGame, anchorEl: HTMLElement) => void;
+  onOpenMatchupStats: (game: ResolvedGame) => void;
   onUnavailableRoundClick?: (round: ResolvedGame["round"]) => void;
 }) {
   type CandidateRow = { teamId: string; prob: number; team: NonNullable<ReturnType<typeof teamsById.get>> };
@@ -4977,6 +5085,20 @@ function GameCard({
         onMouseEnter={() => setShowChaosTooltip(true)}
         onMouseLeave={() => setShowChaosTooltip(false)}
       >
+        {game.lockedByUser && game.teamAId && game.teamBId ? (
+          <button
+            type="button"
+            className="matchup-stats-icon"
+            onClick={(event) => {
+              event.stopPropagation();
+              onOpenMatchupStats(game);
+            }}
+            title="View matchup stats"
+            aria-label="View matchup stats"
+          >
+            ⓘ
+          </button>
+        ) : null}
         <div className="bracket-cell--compact">
           {game.teamAId && game.teamBId ? (
             <button
@@ -5045,6 +5167,20 @@ function GameCard({
       onMouseEnter={() => setShowChaosTooltip(true)}
       onMouseLeave={() => setShowChaosTooltip(false)}
     >
+      {game.lockedByUser && game.teamAId && game.teamBId ? (
+        <button
+          type="button"
+          className="matchup-stats-icon"
+          onClick={(event) => {
+            event.stopPropagation();
+            onOpenMatchupStats(game);
+          }}
+          title="View matchup stats"
+          aria-label="View matchup stats"
+        >
+          ⓘ
+        </button>
+      ) : null}
       <div className="eg-game-list">
         {useShowdownCard ? (
           <ShowdownCard
@@ -5066,7 +5202,7 @@ function GameCard({
                 <TeamRow
                   key={`${game.id}-${team.id}`}
                   label={team.name}
-                  seed={team.seed}
+                  seed={seedLabel(team)}
                   teamName={team.name}
                   logoSrc={teamLogoUrl(team)}
                   prob={candidate.prob}
@@ -5155,7 +5291,7 @@ function GameCard({
                     }}
                     title={`Chance to advance from this game: ${(candidate.prob * 100).toFixed(1)}%`}
                   >
-                    <span className="chip-seed">{team.seed}</span>
+                    <span className="chip-seed">{seedLabel(team)}</span>
                     {showLogo ? (
                       <TeamHoverAnchor teamName={team.name} logoSrc={teamLogoUrl(team)} className="team-logo-cell">
                         <TeamLogo teamName={team.name} src={teamLogoUrl(team)} />
@@ -5275,10 +5411,10 @@ function CompactTeamRow({
   return (
     <div
       className={`compact-team-row ${isWinner ? "compact-team-row--winner" : "compact-team-row--loser"}`}
-      data-team-name={`${team.seed} ${team.name}`}
-      title={`${team.seed} ${team.name}`}
+      data-team-name={`${seedLabel(team)} ${team.name}`}
+      title={`${seedLabel(team)} ${team.name}`}
     >
-      <span className="compact-seed">{team.seed}</span>
+      <span className="compact-seed">{seedLabel(team)}</span>
       <img src={teamLogoUrl(team)} className="compact-logo" alt={team.name} loading="lazy" />
       <span className="compact-result">{isWinner ? "✓" : "✕"}</span>
     </div>
@@ -5348,7 +5484,7 @@ function ShowdownCard({
                 onClick={() => onPick(team.id)}
                 title={`Chance to advance from this game: ${(candidate.prob * 100).toFixed(1)}%`}
               >
-                <span className="eg-showdown-seed">#{team.seed}</span>
+                <span className="eg-showdown-seed">#{seedLabel(team)}</span>
                 <ShowdownTeamLogo
                   teamName={team.name}
                   src={teamLogoUrl(team)}
@@ -5406,7 +5542,7 @@ function TeamRow({
   onPick,
 }: {
   label: string;
-  seed: number | null;
+  seed: string | number | null;
   teamName: string | null;
   logoSrc: string | null;
   prob: number | null;
@@ -5467,7 +5603,7 @@ function TeamRow({
       onTouchCancel={clearLongPress}
       title={tooltip}
     >
-      <span className="team-seed" aria-label={seed !== null ? `Seed ${seed}` : "Seed unavailable"}>
+      <span className="team-seed" aria-label={seed !== null ? `Seed ${String(seed)}` : "Seed unavailable"}>
         {seed !== null ? seed : "--"}
       </span>
       {teamName && logoSrc ? (
@@ -5763,6 +5899,59 @@ function TeamHoverAnchor({
   );
 }
 
+function MatchupStatsModal({ game, onClose }: { game: ResolvedGame; onClose: () => void }) {
+  const teamA = game.teamAId ? teamsById.get(game.teamAId) ?? null : null;
+  const teamB = game.teamBId ? teamsById.get(game.teamBId) ?? null : null;
+  if (!teamA || !teamB) return null;
+
+  const statsA = TEAM_STATS_2026[teamA.name] ?? null;
+  const statsB = TEAM_STATS_2026[teamB.name] ?? null;
+
+  return (
+    <div className="matchup-stats-overlay" onClick={onClose}>
+      <div className="matchup-stats-modal" onClick={(event) => event.stopPropagation()}>
+        <div className="matchup-stats-head">
+          <h3>Matchup Stats</h3>
+          <button className="matchup-stats-close" onClick={onClose} aria-label="Close matchup stats">
+            ✕
+          </button>
+        </div>
+        <p className="matchup-stats-sub">
+          {seedLabel(teamA)} {teamA.name} vs {seedLabel(teamB)} {teamB.name}
+        </p>
+        <div className="matchup-stats-table-wrap">
+          <table className="matchup-stats-table">
+            <thead>
+              <tr>
+                <th>Stat</th>
+                <th>{teamA.name}</th>
+                <th>{teamB.name}</th>
+                <th>Difference</th>
+                <th>Importance %</th>
+              </tr>
+            </thead>
+            <tbody>
+              {TEAM_STAT_ORDER.map((key) => {
+                const aValue = statsA?.[key] ?? null;
+                const bValue = statsB?.[key] ?? null;
+                return (
+                  <tr key={key}>
+                    <td>{TEAM_STAT_LABELS[key]}</td>
+                    <td>{formatStatValue(aValue)}</td>
+                    <td>{formatStatValue(bValue)}</td>
+                    <td>{differenceForStat(teamA.name, aValue, teamB.name, bValue, key)}</td>
+                    <td>{TEAM_STAT_IMPORTANCE[key]}</td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function ProbabilityPopup({
   matchup,
   anchorEl,
@@ -5832,7 +6021,7 @@ function ProbabilityPopup({
         </button>
       </div>
       <div className="prob-popup-team">
-        <span className="prob-popup-team-name">{teamA.seed} {teamA.name}</span>
+        <span className="prob-popup-team-name">{seedLabel(teamA)} {teamA.name}</span>
         <span className="prob-popup-pct">{Math.round(probA)}%</span>
       </div>
       <div className="prob-popup-slider-wrap">
@@ -5854,7 +6043,7 @@ function ProbabilityPopup({
         />
       </div>
       <div className="prob-popup-team prob-popup-team--b">
-        <span className="prob-popup-team-name">{teamB.seed} {teamB.name}</span>
+        <span className="prob-popup-team-name">{seedLabel(teamB)} {teamB.name}</span>
         <span className="prob-popup-pct">{100 - Math.round(probA)}%</span>
       </div>
       <div className="prob-popup-baseline">
