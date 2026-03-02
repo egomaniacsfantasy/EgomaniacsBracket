@@ -520,6 +520,7 @@ function App() {
   const [showCompletionCelebration, setShowCompletionCelebration] = useState(false);
   const [completionCelebrationData, setCompletionCelebrationData] = useState<CompletionCelebrationData | null>(null);
   const [statsModalGameId, setStatsModalGameId] = useState<string | null>(null);
+  const [showFirstFourModal, setShowFirstFourModal] = useState(false);
   const [staggeredChaosTotal, setStaggeredChaosTotal] = useState(0);
   const [staggeredLastGameChaos, setStaggeredLastGameChaos] = useState<number | null>(null);
   const [staggeredLastGameLabel, setStaggeredLastGameLabel] = useState("");
@@ -554,6 +555,7 @@ function App() {
   const copyLinkTimerRef = useRef<number | null>(null);
   const saveStatusTimerRef = useRef<number | null>(null);
   const promoCTATimerRef = useRef<number | null>(null);
+  const firstFourAutoShownRef = useRef(false);
   const shareToastTimerRef = useRef<number | null>(null);
   const shareStoryRef = useRef<HTMLDivElement | null>(null);
   const shareTwitterRef = useRef<HTMLDivElement | null>(null);
@@ -2215,6 +2217,13 @@ function App() {
   }, [topHalfVisuallyCollapsed, bottomHalfVisuallyCollapsed]);
 
   const finalGames = finalRounds(games);
+  const playInGames = useMemo(() => games.filter((game) => game.round === "FF"), [games]);
+  const decidedPlayInCount = useMemo(
+    () => playInGames.filter((game) => Boolean(game.winnerId)).length,
+    [playInGames]
+  );
+  const allPlayInDecided = playInGames.length === 0 || decidedPlayInCount === playInGames.length;
+  const onboardingFlowReady = isMobile ? !showDesktopFirst && !mobileOnboardingOpen : !welcomeGateOpen && !walkthroughActive;
   const leftSemi = finalGames.find((g) => g.id === "F4-Left-0") ?? null;
   const rightSemi = finalGames.find((g) => g.id === "F4-Right-0") ?? null;
   const titleGame = finalGames.find((g) => g.id === "CHAMP-0") ?? null;
@@ -2242,6 +2251,17 @@ function App() {
         };
       });
   }, [displayMode, pickCount, preTournamentBaseline.futures, simResult.futures]);
+
+  useEffect(() => {
+    if (!onboardingFlowReady || allPlayInDecided || firstFourAutoShownRef.current) return;
+    setShowFirstFourModal(true);
+    firstFourAutoShownRef.current = true;
+  }, [allPlayInDecided, onboardingFlowReady]);
+
+  useEffect(() => {
+    if (!showFirstFourModal) return;
+    if (allPlayInDecided) setShowFirstFourModal(false);
+  }, [allPlayInDecided, showFirstFourModal]);
 
   useEffect(() => {
     if (mobileSection === "FF") return;
@@ -2637,6 +2657,15 @@ function App() {
               ? (saveErrorText?.includes("Maximum of 25") ? "Maximum of 25 brackets per user" : "Error — try again")
               : "Save Bracket"}
       </button>
+      {playInGames.length > 0 ? (
+        <button
+          onClick={() => setShowFirstFourModal(true)}
+          className="eg-btn toolbar-btn--firstfour"
+          style={!isMobile && mainView === "leaderboard" ? { display: "none" } : undefined}
+        >
+          First Four {allPlayInDecided ? "✓" : `(${decidedPlayInCount}/${playInGames.length})`}
+        </button>
+      ) : null}
       {isAuthenticated ? (
         <button
           onClick={() => setMyBracketsOpen(true)}
@@ -3228,12 +3257,23 @@ function App() {
                   <div className="ff-championship-section">
                     <FinalsSemifinalCard
                       game={leftSemi}
+                      regions={regionSections[0]}
+                      futuresRows={simResult.futures}
+                      displayMode={displayMode}
                       regionLabel={`${regionSections[0][0]} + ${regionSections[0][1]}`}
                       onPick={onPick}
                     />
-                    <FinalsChampionshipCard game={titleGame} onPick={onPick} />
+                    <FinalsChampionshipCard
+                      game={titleGame}
+                      futuresRows={simResult.futures}
+                      displayMode={displayMode}
+                      onPick={onPick}
+                    />
                     <FinalsSemifinalCard
                       game={rightSemi}
+                      regions={regionSections[1]}
+                      futuresRows={simResult.futures}
+                      displayMode={displayMode}
                       regionLabel={`${regionSections[1][0]} + ${regionSections[1][1]}`}
                       onPick={onPick}
                     />
@@ -3416,6 +3456,19 @@ function App() {
         <MobileOnboarding onComplete={handleMobileOnboardingComplete} />
       ) : null}
 
+      {showFirstFourModal && onboardingFlowReady ? (
+        <FirstFourModal
+          playInGames={playInGames}
+          gameWinProbs={simResult.gameWinProbs}
+          onPick={(gameId, teamId) => {
+            const playInGame = gameById.get(gameId);
+            if (!playInGame || !teamId) return;
+            onPick(playInGame, teamId);
+          }}
+          onClose={() => setShowFirstFourModal(false)}
+        />
+      ) : null}
+
       {activeHint ? (
         <ContextualHint
           message={activeHint.message}
@@ -3516,6 +3569,122 @@ function PromoCTA({
           Maybe later
         </button>
       </div>
+    </div>
+  );
+}
+
+function FirstFourModal({
+  playInGames,
+  gameWinProbs,
+  onPick,
+  onClose,
+}: {
+  playInGames: ResolvedGame[];
+  gameWinProbs: SimulationOutput["gameWinProbs"];
+  onPick: (gameId: string, teamId: string | null) => void;
+  onClose: () => void;
+}) {
+  const allDecided = playInGames.every((game) => Boolean(game.winnerId));
+  const decidedCount = playInGames.filter((game) => Boolean(game.winnerId)).length;
+
+  return (
+    <div className="ff-modal-overlay" onClick={onClose}>
+      <div className="ff-modal" onClick={(event) => event.stopPropagation()}>
+        <div className="ff-modal-header">
+          <div>
+            <h2 className="ff-modal-title">First Four</h2>
+            <p className="ff-modal-subtitle">
+              {allDecided
+                ? "All play-in games decided. These winners advance to the Round of 64."
+                : "Pick the winners of each play-in game to set the Round of 64 field."}
+            </p>
+          </div>
+          <button className="ff-modal-close" onClick={onClose}>
+            ✕
+          </button>
+        </div>
+
+        <div className="ff-modal-games">
+          {playInGames.map((game) => (
+            <FirstFourGameCard
+              key={game.id}
+              game={game}
+              gameWinProbs={gameWinProbs}
+              onPick={(teamId) => onPick(game.id, teamId)}
+            />
+          ))}
+        </div>
+
+        <div className="ff-modal-footer">
+          <button
+            className={`ff-modal-done ${allDecided ? "ff-modal-done--ready" : "ff-modal-done--partial"}`}
+            onClick={allDecided ? onClose : undefined}
+          >
+            {allDecided ? "Continue to Bracket →" : `${decidedCount}/${playInGames.length} decided`}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function FirstFourGameCard({
+  game,
+  gameWinProbs,
+  onPick,
+}: {
+  game: ResolvedGame;
+  gameWinProbs: SimulationOutput["gameWinProbs"];
+  onPick: (teamId: string) => void;
+}) {
+  const teamA = game.teamAId ? teamsById.get(game.teamAId) ?? null : null;
+  const teamB = game.teamBId ? teamsById.get(game.teamBId) ?? null : null;
+  if (!teamA || !teamB) return null;
+
+  const probA = getGameWinProb(game, teamA.id, gameWinProbs) ?? getModelGameWinProb(game, teamA.id) ?? 0.5;
+  const probB = 1 - probA;
+  const winner = game.winnerId;
+
+  return (
+    <div className="ff-game-card">
+      <div className="ff-game-header">
+        <span className="ff-game-label">PLAY-IN · {(teamA.region || "").toUpperCase()}</span>
+        <span className="ff-game-seed">Seed {seedLabel(teamA).replace(/[ab]$/i, "")}</span>
+      </div>
+
+      <div className="ff-game-matchup">
+        <button
+          type="button"
+          className={`ff-team-btn ${winner === teamA.id ? "ff-team-btn--winner" : ""} ${winner && winner !== teamA.id ? "ff-team-btn--loser" : ""}`}
+          onClick={() => onPick(teamA.id)}
+        >
+          <div className="ff-team-info">
+            <span className="ff-team-seed">{seedLabel(teamA)}</span>
+            <img src={teamLogoUrl(teamA)} className="ff-team-logo" alt="" loading="lazy" />
+            <span className="ff-team-name">{teamA.name}</span>
+          </div>
+          <span className="ff-team-pct">{(probA * 100).toFixed(1)}%</span>
+          {winner === teamA.id ? <span className="ff-team-check">✓</span> : null}
+        </button>
+
+        <span className="ff-vs">vs</span>
+
+        <button
+          type="button"
+          className={`ff-team-btn ${winner === teamB.id ? "ff-team-btn--winner" : ""} ${winner && winner !== teamB.id ? "ff-team-btn--loser" : ""}`}
+          onClick={() => onPick(teamB.id)}
+        >
+          <div className="ff-team-info">
+            <span className="ff-team-seed">{seedLabel(teamB)}</span>
+            <img src={teamLogoUrl(teamB)} className="ff-team-logo" alt="" loading="lazy" />
+            <span className="ff-team-name">{teamB.name}</span>
+          </div>
+          <span className="ff-team-pct">{(probB * 100).toFixed(1)}%</span>
+          {winner === teamB.id ? <span className="ff-team-check">✓</span> : null}
+        </button>
+      </div>
+
+      {winner ? <div className="ff-game-result">{winner === teamA.id ? teamA.name : teamB.name} advances to R64</div> : null}
     </div>
   );
 }
@@ -4743,125 +4912,116 @@ function CollapsedHalfSummary({
 
 function FinalsSemifinalCard({
   game,
+  regions,
+  futuresRows,
+  displayMode,
   regionLabel,
   onPick,
 }: {
   game: ResolvedGame | null;
+  regions: Region[];
+  futuresRows: SimulationOutput["futures"];
+  displayMode: OddsDisplayMode;
   regionLabel: string;
   onPick: (game: ResolvedGame, teamId: string | null) => void;
 }) {
-  const teamA = game?.teamAId ? teamsById.get(game.teamAId) ?? null : null;
-  const teamB = game?.teamBId ? teamsById.get(game.teamBId) ?? null : null;
-  const winnerId = game?.winnerId ?? null;
-
-  const renderTeam = (team: NonNullable<typeof teamA>) => {
-    const selected = winnerId === team.id;
-    const lost = Boolean(winnerId && winnerId !== team.id);
-    return (
-      <button
-        type="button"
-        className={`ff-semifinal-team ${selected ? "ff-semifinal-team--winner" : ""} ${lost ? "ff-semifinal-team--loser" : ""}`}
-        onClick={() => {
-          if (!game) return;
-          onPick(game, team.id);
-        }}
-      >
-        <span className="ff-semifinal-seed">#{seedLabel(team)}</span>
-        <TeamLogo teamName={team.name} src={teamLogoUrl(team)} className="ff-semifinal-logo" />
-        <span className="ff-semifinal-name">{team.name}</span>
-      </button>
-    );
-  };
+  const futuresByTeamId = useMemo(() => new Map(futuresRows.map((row) => [row.teamId, row])), [futuresRows]);
+  const ranked = useMemo(
+    () =>
+      Array.from(teamsById.values())
+        .filter((team) => regions.includes(team.region))
+        .map((team) => ({
+          team,
+          prob: futuresByTeamId.get(team.id)?.final4Prob ?? 0,
+        }))
+        .sort((a, b) => (b.prob !== a.prob ? b.prob - a.prob : a.team.seed - b.team.seed)),
+    [futuresByTeamId, regions]
+  );
 
   return (
-    <div className="ff-semifinal-card">
-      <div className="ff-semifinal-header">Semifinal</div>
-      <div className="ff-semifinal-matchup">
-        {teamA ? renderTeam(teamA) : <div className="ff-semifinal-team ff-semifinal-team--placeholder">TBD</div>}
-        <span className="ff-semifinal-vs">VS</span>
-        {teamB ? renderTeam(teamB) : <div className="ff-semifinal-team ff-semifinal-team--placeholder">TBD</div>}
+    <div className="ff-semifinal-card semifinal-panel">
+      <div className="semifinal-header">
+        <span className="semifinal-label">Semifinal</span>
+        <span className="semifinal-regions">{regionLabel}</span>
       </div>
-      <div className="ff-semifinal-label">{regionLabel}</div>
+      <div className="semifinal-rankings">
+        {ranked.map(({ team, prob }) => {
+          const inMatchup = Boolean(game && (team.id === game.teamAId || team.id === game.teamBId));
+          const selected = game?.winnerId === team.id;
+          const lost = Boolean(game?.winnerId && inMatchup && !selected);
+          return (
+            <button
+              key={team.id}
+              type="button"
+              className={`semifinal-team-row ${inMatchup ? "semifinal-team-row--active" : ""} ${selected ? "semifinal-team-row--winner" : ""} ${lost ? "semifinal-team-row--loser" : ""}`}
+              onClick={() => {
+                if (!game || !inMatchup) return;
+                onPick(game, team.id);
+              }}
+            >
+              <span className="sf-seed">{seedLabel(team)}</span>
+              <img src={teamLogoUrl(team)} className="sf-logo" alt="" loading="lazy" />
+              <span className="sf-name">{abbreviationForTeam(team.name)}</span>
+              <span className="sf-pct">{formatOddsDisplay(prob, displayMode).primary}</span>
+            </button>
+          );
+        })}
+      </div>
     </div>
   );
 }
 
 function FinalsChampionshipCard({
   game,
+  futuresRows,
+  displayMode,
   onPick,
 }: {
   game: ResolvedGame | null;
+  futuresRows: SimulationOutput["futures"];
+  displayMode: OddsDisplayMode;
   onPick: (game: ResolvedGame, teamId: string | null) => void;
 }) {
-  const teamA = game?.teamAId ? teamsById.get(game.teamAId) ?? null : null;
-  const teamB = game?.teamBId ? teamsById.get(game.teamBId) ?? null : null;
-  const winnerId = game?.winnerId ?? null;
-  const hasPick = Boolean(winnerId);
-  const teamAWon = winnerId === teamA?.id;
-  const teamBWon = winnerId === teamB?.id;
+  const futuresByTeamId = useMemo(() => new Map(futuresRows.map((row) => [row.teamId, row])), [futuresRows]);
+  const ranked = useMemo(
+    () =>
+      Array.from(teamsById.values())
+        .map((team) => ({
+          team,
+          prob: futuresByTeamId.get(team.id)?.champProb ?? 0,
+        }))
+        .sort((a, b) => (b.prob !== a.prob ? b.prob - a.prob : a.team.seed - b.team.seed)),
+    [futuresByTeamId]
+  );
 
   return (
-    <div className="championship-container">
+    <div className="championship-container championship-panel">
       <div className="championship-header">
         <span className="championship-trophy">🏆</span>
         <span className="championship-label">National Championship</span>
       </div>
-      <div className="championship-matchup">
-        <div
-          className={`championship-team-card ${hasPick ? (teamAWon ? "championship-team-card--winner" : "championship-team-card--loser") : ""}`}
-          onClick={() => {
-            if (!game || !teamA) return;
-            onPick(game, teamA.id);
-          }}
-        >
-          <span className="championship-seed">{teamA ? `#${teamA.seed}` : <span className="championship-tbd">TBD</span>}</span>
-          {teamA ? (
-            <TeamLogo teamName={teamA.name} src={teamLogoUrl(teamA)} className="championship-logo" />
-          ) : (
-            <span className="team-logo team-logo-placeholder championship-logo" aria-hidden="true" />
-          )}
-          <span className="championship-team-name">{teamA?.name ?? "TBD"}</span>
-          {hasPick && teamAWon ? (
-            <div className="championship-result championship-result--winner">
-              <span>✓ NCAA Champion</span>
-              <span className="championship-badge">NCAA CHAMPION</span>
-            </div>
-          ) : null}
-          {hasPick && !teamAWon ? (
-            <div className="championship-result championship-result--loser">
-              <span>✗ Runner-up</span>
-            </div>
-          ) : null}
-        </div>
-
-        <span className="championship-vs">vs</span>
-
-        <div
-          className={`championship-team-card ${hasPick ? (teamBWon ? "championship-team-card--winner" : "championship-team-card--loser") : ""}`}
-          onClick={() => {
-            if (!game || !teamB) return;
-            onPick(game, teamB.id);
-          }}
-        >
-          <span className="championship-seed">{teamB ? `#${teamB.seed}` : <span className="championship-tbd">TBD</span>}</span>
-          {teamB ? (
-            <TeamLogo teamName={teamB.name} src={teamLogoUrl(teamB)} className="championship-logo" />
-          ) : (
-            <span className="team-logo team-logo-placeholder championship-logo" aria-hidden="true" />
-          )}
-          <span className="championship-team-name">{teamB?.name ?? "TBD"}</span>
-          {hasPick && teamBWon ? (
-            <div className="championship-result championship-result--winner">
-              <span>✓ NCAA Champion</span>
-              <span className="championship-badge">NCAA CHAMPION</span>
-            </div>
-          ) : null}
-          {hasPick && !teamBWon ? (
-            <div className="championship-result championship-result--loser">
-              <span>✗ Runner-up</span>
-            </div>
-          ) : null}
-        </div>
+      <div className="championship-rankings">
+        {ranked.map(({ team, prob }) => {
+          const inMatchup = Boolean(game && (team.id === game.teamAId || team.id === game.teamBId));
+          const selected = game?.winnerId === team.id;
+          const lost = Boolean(game?.winnerId && inMatchup && !selected);
+          return (
+            <button
+              key={team.id}
+              type="button"
+              className={`championship-team-row ${inMatchup ? "championship-team-row--active" : ""} ${selected ? "championship-team-row--winner" : ""} ${lost ? "championship-team-row--loser" : ""}`}
+              onClick={() => {
+                if (!game || !inMatchup) return;
+                onPick(game, team.id);
+              }}
+            >
+              <span className="champ-seed">{seedLabel(team)}</span>
+              <img src={teamLogoUrl(team)} className="champ-logo" alt="" loading="lazy" />
+              <span className="champ-name">{abbreviationForTeam(team.name)}</span>
+              <span className="champ-pct">{formatOddsDisplay(prob, displayMode).primary}</span>
+            </button>
+          );
+        })}
       </div>
     </div>
   );
@@ -5200,13 +5360,6 @@ function GameCard({
           ⓘ
         </button>
       ) : null}
-      {playInAttachment ? (
-        <FirstFourChip
-          playInGame={playInAttachment.ffGame}
-          gameWinProbs={gameWinProbs}
-          onPick={(winnerId) => onPick(playInAttachment.ffGame, winnerId)}
-        />
-      ) : null}
       <div className="eg-game-list">
         {useShowdownCard ? (
           <ShowdownCard
@@ -5261,14 +5414,21 @@ function GameCard({
               if (ffPending && feedSide && playInAttachment) {
                 const oppositeTeamId = feedSide === "A" ? game.teamBId : game.teamAId;
                 const oppositeRow = oppositeTeamId ? rowById.get(oppositeTeamId) : undefined;
-                const pendingSeedTeamId = playInAttachment.ffGame.teamAId ?? playInAttachment.ffGame.teamBId;
-                const pendingSeedTeam = pendingSeedTeamId ? teamsById.get(pendingSeedTeamId) ?? null : null;
-                const pendingSeed = pendingSeedTeam ? seedLabel(pendingSeedTeam).replace(/[ab]$/i, "") : "--";
+                const pendingTeamA = playInAttachment.ffGame.teamAId ? teamsById.get(playInAttachment.ffGame.teamAId) ?? null : null;
+                const pendingTeamB = playInAttachment.ffGame.teamBId ? teamsById.get(playInAttachment.ffGame.teamBId) ?? null : null;
+                const pendingSeed = (pendingTeamA ? seedLabel(pendingTeamA) : pendingTeamB ? seedLabel(pendingTeamB) : "--").replace(
+                  /[ab]$/i,
+                  ""
+                );
+                const pendingText =
+                  pendingTeamA && pendingTeamB
+                    ? `${abbreviationForTeam(pendingTeamA.name)} / ${abbreviationForTeam(pendingTeamB.name)}`
+                    : "TBD / TBD";
                 const pendingRow = (
-                  <div key={`${game.id}-pending-playin`} className="eg-team-row bracket-team-row--pending">
+                  <div key={`${game.id}-pending-playin`} className="eg-team-row bracket-team-row--playin-pending">
                     <span className="team-seed">{pendingSeed}</span>
                     <span className="team-name-wrap">
-                      <span className="team-name pending-label">Play-in winner</span>
+                      <span className="team-name">{pendingText}</span>
                     </span>
                     <span className="team-odds-wrap">
                       <span className="team-odds">---%</span>
@@ -5455,77 +5615,6 @@ function GameCard({
         </div>
       ) : null}
     </article>
-  );
-}
-
-function FirstFourChip({
-  playInGame,
-  gameWinProbs,
-  onPick,
-}: {
-  playInGame: ResolvedGame;
-  gameWinProbs: SimulationOutput["gameWinProbs"];
-  onPick: (winnerId: string | null) => void;
-}) {
-  const teamA = playInGame.teamAId ? teamsById.get(playInGame.teamAId) ?? null : null;
-  const teamB = playInGame.teamBId ? teamsById.get(playInGame.teamBId) ?? null : null;
-  if (!teamA || !teamB) return null;
-
-  const winner = playInGame.winnerId;
-  const isDecided = Boolean(winner);
-  const probA = Math.round((getGameWinProb(playInGame, teamA.id, gameWinProbs) ?? 0) * 100);
-  const probB = Math.round((getGameWinProb(playInGame, teamB.id, gameWinProbs) ?? 0) * 100);
-
-  if (isDecided) {
-    return (
-      <div className="f4-chip f4-chip--decided">
-        <span className="f4-chip-label">Play-in:</span>
-        <span className="f4-chip-winner">{winner === teamA.id ? teamA.name : teamB.name} ✓</span>
-        <button
-          type="button"
-          className="f4-chip-edit"
-          onClick={(event) => {
-            event.stopPropagation();
-            onPick(null);
-          }}
-        >
-          change
-        </button>
-      </div>
-    );
-  }
-
-  return (
-    <div className="f4-chip f4-chip--open">
-      <span className="f4-chip-label">Play-in</span>
-      <div className="f4-chip-matchup">
-        <button
-          type="button"
-          className="f4-chip-team"
-          onClick={(event) => {
-            event.stopPropagation();
-            onPick(teamA.id);
-          }}
-        >
-          <span className="f4-chip-seed">{seedLabel(teamA)}</span>
-          <span className="f4-chip-name">{abbreviationForTeam(teamA.name)}</span>
-          <span className="f4-chip-pct">{probA}%</span>
-        </button>
-        <span className="f4-chip-vs">/</span>
-        <button
-          type="button"
-          className="f4-chip-team"
-          onClick={(event) => {
-            event.stopPropagation();
-            onPick(teamB.id);
-          }}
-        >
-          <span className="f4-chip-seed">{seedLabel(teamB)}</span>
-          <span className="f4-chip-name">{abbreviationForTeam(teamB.name)}</span>
-          <span className="f4-chip-pct">{probB}%</span>
-        </button>
-      </div>
-    </div>
   );
 }
 
