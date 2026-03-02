@@ -2607,25 +2607,27 @@ function App() {
         >
           <button
             type="button"
-            className="chaos-score-pill"
+            className="chaos-badge"
             title={`Chaos Score: ${chaosScore.toFixed(1)} across ${pickCount} games. Higher = more unlikely bracket.`}
             onClick={onChaosPillTap}
           >
-            <span className="chaos-score-value" style={{ color: getChaosColor(chaosScore, pickCount) }}>
-              {chaosScore.toFixed(1)}
+            <span className="chaos-badge-top">
+              <span className="chaos-badge-emoji">{getChaosLabel(chaosScore, pickCount)?.emoji ?? "📋"}</span>
+              <span className="chaos-badge-label">{getChaosLabel(chaosScore, pickCount)?.label ?? "Chalk"}</span>
             </span>
-            <span className="chaos-score-label">
-              {(getChaosLabel(chaosScore, pickCount)?.emoji ?? "📋")} {(getChaosLabel(chaosScore, pickCount)?.label ?? "Chalk")}
+            <span className="chaos-badge-bottom">
+              <span className="chaos-badge-score">{chaosScore.toFixed(1)}</span>
+              {chaosPercentile !== null ? (
+                <>
+                  <span className="chaos-badge-dot">·</span>
+                  <span className="chaos-badge-pct">Top {Math.max(1, Math.round(100 - chaosPercentile))}%</span>
+                </>
+              ) : null}
             </span>
           </button>
           {isMobile && chaosTooltipVisible ? (
             <span className="chaos-score-tooltip">
               Chaos Score sums -ln(model win probability) for picked winners. Higher = more unlikely.
-            </span>
-          ) : null}
-          {chaosPercentile !== null ? (
-            <span className="chaos-score-percentile">
-              {`${Math.round(chaosPercentile)}th percentile (Top ${Math.max(1, Math.round(100 - chaosPercentile))}%)`}
             </span>
           ) : null}
         </div>
@@ -2846,7 +2848,6 @@ function App() {
             </a>
             <div className="og-top-nav-tabs">
               <a className="og-top-nav-link active" href={BRACKET_URL} aria-current="page">
-                The Bracket Lab
                 <span className="beta-badge">BETA</span>
               </a>
             </div>
@@ -2871,7 +2872,8 @@ function App() {
             <a className="og-mobile-logo-link" href={LANDING_URL} aria-label="Odds Gods home">
               <img className="nav-logo-icon" src="/logo-icon.png?v=20260225" alt="Odds Gods" />
             </a>
-            <span className="nav-product-title">The Bracket Lab</span>
+            <span className="nav-product-title">ODDS GODS</span>
+            <span className="beta-badge">BETA</span>
             {isAuthenticated ? (
               <button className="nav-signout-btn nav-signout-btn--mobile" onClick={() => signOut()}>
                 Out

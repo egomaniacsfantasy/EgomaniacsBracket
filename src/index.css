@@ -6167,36 +6167,66 @@ body.walkthrough-active .eg-title-choice:hover {
 .chaos-score-wrap {
   position: relative;
   display: inline-flex;
-  align-items: center;
-  gap: 6px;
+  align-items: flex-start;
 }
 
-.chaos-score-pill {
+.chaos-badge {
   display: inline-flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 6px 14px;
+  background: rgba(184, 125, 24, 0.06);
+  border: 1px solid rgba(184, 125, 24, 0.18);
+  border-radius: 8px;
+  line-height: 1;
+  cursor: default;
+  text-align: left;
+  transition: border-color 300ms ease-out, background 300ms ease-out;
+}
+
+.chaos-badge-top {
+  display: flex;
   align-items: center;
   gap: 6px;
-  padding: 6px 14px;
-  border-radius: 100px;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  background: rgba(255, 255, 255, 0.04);
-  cursor: default;
-  white-space: nowrap;
-  transition: border-color 300ms ease-out;
 }
 
-.chaos-score-value {
+.chaos-badge-emoji {
+  font-size: 14px;
+  line-height: 1;
+}
+
+.chaos-badge-label {
   font-family: var(--font-mono);
-  font-size: 13px;
+  font-size: 11px;
   font-weight: 700;
-  transition: color 300ms ease-out;
+  letter-spacing: 0.08em;
+  color: var(--text-amber);
+  text-transform: uppercase;
 }
 
-.chaos-score-label {
+.chaos-badge-bottom {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding-left: 20px;
+}
+
+.chaos-badge-score {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+.chaos-badge-dot {
+  font-size: 10px;
+  color: var(--text-tertiary);
+}
+
+.chaos-badge-pct {
   font-family: var(--font-mono);
   font-size: 10px;
   color: var(--text-tertiary);
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
 }
 
 @keyframes chaosFlash {
@@ -6211,7 +6241,7 @@ body.walkthrough-active .eg-title-choice:hover {
   }
 }
 
-.chaos-score-pill--changed .chaos-score-pill {
+.chaos-score-pill--changed .chaos-badge {
   animation: chaosFlash 300ms ease-out;
 }
 
@@ -6233,12 +6263,23 @@ body.walkthrough-active .eg-title-choice:hover {
   animation: tooltipIn 150ms ease-out;
 }
 
-.chaos-score-percentile {
-  font-family: var(--font-mono);
-  font-size: 10px;
-  letter-spacing: 0.04em;
-  color: rgba(184, 125, 24, 0.9);
-  white-space: nowrap;
+@media (max-width: 767px) {
+  .chaos-badge {
+    padding: 5px 10px;
+  }
+
+  .chaos-badge-label {
+    font-size: 10px;
+  }
+
+  .chaos-badge-bottom {
+    padding-left: 18px;
+  }
+
+  .chaos-badge-score,
+  .chaos-badge-pct {
+    font-size: 9px;
+  }
 }
 
 .chaos-tracker-bar {
