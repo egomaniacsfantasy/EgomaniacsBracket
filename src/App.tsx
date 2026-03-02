@@ -214,7 +214,7 @@ type CandidateRow = { teamId: string; prob: number; team: NonNullable<ReturnType
 const MAJOR_SHIFT_NUDGE_COOLDOWN = 3;
 type WalkthroughStepId = "make-pick" | "watch-reprice" | "see-futures" | "edit-odds" | "ready";
 type WalkthroughStepAdvance = "pick-detected" | "button-click";
-type TooltipPlacement = "above" | "below" | "left" | "right";
+type TooltipPlacement = "above" | "below" | "left" | "right" | "bottom-sheet";
 type HintKey = "undo" | "sim" | "toggle" | "r32";
 type HintsShown = Record<HintKey, boolean>;
 type ActiveHint = {
@@ -548,11 +548,6 @@ function App() {
     () => (walkthroughMatchupId ? games.find((game) => game.id === walkthroughMatchupId) ?? null : null),
     [games, walkthroughMatchupId]
   );
-  const walkthroughUnderdog = useMemo(() => {
-    if (!walkthroughMatchup || !walkthroughMatchup.teamAId || !walkthroughMatchup.teamBId) return null;
-    const probA = getModelGameWinProb(walkthroughMatchup, walkthroughMatchup.teamAId) ?? 0.5;
-    return probA >= 0.5 ? teamsById.get(walkthroughMatchup.teamBId) ?? null : teamsById.get(walkthroughMatchup.teamAId) ?? null;
-  }, [walkthroughMatchup]);
   const walkthroughPickMade = Boolean(walkthroughMatchupId && sanitized[walkthroughMatchupId]);
 
   const selectOnboardingMatchupId = (): string | null => {
@@ -719,7 +714,7 @@ function App() {
       setPromoCTAVisible(true);
       setPromoShown(true);
       promoCTATimerRef.current = null;
-    }, 600);
+    }, 800);
   };
 
   const handlePromoDismiss = () => {
@@ -755,22 +750,39 @@ function App() {
     trackEvent("onboarding_started", {
       replay: Boolean(opts?.replay),
     });
+    const targetMatchupId = selectOnboardingMatchupId();
     if (opts?.replay) {
       window.localStorage.setItem(ONBOARDING_STORAGE_KEY, "false");
       setHintsShown(DEFAULT_HINTS_SHOWN);
-      if (Object.keys(lockedPicks).length > 0 || Object.keys(customProbByGame).length > 0) {
-        onResetAll();
+      // Replay keeps the bracket state, but resets the Step 1 matchup only.
+      if (targetMatchupId && lockedPicks[targetMatchupId]) {
+        const nextLocks = { ...lockedPicks };
+        delete nextLocks[targetMatchupId];
+        applyLockedPicksUpdate(nextLocks);
       }
+      if (sidePanelOpen) setSidePanelOpen(false);
       window.scrollTo({ top: 0, behavior: "smooth" });
+      window.setTimeout(() => {
+        setWelcomeGateOpen(false);
+        setWalkthroughStep(0);
+        setWalkthroughTargetEl(null);
+        setWalkthroughTargetRect(null);
+        setWalkthroughFirstPickedTeamId(null);
+        setWalkthroughMatchupId(targetMatchupId);
+        setWalkthroughActive(true);
+      }, sidePanelOpen ? 350 : 0);
+      return;
     }
     setWelcomeGateOpen(false);
     setWalkthroughStep(0);
     setWalkthroughTargetEl(null);
     setWalkthroughTargetRect(null);
     setWalkthroughFirstPickedTeamId(null);
-    setWalkthroughMatchupId(selectOnboardingMatchupId());
+    setWalkthroughMatchupId(targetMatchupId);
     setWalkthroughActive(true);
   };
+
+  const replayIntro = () => startWalkthrough({ replay: true });
 
   const showContextualHint = (key: HintKey, message: string, selector: string, durationMs: number) => {
     if (hintsShown[key]) return;
@@ -2116,11 +2128,11 @@ function App() {
   const walkthroughDisplayStep = useMemo(() => {
     if (!currentWalkthroughStep) return null;
 
-    if (currentWalkthroughStep.id === "make-pick" && walkthroughUnderdog) {
+    if (currentWalkthroughStep.id === "make-pick") {
       return {
         ...currentWalkthroughStep,
-        heading: "Pick the upset",
-        body: `Tap the underdog to see what happens. Pick #${walkthroughUnderdog.seed} ${walkthroughUnderdog.name} — watch the entire bracket react.`,
+        heading: "Make your first pick",
+        body: "Tap either team to lock in a pick. Watch every number across the bracket update instantly.",
       };
     }
 
@@ -2139,7 +2151,7 @@ function App() {
     }
 
     return currentWalkthroughStep;
-  }, [currentWalkthroughStep, walkthroughUnderdog]);
+  }, [currentWalkthroughStep]);
   const walkthroughCtaDisabled = currentWalkthroughStep?.id === "make-pick" && !walkthroughPickMade;
   const walkthroughCtaLabel =
     currentWalkthroughStep?.id === "make-pick" && !walkthroughPickMade
@@ -2161,9 +2173,13 @@ function App() {
       const southRegion = resolveSouthRegion();
       switch (currentWalkthroughStep.id) {
         case "make-pick": {
+          const bySeeds = document.querySelector<HTMLElement>('[data-seeds="3-14"], [data-seeds="14-3"]');
+          if (isMobile && bySeeds) return bySeeds;
           if (walkthroughMatchupId) {
             const byId = document.querySelector<HTMLElement>(`.eg-game-card[data-game-id="${walkthroughMatchupId}"]`);
             if (byId) return byId;
+            const mobileById = document.querySelector<HTMLElement>(`.m-card[data-game-id="${walkthroughMatchupId}"]`);
+            if (mobileById) return mobileById;
           }
           if (isMobile) {
             return document.querySelector<HTMLElement>(".mobile-matchup-card, .m-card, .mobile-matchup-full");
@@ -2211,7 +2227,11 @@ function App() {
             return document.querySelector<HTMLElement>(".m-edit-prob-btn");
           }
           const r64Cards = southRegion?.querySelectorAll<HTMLElement>(".eg-game-card.round-r64");
-          return r64Cards?.[1]?.querySelector<HTMLElement>(".matchup-edit-icon") ?? r64Cards?.[0]?.querySelector<HTMLElement>(".matchup-edit-icon") ?? null;
+          const iconTarget =
+            r64Cards?.[1]?.querySelector<HTMLElement>(".matchup-edit-icon") ??
+            r64Cards?.[0]?.querySelector<HTMLElement>(".matchup-edit-icon") ??
+            null;
+          return iconTarget?.closest<HTMLElement>(".eg-game-card") ?? null;
         }
         case "ready":
           return document.querySelector<HTMLElement>(".eg-main-actions.toolbar");
@@ -2282,24 +2302,24 @@ function App() {
   useEffect(() => {
     if (!walkthroughActive || !walkthroughTargetEl) return;
     let raf = 0;
-    let debounceTimer: number | null = null;
     const update = () => {
       if (!walkthroughTargetEl) return;
       setWalkthroughTargetRect(walkthroughTargetEl.getBoundingClientRect());
     };
-    const onScrollOrResize = () => {
-      if (debounceTimer !== null) window.clearTimeout(debounceTimer);
-      debounceTimer = window.setTimeout(() => {
-        raf = window.requestAnimationFrame(update);
-      }, 100);
+    const schedule = () => {
+      if (raf) window.cancelAnimationFrame(raf);
+      raf = window.requestAnimationFrame(update);
     };
-    window.addEventListener("scroll", onScrollOrResize, true);
-    window.addEventListener("resize", onScrollOrResize);
-    onScrollOrResize();
+    const resizeObserver = new ResizeObserver(() => schedule());
+    resizeObserver.observe(document.documentElement);
+    resizeObserver.observe(walkthroughTargetEl);
+    window.addEventListener("scroll", schedule, true);
+    window.addEventListener("resize", schedule);
+    schedule();
     return () => {
-      window.removeEventListener("scroll", onScrollOrResize, true);
-      window.removeEventListener("resize", onScrollOrResize);
-      if (debounceTimer !== null) window.clearTimeout(debounceTimer);
+      resizeObserver.disconnect();
+      window.removeEventListener("scroll", schedule, true);
+      window.removeEventListener("resize", schedule);
       if (raf) window.cancelAnimationFrame(raf);
     };
   }, [walkthroughActive, walkthroughTargetEl]);
@@ -2329,6 +2349,10 @@ function App() {
 
   useEffect(() => {
     if (!walkthroughActive || !walkthroughTargetRect) return;
+    if (isMobile) {
+      setTooltipPlacement("below");
+      return;
+    }
     const vw = window.innerWidth;
     const vh = window.innerHeight;
     const rect = walkthroughTargetRect;
@@ -2364,13 +2388,52 @@ function App() {
   }, [walkthroughActive]);
 
   useEffect(() => {
-    if (walkthroughActive) {
-      document.body.classList.add("walkthrough-active");
+    const inWalkthroughSession = welcomeGateOpen || walkthroughActive;
+    if (!inWalkthroughSession) return;
+    const handleWalkthroughKeydown = (event: KeyboardEvent) => {
+      if (event.key !== "Escape") return;
+      event.preventDefault();
+      skipWalkthrough();
+    };
+    document.addEventListener("keydown", handleWalkthroughKeydown);
+    return () => document.removeEventListener("keydown", handleWalkthroughKeydown);
+  }, [welcomeGateOpen, walkthroughActive, skipWalkthrough]);
+
+  useEffect(() => {
+    if (welcomeGateOpen) {
+      document.body.classList.add("og-onboarding-open");
     } else {
-      document.body.classList.remove("walkthrough-active");
+      document.body.classList.remove("og-onboarding-open");
     }
-    return () => document.body.classList.remove("walkthrough-active");
+    return () => document.body.classList.remove("og-onboarding-open");
+  }, [welcomeGateOpen]);
+
+  useEffect(() => {
+    if (!walkthroughActive) {
+      const topValue = Math.abs(parseInt(document.body.style.top || "0", 10));
+      document.body.classList.remove("walkthrough-active");
+      document.body.style.top = "";
+      if (topValue > 0) window.scrollTo(0, topValue);
+      return;
+    }
+    const scrollY = window.scrollY;
+    document.body.style.top = `-${scrollY}px`;
+    document.body.classList.add("walkthrough-active");
+    return () => {
+      const topValue = Math.abs(parseInt(document.body.style.top || "0", 10));
+      document.body.classList.remove("walkthrough-active");
+      document.body.style.top = "";
+      window.scrollTo(0, topValue);
+    };
   }, [walkthroughActive]);
+
+  useEffect(() => {
+    document.body.classList.remove("walkthrough-step-make-pick");
+    if (walkthroughActive && currentWalkthroughStep?.id === "make-pick") {
+      document.body.classList.add("walkthrough-step-make-pick");
+    }
+    return () => document.body.classList.remove("walkthrough-step-make-pick");
+  }, [walkthroughActive, currentWalkthroughStep?.id]);
 
   useEffect(() => {
     const targets = Array.from(
@@ -2698,7 +2761,7 @@ function App() {
 
         <p className="eg-setting-label">Current lock count</p>
         <p className="eg-setting-value">{Object.keys(sanitized).length} picks</p>
-        <button className="eg-mini-btn onboarding-replay-btn" onClick={() => startWalkthrough({ replay: true })}>
+        <button className="eg-mini-btn onboarding-replay-btn" onClick={replayIntro}>
           Replay Intro
         </button>
       </section>
@@ -3106,6 +3169,9 @@ function App() {
                 return;
               }
               setWalkthroughStep((prev) => Math.min(prev + 1, WALKTHROUGH_STEPS.length - 1));
+            }}
+            onBack={() => {
+              setWalkthroughStep((prev) => Math.max(0, prev - 1));
             }}
             onSkip={() => skipWalkthrough()}
           />
@@ -3980,9 +4046,10 @@ function MobileMatchupCard({
   const isEdited = game.customProbA !== null;
   const teamAOdds = formatOddsDisplay(probA / 100, displayMode).primary;
   const teamBOdds = formatOddsDisplay(probB / 100, displayMode).primary;
+  const dataSeeds = `${Math.min(teamA.seed, teamB.seed)}-${Math.max(teamA.seed, teamB.seed)}`;
 
   return (
-    <div className={`m-card ${isPicked ? "m-card--picked" : ""}`} ref={cardRef}>
+    <div className={`m-card ${isPicked ? "m-card--picked" : ""}`} ref={cardRef} data-game-id={game.id} data-seeds={dataSeeds}>
       <button
         className={`m-team ${game.winnerId === teamA.id ? "m-team--winner" : ""} ${
           game.winnerId && game.winnerId !== teamA.id ? "m-team--loser" : ""
@@ -4386,6 +4453,12 @@ function GameCard({
   const [showChaosTooltip, setShowChaosTooltip] = useState(false);
   const teamAName = game.teamAId ? teamsById.get(game.teamAId)?.name ?? "Team A" : "Team A";
   const teamBName = game.teamBId ? teamsById.get(game.teamBId)?.name ?? "Team B" : "Team B";
+  const teamASeed = game.teamAId ? teamsById.get(game.teamAId)?.seed ?? null : null;
+  const teamBSeed = game.teamBId ? teamsById.get(game.teamBId)?.seed ?? null : null;
+  const dataSeeds =
+    teamASeed !== null && teamBSeed !== null
+      ? `${Math.min(teamASeed, teamBSeed)}-${Math.max(teamASeed, teamBSeed)}`
+      : undefined;
   const modelProbA = game.teamAId ? getModelGameWinProb(game, game.teamAId) : null;
   const chaosPreview =
     game.teamAId && game.teamBId && modelProbA !== null
@@ -4410,6 +4483,7 @@ function GameCard({
       <article
         className={`eg-game-card round-${game.round.toLowerCase()} collapsed`}
         data-game-id={game.id}
+        data-seeds={dataSeeds}
         onMouseEnter={() => setShowChaosTooltip(true)}
         onMouseLeave={() => setShowChaosTooltip(false)}
       >
@@ -4463,6 +4537,7 @@ function GameCard({
     <article
       className={`eg-game-card round-${game.round.toLowerCase()}`}
       data-game-id={game.id}
+      data-seeds={dataSeeds}
       onMouseEnter={() => setShowChaosTooltip(true)}
       onMouseLeave={() => setShowChaosTooltip(false)}
     >
@@ -5369,6 +5444,7 @@ function WelcomeGate({ onStart, onSkip }: { onStart: () => void; onSkip: () => v
         <button type="button" className="wlcm-skip-btn" onClick={onSkip}>
           Skip — I&apos;ll figure it out
         </button>
+        <p className="wlcm-gate-hint">You can replay this anytime from the Futures panel → Settings.</p>
       </div>
     </div>,
     document.body
@@ -5383,6 +5459,7 @@ function SpotlightWalkthrough({
   ctaDisabled,
   ctaLabel,
   onAdvance,
+  onBack,
   onSkip,
 }: {
   step: WalkthroughStepConfig;
@@ -5392,10 +5469,14 @@ function SpotlightWalkthrough({
   ctaDisabled: boolean;
   ctaLabel: string;
   onAdvance: () => void;
+  onBack: () => void;
   onSkip: () => void;
 }) {
   const tooltipRef = useRef<HTMLDivElement | null>(null);
   const ctaRef = useRef<HTMLButtonElement | null>(null);
+  const [tooltipPlacement, setTooltipPlacement] = useState(placement);
+  const [tooltipStyle, setTooltipStyle] = useState<React.CSSProperties>({});
+  const stepLabels = ["Pick", "Reprice", "Futures", "Edit Odds", "Toolkit"];
   const padded = {
     top: Math.max(8, targetRect.top - 8),
     left: Math.max(8, targetRect.left - 8),
@@ -5413,50 +5494,100 @@ function SpotlightWalkthrough({
   }, [ctaDisabled, step.id]);
 
   useEffect(() => {
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape") {
-        event.preventDefault();
-        onSkip();
-        return;
-      }
-      if (event.key === "Enter" && document.activeElement === ctaRef.current && !ctaDisabled) {
-        event.preventDefault();
-        onAdvance();
-        return;
-      }
-      if (event.key !== "Tab" || !tooltipRef.current) return;
-      const focusables = Array.from(
-        tooltipRef.current.querySelectorAll<HTMLElement>("button, a, [tabindex]:not([tabindex='-1'])")
-      ).filter((el) => !el.hasAttribute("disabled"));
-      if (focusables.length === 0) return;
-      const first = focusables[0];
-      const last = focusables[focusables.length - 1];
-      if (!event.shiftKey && document.activeElement === last) {
+    if (!tooltipRef.current) return;
+    const tooltipEl = tooltipRef.current;
+    const focusables = Array.from(
+      tooltipEl.querySelectorAll<HTMLElement>("button, a, [href], [tabindex]:not([tabindex='-1'])")
+    ).filter((el) => !el.hasAttribute("disabled"));
+    const first = focusables[0];
+    const last = focusables[focusables.length - 1];
+    if (first) first.focus();
+    const handleTab = (event: KeyboardEvent) => {
+      if (event.key !== "Tab" || !first || !last) return;
+      if (event.shiftKey) {
+        if (document.activeElement === first) {
+          event.preventDefault();
+          last.focus();
+        }
+      } else if (document.activeElement === last) {
         event.preventDefault();
         first.focus();
-      } else if (event.shiftKey && document.activeElement === first) {
-        event.preventDefault();
-        last.focus();
       }
     };
-    document.addEventListener("keydown", onKeyDown);
-    return () => document.removeEventListener("keydown", onKeyDown);
-  }, [ctaDisabled, onAdvance, onSkip]);
+    tooltipEl.addEventListener("keydown", handleTab);
+    return () => tooltipEl.removeEventListener("keydown", handleTab);
+  }, [step.id, ctaDisabled]);
 
-  const tooltipStyle: React.CSSProperties = (() => {
-    const gap = 14;
-    const maxWidth = window.innerWidth < 768 ? Math.min(window.innerWidth * 0.9, 340) : 340;
-    const approxHeight = 220;
-    let top = padded.top + padded.height + gap;
-    let left = padded.left;
-    if (placement === "above") top = padded.top - approxHeight - gap;
-    if (placement === "left") left = padded.left - maxWidth - gap;
-    if (placement === "right") left = padded.left + padded.width + gap;
-    if (placement === "below") left = padded.left + Math.min(24, padded.width / 4);
-    left = Math.max(8, Math.min(window.innerWidth - maxWidth - 8, left));
-    top = Math.max(8, Math.min(window.innerHeight - approxHeight - 8, top));
-    return { top, left, maxWidth };
-  })();
+  useLayoutEffect(() => {
+    const tooltipEl = tooltipRef.current;
+    if (!tooltipEl) return;
+    const isMobile = window.innerWidth <= 767;
+    if (isMobile) {
+      setTooltipPlacement("bottom-sheet");
+      setTooltipStyle({
+        left: 0,
+        right: 0,
+        top: "auto",
+        bottom: 0,
+      });
+      return;
+    }
+    const MARGIN = 12;
+    const EDGE_PADDING = 8;
+    const vw = window.innerWidth;
+    const vh = window.innerHeight;
+    const tw = tooltipEl.offsetWidth;
+    const th = tooltipEl.offsetHeight;
+    let nextPlacement = placement;
+    let top = padded.top + padded.height + MARGIN;
+    let left = padded.left + Math.min(24, padded.width / 4);
+
+    if (nextPlacement === "above") {
+      top = padded.top - th - MARGIN;
+      left = padded.left;
+    } else if (nextPlacement === "left") {
+      top = padded.top;
+      left = padded.left - tw - MARGIN;
+    } else if (nextPlacement === "right") {
+      top = padded.top;
+      left = padded.left + padded.width + MARGIN;
+    }
+
+    if (top + th > vh - EDGE_PADDING) {
+      if (nextPlacement === "below") {
+        top = padded.top - th - MARGIN;
+        nextPlacement = "above";
+      } else {
+        top = vh - th - EDGE_PADDING;
+      }
+    }
+    if (top < EDGE_PADDING) top = EDGE_PADDING;
+
+    if (left + tw > vw - EDGE_PADDING) {
+      if (nextPlacement === "right") {
+        left = padded.left - tw - MARGIN;
+        nextPlacement = "left";
+      } else {
+        left = vw - tw - EDGE_PADDING;
+      }
+    }
+    if (left < EDGE_PADDING) left = EDGE_PADDING;
+
+    setTooltipPlacement(nextPlacement);
+    setTooltipStyle({ top, left });
+  }, [placement, padded.height, padded.left, padded.top, padded.width, step.id]);
+
+  useEffect(() => {
+    const tooltipEl = tooltipRef.current;
+    if (!tooltipEl) return;
+    tooltipEl.style.opacity = "0";
+    tooltipEl.style.transform = "translateY(6px) scale(0.98)";
+    const timer = window.setTimeout(() => {
+      tooltipEl.style.opacity = "1";
+      tooltipEl.style.transform = "translateY(0) scale(1)";
+    }, 180);
+    return () => window.clearTimeout(timer);
+  }, [step.id]);
 
   const viewportWidth = window.innerWidth;
   const viewportHeight = window.innerHeight;
@@ -5492,16 +5623,21 @@ function SpotlightWalkthrough({
           height: `${padded.height}px`,
         }}
       />
-      <div className={`walkthrough-tooltip placement-${placement}`} ref={tooltipRef} style={tooltipStyle}>
+      <div className={`walkthrough-tooltip placement-${tooltipPlacement}`} ref={tooltipRef} style={tooltipStyle}>
         <p className="walkthrough-step-label">STEP {stepIndex + 1} OF {WALKTHROUGH_STEPS.length}</p>
         <h3>{step.heading}</h3>
         <p>{step.body}</p>
         <div className="walkthrough-dots" aria-hidden="true">
           {WALKTHROUGH_STEPS.map((_, i) => (
-            <span key={i} className={i === stepIndex ? "active" : ""} />
+            <span key={i} className={i === stepIndex ? "active" : ""} data-label={stepLabels[i] ?? `Step ${i + 1}`} />
           ))}
         </div>
         <div className="walkthrough-actions">
+          {stepIndex > 0 ? (
+            <button type="button" className="walkthrough-skip-link walkthrough-back-btn" onClick={onBack}>
+              ← Back
+            </button>
+          ) : null}
           <button
             type="button"
             className={`walkthrough-cta-btn ${ctaDisabled ? "walkthrough-cta-btn--disabled" : ""}`}

@@ -6936,3 +6936,196 @@ body.walkthrough-active .eg-title-choice:hover {
     flex-wrap: wrap;
   }
 }
+
+/* Walkthrough hardening and UX polish */
+body.walkthrough-active {
+  overflow: hidden;
+  touch-action: none;
+}
+
+.walkthrough-shade {
+  transition:
+    top 0.35s cubic-bezier(0.4, 0, 0.2, 1),
+    left 0.35s cubic-bezier(0.4, 0, 0.2, 1),
+    width 0.35s cubic-bezier(0.4, 0, 0.2, 1),
+    height 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.walkthrough-cutout {
+  transition:
+    top 0.35s cubic-bezier(0.4, 0, 0.2, 1),
+    left 0.35s cubic-bezier(0.4, 0, 0.2, 1),
+    width 0.35s cubic-bezier(0.4, 0, 0.2, 1),
+    height 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+  width: auto;
+  max-width: none;
+  animation: walkthrough-pulse 2.2s ease-in-out infinite;
+  will-change: box-shadow, border-color;
+  transform: none;
+}
+
+.walkthrough-tooltip {
+  width: 340px;
+  max-width: min(340px, calc(100vw - 32px));
+  max-height: calc(100vh - 32px);
+  overflow-y: auto;
+  box-sizing: border-box;
+}
+
+.walkthrough-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.walkthrough-back-btn {
+  margin-right: auto;
+}
+
+.walkthrough-cta-btn {
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.walkthrough-dots span {
+  position: relative;
+  cursor: default;
+  transition: transform 0.15s, border-color 0.15s;
+}
+
+.walkthrough-dots span.active {
+  transform: scale(1.3);
+}
+
+.walkthrough-dots span[data-label]::after {
+  content: attr(data-label);
+  position: absolute;
+  bottom: calc(100% + 6px);
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgb(26, 26, 15);
+  border: 1px solid rgba(232, 220, 200, 0.2);
+  border-radius: 4px;
+  padding: 3px 7px;
+  font-size: 11px;
+  white-space: nowrap;
+  color: rgb(200, 188, 168);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.15s;
+}
+
+.walkthrough-dots span[data-label]:hover::after {
+  opacity: 1;
+}
+
+body.walkthrough-active .eg-side-panel,
+body.walkthrough-active .eg-side-panel * {
+  pointer-events: none !important;
+}
+
+body.walkthrough-step-make-pick .wt-spotlight-target .matchup-edit-icon,
+body.walkthrough-step-make-pick .wt-spotlight-target .eg-edit-odds-btn,
+body.walkthrough-step-make-pick .wt-spotlight-target .m-edit-prob-btn {
+  pointer-events: none !important;
+  opacity: 0.3 !important;
+}
+
+body.walkthrough-step-make-pick .wt-spotlight-target .eg-team-row,
+body.walkthrough-step-make-pick .wt-spotlight-target .m-team,
+body.walkthrough-step-make-pick .wt-spotlight-target .eg-compact-chip {
+  pointer-events: auto !important;
+  cursor: pointer;
+}
+
+.wlcm-gate-hint {
+  font-size: 11px;
+  color: rgba(160, 152, 128, 0.65);
+  margin: 0;
+  text-align: center;
+}
+
+@keyframes walkthrough-pulse {
+  0%,
+  100% {
+    border-color: rgba(232, 220, 200, 0.4);
+    box-shadow: 0 0 0 0 rgba(200, 168, 78, 0);
+  }
+  50% {
+    border-color: rgba(232, 220, 200, 0.85);
+    box-shadow:
+      0 0 0 6px rgba(200, 168, 78, 0.18),
+      0 0 0 12px rgba(200, 168, 78, 0.06);
+  }
+}
+
+@media (max-width: 767px) {
+  .walkthrough-dots {
+    display: none;
+  }
+
+  .walkthrough-step-label {
+    font-size: 13px;
+    font-weight: 500;
+  }
+
+  .walkthrough-tooltip {
+    width: calc(100vw - 32px);
+    max-width: calc(100vw - 32px);
+    left: 16px !important;
+    right: 16px;
+  }
+
+  .walkthrough-tooltip.placement-bottom-sheet {
+    position: fixed !important;
+    bottom: 0 !important;
+    top: auto !important;
+    left: 0 !important;
+    right: 0 !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    border-radius: 12px 12px 0 0;
+    border-bottom: none;
+    padding: 16px 20px 24px;
+    animation: walkthrough-slide-up 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  .walkthrough-cta-btn {
+    width: 100%;
+    text-align: center;
+    padding: 12px 16px;
+    font-size: 15px;
+    min-height: 48px;
+  }
+
+  .walkthrough-actions {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+  }
+
+  .walkthrough-back-btn {
+    margin-right: 0;
+  }
+
+  .walkthrough-skip-link,
+  .walkthrough-back-btn {
+    text-align: center;
+    padding: 8px;
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+}
+
+@keyframes walkthrough-slide-up {
+  from {
+    transform: translateY(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
