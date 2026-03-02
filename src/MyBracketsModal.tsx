@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useAuth } from "./AuthContext";
 import {
+  formatChaosScore,
   type SavedBracket,
   deleteBracket,
   getUserBrackets,
@@ -14,11 +15,13 @@ export function MyBracketsModal({
   onClose,
   onLoadBracket,
   currentPicks,
+  currentChaosScore,
 }: {
   isOpen: boolean;
   onClose: () => void;
   onLoadBracket: (bracket: SavedBracket) => void;
   currentPicks: LockedPicks;
+  currentChaosScore: number;
 }) {
   const { user } = useAuth();
   const [brackets, setBrackets] = useState<SavedBracket[]>([]);
@@ -56,15 +59,15 @@ export function MyBracketsModal({
 
   const handleSaveNew = async () => {
     if (!user) return;
-    const name = brackets.length === 0 ? "My Bracket" : brackets.length === 1 ? "Bracket #2" : "Bracket #3";
-    await saveBracket(user.id, currentPicks, name);
+    const name = brackets.length === 0 ? "My Bracket" : `Bracket #${Math.min(25, brackets.length + 1)}`;
+    await saveBracket(user.id, currentPicks, name, null, currentChaosScore);
     await loadBrackets();
   };
 
   const handleOverwrite = async (bracketId: string, bracketName: string) => {
     if (!user) return;
     if (!window.confirm(`Overwrite "${bracketName}" with your current picks?`)) return;
-    await saveBracket(user.id, currentPicks, bracketName, bracketId);
+    await saveBracket(user.id, currentPicks, bracketName, bracketId, currentChaosScore);
     await loadBrackets();
   };
 
@@ -78,87 +81,104 @@ export function MyBracketsModal({
         </button>
         <h3 className="auth-modal-title">My Brackets</h3>
         <p className="auth-modal-subtitle">
-          {brackets.length}/3 brackets saved. Load a bracket to view it, or save your current picks.
+          {brackets.length}/25 brackets saved. Load a bracket to view it, or save your current picks.
         </p>
 
         {loading ? (
           <p className="my-brackets-loading">Loading...</p>
         ) : (
           <div className="my-brackets-list">
-            {brackets.map((bracket) => (
-              <div key={bracket.id} className="my-bracket-card">
-                <div className="my-bracket-card-top">
-                  {editingName === bracket.id ? (
-                    <div className="my-bracket-rename">
-                      <input
-                        className="auth-modal-input"
-                        value={newName}
-                        onChange={(event) => setNewName(event.target.value)}
-                        maxLength={30}
-                        autoFocus
-                        onKeyDown={(event) => event.key === "Enter" && handleRename(bracket.id)}
-                      />
-                      <button className="my-bracket-rename-save" onClick={() => handleRename(bracket.id)}>
-                        Save
-                      </button>
-                      <button className="my-bracket-rename-cancel" onClick={() => setEditingName(null)}>
-                        Cancel
-                      </button>
+            {brackets.map((bracket) => {
+              const pickCount = Object.keys(bracket.picks ?? {}).length;
+              const completionPct = Math.round((pickCount / 63) * 100);
+              const isEditing = editingName === bracket.id;
+              return (
+                <div key={bracket.id} className="my-bracket-card-v2">
+                  <div className="my-bracket-card-v2-top">
+                    {isEditing ? (
+                      <div className="my-bracket-rename-v2">
+                        <input
+                          className="my-bracket-rename-input"
+                          value={newName}
+                          onChange={(event) => setNewName(event.target.value)}
+                          maxLength={30}
+                          autoFocus
+                          onKeyDown={(event) => {
+                            if (event.key === "Enter") void handleRename(bracket.id);
+                            if (event.key === "Escape") setEditingName(null);
+                          }}
+                        />
+                        <button className="my-bracket-rename-confirm" onClick={() => void handleRename(bracket.id)}>
+                          ✓
+                        </button>
+                      </div>
+                    ) : (
+                      <h4 className="my-bracket-name-v2">{bracket.bracket_name}</h4>
+                    )}
+                    {bracket.is_locked ? <span className="my-bracket-lock-badge">🔒 Locked</span> : null}
+                  </div>
+
+                  <div className="my-bracket-stats-row">
+                    <div className="my-bracket-stat">
+                      <span className="my-bracket-stat-value">{pickCount}/63</span>
+                      <span className="my-bracket-stat-label">picks</span>
                     </div>
-                  ) : (
-                    <>
-                      <span className="my-bracket-name">{bracket.bracket_name}</span>
-                      {bracket.is_locked ? <span className="my-bracket-locked">🔒 Locked</span> : null}
-                    </>
-                  )}
-                </div>
+                    <div className="my-bracket-stat">
+                      <span className="my-bracket-stat-value">{completionPct}%</span>
+                      <span className="my-bracket-stat-label">complete</span>
+                    </div>
+                    <div className="my-bracket-stat">
+                      <span className="my-bracket-stat-value">{formatChaosScore(bracket.chaos_score ?? 0)}</span>
+                      <span className="my-bracket-stat-label">chaos</span>
+                    </div>
+                  </div>
 
-                <div className="my-bracket-card-meta">
-                  <span>{Object.keys(bracket.picks ?? {}).length} picks</span>
-                  <span>Updated {new Date(bracket.updated_at).toLocaleDateString()}</span>
-                </div>
+                  <div className="my-bracket-progress-track">
+                    <div className="my-bracket-progress-fill" style={{ width: `${completionPct}%` }} />
+                  </div>
 
-                <div className="my-bracket-card-actions">
-                  <button
-                    className="my-bracket-action-btn"
-                    onClick={() => {
-                      onLoadBracket(bracket);
-                      onClose();
-                    }}
-                  >
-                    Load
-                  </button>
-                  <button
-                    className="my-bracket-action-btn"
-                    onClick={() => handleOverwrite(bracket.id, bracket.bracket_name)}
-                    disabled={bracket.is_locked}
-                  >
-                    Overwrite
-                  </button>
-                  <button
-                    className="my-bracket-action-btn"
-                    onClick={() => {
-                      setEditingName(bracket.id);
-                      setNewName(bracket.bracket_name);
-                    }}
-                    disabled={bracket.is_locked}
-                  >
-                    Rename
-                  </button>
-                  <button
-                    className="my-bracket-action-btn my-bracket-action-btn--danger"
-                    onClick={() => handleDelete(bracket.id)}
-                    disabled={bracket.is_locked}
-                  >
-                    Delete
-                  </button>
-                </div>
-              </div>
-            ))}
+                  <div className="my-bracket-meta-v2">Updated {new Date(bracket.updated_at).toLocaleDateString()}</div>
 
-            {brackets.length < 3 ? (
+                  <div className="my-bracket-actions-v2">
+                    <button
+                      className="my-bracket-action-primary"
+                      onClick={() => {
+                        onLoadBracket(bracket);
+                        onClose();
+                      }}
+                    >
+                      Load bracket
+                    </button>
+                    {!bracket.is_locked ? (
+                      <>
+                        <button
+                          className="my-bracket-action-secondary"
+                          onClick={() => handleOverwrite(bracket.id, bracket.bracket_name)}
+                        >
+                          Overwrite
+                        </button>
+                        <button
+                          className="my-bracket-action-secondary"
+                          onClick={() => {
+                            setEditingName(bracket.id);
+                            setNewName(bracket.bracket_name);
+                          }}
+                        >
+                          Rename
+                        </button>
+                        <button className="my-bracket-action-danger" onClick={() => handleDelete(bracket.id)}>
+                          Delete
+                        </button>
+                      </>
+                    ) : null}
+                  </div>
+                </div>
+              );
+            })}
+
+            {brackets.length < 25 ? (
               <button className="my-bracket-new-btn" onClick={handleSaveNew}>
-                + Save current bracket as new ({3 - brackets.length} slot{3 - brackets.length !== 1 ? "s" : ""} remaining)
+                + Save current bracket as new ({25 - brackets.length} slot{25 - brackets.length !== 1 ? "s" : ""} remaining)
               </button>
             ) : null}
           </div>
@@ -167,4 +187,3 @@ export function MyBracketsModal({
     </div>
   );
 }
-

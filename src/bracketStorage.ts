@@ -1,11 +1,12 @@
 import { supabase } from "./supabaseClient";
-import type { LockedPicks } from "./lib/bracket";
+import { getModelGameWinProb, resolveGames, type LockedPicks } from "./lib/bracket";
 
 export type SavedBracket = {
   id: string;
   user_id: string;
   bracket_name: string;
   picks: LockedPicks;
+  chaos_score?: number | null;
   created_at: string;
   updated_at: string;
   is_locked: boolean;
@@ -17,10 +18,17 @@ export type LeaderboardEntry = {
   bracket_id: string;
   bracket_name: string;
   display_name: string;
+  chaos_score?: number | null;
   total_score: number;
   correct_picks: number;
   possible_picks?: number | null;
   max_remaining?: number | null;
+  r64_score?: number | null;
+  r32_score?: number | null;
+  s16_score?: number | null;
+  e8_score?: number | null;
+  f4_score?: number | null;
+  champ_score?: number | null;
 };
 
 export function serializePicks(picks: LockedPicks | Map<string, string> | Array<{ id: string; winner?: string | null }>): LockedPicks {
@@ -48,9 +56,11 @@ export async function saveBracket(
   userId: string,
   picks: LockedPicks,
   bracketName = "My Bracket",
-  bracketId: string | null = null
+  bracketId: string | null = null,
+  chaosScore?: number | null
 ) {
   const serialized = serializePicks(picks);
+  const derivedChaosScore = typeof chaosScore === "number" ? chaosScore : computeChaosScoreForPicks(serialized);
 
   if (bracketId) {
     const { data, error } = await supabase
@@ -58,6 +68,7 @@ export async function saveBracket(
       .update({
         picks: serialized,
         bracket_name: bracketName,
+        chaos_score: derivedChaosScore,
         updated_at: new Date().toISOString(),
       })
       .eq("id", bracketId)
@@ -73,6 +84,7 @@ export async function saveBracket(
       user_id: userId,
       picks: serialized,
       bracket_name: bracketName,
+      chaos_score: derivedChaosScore,
     })
     .select()
     .single();
@@ -83,7 +95,7 @@ export async function saveBracket(
 export async function getUserBrackets(userId: string) {
   const { data, error } = await supabase
     .from("brackets")
-    .select("id, user_id, bracket_name, picks, created_at, updated_at, is_locked")
+    .select("id, user_id, bracket_name, picks, chaos_score, created_at, updated_at, is_locked")
     .eq("user_id", userId)
     .order("created_at", { ascending: true });
 
@@ -128,3 +140,28 @@ export async function getUserScores(userId: string) {
   return { data: data ?? [], error };
 }
 
+export const getChaosTierEmoji = (score: number | null | undefined): string => {
+  if (score === null || score === undefined || !Number.isFinite(score)) return "—";
+  if (score >= 80) return "🔥";
+  if (score >= 60) return "🌪️";
+  if (score >= 40) return "⚡";
+  if (score >= 20) return "🌊";
+  return "🧊";
+};
+
+export const formatChaosScore = (score: number | null | undefined): string => {
+  if (score === null || score === undefined || !Number.isFinite(score)) return "—";
+  return `${getChaosTierEmoji(score)} ${Math.round(score)}`;
+};
+
+export function computeChaosScoreForPicks(picks: LockedPicks): number {
+  const { games } = resolveGames(picks);
+  let total = 0;
+  for (const game of games) {
+    if (!game.winnerId) continue;
+    const winProb = getModelGameWinProb(game, game.winnerId);
+    if (winProb === null) continue;
+    total += -Math.log(Math.max(1e-12, winProb));
+  }
+  return Number(total.toFixed(2));
+}

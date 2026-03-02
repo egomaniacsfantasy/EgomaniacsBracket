@@ -127,7 +127,7 @@ export function AuthModal({
           <form onSubmit={handleSignUp} className="auth-modal-form">
             <h3 className="auth-modal-title">Save your bracket</h3>
             <p className="auth-modal-subtitle">
-              Create an account to save up to 3 brackets and compete on the leaderboard.
+              Create an account to save up to 25 brackets and compete on the leaderboard.
             </p>
 
             <label className="auth-modal-label">Display name</label>

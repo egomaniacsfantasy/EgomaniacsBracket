@@ -30,7 +30,7 @@ import { trackEvent } from "./lib/analytics";
 import { useAuth } from "./AuthContext";
 import { AuthModal } from "./AuthModal";
 import { MyBracketsModal } from "./MyBracketsModal";
-import { Leaderboard } from "./Leaderboard";
+import { LeaderboardFullWidth } from "./Leaderboard";
 import { deserializePicks, getUserBrackets, saveBracket, serializePicks, type SavedBracket } from "./bracketStorage";
 import type { OddsDisplayMode, Region, ResolvedGame, SimulationOutput } from "./types";
 
@@ -426,7 +426,7 @@ function App() {
   });
   const [simRuns] = useState<number>(() => getRecommendedSimRuns());
   const [futuresSortMode, setFuturesSortMode] = useState<FuturesSortMode>("champ_desc");
-  const [futuresPanelTab, setFuturesPanelTab] = useState<"futures" | "leaderboard">("futures");
+  const [mainView, setMainView] = useState<"bracket" | "leaderboard">("bracket");
   const [isUpdating, setIsUpdating] = useState(false);
   const [lastPickedKey, setLastPickedKey] = useState<string | null>(null);
   const [sidePanelOpen, setSidePanelOpen] = useState(false);
@@ -481,6 +481,7 @@ function App() {
   const [resetModalConfig, setResetModalConfig] = useState<ResetModalConfig | null>(null);
   const [linkCopied, setLinkCopied] = useState(false);
   const [saveStatus, setSaveStatus] = useState<null | "saving" | "saved" | "error">(null);
+  const [saveErrorText, setSaveErrorText] = useState<string | null>(null);
   const [authModalOpen, setAuthModalOpen] = useState(false);
   const [myBracketsOpen, setMyBracketsOpen] = useState(false);
   const [userBrackets, setUserBrackets] = useState<SavedBracket[]>([]);
@@ -1579,20 +1580,22 @@ function App() {
 
     setSaveStatus("saving");
     const bracketCount = userBrackets.length;
-    const defaultName =
-      bracketCount === 0 ? "My Bracket" : bracketCount === 1 ? "Bracket #2" : "Bracket #3";
-    const { error } = await saveBracket(user.id, sanitized, defaultName);
+    const defaultName = bracketCount === 0 ? "My Bracket" : `Bracket #${Math.min(25, bracketCount + 1)}`;
+    const { error } = await saveBracket(user.id, sanitized, defaultName, null, chaosScore ?? 0);
     if (error) {
       setSaveStatus("error");
+      setSaveErrorText((error as { message?: string })?.message ?? "Save failed");
       if (saveStatusTimerRef.current !== null) window.clearTimeout(saveStatusTimerRef.current);
       saveStatusTimerRef.current = window.setTimeout(() => {
         setSaveStatus(null);
+        setSaveErrorText(null);
         saveStatusTimerRef.current = null;
       }, 3000);
       return;
     }
     await refreshUserBrackets();
     setSaveStatus("saved");
+    setSaveErrorText(null);
     if (saveStatusTimerRef.current !== null) window.clearTimeout(saveStatusTimerRef.current);
     saveStatusTimerRef.current = window.setTimeout(() => {
       setSaveStatus(null);
@@ -2478,12 +2481,20 @@ function App() {
           : saveStatus === "saved"
             ? "✓ Saved"
             : saveStatus === "error"
-              ? "Error — try again"
+              ? (saveErrorText?.includes("Maximum of 25") ? "Maximum of 25 brackets per user" : "Error — try again")
               : "Save Bracket"}
       </button>
       {isAuthenticated ? (
         <button onClick={() => setMyBracketsOpen(true)} className="eg-btn">
           My Brackets
+        </button>
+      ) : null}
+      {!isMobile ? (
+        <button
+          onClick={() => setMainView((prev) => (prev === "leaderboard" ? "bracket" : "leaderboard"))}
+          className={`eg-btn ${mainView === "leaderboard" ? "toolbar-btn--active" : ""}`}
+        >
+          🏆 Leaderboard
         </button>
       ) : null}
       <button
@@ -2770,21 +2781,7 @@ function App() {
 
   const futuresContent = (
     <div className="futures-panel">
-      <div className="futures-tab-bar">
-        <button
-          className={`futures-tab ${futuresPanelTab === "futures" ? "futures-tab--active" : ""}`}
-          onClick={() => setFuturesPanelTab("futures")}
-        >
-          Futures
-        </button>
-        <button
-          className={`futures-tab ${futuresPanelTab === "leaderboard" ? "futures-tab--active" : ""}`}
-          onClick={() => setFuturesPanelTab("leaderboard")}
-        >
-          Leaderboard
-        </button>
-      </div>
-      {futuresPanelTab === "futures" ? futuresSections : <Leaderboard />}
+      {futuresSections}
     </div>
   );
 
@@ -2904,7 +2901,7 @@ function App() {
               <div className="mobile-futures-view">{futuresContent}</div>
             ) : (
               <div className="mobile-futures-view">
-                <Leaderboard />
+                <LeaderboardFullWidth />
               </div>
             )}
             <LiveOddsStrip
@@ -2920,7 +2917,7 @@ function App() {
             <div className="eg-main-panel">
               {toolbar}
               {chaosTrackerBar}
-
+              {mainView === "bracket" ? (
               <div className="eg-bracket-stack">
                 <div style={{ display: topHalfVisuallyCollapsed ? "block" : "none" }}>
                   <CollapsedHalfSummary
@@ -3074,8 +3071,11 @@ function App() {
                   </div>
                 </section>
               </div>
+              ) : (
+                <LeaderboardFullWidth />
+              )}
             </div>
-
+            {mainView === "bracket" ? (
             <aside className={`eg-side-panel ${sidePanelOpen ? "open" : "collapsed"}`}>
               <button
                 type="button"
@@ -3096,6 +3096,7 @@ function App() {
               </button>
               {futuresContent}
             </aside>
+            ) : null}
           </section>
         )}
       </main>
@@ -3132,6 +3133,7 @@ function App() {
         onClose={() => setMyBracketsOpen(false)}
         onLoadBracket={onLoadSavedBracket}
         currentPicks={sanitized}
+        currentChaosScore={chaosScore ?? 0}
       />
 
       <PromoCTA
@@ -3270,7 +3272,7 @@ function PromoCTA({
           Save your bracket and compete against everyone on our leaderboard. The most accurate bracket wins $100
           after the championship.
         </p>
-        <p className="promo-cta-detail">Free to enter. Up to 3 brackets per account.</p>
+        <p className="promo-cta-detail">Free to enter. Up to 25 brackets per account.</p>
         <button className="promo-cta-button" onClick={onSignUp}>
           Sign up &amp; save my bracket
         </button>

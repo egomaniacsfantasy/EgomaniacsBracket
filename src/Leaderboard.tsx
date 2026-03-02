@@ -1,16 +1,19 @@
 import { useEffect, useState } from "react";
 import { useAuth } from "./AuthContext";
-import { type LeaderboardEntry, getLeaderboard } from "./bracketStorage";
+import { formatChaosScore, type LeaderboardEntry, getLeaderboard } from "./bracketStorage";
 
-export function Leaderboard() {
+type SortBy = "score" | "chaos" | "correct";
+
+export function LeaderboardFullWidth() {
   const { user } = useAuth();
   const [entries, setEntries] = useState<LeaderboardEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [showAll, setShowAll] = useState(false);
+  const [sortBy, setSortBy] = useState<SortBy>("score");
 
   const loadLeaderboard = async () => {
     setLoading(true);
-    const { data } = await getLeaderboard(100);
+    const { data } = await getLeaderboard(200);
     setEntries(data);
     setLoading(false);
   };
@@ -19,75 +22,111 @@ export function Leaderboard() {
     loadLeaderboard();
   }, []);
 
-  const displayEntries = showAll ? entries : entries.slice(0, 20);
+  const sortedEntries = [...entries].sort((a, b) => {
+    if (sortBy === "chaos") return Number(b.chaos_score ?? 0) - Number(a.chaos_score ?? 0);
+    if (sortBy === "correct") return Number(b.correct_picks ?? 0) - Number(a.correct_picks ?? 0);
+    return Number(b.total_score ?? 0) - Number(a.total_score ?? 0);
+  });
+  const displayEntries = showAll ? sortedEntries : sortedEntries.slice(0, 50);
   const tournamentStarted = entries.some((entry) => Number(entry.total_score ?? 0) > 0);
+  const totalBrackets = entries.length;
 
   return (
-    <div className="leaderboard">
-      <div className="leaderboard-header">
-        <h3 className="leaderboard-title">LEADERBOARD</h3>
-        <button className="leaderboard-refresh" onClick={loadLeaderboard} title="Refresh">
-          ↻
+    <div className="leaderboard-full">
+      <div className="leaderboard-full-header">
+        <div className="leaderboard-full-title-row">
+          <h2 className="leaderboard-full-title">LEADERBOARD</h2>
+          <span className="leaderboard-full-count">{totalBrackets} brackets competing</span>
+          <button className="leaderboard-full-refresh" onClick={loadLeaderboard} title="Refresh">
+            ↻
+          </button>
+        </div>
+
+        <div className="leaderboard-full-prize">🏆 $100 to the top bracket</div>
+
+        {!tournamentStarted ? (
+          <div className="leaderboard-full-pre">
+            Tournament hasn&apos;t started yet. Brackets lock when the first game tips off.
+          </div>
+        ) : null}
+      </div>
+
+      <div className="leaderboard-full-sort">
+        <span className="leaderboard-full-sort-label">Sort by:</span>
+        <button className={`leaderboard-sort-btn ${sortBy === "score" ? "active" : ""}`} onClick={() => setSortBy("score")}>
+          Score
+        </button>
+        <button className={`leaderboard-sort-btn ${sortBy === "chaos" ? "active" : ""}`} onClick={() => setSortBy("chaos")}>
+          Chaos
+        </button>
+        <button className={`leaderboard-sort-btn ${sortBy === "correct" ? "active" : ""}`} onClick={() => setSortBy("correct")}>
+          Correct Picks
         </button>
       </div>
 
-      {!tournamentStarted ? (
-        <div className="leaderboard-pre-tourney">
-          <p>Tournament hasn&apos;t started yet. Save your bracket to secure your spot!</p>
-          <p className="leaderboard-prize">🏆 $100 to the top bracket</p>
-        </div>
-      ) : null}
+      <div className="lb-full-row lb-full-row--header">
+        <span className="lb-full-rank">#</span>
+        <span className="lb-full-player">Player</span>
+        <span className="lb-full-bracket">Bracket</span>
+        <span className="lb-full-chaos">Chaos</span>
+        <span className="lb-full-score">Score</span>
+        <span className="lb-full-correct">Correct</span>
+        <span className="lb-full-r64">R64</span>
+        <span className="lb-full-r32">R32</span>
+        <span className="lb-full-s16">S16</span>
+        <span className="lb-full-e8">E8</span>
+        <span className="lb-full-f4">F4</span>
+        <span className="lb-full-champ">CHAMP</span>
+        {tournamentStarted ? <span className="lb-full-max">Max</span> : null}
+      </div>
 
       {loading ? (
-        <p className="leaderboard-loading">Loading leaderboard...</p>
-      ) : entries.length === 0 ? (
-        <p className="leaderboard-empty">No brackets saved yet. Be the first!</p>
+        <div className="lb-full-loading">Loading leaderboard...</div>
+      ) : displayEntries.length === 0 ? (
+        <div className="lb-full-empty">No brackets saved yet. Be the first!</div>
       ) : (
-        <>
-          <div className="leaderboard-row leaderboard-row--header">
-            <span className="lb-rank">#</span>
-            <span className="lb-name">Player</span>
-            <span className="lb-bracket">Bracket</span>
-            <span className="lb-score">Score</span>
-            <span className="lb-correct">Correct</span>
-            {tournamentStarted ? <span className="lb-remaining">Max</span> : null}
-          </div>
-
-          {displayEntries.map((entry, index) => {
-            const isCurrentUser = Boolean(user && entry.user_id === user.id);
-            const rank = entry.rank ?? index + 1;
-            return (
-              <div key={entry.bracket_id ?? `${entry.user_id}-${entry.bracket_name}-${index}`} className={`leaderboard-row ${isCurrentUser ? "leaderboard-row--me" : ""}`}>
-                <span className="lb-rank">{rank}</span>
-                <span className="lb-name" title={entry.display_name}>
-                  {entry.display_name}
-                  {isCurrentUser ? <span className="lb-you-badge">YOU</span> : null}
-                </span>
-                <span className="lb-bracket" title={entry.bracket_name}>
-                  {entry.bracket_name}
-                </span>
-                <span className="lb-score">{tournamentStarted ? entry.total_score : "—"}</span>
-                <span className="lb-correct">
-                  {tournamentStarted ? `${entry.correct_picks}/${entry.possible_picks ?? 63}` : "—"}
-                </span>
-                {tournamentStarted ? <span className="lb-remaining">{entry.max_remaining ?? "—"}</span> : null}
-              </div>
-            );
-          })}
-
-          {entries.length > 20 && !showAll ? (
-            <button className="leaderboard-show-all" onClick={() => setShowAll(true)}>
-              Show all {entries.length} brackets
-            </button>
-          ) : null}
-        </>
+        displayEntries.map((entry, index) => {
+          const isCurrentUser = Boolean(user && entry.user_id === user.id);
+          const rank = entry.rank ?? index + 1;
+          return (
+            <div key={entry.bracket_id ?? `${entry.user_id}-${entry.bracket_name}-${index}`} className={`lb-full-row ${isCurrentUser ? "lb-full-row--me" : ""}`}>
+              <span className="lb-full-rank">{rank}</span>
+              <span className="lb-full-player" title={entry.display_name}>
+                {entry.display_name}
+                {isCurrentUser ? <span className="lb-full-you">YOU</span> : null}
+              </span>
+              <span className="lb-full-bracket" title={entry.bracket_name}>
+                {entry.bracket_name}
+              </span>
+              <span className="lb-full-chaos">{formatChaosScore(entry.chaos_score)}</span>
+              <span className="lb-full-score">{tournamentStarted ? entry.total_score : "—"}</span>
+              <span className="lb-full-correct">{tournamentStarted ? entry.correct_picks : "—"}</span>
+              <span className="lb-full-r64">{tournamentStarted ? entry.r64_score ?? 0 : "—"}</span>
+              <span className="lb-full-r32">{tournamentStarted ? entry.r32_score ?? 0 : "—"}</span>
+              <span className="lb-full-s16">{tournamentStarted ? entry.s16_score ?? 0 : "—"}</span>
+              <span className="lb-full-e8">{tournamentStarted ? entry.e8_score ?? 0 : "—"}</span>
+              <span className="lb-full-f4">{tournamentStarted ? entry.f4_score ?? 0 : "—"}</span>
+              <span className="lb-full-champ">{tournamentStarted ? entry.champ_score ?? 0 : "—"}</span>
+              {tournamentStarted ? <span className="lb-full-max">{entry.max_remaining ?? "—"}</span> : null}
+            </div>
+          );
+        })
       )}
 
-      <div className="leaderboard-footer">
-        <p>Scoring: 10 / 20 / 40 / 80 / 160 / 320 per round</p>
-        <p>Max possible: 1920</p>
+      {entries.length > 50 && !showAll ? (
+        <button className="lb-full-show-all" onClick={() => setShowAll(true)}>
+          Show all {entries.length} brackets
+        </button>
+      ) : null}
+
+      <div className="leaderboard-full-footer">
+        Scoring: 10 / 20 / 40 / 80 / 160 / 320 per round · Max possible: 1920
       </div>
     </div>
   );
 }
 
+// Backward export to avoid import churn in existing call sites.
+export function Leaderboard() {
+  return <LeaderboardFullWidth />;
+}
