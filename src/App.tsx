@@ -2226,16 +2226,22 @@ function App() {
   );
   const allFinalFourComplete = [leftSemi, rightSemi].every((game) => game?.winnerId);
   const championshipComplete = Boolean(titleGame?.winnerId);
-  const liveOddsTopContenders = sortedFutures.map((row) => {
-    const team = teamsById.get(row.teamId);
-    return {
-      id: row.teamId,
-      logoUrl: team ? teamLogoUrl(team) : fallbackLogo(row.teamId),
-      shortName: team ? mobileShortName(team.name) : row.teamId,
-      titleOdds: formatOddsDisplay(row.champProb, displayMode).primary,
-      titleImpliedPct: `${Math.round(row.champProb * 100)}%`,
-    };
-  });
+  const liveOddsTopContenders = useMemo(() => {
+    const sourceRows = pickCount === 0 ? preTournamentBaseline.futures : simResult.futures;
+    return [...sourceRows]
+      .sort((a, b) => b.champProb - a.champProb)
+      .slice(0, 20)
+      .map((row) => {
+        const team = teamsById.get(row.teamId);
+        return {
+          id: row.teamId,
+          logoUrl: team ? teamLogoUrl(team) : fallbackLogo(row.teamId),
+          shortName: team ? mobileShortName(team.name) : row.teamId,
+          titleOdds: formatOddsDisplay(row.champProb, displayMode).primary,
+          titleImpliedPct: `${Math.round(row.champProb * 100)}%`,
+        };
+      });
+  }, [displayMode, pickCount, preTournamentBaseline.futures, simResult.futures]);
 
   useEffect(() => {
     if (mobileSection === "FF") return;
@@ -4894,7 +4900,8 @@ function RegionBracket({
   isRoundComplete: (region: Region, round: RegionalRound) => boolean;
   isRoundVisuallyCollapsed: (region: Region, round: RegionalRound) => boolean;
 }) {
-  const rounds = inverted ? [...regionRounds].reverse() : [...regionRounds];
+  const rounds = (inverted ? [...regionRounds].reverse() : [...regionRounds]).filter((round) => round !== "FF");
+  const gamesById = useMemo(() => new Map(games.map((game) => [game.id, game])), [games]);
   const collapseByRound = useMemo(() => {
     return {
       R64: isRoundVisuallyCollapsed(region, "R64"),
@@ -4965,6 +4972,7 @@ function RegionBracket({
                           collapsed={collapsed}
                           gameWinProbs={gameWinProbs}
                           possibleWinners={possibleWinners}
+                          gamesById={gamesById}
                           onPick={onPick}
                           lastPickedKey={lastPickedKey}
                           displayMode={displayMode}
@@ -4990,6 +4998,7 @@ function GameCard({
   collapsed = false,
   gameWinProbs,
   possibleWinners,
+  gamesById,
   onPick,
   lastPickedKey,
   displayMode,
@@ -5001,6 +5010,7 @@ function GameCard({
   collapsed?: boolean;
   gameWinProbs: SimulationOutput["gameWinProbs"];
   possibleWinners: Record<string, Set<string>>;
+  gamesById: Map<string, ResolvedGame>;
   onPick: (game: ResolvedGame, teamId: string | null) => void;
   lastPickedKey: string | null;
   displayMode: OddsDisplayMode;
@@ -5071,6 +5081,15 @@ function GameCard({
                 : null,
         }
       : null;
+  const playInAttachment = useMemo(() => {
+    if (game.round !== "R64" || !game.sourceGameIds) return null;
+    const [sourceA, sourceB] = game.sourceGameIds;
+    const ffA = sourceA ? gamesById.get(sourceA) ?? null : null;
+    const ffB = sourceB ? gamesById.get(sourceB) ?? null : null;
+    if (ffA && ffA.round === "FF") return { side: "A" as const, ffGame: ffA };
+    if (ffB && ffB.round === "FF") return { side: "B" as const, ffGame: ffB };
+    return null;
+  }, [game.round, game.sourceGameIds, gamesById]);
 
   if (collapsed) {
     const compactTeams = [game.teamAId, game.teamBId]
@@ -5181,6 +5200,13 @@ function GameCard({
           ⓘ
         </button>
       ) : null}
+      {playInAttachment ? (
+        <FirstFourChip
+          playInGame={playInAttachment.ffGame}
+          gameWinProbs={gameWinProbs}
+          onPick={(winnerId) => onPick(playInAttachment.ffGame, winnerId)}
+        />
+      ) : null}
       <div className="eg-game-list">
         {useShowdownCard ? (
           <ShowdownCard
@@ -5192,10 +5218,14 @@ function GameCard({
           />
         ) : rows.length > 0 ? (
           game.round === "R64" ? (
-            rows.map((candidate, rowIndex) => {
-              const team = candidate.team!;
-              const canPick =
-                game.teamAId !== null &&
+            (() => {
+              const feedSide = playInAttachment?.side ?? null;
+              const ffPending = Boolean(playInAttachment && !playInAttachment.ffGame.winnerId);
+              const rowById = new Map(rows.map((candidate) => [candidate.team.id, candidate]));
+              const renderTeamRow = (candidate: CandidateRow, rowIndex: number) => {
+                const team = candidate.team!;
+                const canPick =
+                  game.teamAId !== null &&
                 game.teamBId !== null &&
                 (team.id === game.teamAId || team.id === game.teamBId);
               return (
@@ -5226,7 +5256,34 @@ function GameCard({
                   onPick={() => onPick(game, canPick ? team.id : null)}
                 />
               );
-            })
+              };
+
+              if (ffPending && feedSide && playInAttachment) {
+                const oppositeTeamId = feedSide === "A" ? game.teamBId : game.teamAId;
+                const oppositeRow = oppositeTeamId ? rowById.get(oppositeTeamId) : undefined;
+                const pendingSeedTeamId = playInAttachment.ffGame.teamAId ?? playInAttachment.ffGame.teamBId;
+                const pendingSeedTeam = pendingSeedTeamId ? teamsById.get(pendingSeedTeamId) ?? null : null;
+                const pendingSeed = pendingSeedTeam ? seedLabel(pendingSeedTeam).replace(/[ab]$/i, "") : "--";
+                const pendingRow = (
+                  <div key={`${game.id}-pending-playin`} className="eg-team-row bracket-team-row--pending">
+                    <span className="team-seed">{pendingSeed}</span>
+                    <span className="team-name-wrap">
+                      <span className="team-name pending-label">Play-in winner</span>
+                    </span>
+                    <span className="team-odds-wrap">
+                      <span className="team-odds">---%</span>
+                    </span>
+                  </div>
+                );
+
+                if (!oppositeRow) return [pendingRow];
+                return feedSide === "A"
+                  ? [pendingRow, renderTeamRow(oppositeRow, 1)]
+                  : [renderTeamRow(oppositeRow, 0), pendingRow];
+              }
+
+              return rows.map((candidate, rowIndex) => renderTeamRow(candidate, rowIndex));
+            })()
           ) : (
             <div
               className={`eg-compact-grid round-${game.round.toLowerCase()} density-${compactDensity}`}
@@ -5398,6 +5455,77 @@ function GameCard({
         </div>
       ) : null}
     </article>
+  );
+}
+
+function FirstFourChip({
+  playInGame,
+  gameWinProbs,
+  onPick,
+}: {
+  playInGame: ResolvedGame;
+  gameWinProbs: SimulationOutput["gameWinProbs"];
+  onPick: (winnerId: string | null) => void;
+}) {
+  const teamA = playInGame.teamAId ? teamsById.get(playInGame.teamAId) ?? null : null;
+  const teamB = playInGame.teamBId ? teamsById.get(playInGame.teamBId) ?? null : null;
+  if (!teamA || !teamB) return null;
+
+  const winner = playInGame.winnerId;
+  const isDecided = Boolean(winner);
+  const probA = Math.round((getGameWinProb(playInGame, teamA.id, gameWinProbs) ?? 0) * 100);
+  const probB = Math.round((getGameWinProb(playInGame, teamB.id, gameWinProbs) ?? 0) * 100);
+
+  if (isDecided) {
+    return (
+      <div className="f4-chip f4-chip--decided">
+        <span className="f4-chip-label">Play-in:</span>
+        <span className="f4-chip-winner">{winner === teamA.id ? teamA.name : teamB.name} ✓</span>
+        <button
+          type="button"
+          className="f4-chip-edit"
+          onClick={(event) => {
+            event.stopPropagation();
+            onPick(null);
+          }}
+        >
+          change
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <div className="f4-chip f4-chip--open">
+      <span className="f4-chip-label">Play-in</span>
+      <div className="f4-chip-matchup">
+        <button
+          type="button"
+          className="f4-chip-team"
+          onClick={(event) => {
+            event.stopPropagation();
+            onPick(teamA.id);
+          }}
+        >
+          <span className="f4-chip-seed">{seedLabel(teamA)}</span>
+          <span className="f4-chip-name">{abbreviationForTeam(teamA.name)}</span>
+          <span className="f4-chip-pct">{probA}%</span>
+        </button>
+        <span className="f4-chip-vs">/</span>
+        <button
+          type="button"
+          className="f4-chip-team"
+          onClick={(event) => {
+            event.stopPropagation();
+            onPick(teamB.id);
+          }}
+        >
+          <span className="f4-chip-seed">{seedLabel(teamB)}</span>
+          <span className="f4-chip-name">{abbreviationForTeam(teamB.name)}</span>
+          <span className="f4-chip-pct">{probB}%</span>
+        </button>
+      </div>
+    </div>
   );
 }
 

@@ -60,8 +60,9 @@ body {
 }
 
 .eg-app {
-  max-width: 1880px;
-  margin: 0 auto;
+  max-width: 100%;
+  width: 100%;
+  margin: 0;
   padding: 24px 20px 28px;
   position: relative;
   animation: fade-up 420ms ease-out both;
@@ -765,6 +766,130 @@ body {
   padding-right: 2px;
   position: relative;
   z-index: 2;
+}
+
+.f4-chip {
+  font-family: var(--font-mono);
+  margin-bottom: 4px;
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.f4-chip--open {
+  background: rgba(184, 125, 24, 0.06);
+  border: 1px solid rgba(184, 125, 24, 0.2);
+  padding: 4px 8px;
+}
+
+.f4-chip--decided {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 2px 8px;
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.f4-chip-label {
+  font-size: 8px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: rgba(184, 125, 24, 0.55);
+  display: block;
+  margin-bottom: 2px;
+}
+
+.f4-chip--decided .f4-chip-label {
+  font-size: 8px;
+  margin-bottom: 0;
+  color: var(--text-tertiary);
+}
+
+.f4-chip-matchup {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.f4-chip-team {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  background: none;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 4px;
+  padding: 3px 6px;
+  cursor: pointer;
+  transition: border-color 150ms, background 150ms;
+  flex: 1;
+  min-width: 0;
+}
+
+.f4-chip-team:hover {
+  border-color: rgba(184, 125, 24, 0.35);
+  background: rgba(184, 125, 24, 0.06);
+}
+
+.f4-chip-seed {
+  font-size: 9px;
+  color: var(--text-tertiary);
+  flex-shrink: 0;
+}
+
+.f4-chip-name {
+  font-size: 10px;
+  color: var(--text-secondary);
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+}
+
+.f4-chip-pct {
+  font-size: 10px;
+  color: var(--text-amber);
+  margin-left: auto;
+  flex-shrink: 0;
+}
+
+.f4-chip-vs {
+  font-size: 9px;
+  color: var(--text-tertiary);
+  flex-shrink: 0;
+}
+
+.f4-chip-winner {
+  font-size: 10px;
+  color: var(--text-amber);
+  font-weight: 600;
+}
+
+.f4-chip-edit {
+  font-size: 9px;
+  color: var(--text-tertiary);
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  margin-left: auto;
+}
+
+.f4-chip-edit:hover {
+  color: var(--text-secondary);
+}
+
+.bracket-team-row--pending {
+  opacity: 0.4;
+  font-style: italic;
+}
+
+.pending-label {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--text-tertiary);
 }
 
 .eg-shell.compact-desktop .eg-app {
