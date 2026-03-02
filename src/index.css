@@ -1872,9 +1872,12 @@ body {
 .ff-championship-section {
   display: flex;
   align-items: flex-start;
-  justify-content: center;
+  justify-content: flex-start;
   gap: 24px;
   padding: 8px 0 10px;
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
 }
 
 .ff-semifinal-card {
@@ -1882,8 +1885,7 @@ body {
   border: 1px solid rgba(255, 255, 255, 0.06);
   border-radius: 10px;
   padding: 16px;
-  max-width: 280px;
-  min-width: 240px;
+  width: 100%;
   align-self: flex-start;
   margin-top: 32px;
 }
@@ -2019,6 +2021,7 @@ body {
   max-height: 400px;
   overflow-y: auto;
   scrollbar-width: thin;
+  width: 100%;
 }
 
 .semifinal-team-row,
@@ -2093,7 +2096,7 @@ body {
   font-weight: 700;
   flex-shrink: 0;
   text-align: right;
-  min-width: 44px;
+  min-width: 52px;
 }
 
 .championship-panel {
@@ -2109,9 +2112,22 @@ body {
   background: rgba(184, 125, 24, 0.03);
   border: 1px solid rgba(184, 125, 24, 0.2);
   border-radius: 12px;
-  max-width: 560px;
-  margin: 0 auto;
+  width: 100%;
+  max-width: 100%;
+  margin: 0;
   align-self: center;
+}
+
+@media (min-width: 768px) {
+  .semifinal-panel {
+    flex: 3 1 0%;
+    min-width: 0;
+  }
+
+  .championship-panel {
+    flex: 4 1 0%;
+    min-width: 0;
+  }
 }
 
 .championship-header {
