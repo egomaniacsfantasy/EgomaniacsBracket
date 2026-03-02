@@ -78,6 +78,18 @@ const URL_ROUND_ORDER: ResolvedGame["round"][] = ["R64", "R32", "S16", "E8", "F4
 const URL_EXPECTED_BITS = 126;
 const URL_EXPECTED_GAME_COUNT = 63;
 
+const getRecommendedSimRuns = (): number => {
+  if (typeof window === "undefined") return DEFAULT_SIM_RUNS;
+  const nav = navigator as Navigator & { deviceMemory?: number };
+  const cores = nav.hardwareConcurrency ?? 4;
+  const memory = nav.deviceMemory ?? 4;
+  const isMobileViewport = window.matchMedia("(max-width: 767px)").matches;
+
+  if (isMobileViewport || memory <= 4 || cores <= 4) return 1500;
+  if (memory <= 8 || cores <= 8) return 2500;
+  return DEFAULT_SIM_RUNS;
+};
+
 const canonicalGameTemplates = (() => {
   const regional: typeof gameTemplates = [];
   for (const region of URL_REGION_ORDER) {
@@ -404,7 +416,7 @@ function App() {
     const saved = window.localStorage.getItem(ODDS_FORMAT_STORAGE_KEY);
     return saved === "american" || saved === "implied" ? saved : "implied";
   });
-  const [simRuns] = useState<number>(DEFAULT_SIM_RUNS);
+  const [simRuns] = useState<number>(() => getRecommendedSimRuns());
   const [futuresSortMode, setFuturesSortMode] = useState<FuturesSortMode>("champ_desc");
   const [isUpdating, setIsUpdating] = useState(false);
   const [lastPickedKey, setLastPickedKey] = useState<string | null>(null);
@@ -725,6 +737,9 @@ function App() {
     let nextFlash = performance.now() + 12000;
     let flashAlpha = 0;
     let flashTrail: Array<{ x: number; y: number }> = [];
+    let statPoints: Array<{ x: number; y: number; label: string }> = [];
+    let lastHeavyDrawAt = 0;
+    const heavyFrameIntervalMs = 1000 / 24;
 
     const resize = () => {
       width = window.innerWidth;
@@ -738,6 +753,17 @@ function App() {
       statCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
       boltCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
       textCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+      statPoints = [];
+      for (let y = 28; y < height; y += 52) {
+        for (let x = 18; x < width; x += 94) {
+          statPoints.push({
+            x,
+            y,
+            label: `${randomInt(10, 99)}.${randomInt(0, 9)}%`,
+          });
+        }
+      }
     };
 
     const randomInt = (min: number, max: number) => Math.floor(Math.random() * (max - min + 1)) + min;
@@ -748,12 +774,10 @@ function App() {
       statCtx.globalAlpha = 0.14;
       statCtx.fillStyle = "rgba(236, 209, 132, 0.36)";
       statCtx.font = "11px 'Space Grotesk', sans-serif";
-      for (let y = 28; y < height; y += 52) {
-        for (let x = 18; x < width; x += 94) {
-          const pulse = 0.5 + 0.5 * Math.sin((time * 0.00045) + x * 0.004 + y * 0.002);
-          statCtx.globalAlpha = 0.08 + pulse * 0.09;
-          statCtx.fillText(`${randomInt(10, 99)}.${randomInt(0, 9)}%`, x, y);
-        }
+      for (const point of statPoints) {
+        const pulse = 0.5 + 0.5 * Math.sin((time * 0.00045) + point.x * 0.004 + point.y * 0.002);
+        statCtx.globalAlpha = 0.08 + pulse * 0.09;
+        statCtx.fillText(point.label, point.x, point.y);
       }
     };
 
@@ -809,8 +833,11 @@ function App() {
         nextFlash = time + randomInt(10000, 18000);
       }
 
-      drawStatsLayer(time);
-      drawTextLayer();
+      if (time - lastHeavyDrawAt >= heavyFrameIntervalMs) {
+        drawStatsLayer(time);
+        drawTextLayer();
+        lastHeavyDrawAt = time;
+      }
       drawLightningLayer();
 
       flashAlpha = Math.max(0, flashAlpha * 0.91 - 0.01);
@@ -832,6 +859,7 @@ function App() {
     const key = hashLocks(sanitized, simRuns, customProbByGame);
     const existing = simulationCacheRef.current.get(key);
     let active = true;
+    let idleHandle: number | null = null;
 
     if (existing) {
       setSimResult(existing);
@@ -844,18 +872,44 @@ function App() {
       setIsUpdating(true);
     }, 20);
 
-    const timer = window.setTimeout(() => {
+    const run = () => {
       if (!active) return;
       const result = runSimulation(sanitized, simRuns, customProbByGame);
       simulationCacheRef.current.set(key, result);
       setSimResult(result);
       setIsUpdating(false);
-    }, 150);
+    };
+
+    const scheduleSimulation = () => {
+      const w = window as Window & {
+        requestIdleCallback?: (callback: IdleRequestCallback, options?: IdleRequestOptions) => number;
+        cancelIdleCallback?: (handle: number) => void;
+      };
+      if (w.requestIdleCallback) {
+        idleHandle = w.requestIdleCallback(
+          () => {
+            run();
+          },
+          { timeout: 350 }
+        );
+        return;
+      }
+      idleHandle = window.setTimeout(run, 150);
+    };
+
+    scheduleSimulation();
 
     return () => {
       active = false;
       window.clearTimeout(updateTimer);
-      window.clearTimeout(timer);
+      if (idleHandle !== null) {
+        const w = window as Window & { cancelIdleCallback?: (handle: number) => void };
+        if (w.cancelIdleCallback) {
+          w.cancelIdleCallback(idleHandle);
+        } else {
+          window.clearTimeout(idleHandle);
+        }
+      }
     };
   }, [sanitized, simRuns, customProbByGame]);
 
