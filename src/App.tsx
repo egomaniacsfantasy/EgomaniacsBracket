@@ -251,7 +251,9 @@ type ShareCardData = {
   f4Teams: ShareFinalFourTeam[];
   boldestPicks: ShareBoldPick[];
   totalPicks: number;
-  chalkScore: number;
+  chaosScore: number;
+  chaosLabel: string;
+  chaosEmoji: string;
   bracketLikelihood: string | null;
 };
 
@@ -259,18 +261,42 @@ type ShareFormat = "story" | "twitter";
 
 type FuturesSortMode = "champ_desc" | "champ_asc" | "delta_desc";
 
-function getChalkLabel(score: number): string {
-  if (score >= 80) return "Chalk";
-  if (score >= 60) return "Mild Chalk";
-  if (score >= 40) return "Balanced";
-  if (score >= 20) return "Upset Heavy";
-  return "Chaos Agent";
+function computeGameChaos(prob: number): number {
+  const clamped = Math.max(prob, 1e-12);
+  return -Math.log(clamped);
 }
 
-function getChalkColor(score: number): string {
-  if (score >= 80) return "rgba(76,175,80,0.85)";
-  if (score >= 40) return "rgba(184,125,24,0.85)";
-  if (score >= 20) return "rgba(220,120,50,0.85)";
+function computeChaosScoreFromGames(games: ResolvedGame[]): number | null {
+  const decided = games.filter((game) => Boolean(game.winnerId && game.teamAId && game.teamBId));
+  if (decided.length === 0) return null;
+  let total = 0;
+  for (const game of decided) {
+    const teamAId = game.teamAId as string;
+    const winnerId = game.winnerId as string;
+    const modelProbA = getModelGameWinProb(game, teamAId);
+    if (modelProbA === null) continue;
+    const winnerProb = winnerId === teamAId ? modelProbA : 1 - modelProbA;
+    total += computeGameChaos(winnerProb);
+  }
+  return total;
+}
+
+function getChaosLabel(score: number | null, decidedCount: number): { label: string; emoji: string } | null {
+  if (score === null || decidedCount === 0) return null;
+  const perGame = score / decidedCount;
+  if (perGame < 0.2) return { label: "Chalk", emoji: "📋" };
+  if (perGame < 0.35) return { label: "Mild Chalk", emoji: "📊" };
+  if (perGame < 0.55) return { label: "Balanced", emoji: "⚖️" };
+  if (perGame < 0.8) return { label: "Upset Heavy", emoji: "🔥" };
+  return { label: "Chaos Agent", emoji: "🌪️" };
+}
+
+function getChaosColor(score: number | null, decidedCount: number): string {
+  if (score === null || decidedCount === 0) return "rgba(184,125,24,0.85)";
+  const perGame = score / decidedCount;
+  if (perGame < 0.2) return "rgba(76,175,80,0.85)";
+  if (perGame < 0.55) return "rgba(184,125,24,0.85)";
+  if (perGame < 0.8) return "rgba(220,120,50,0.85)";
   return "rgba(239,83,80,0.85)";
 }
 
@@ -436,8 +462,13 @@ function App() {
   const [shareToastVisible, setShareToastVisible] = useState(false);
   const [shareModalVisible, setShareModalVisible] = useState(false);
   const [shareExporting, setShareExporting] = useState<ShareFormat | null>(null);
-  const [chalkScoreChanged, setChalkScoreChanged] = useState(false);
-  const [chalkTooltipVisible, setChalkTooltipVisible] = useState(false);
+  const [chaosScoreChanged, setChaosScoreChanged] = useState(false);
+  const [chaosTooltipVisible, setChaosTooltipVisible] = useState(false);
+  const [staggeredChaosTotal, setStaggeredChaosTotal] = useState(0);
+  const [staggeredLastGameChaos, setStaggeredLastGameChaos] = useState<number | null>(null);
+  const [staggeredLastGameLabel, setStaggeredLastGameLabel] = useState("");
+  const [staggeredGamesResolved, setStaggeredGamesResolved] = useState(0);
+  const [staggeredTotalGames, setStaggeredTotalGames] = useState(URL_EXPECTED_GAME_COUNT);
   const [probPopup, setProbPopup] = useState<ProbabilityPopupState | null>(null);
   const [simResult, setSimResult] = useState<SimulationOutput>({
     futures: [],
@@ -468,9 +499,11 @@ function App() {
   const shareStoryRef = useRef<HTMLDivElement | null>(null);
   const shareTwitterRef = useRef<HTMLDivElement | null>(null);
   const suppressHashSyncRef = useRef(true);
-  const chalkScoreTimerRef = useRef<number | null>(null);
-  const chalkTooltipTimerRef = useRef<number | null>(null);
-  const previousChalkScoreRef = useRef<number | null>(null);
+  const chaosScoreTimerRef = useRef<number | null>(null);
+  const chaosTooltipTimerRef = useRef<number | null>(null);
+  const previousChaosScoreRef = useRef<number | null>(null);
+  const chaosScoreSourceRef = useRef<"manual" | "staggered_sim" | "instant_sim">("manual");
+  const previousStaggeredRunningRef = useRef(false);
 
   const { games, sanitized } = useMemo(
     () => resolveGames(lockedPicks, customProbByGame),
@@ -1079,8 +1112,8 @@ function App() {
     }));
 
     const totalPicks = Object.keys(sanitized).length;
-    const chalkScore =
-      pickRows.length > 0 ? Math.round((pickRows.reduce((sum, row) => sum + row.winProb, 0) / pickRows.length) * 100) : 0;
+    const chaosScoreValue = computeChaosScoreFromGames(games) ?? 0;
+    const chaosLabelData = getChaosLabel(chaosScoreValue, totalPicks) ?? { label: "Chalk", emoji: "📋" };
     const bracketLikelihood = simResult.likelihoodSimulation > 0 ? toOneInX(simResult.likelihoodSimulation) : null;
 
     return {
@@ -1088,7 +1121,9 @@ function App() {
       f4Teams,
       boldestPicks,
       totalPicks,
-      chalkScore,
+      chaosScore: chaosScoreValue,
+      chaosLabel: chaosLabelData.label,
+      chaosEmoji: chaosLabelData.emoji,
       bracketLikelihood,
     };
   }, [baselineByTeamId, games, sanitized, simResult.futures, simResult.likelihoodSimulation]);
@@ -1098,18 +1133,7 @@ function App() {
     [games]
   );
 
-  const chalkScore = useMemo(() => {
-    const pickedGames = games.filter((game) => Boolean(game.winnerId && game.teamAId && game.teamBId));
-    if (pickedGames.length === 0) return null;
-    const totalProb = pickedGames.reduce((sum, game) => {
-      const winnerId = game.winnerId as string;
-      const teamAId = game.teamAId as string;
-      const modelProbA = getModelGameWinProb(game, teamAId) ?? 0.5;
-      const winnerProb = winnerId === teamAId ? modelProbA : 1 - modelProbA;
-      return sum + winnerProb;
-    }, 0);
-    return Math.round((totalProb / pickedGames.length) * 100);
-  }, [games]);
+  const chaosScore = useMemo(() => computeChaosScoreFromGames(games), [games]);
 
   const applyCustomProbability = (gameId: string, customProbA: number | null) => {
     setCustomProbByGame((prev) => {
@@ -1256,6 +1280,7 @@ function App() {
       round: mobileSection === "FF" ? null : mobileRound,
     };
     cancelStaggeredSim();
+    chaosScoreSourceRef.current = "manual";
     simGeneratedGameIdsRef.current.delete(game.id);
     pushUndo(lockedPicks);
 
@@ -1284,6 +1309,7 @@ function App() {
       4000
     );
     cancelStaggeredSim();
+    chaosScoreSourceRef.current = "manual";
     if (undoStack.length === 0) return;
     pendingPickMetaRef.current = null;
     setFirstPickNudgeVisible(false);
@@ -1297,6 +1323,7 @@ function App() {
   const onUndoGame = (gameId: string) => {
     if (!lockedPicks[gameId]) return;
     cancelStaggeredSim();
+    chaosScoreSourceRef.current = "manual";
     pendingPickMetaRef.current = null;
     setFirstPickNudgeVisible(false);
     setMajorShiftNudgeVisible(false);
@@ -1318,6 +1345,7 @@ function App() {
       round: mobileSection === "FF" ? null : mobileRound,
     };
     cancelStaggeredSim();
+    chaosScoreSourceRef.current = "manual";
     closeProbabilityPopup(true);
     simGeneratedGameIdsRef.current.delete(game.id);
     pushUndo(lockedPicks);
@@ -1340,6 +1368,7 @@ function App() {
       picks_count: Object.keys(lockedPicks).length,
     });
     cancelStaggeredSim();
+    chaosScoreSourceRef.current = "manual";
     if (Object.keys(lockedPicks).length === 0 && Object.keys(customProbByGame).length === 0) return;
     pendingPickMetaRef.current = null;
     setFirstPickNudgeVisible(false);
@@ -1356,6 +1385,7 @@ function App() {
       region,
     });
     cancelStaggeredSim();
+    chaosScoreSourceRef.current = "manual";
     pendingPickMetaRef.current = null;
     setFirstPickNudgeVisible(false);
     setMajorShiftNudgeVisible(false);
@@ -1474,7 +1504,7 @@ function App() {
       trackEvent("bracket_image_exported", {
         format,
         total_picks: shareCardComputedData.totalPicks,
-        chalk_score: shareCardComputedData.chalkScore,
+        chaos_score: shareCardComputedData.chaosScore.toFixed(2),
         champion: shareCardComputedData.champion?.name ?? null,
       });
 
@@ -1492,40 +1522,57 @@ function App() {
   };
 
   useEffect(() => {
-    const previous = previousChalkScoreRef.current;
-    if (chalkScore === null) {
-      previousChalkScoreRef.current = null;
+    const previous = previousChaosScoreRef.current;
+    if (chaosScore === null) {
+      previousChaosScoreRef.current = null;
       return;
     }
-    if (previous !== null && previous !== chalkScore) {
-      setChalkScoreChanged(true);
-      if (chalkScoreTimerRef.current !== null) window.clearTimeout(chalkScoreTimerRef.current);
-      chalkScoreTimerRef.current = window.setTimeout(() => {
-        setChalkScoreChanged(false);
-        chalkScoreTimerRef.current = null;
+    if (previous !== null && previous !== chaosScore) {
+      setChaosScoreChanged(true);
+      if (chaosScoreTimerRef.current !== null) window.clearTimeout(chaosScoreTimerRef.current);
+      chaosScoreTimerRef.current = window.setTimeout(() => {
+        setChaosScoreChanged(false);
+        chaosScoreTimerRef.current = null;
       }, 300);
-      trackEvent("chalk_score_updated", {
-        score: chalkScore,
-        label: getChalkLabel(chalkScore),
-        total_picks: pickCount,
-      });
-      if (pickCount > 0 && pickCount % 5 === 0) {
-        trackEvent("chalk_score_milestone", {
-          score: chalkScore,
-          picks: pickCount,
+      if (!staggeredSimRunning) {
+        const chaosLabel = getChaosLabel(chaosScore, pickCount);
+        trackEvent("chaos_score_updated", {
+          score: chaosScore.toFixed(2),
+          label: chaosLabel?.label ?? null,
+          decided_count: pickCount,
+          source: chaosScoreSourceRef.current,
         });
       }
     }
-    previousChalkScoreRef.current = chalkScore;
-  }, [chalkScore, pickCount]);
+    previousChaosScoreRef.current = chaosScore;
+  }, [chaosScore, pickCount, staggeredSimRunning]);
 
-  const onChalkPillTap = () => {
-    if (!isMobile || chalkScore === null) return;
-    setChalkTooltipVisible(true);
-    if (chalkTooltipTimerRef.current !== null) window.clearTimeout(chalkTooltipTimerRef.current);
-    chalkTooltipTimerRef.current = window.setTimeout(() => {
-      setChalkTooltipVisible(false);
-      chalkTooltipTimerRef.current = null;
+  useEffect(() => {
+    const wasRunning = previousStaggeredRunningRef.current;
+    if (
+      wasRunning &&
+      !staggeredSimRunning &&
+      staggeredStepsRef.current.length > 0 &&
+      staggeredIndexRef.current >= staggeredStepsRef.current.length
+    ) {
+      const finalScore = computeChaosScoreFromGames(games) ?? 0;
+      const finalLabel = getChaosLabel(finalScore, pickCount);
+      trackEvent("staggered_sim_completed", {
+        chaos_score: finalScore.toFixed(2),
+        total_games: staggeredTotalGames,
+        chaos_label: finalLabel?.label ?? null,
+      });
+    }
+    previousStaggeredRunningRef.current = staggeredSimRunning;
+  }, [games, pickCount, staggeredSimRunning, staggeredTotalGames]);
+
+  const onChaosPillTap = () => {
+    if (!isMobile || chaosScore === null) return;
+    setChaosTooltipVisible(true);
+    if (chaosTooltipTimerRef.current !== null) window.clearTimeout(chaosTooltipTimerRef.current);
+    chaosTooltipTimerRef.current = window.setTimeout(() => {
+      setChaosTooltipVisible(false);
+      chaosTooltipTimerRef.current = null;
     }, 3000);
   };
 
@@ -1551,6 +1598,7 @@ function App() {
       5000
     );
     cancelStaggeredSim();
+    chaosScoreSourceRef.current = "instant_sim";
     pendingPickMetaRef.current = null;
     setFirstPickNudgeVisible(false);
     setMajorShiftNudgeVisible(false);
@@ -1575,6 +1623,7 @@ function App() {
       5000
     );
     cancelStaggeredSim();
+    chaosScoreSourceRef.current = "staggered_sim";
     pendingPickMetaRef.current = null;
     setFirstPickNudgeVisible(false);
     setMajorShiftNudgeVisible(false);
@@ -1588,6 +1637,11 @@ function App() {
     }
 
     pushUndo(baseLocks);
+    setStaggeredChaosTotal(computeChaosScoreFromGames(resolveGames(baseLocks).games) ?? 0);
+    setStaggeredLastGameChaos(null);
+    setStaggeredLastGameLabel("");
+    setStaggeredGamesResolved(Object.keys(baseLocks).length);
+    setStaggeredTotalGames(URL_EXPECTED_GAME_COUNT);
     setStaggeredSimRunning(true);
     setStaggeredSimPaused(false);
     staggeredStepsRef.current = steps;
@@ -1608,7 +1662,24 @@ function App() {
       }
       const step = staggeredStepsRef.current[staggeredIndexRef.current];
       setLastPickedKey(`${step.gameId}:${step.winnerId}`);
-      setLockedPicks((prev) => sanitizeLockedPicks({ ...prev, [step.gameId]: step.winnerId }));
+      setLockedPicks((prev) => {
+        const nextLocks = sanitizeLockedPicks({ ...prev, [step.gameId]: step.winnerId });
+        const resolved = resolveGames(nextLocks).games.find((game) => game.id === step.gameId);
+        if (resolved && resolved.teamAId && resolved.teamBId) {
+          const modelProbA = getModelGameWinProb(resolved, resolved.teamAId);
+          if (modelProbA !== null) {
+            const winnerProb = step.winnerId === resolved.teamAId ? modelProbA : 1 - modelProbA;
+            const gameChaos = computeGameChaos(winnerProb);
+            setStaggeredLastGameChaos(gameChaos);
+            const teamA = teamsById.get(resolved.teamAId)?.name ?? "Team A";
+            const teamB = teamsById.get(resolved.teamBId)?.name ?? "Team B";
+            setStaggeredLastGameLabel(`${teamA} vs ${teamB}`);
+            setStaggeredChaosTotal((prevTotal) => prevTotal + gameChaos);
+            setStaggeredGamesResolved((prevCount) => prevCount + 1);
+          }
+        }
+        return nextLocks;
+      });
       staggeredIndexRef.current += 1;
       staggeredTimeoutRef.current = window.setTimeout(advance, staggeredDelayRef.current);
     };
@@ -1639,7 +1710,24 @@ function App() {
       }
       const step = staggeredStepsRef.current[staggeredIndexRef.current];
       setLastPickedKey(`${step.gameId}:${step.winnerId}`);
-      setLockedPicks((prev) => sanitizeLockedPicks({ ...prev, [step.gameId]: step.winnerId }));
+      setLockedPicks((prev) => {
+        const nextLocks = sanitizeLockedPicks({ ...prev, [step.gameId]: step.winnerId });
+        const resolved = resolveGames(nextLocks).games.find((game) => game.id === step.gameId);
+        if (resolved && resolved.teamAId && resolved.teamBId) {
+          const modelProbA = getModelGameWinProb(resolved, resolved.teamAId);
+          if (modelProbA !== null) {
+            const winnerProb = step.winnerId === resolved.teamAId ? modelProbA : 1 - modelProbA;
+            const gameChaos = computeGameChaos(winnerProb);
+            setStaggeredLastGameChaos(gameChaos);
+            const teamA = teamsById.get(resolved.teamAId)?.name ?? "Team A";
+            const teamB = teamsById.get(resolved.teamBId)?.name ?? "Team B";
+            setStaggeredLastGameLabel(`${teamA} vs ${teamB}`);
+            setStaggeredChaosTotal((prevTotal) => prevTotal + gameChaos);
+            setStaggeredGamesResolved((prevCount) => prevCount + 1);
+          }
+        }
+        return nextLocks;
+      });
       staggeredIndexRef.current += 1;
       staggeredTimeoutRef.current = window.setTimeout(resume, staggeredDelayRef.current);
     };
@@ -1672,11 +1760,11 @@ function App() {
       if (shareToastTimerRef.current !== null) {
         window.clearTimeout(shareToastTimerRef.current);
       }
-      if (chalkScoreTimerRef.current !== null) {
-        window.clearTimeout(chalkScoreTimerRef.current);
+      if (chaosScoreTimerRef.current !== null) {
+        window.clearTimeout(chaosScoreTimerRef.current);
       }
-      if (chalkTooltipTimerRef.current !== null) {
-        window.clearTimeout(chalkTooltipTimerRef.current);
+      if (chaosTooltipTimerRef.current !== null) {
+        window.clearTimeout(chaosTooltipTimerRef.current);
       }
     },
     []
@@ -2164,30 +2252,56 @@ function App() {
           </button>
         ))}
       </div>
-      {chalkScore !== null ? (
+      {chaosScore !== null ? (
         <div
-          className={`chalk-score-wrap ${chalkScoreChanged ? "chalk-score-pill--changed" : ""}`}
+          className={`chaos-score-wrap ${chaosScoreChanged ? "chaos-score-pill--changed" : ""}`}
         >
           <button
             type="button"
-            className="chalk-score-pill"
-            title="How closely your picks agree with the model. Lower = more upsets."
-            onClick={onChalkPillTap}
+            className="chaos-score-pill"
+            title={`Chaos Score: ${chaosScore.toFixed(1)} across ${pickCount} games. Higher = more unlikely bracket.`}
+            onClick={onChaosPillTap}
           >
-            <span className="chalk-score-value" style={{ color: getChalkColor(chalkScore) }}>
-              {chalkScore}%
+            <span className="chaos-score-value" style={{ color: getChaosColor(chaosScore, pickCount) }}>
+              {chaosScore.toFixed(1)}
             </span>
-            <span className="chalk-score-label">{getChalkLabel(chalkScore)}</span>
+            <span className="chaos-score-label">
+              {(getChaosLabel(chaosScore, pickCount)?.emoji ?? "📋")} {(getChaosLabel(chaosScore, pickCount)?.label ?? "Chalk")}
+            </span>
           </button>
-          {isMobile && chalkTooltipVisible ? (
-            <span className="chalk-score-tooltip">
-              How closely your picks agree with the model. Lower = more upsets.
+          {isMobile && chaosTooltipVisible ? (
+            <span className="chaos-score-tooltip">
+              Chaos Score sums -ln(model win probability) for picked winners. Higher = more unlikely.
             </span>
           ) : null}
         </div>
       ) : null}
     </div>
   );
+
+  const chaosTrackerBar =
+    staggeredSimRunning ? (
+      <div className="chaos-tracker-bar">
+        <div className="chaos-tracker-left">
+          <span className="chaos-tracker-title">CHAOS SCORE</span>
+          <span className="chaos-tracker-total">{staggeredChaosTotal.toFixed(1)}</span>
+        </div>
+        <div className="chaos-tracker-center">
+          {staggeredLastGameChaos !== null ? (
+            <span className="chaos-tracker-last-game" key={`${staggeredGamesResolved}-${staggeredLastGameLabel}`}>
+              +{staggeredLastGameChaos.toFixed(2)}
+              <span className="chaos-tracker-game-label">{staggeredLastGameLabel}</span>
+            </span>
+          ) : null}
+        </div>
+        <div className="chaos-tracker-right">
+          <span className="chaos-tracker-count">
+            {staggeredGamesResolved}/{staggeredTotalGames}
+          </span>
+          <span className="chaos-tracker-count-label">games</span>
+        </div>
+      </div>
+    ) : null;
 
   const futuresContent = (
     <>
@@ -2391,6 +2505,7 @@ function App() {
         {isMobile ? (
           <section className="eg-mobile-shell">
             {toolbar}
+            {chaosTrackerBar}
             {mobileTab === "bracket" ? (
               <>
                 <MobileRegionTabs activeSection={mobileSection} onChange={setMobileSection} />
@@ -2453,6 +2568,7 @@ function App() {
           <section className={`eg-layout ${sidePanelOpen ? "panel-open" : "panel-collapsed"}`}>
             <div className="eg-main-panel">
               {toolbar}
+              {chaosTrackerBar}
 
               <div className="eg-bracket-stack">
                 <section className="eg-bracket-section top-half">
@@ -2833,8 +2949,8 @@ function StoryShareCard({
       <div className="share-amber-rule" />
 
       <section className="share-story-stats">
-        <span className="share-stat-pill" style={{ color: getChalkColor(data.chalkScore) }}>
-          {data.chalkScore}% Chalk
+        <span className="share-stat-pill" style={{ color: getChaosColor(data.chaosScore, data.totalPicks) }}>
+          {data.chaosScore.toFixed(1)} {data.chaosEmoji} {data.chaosLabel}
         </span>
         <span className="share-stat-pill">{data.totalPicks}/63 Picks</span>
       </section>
@@ -2906,8 +3022,8 @@ function TwitterShareCard({
             {data.boldestPicks[0].loserName} ({data.boldestPicks[0].winProbPct}%)
           </span>
         ) : null}
-        <span className="share-stat-pill" style={{ color: getChalkColor(data.chalkScore) }}>
-          {data.chalkScore}% Chalk
+        <span className="share-stat-pill" style={{ color: getChaosColor(data.chaosScore, data.totalPicks) }}>
+          {data.chaosScore.toFixed(1)} {data.chaosEmoji} {data.chaosLabel}
         </span>
       </section>
 
@@ -3821,6 +3937,23 @@ function GameCard({
   const compactDensity = getCompactDensity(game.round, rows.length);
   const compactLongPressTimerRef = useRef<number | null>(null);
   const compactLongPressFiredRef = useRef(false);
+  const [showChaosTooltip, setShowChaosTooltip] = useState(false);
+  const teamAName = game.teamAId ? teamsById.get(game.teamAId)?.name ?? "Team A" : "Team A";
+  const teamBName = game.teamBId ? teamsById.get(game.teamBId)?.name ?? "Team B" : "Team B";
+  const modelProbA = game.teamAId ? getModelGameWinProb(game, game.teamAId) : null;
+  const chaosPreview =
+    game.teamAId && game.teamBId && modelProbA !== null
+      ? {
+          teamAChaos: computeGameChaos(modelProbA),
+          teamBChaos: computeGameChaos(1 - modelProbA),
+          earnedChaos:
+            game.winnerId === game.teamAId
+              ? computeGameChaos(modelProbA)
+              : game.winnerId === game.teamBId
+                ? computeGameChaos(1 - modelProbA)
+                : null,
+        }
+      : null;
 
   if (collapsed && !expandedFromCollapsed) {
     const compactTeams = [game.teamAId, game.teamBId]
@@ -3828,7 +3961,12 @@ function GameCard({
       .filter((team): team is NonNullable<typeof team> => Boolean(team));
 
     return (
-      <article className={`eg-game-card round-${game.round.toLowerCase()} collapsed`} data-game-id={game.id}>
+      <article
+        className={`eg-game-card round-${game.round.toLowerCase()} collapsed`}
+        data-game-id={game.id}
+        onMouseEnter={() => setShowChaosTooltip(true)}
+        onMouseLeave={() => setShowChaosTooltip(false)}
+      >
         <div
           className="bracket-cell--compact bracket-cell--clickable"
           onClick={() => onExpandCollapsedMatchup?.(game.id)}
@@ -3858,6 +3996,24 @@ function GameCard({
           )}
           <div className="compact-edit-hint">✎</div>
         </div>
+        {showChaosTooltip && chaosPreview ? (
+          <div className="chaos-tooltip">
+            {chaosPreview.earnedChaos !== null ? (
+              <span className="chaos-tooltip-earned">+{chaosPreview.earnedChaos.toFixed(2)} chaos</span>
+            ) : (
+              <>
+                <div className="chaos-tooltip-row">
+                  <span className="chaos-tooltip-team">{teamAName}</span>
+                  <span className="chaos-tooltip-pts">+{chaosPreview.teamAChaos.toFixed(2)}</span>
+                </div>
+                <div className="chaos-tooltip-row">
+                  <span className="chaos-tooltip-team">{teamBName}</span>
+                  <span className="chaos-tooltip-pts">+{chaosPreview.teamBChaos.toFixed(2)}</span>
+                </div>
+              </>
+            )}
+          </div>
+        ) : null}
       </article>
     );
   }
@@ -3882,6 +4038,8 @@ function GameCard({
     <article
       className={`eg-game-card round-${game.round.toLowerCase()} ${expandedFromCollapsed ? "collapsed-expanded-overlay" : ""}`}
       data-game-id={game.id}
+      onMouseEnter={() => setShowChaosTooltip(true)}
+      onMouseLeave={() => setShowChaosTooltip(false)}
     >
       {expandedFromCollapsed ? (
         <button
@@ -4092,6 +4250,24 @@ function GameCard({
           </>
         )}
       </div>
+      {showChaosTooltip && chaosPreview ? (
+        <div className="chaos-tooltip">
+          {chaosPreview.earnedChaos !== null ? (
+            <span className="chaos-tooltip-earned">+{chaosPreview.earnedChaos.toFixed(2)} chaos</span>
+          ) : (
+            <>
+              <div className="chaos-tooltip-row">
+                <span className="chaos-tooltip-team">{teamAName}</span>
+                <span className="chaos-tooltip-pts">+{chaosPreview.teamAChaos.toFixed(2)}</span>
+              </div>
+              <div className="chaos-tooltip-row">
+                <span className="chaos-tooltip-team">{teamBName}</span>
+                <span className="chaos-tooltip-pts">+{chaosPreview.teamBChaos.toFixed(2)}</span>
+              </div>
+            </>
+          )}
+        </div>
+      ) : null}
     </article>
   );
 }

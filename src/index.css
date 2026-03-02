@@ -4242,6 +4242,10 @@ body.walkthrough-active .eg-title-choice:hover {
 }
 
 @media (max-width: 767px) {
+  .chaos-tooltip {
+    display: none;
+  }
+
   .eg-round-col--collapsed {
     width: auto !important;
     min-width: auto !important;
@@ -5233,12 +5237,12 @@ body.walkthrough-active .eg-title-choice:hover {
   border-color: rgba(184, 125, 24, 0.4);
 }
 
-.chalk-score-wrap {
+.chaos-score-wrap {
   position: relative;
   display: inline-flex;
 }
 
-.chalk-score-pill {
+.chaos-score-pill {
   display: inline-flex;
   align-items: center;
   gap: 6px;
@@ -5251,14 +5255,14 @@ body.walkthrough-active .eg-title-choice:hover {
   transition: border-color 300ms ease-out;
 }
 
-.chalk-score-value {
+.chaos-score-value {
   font-family: var(--font-mono);
   font-size: 13px;
   font-weight: 700;
   transition: color 300ms ease-out;
 }
 
-.chalk-score-label {
+.chaos-score-label {
   font-family: var(--font-mono);
   font-size: 10px;
   color: var(--text-tertiary);
@@ -5266,7 +5270,7 @@ body.walkthrough-active .eg-title-choice:hover {
   text-transform: uppercase;
 }
 
-@keyframes chalkFlash {
+@keyframes chaosFlash {
   0% {
     transform: scale(1);
   }
@@ -5278,11 +5282,11 @@ body.walkthrough-active .eg-title-choice:hover {
   }
 }
 
-.chalk-score-pill--changed .chalk-score-pill {
-  animation: chalkFlash 300ms ease-out;
+.chaos-score-pill--changed .chaos-score-pill {
+  animation: chaosFlash 300ms ease-out;
 }
 
-.chalk-score-tooltip {
+.chaos-score-tooltip {
   position: absolute;
   top: calc(100% + 6px);
   left: 50%;
@@ -5298,6 +5302,150 @@ body.walkthrough-active .eg-title-choice:hover {
   z-index: 100;
   pointer-events: none;
   animation: tooltipIn 150ms ease-out;
+}
+
+.chaos-tracker-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 24px;
+  background: rgba(14, 12, 9, 0.95);
+  border-bottom: 1px solid rgba(184, 125, 24, 0.15);
+  position: sticky;
+  top: 0;
+  z-index: 90;
+  gap: 16px;
+}
+
+.chaos-tracker-title {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  letter-spacing: 3px;
+  color: rgba(184, 125, 24, 0.55);
+  text-transform: uppercase;
+  display: block;
+}
+
+.chaos-tracker-total {
+  font-family: var(--font-mono);
+  font-size: 28px;
+  font-weight: 700;
+  color: var(--text-primary);
+  line-height: 1;
+  transition: color 300ms;
+}
+
+.chaos-tracker-center {
+  flex: 1;
+  display: flex;
+  justify-content: center;
+}
+
+.chaos-tracker-last-game {
+  font-family: var(--font-mono);
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--amber);
+  animation: chaosPointPop 800ms ease-out;
+}
+
+@keyframes chaosPointPop {
+  0% {
+    opacity: 0;
+    transform: translateY(6px) scale(0.9);
+  }
+  20% {
+    opacity: 1;
+    transform: translateY(0) scale(1.1);
+  }
+  40% {
+    transform: scale(1);
+  }
+  100% {
+    opacity: 1;
+  }
+}
+
+.chaos-tracker-game-label {
+  font-size: 11px;
+  font-weight: 400;
+  color: rgba(184, 125, 24, 0.55);
+  margin-left: 4px;
+}
+
+.chaos-tracker-right {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+}
+
+.chaos-tracker-count {
+  font-family: var(--font-mono);
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text-secondary);
+}
+
+.chaos-tracker-count-label {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  color: var(--text-tertiary);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.chaos-tooltip {
+  position: absolute;
+  bottom: calc(100% + 6px);
+  left: 50%;
+  transform: translateX(-50%);
+  background: #1a1510;
+  border: 1px solid rgba(184, 125, 24, 0.28);
+  border-radius: 6px;
+  padding: 6px 10px;
+  z-index: 120;
+  pointer-events: none;
+  white-space: nowrap;
+  animation: tooltipFadeIn 120ms ease-out;
+}
+
+@keyframes tooltipFadeIn {
+  from {
+    opacity: 0;
+    transform: translateX(-50%) translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+}
+
+.chaos-tooltip-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 2px 0;
+}
+
+.chaos-tooltip-team {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--text-secondary);
+}
+
+.chaos-tooltip-pts {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--amber);
+}
+
+.chaos-tooltip-earned {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 700;
+  color: rgba(184, 125, 24, 0.65);
 }
 
 @keyframes tooltipIn {
