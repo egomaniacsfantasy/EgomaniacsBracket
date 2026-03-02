@@ -487,6 +487,7 @@ function App() {
   const [authModalOpen, setAuthModalOpen] = useState(false);
   const [myBracketsOpen, setMyBracketsOpen] = useState(false);
   const [userBrackets, setUserBrackets] = useState<SavedBracket[]>([]);
+  const [leaderboardRefreshKey, setLeaderboardRefreshKey] = useState(0);
   const [promoCTAVisible, setPromoCTAVisible] = useState(false);
   const [promoShown, setPromoShown] = useState(false);
   const [manuallyExpandedRounds, setManuallyExpandedRounds] = useState<ManualRoundExpansionState>({});
@@ -1662,6 +1663,12 @@ function App() {
     });
   };
 
+  const onBracketRenamed = () => {
+    const leaderboardVisible = isMobile ? mobileTab === "leaderboard" : mainView === "leaderboard";
+    if (!leaderboardVisible) return;
+    setLeaderboardRefreshKey((value) => value + 1);
+  };
+
   const onCopyShareLink = async () => {
     if (typeof window === "undefined") return;
     const shareUrl = window.location.href;
@@ -1689,11 +1696,6 @@ function App() {
       setLinkCopied(false);
       copyLinkTimerRef.current = null;
     }, 2000);
-  };
-
-  const onShareBracketImage = () => {
-    if (shareExporting || shareCardComputedData.totalPicks === 0) return;
-    setShareModalVisible(true);
   };
 
   const onCloseShareModal = () => {
@@ -2508,10 +2510,10 @@ function App() {
         Reset All
       </button>
       <button onClick={onModelSim} className="eg-btn">
-        Instant Sim Bracket
+        Instant Sim
       </button>
       <button onClick={onModelSimStaggered} className="eg-btn" disabled={staggeredSimRunning}>
-        {staggeredSimRunning ? "Staggered Sim Running..." : "Staggered Sim Bracket"}
+        {staggeredSimRunning ? "Staggered Sim Running..." : "Staggered Sim"}
       </button>
       <button onClick={onSaveBracket} className="eg-btn toolbar-btn--save" disabled={saveStatus === "saving"}>
         {saveStatus === "saving"
@@ -2530,9 +2532,9 @@ function App() {
       {!isMobile ? (
         <button
           onClick={() => setMainView((prev) => (prev === "leaderboard" ? "bracket" : "leaderboard"))}
-          className={`eg-btn ${mainView === "leaderboard" ? "toolbar-btn--active" : ""}`}
+          className={`eg-btn ${mainView === "leaderboard" ? "toolbar-btn--active-view" : ""}`}
         >
-          🏆 Leaderboard
+          {mainView === "leaderboard" ? "← Bracket" : "🏆 Leaderboard"}
         </button>
       ) : null}
       <button
@@ -2542,14 +2544,6 @@ function App() {
         aria-label="Copy shareable bracket link"
       >
         {linkCopied ? "Copied!" : "Copy Link"}
-      </button>
-      <button
-        onClick={onShareBracketImage}
-        className="eg-btn share-bracket-btn"
-        disabled={shareCardComputedData.totalPicks === 0 || Boolean(shareExporting)}
-        aria-label="Export a shareable bracket image"
-      >
-        {shareExporting ? "Exporting..." : "Share Bracket"}
       </button>
       {staggeredSimRunning ? (
         <button
@@ -2946,7 +2940,11 @@ function App() {
               <div className="mobile-futures-view">{futuresContent}</div>
             ) : (
               <div className="mobile-futures-view">
-                <LeaderboardFullWidth />
+                <LeaderboardFullWidth
+                  isVisible={mobileTab === "leaderboard"}
+                  refreshKey={leaderboardRefreshKey}
+                  onBack={() => setMobileTab("bracket")}
+                />
               </div>
             )}
             <LiveOddsStrip
@@ -2962,8 +2960,7 @@ function App() {
             <div className="eg-main-panel">
               {toolbar}
               {chaosTrackerBar}
-              {mainView === "bracket" ? (
-              <div className="eg-bracket-stack">
+              <div className="eg-bracket-stack" style={{ display: mainView === "bracket" ? undefined : "none" }}>
                 <div style={{ display: topHalfVisuallyCollapsed ? "block" : "none" }}>
                   <CollapsedHalfSummary
                     half="top"
@@ -2978,7 +2975,7 @@ function App() {
                 >
                   <div className="eg-section-head">
                     <h2>Top Half Bracket</h2>
-                    <p>{regionSections[0][0]} + {regionSections[0][1]}</p>
+                    <p>· {regionSections[0][0]} + {regionSections[0][1]}</p>
                     {topHalfComplete ? (
                       <button className="half-section-collapse-btn" onClick={() => handleCollapseHalf("top")}>
                         Collapse
@@ -3024,7 +3021,7 @@ function App() {
                 >
                   <div className="eg-section-head">
                     <h2>Bottom Half Bracket</h2>
-                    <p>{regionSections[1][0]} + {regionSections[1][1]}</p>
+                    <p>· {regionSections[1][0]} + {regionSections[1][1]}</p>
                     {bottomHalfComplete ? (
                       <button className="half-section-collapse-btn" onClick={() => handleCollapseHalf("bottom")}>
                         Collapse
@@ -3116,12 +3113,18 @@ function App() {
                   </div>
                 </section>
               </div>
-              ) : (
-                <LeaderboardFullWidth />
-              )}
+              <div style={{ display: mainView === "leaderboard" ? undefined : "none" }}>
+                <LeaderboardFullWidth
+                  isVisible={mainView === "leaderboard"}
+                  refreshKey={leaderboardRefreshKey}
+                  onBack={() => setMainView("bracket")}
+                />
+              </div>
             </div>
-            {mainView === "bracket" ? (
-            <aside className={`eg-side-panel ${sidePanelOpen ? "open" : "collapsed"}`}>
+            <aside
+              className={`eg-side-panel ${sidePanelOpen ? "open" : "collapsed"}`}
+              style={{ display: mainView === "bracket" ? undefined : "none" }}
+            >
               <button
                 type="button"
                 className="eg-side-toggle"
@@ -3141,7 +3144,6 @@ function App() {
               </button>
               {futuresContent}
             </aside>
-            ) : null}
           </section>
         )}
       </main>
@@ -3177,6 +3179,7 @@ function App() {
         isOpen={myBracketsOpen}
         onClose={() => setMyBracketsOpen(false)}
         onLoadBracket={onLoadSavedBracket}
+        onRenameSuccess={onBracketRenamed}
         currentPicks={sanitized}
         currentChaosScore={chaosScore ?? 0}
       />

@@ -4,7 +4,15 @@ import { formatChaosScore, type LeaderboardEntry, getLeaderboard } from "./brack
 
 type SortBy = "score" | "chaos" | "correct";
 
-export function LeaderboardFullWidth() {
+export function LeaderboardFullWidth({
+  isVisible = true,
+  refreshKey = 0,
+  onBack,
+}: {
+  isVisible?: boolean;
+  refreshKey?: number;
+  onBack?: () => void;
+}) {
   const { user } = useAuth();
   const [entries, setEntries] = useState<LeaderboardEntry[]>([]);
   const [loading, setLoading] = useState(true);
@@ -19,8 +27,9 @@ export function LeaderboardFullWidth() {
   };
 
   useEffect(() => {
-    loadLeaderboard();
-  }, []);
+    if (!isVisible) return;
+    void loadLeaderboard();
+  }, [isVisible, refreshKey]);
 
   const sortedEntries = [...entries].sort((a, b) => {
     if (sortBy === "chaos") return Number(b.chaos_score ?? 0) - Number(a.chaos_score ?? 0);
@@ -33,6 +42,11 @@ export function LeaderboardFullWidth() {
 
   return (
     <div className="leaderboard-full">
+      {onBack ? (
+        <button className="leaderboard-back-btn" onClick={onBack}>
+          ← Back to Bracket
+        </button>
+      ) : null}
       <div className="leaderboard-full-header">
         <div className="leaderboard-full-title-row">
           <h2 className="leaderboard-full-title">LEADERBOARD</h2>

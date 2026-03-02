@@ -7192,6 +7192,24 @@ body.walkthrough-step-make-pick .wt-spotlight-target .eg-compact-chip {
   padding: 24px 32px;
 }
 
+.leaderboard-back-btn {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--text-amber);
+  background: none;
+  border: 1px solid rgba(184, 125, 24, 0.2);
+  border-radius: 100px;
+  padding: 7px 16px;
+  cursor: pointer;
+  margin-bottom: 16px;
+  transition: border-color 140ms, background 140ms;
+}
+
+.leaderboard-back-btn:hover {
+  border-color: rgba(184, 125, 24, 0.4);
+  background: rgba(184, 125, 24, 0.06);
+}
+
 .leaderboard-full-header {
   margin-bottom: 20px;
 }
@@ -7619,6 +7637,12 @@ body.walkthrough-step-make-pick .wt-spotlight-target .eg-compact-chip {
 
 .toolbar-btn--active {
   border-color: rgba(184, 125, 24, 0.45) !important;
+  color: var(--text-amber) !important;
+}
+
+.toolbar-btn--active-view {
+  background: rgba(184, 125, 24, 0.15) !important;
+  border-color: rgba(184, 125, 24, 0.4) !important;
   color: var(--text-amber) !important;
 }
 

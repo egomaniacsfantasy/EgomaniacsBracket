@@ -14,12 +14,14 @@ export function MyBracketsModal({
   isOpen,
   onClose,
   onLoadBracket,
+  onRenameSuccess,
   currentPicks,
   currentChaosScore,
 }: {
   isOpen: boolean;
   onClose: () => void;
   onLoadBracket: (bracket: SavedBracket) => void;
+  onRenameSuccess?: () => void;
   currentPicks: LockedPicks;
   currentChaosScore: number;
 }) {
@@ -51,10 +53,12 @@ export function MyBracketsModal({
 
   const handleRename = async (bracketId: string) => {
     if (!user || !newName.trim()) return;
-    await renameBracket(bracketId, user.id, newName.trim());
+    const { error } = await renameBracket(bracketId, user.id, newName.trim());
+    if (error) return;
     setEditingName(null);
     setNewName("");
     await loadBrackets();
+    onRenameSuccess?.();
   };
 
   const handleSaveNew = async () => {
