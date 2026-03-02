@@ -47,11 +47,6 @@ const MIN_STAGGERED_SIM_DELAY_MS = 1000;
 const MAX_STAGGERED_SIM_DELAY_MS = 5000;
 const LANDING_URL = "https://oddsgods.net";
 
-const formatModes: { id: OddsDisplayMode; label: string }[] = [
-  { id: "american", label: "American" },
-  { id: "implied", label: "Implied %" },
-];
-
 const regionSections: Region[][] = BRACKET_HALVES.map((half) => [...half.regions]);
 const mobileRegionOrder: Region[] = ["South", "East", "West", "Midwest"];
 const invertedRegions = new Set<Region>([regionSections[0][1], regionSections[1][1]]);
@@ -280,7 +275,13 @@ type ShareCardData = {
 
 type ShareFormat = "story" | "twitter";
 
-type FuturesSortMode = "champ_desc" | "champ_asc" | "delta_desc";
+type FuturesSortMode = "champ_desc" | "champ_asc";
+
+type CompletionCelebrationData = {
+  championName: string;
+  chaosLabel: string;
+  chaosEmoji: string;
+};
 
 function computeGameChaos(prob: number): number {
   const clamped = Math.max(prob, 1e-12);
@@ -465,7 +466,8 @@ function App() {
   const [staggeredSimRunning, setStaggeredSimRunning] = useState(false);
   const [staggeredSimPaused, setStaggeredSimPaused] = useState(false);
   const [staggeredSimDelayMs, setStaggeredSimDelayMs] = useState(STAGGERED_SIM_DELAY_MS);
-  const [showStaggeredControls, setShowStaggeredControls] = useState(false);
+  const [showSimMenu, setShowSimMenu] = useState(false);
+  const [showFuturesInfo, setShowFuturesInfo] = useState(false);
   const [welcomeGateOpen, setWelcomeGateOpen] = useState(() => {
     if (typeof window === "undefined") return false;
     return window.localStorage.getItem(ONBOARDING_STORAGE_KEY) !== "true";
@@ -506,7 +508,9 @@ function App() {
   const [shareModalVisible, setShareModalVisible] = useState(false);
   const [shareExporting, setShareExporting] = useState<ShareFormat | null>(null);
   const [chaosScoreChanged, setChaosScoreChanged] = useState(false);
-  const [chaosTooltipVisible, setChaosTooltipVisible] = useState(false);
+  const [showChaosModal, setShowChaosModal] = useState(false);
+  const [showCompletionCelebration, setShowCompletionCelebration] = useState(false);
+  const [completionCelebrationData, setCompletionCelebrationData] = useState<CompletionCelebrationData | null>(null);
   const [staggeredChaosTotal, setStaggeredChaosTotal] = useState(0);
   const [staggeredLastGameChaos, setStaggeredLastGameChaos] = useState<number | null>(null);
   const [staggeredLastGameLabel, setStaggeredLastGameLabel] = useState("");
@@ -546,12 +550,12 @@ function App() {
   const shareTwitterRef = useRef<HTMLDivElement | null>(null);
   const suppressHashSyncRef = useRef(true);
   const chaosScoreTimerRef = useRef<number | null>(null);
-  const chaosTooltipTimerRef = useRef<number | null>(null);
   const previousChaosScoreRef = useRef<number | null>(null);
   const chaosScoreSourceRef = useRef<"manual" | "staggered_sim" | "instant_sim">("manual");
   const previousStaggeredRunningRef = useRef(false);
   const previousTopHalfCollapsedRef = useRef(false);
   const previousBottomHalfCollapsedRef = useRef(false);
+  const simMenuRef = useRef<HTMLDivElement | null>(null);
 
   const { games, sanitized } = useMemo(
     () => resolveGames(lockedPicks, customProbByGame),
@@ -642,6 +646,16 @@ function App() {
     if (typeof window === "undefined") return;
     window.localStorage.setItem(ODDS_FORMAT_STORAGE_KEY, displayMode);
   }, [displayMode]);
+
+  useEffect(() => {
+    const onMouseDown = (event: MouseEvent) => {
+      if (!simMenuRef.current) return;
+      if (simMenuRef.current.contains(event.target as Node)) return;
+      setShowSimMenu(false);
+    };
+    document.addEventListener("mousedown", onMouseDown);
+    return () => document.removeEventListener("mousedown", onMouseDown);
+  }, []);
 
   const refreshUserBrackets = async () => {
     if (!user) {
@@ -1173,20 +1187,10 @@ function App() {
     const rows = [...simResult.futures];
     rows.sort((a, b) => {
       if (futuresSortMode === "champ_desc") return b.champProb - a.champProb;
-      if (futuresSortMode === "champ_asc") return a.champProb - b.champProb;
-      const baseA = baselineByTeamId.get(a.teamId);
-      const baseB = baselineByTeamId.get(b.teamId);
-      const deltaA = baseA ? computeDelta(a.champProb, baseA.champProb, displayMode) : 0;
-      const deltaB = baseB ? computeDelta(b.champProb, baseB.champProb, displayMode) : 0;
-      return deltaB - deltaA;
+      return a.champProb - b.champProb;
     });
     return rows;
-  }, [baselineByTeamId, displayMode, futuresSortMode, simResult.futures]);
-
-  const preTournamentFutures = useMemo(
-    () => [...preTournamentBaseline.futures].sort((a, b) => b.champProb - a.champProb),
-    [preTournamentBaseline.futures]
-  );
+  }, [futuresSortMode, simResult.futures]);
 
   const teamProgress = useMemo(() => {
     const progress = new Map<string, { lastWinRank: number; firstLossRank: number }>();
@@ -1483,6 +1487,22 @@ function App() {
       setProbPopup(null);
     }
 
+    const wasComplete = Object.keys(sanitizeLockedPicks(lockedPicks)).length === URL_EXPECTED_GAME_COUNT;
+    const nextResolved = resolveGames(next, customProbByGame).games;
+    const nowComplete = nextResolved.every((resolvedGame) => Boolean(resolvedGame.winnerId));
+    if (!wasComplete && nowComplete && game.round === "CHAMP") {
+      const champion = nextResolved.find((resolvedGame) => resolvedGame.round === "CHAMP");
+      const championName = champion?.winnerId ? teamsById.get(champion.winnerId)?.name ?? "Your champion" : "Your champion";
+      const completedChaosScore = computeChaosScoreFromGames(nextResolved);
+      const chaosLabelData = getChaosLabel(completedChaosScore, URL_EXPECTED_GAME_COUNT) ?? { label: "Chalk", emoji: "📋" };
+      setCompletionCelebrationData({
+        championName,
+        chaosLabel: chaosLabelData.label,
+        chaosEmoji: chaosLabelData.emoji,
+      });
+      setShowCompletionCelebration(true);
+    }
+
     applyLockedPicksUpdate(next);
   };
 
@@ -1560,6 +1580,7 @@ function App() {
     setManuallyExpandedRounds({});
     setTopHalfManuallyExpanded(false);
     setBottomHalfManuallyExpanded(false);
+    setShowCompletionCelebration(false);
     if (Object.keys(lockedPicks).length === 0 && Object.keys(customProbByGame).length === 0) return;
     pendingPickMetaRef.current = null;
     setFirstPickNudgeVisible(false);
@@ -1662,6 +1683,7 @@ function App() {
     pushUndo(lockedPicks);
     simGeneratedGameIdsRef.current.clear();
     setProbPopup(null);
+    setShowCompletionCelebration(false);
     setCustomProbByGame({});
     setLockedPicks(picks);
     setSidePanelOpen(false);
@@ -1705,7 +1727,16 @@ function App() {
     copyLinkTimerRef.current = window.setTimeout(() => {
       setLinkCopied(false);
       copyLinkTimerRef.current = null;
-    }, 2000);
+    }, 2500);
+  };
+
+  const onCompletionSave = async () => {
+    if (!isAuthenticated) {
+      await onSaveBracket();
+      return;
+    }
+    await onSaveBracket();
+    setShowCompletionCelebration(false);
   };
 
   const onCloseShareModal = () => {
@@ -1810,19 +1841,13 @@ function App() {
   }, [games, pickCount, staggeredSimRunning, staggeredTotalGames]);
 
   const onChaosPillTap = () => {
-    if (!isMobile || chaosScore === null) return;
-    setChaosTooltipVisible(true);
-    if (chaosTooltipTimerRef.current !== null) window.clearTimeout(chaosTooltipTimerRef.current);
-    chaosTooltipTimerRef.current = window.setTimeout(() => {
-      setChaosTooltipVisible(false);
-      chaosTooltipTimerRef.current = null;
-    }, 3000);
+    if (chaosScore === null) return;
+    setShowChaosModal(true);
   };
 
   const onCycleFuturesSort = () => {
     setFuturesSortMode((prev) => {
-      const next: FuturesSortMode =
-        prev === "champ_desc" ? "champ_asc" : prev === "champ_asc" ? "delta_desc" : "champ_desc";
+      const next: FuturesSortMode = prev === "champ_desc" ? "champ_asc" : "champ_desc";
       trackEvent("futures_sort_changed", {
         sort_mode: next,
       });
@@ -1831,6 +1856,7 @@ function App() {
   };
 
   const onModelSim = () => {
+    setShowSimMenu(false);
     trackEvent("instant_sim_clicked", {
       existing_picks: Object.keys(lockedPicks).length,
     });
@@ -1856,6 +1882,7 @@ function App() {
   };
 
   const onModelSimStaggered = () => {
+    setShowSimMenu(false);
     trackEvent("staggered_sim_clicked", {
       existing_picks: Object.keys(lockedPicks).length,
     });
@@ -1871,7 +1898,6 @@ function App() {
     setFirstPickNudgeVisible(false);
     setMajorShiftNudgeVisible(false);
     closeProbabilityPopup(true);
-    setShowStaggeredControls(true);
     const baseLocks = getUserLockedPicks(lockedPicks);
     const steps = generateSimulatedBracketSteps(baseLocks, ["South", "East", "West", "Midwest"], customProbByGame);
     if (steps.length === 0) {
@@ -2011,9 +2037,6 @@ function App() {
       }
       if (chaosScoreTimerRef.current !== null) {
         window.clearTimeout(chaosScoreTimerRef.current);
-      }
-      if (chaosTooltipTimerRef.current !== null) {
-        window.clearTimeout(chaosTooltipTimerRef.current);
       }
     },
     []
@@ -2524,17 +2547,35 @@ function App() {
       <button onClick={onRequestResetAll} className="eg-btn" style={!isMobile && mainView === "leaderboard" ? { display: "none" } : undefined}>
         Reset All
       </button>
-      <button onClick={onModelSim} className="eg-btn" style={!isMobile && mainView === "leaderboard" ? { display: "none" } : undefined}>
-        Instant Sim
-      </button>
-      <button
-        onClick={onModelSimStaggered}
-        className="eg-btn"
-        disabled={staggeredSimRunning}
+      <div
+        className="sim-split-btn"
+        ref={simMenuRef}
         style={!isMobile && mainView === "leaderboard" ? { display: "none" } : undefined}
       >
-        {staggeredSimRunning ? "Staggered Sim Running..." : "Staggered Sim"}
-      </button>
+        <button onClick={onModelSim} className="eg-btn sim-split-primary">
+          Instant Sim
+        </button>
+        <button
+          onClick={() => setShowSimMenu((prev) => !prev)}
+          className="eg-btn sim-split-trigger"
+          aria-label="Open simulation options"
+        >
+          ▾
+        </button>
+        {showSimMenu ? (
+          <div className="sim-dropdown">
+            <button
+              onClick={() => {
+                onModelSimStaggered();
+                setShowSimMenu(false);
+              }}
+              disabled={staggeredSimRunning}
+            >
+              {staggeredSimRunning ? "Staggered Sim Running..." : "Staggered Sim"}
+            </button>
+          </div>
+        ) : null}
+      </div>
       <button
         onClick={onSaveBracket}
         className="eg-btn toolbar-btn--save"
@@ -2573,7 +2614,7 @@ function App() {
         aria-label="Copy shareable bracket link"
         style={!isMobile && mainView === "leaderboard" ? { display: "none" } : undefined}
       >
-        {linkCopied ? "Copied!" : "Copy Link"}
+        {linkCopied ? "✓ Copied!" : "Copy Link"}
       </button>
       {staggeredSimRunning ? (
         <button
@@ -2586,7 +2627,7 @@ function App() {
           {staggeredSimPaused ? "▶" : "⏸"}
         </button>
       ) : null}
-      {(showStaggeredControls || staggeredSimRunning) ? (
+      {staggeredSimRunning ? (
         <div className="eg-stagger-controls" style={!isMobile && mainView === "leaderboard" ? { display: "none" } : undefined}>
           <label htmlFor="stagger-delay" className="eg-stagger-label">
             Stagger Delay: {(staggeredSimDelayMs / 1000).toFixed(1)}s
@@ -2603,28 +2644,45 @@ function App() {
           />
         </div>
       ) : null}
-      <div className="eg-mode-toggle">
-        {formatModes.map((mode) => (
-          <button
-            key={mode.id}
-            className={`eg-chip ${displayMode === mode.id ? "active" : ""}`}
-            onClick={() => {
-              showContextualHint(
-                "toggle",
-                "Switch between American odds (+300) and implied win probability (25.0%) across the entire product.",
-                ".eg-mode-toggle",
-                4000
-              );
-              trackEvent("odds_mode_toggled", {
-                from: displayMode,
-                to: mode.id,
-              });
-              setDisplayMode(mode.id);
-            }}
-          >
-            {mode.label}
-          </button>
-        ))}
+      <div className="odds-mode-toggle" style={!isMobile && mainView === "leaderboard" ? { display: "none" } : undefined}>
+        <button
+          className={`odds-mode-btn ${displayMode === "american" ? "odds-mode-btn--active" : ""}`}
+          onClick={() => {
+            showContextualHint(
+              "toggle",
+              "Switch between American odds (+300) and implied win probability (25.0%) across the entire product.",
+              ".odds-mode-toggle",
+              4000
+            );
+            trackEvent("odds_mode_toggled", {
+              from: displayMode,
+              to: "american",
+            });
+            setDisplayMode("american");
+          }}
+          aria-label="Show American odds"
+        >
+          +/-
+        </button>
+        <button
+          className={`odds-mode-btn ${displayMode === "implied" ? "odds-mode-btn--active" : ""}`}
+          onClick={() => {
+            showContextualHint(
+              "toggle",
+              "Switch between American odds (+300) and implied win probability (25.0%) across the entire product.",
+              ".odds-mode-toggle",
+              4000
+            );
+            trackEvent("odds_mode_toggled", {
+              from: displayMode,
+              to: "implied",
+            });
+            setDisplayMode("implied");
+          }}
+          aria-label="Show implied percentage"
+        >
+          %
+        </button>
       </div>
       {chaosScore !== null ? (
         <div
@@ -2650,15 +2708,12 @@ function App() {
               ) : null}
             </span>
           </button>
-          {isMobile && chaosTooltipVisible ? (
-            <span className="chaos-score-tooltip">
-              Chaos Score sums -ln(model win probability) for picked winners. Higher = more unlikely.
-            </span>
-          ) : null}
         </div>
       ) : null}
       {isAuthenticated && userBrackets.some((bracket) => bracket.is_locked) ? (
-        <div className="bracket-lock-banner">🔒 Brackets are locked. Tournament is live — check the leaderboard!</div>
+        <div className="bracket-lock-banner" style={!isMobile && mainView === "leaderboard" ? { display: "none" } : undefined}>
+          🔒 Brackets are locked. Tournament is live — check the leaderboard!
+        </div>
       ) : null}
     </div>
   );
@@ -2692,18 +2747,30 @@ function App() {
       <section className="eg-panel-block">
         <div className="eg-panel-head">
           <h3>
-            Futures
-            <span
-              className="eg-info"
-              title="Futures are recalculated via simulation given your locked picks."
+            If You&apos;re Right
+            <button
+              type="button"
+              className="eg-info futures-info-btn"
+              onClick={() => setShowFuturesInfo((prev) => !prev)}
+              aria-label="How futures are calculated"
             >
-              i
-            </span>
+              ⓘ
+            </button>
           </h3>
-          <button className="eg-mini-btn" onClick={onCycleFuturesSort}>
-            Sort {futuresSortMode === "delta_desc" ? "Δ↓" : futuresSortMode === "champ_desc" ? "↓" : "↑"}
+          <button className="futures-sort-btn" onClick={onCycleFuturesSort}>
+            Sort: CHAMP {futuresSortMode === "champ_desc" ? "↓" : "↑"}
           </button>
         </div>
+        <p className="eg-metric-label">How your picks shift the odds</p>
+        {showFuturesInfo ? (
+          <div className="futures-info-tooltip">
+            These odds update in real time based on your picks. They show each team&apos;s probability of advancing
+            through each round based on your current bracket.
+            <button type="button" onClick={() => setShowFuturesInfo(false)}>
+              Got it
+            </button>
+          </div>
+        ) : null}
 
         {isUpdating ? <p className="eg-updating">Updating…</p> : null}
         <div className="eg-futures-list">
@@ -2719,6 +2786,8 @@ function App() {
               { label: "Champ", prob: row.champProb },
             ];
             const baselineRow = baselineByTeamId.get(row.teamId);
+            const champBaseline = baselineRow?.champProb ?? 0;
+            const champDeltaPct = (row.champProb - champBaseline) * 100;
             const fullyEliminated = metrics.every((metric) => metric.prob <= 0.000001);
             return (
               <article key={row.teamId} className="eg-future-item">
@@ -2730,7 +2799,14 @@ function App() {
                   <TeamHoverAnchor teamName={team.name} logoSrc={teamLogoUrl(team)}>
                     <span className="future-team-name">{team.name}</span>
                   </TeamHoverAnchor>
+                  <span
+                    className={`futures-delta futures-delta--hero ${champDeltaPct > 0 ? "futures-delta--up" : champDeltaPct < 0 ? "futures-delta--down" : ""}`}
+                  >
+                    {champDeltaPct > 0 ? "▲" : champDeltaPct < 0 ? "▼" : ""}
+                    {Math.abs(champDeltaPct).toFixed(1)}%
+                  </span>
                 </div>
+                <span className="futures-transition">{(champBaseline * 100).toFixed(1)}% → {(row.champProb * 100).toFixed(1)}%</span>
                 <div className="future-metric-grid">
                   {metrics.map((metric) => {
                     const formatted = formatOddsDisplay(metric.prob, displayMode);
@@ -2769,51 +2845,6 @@ function App() {
                             {formatDelta(delta, displayMode)}
                           </span>
                         ) : null}
-                      </div>
-                    );
-                  })}
-                </div>
-              </article>
-            );
-          })}
-        </div>
-      </section>
-
-      <section className="eg-panel-block">
-        <div className="eg-panel-head">
-          <h3>Pre-Tournament Baseline</h3>
-        </div>
-        <p className="eg-metric-label">Static pre-pick advancement odds (never conditioned)</p>
-        <div className="eg-futures-list">
-          {preTournamentFutures.map((row) => {
-            const team = teamsById.get(row.teamId);
-            if (!team) return null;
-            const metrics: Array<{ label: "R32" | "S16" | "E8" | "F4" | "Title" | "Champ"; prob: number }> = [
-              { label: "R32", prob: row.round2Prob },
-              { label: "S16", prob: row.sweet16Prob },
-              { label: "E8", prob: row.elite8Prob },
-              { label: "F4", prob: row.final4Prob },
-              { label: "Title", prob: row.titleGameProb },
-              { label: "Champ", prob: row.champProb },
-            ];
-            return (
-              <article key={`baseline-${row.teamId}`} className="eg-future-item">
-                <div className="team-cell">
-                  <TeamHoverAnchor teamName={team.name} logoSrc={teamLogoUrl(team)}>
-                    <TeamLogo teamName={team.name} src={teamLogoUrl(team)} />
-                  </TeamHoverAnchor>
-                  <span className="seed">{team.seed}</span>
-                  <TeamHoverAnchor teamName={team.name} logoSrc={teamLogoUrl(team)}>
-                    <span className="future-team-name">{team.name}</span>
-                  </TeamHoverAnchor>
-                </div>
-                <div className="future-metric-grid">
-                  {metrics.map((metric) => {
-                    const formatted = formatOddsDisplay(metric.prob, displayMode);
-                    return (
-                      <div key={`baseline-${row.teamId}-${metric.label}`} className="future-metric">
-                        <span className="future-metric-label">{metric.label}</span>
-                        <span className="future-metric-value">{formatted.primary}</span>
                       </div>
                     );
                   })}
@@ -2906,10 +2937,20 @@ function App() {
             )}
           </div>
         </nav>
+        {!isMobile ? (
+          <div className="live-odds-band">
+            <LiveOddsStrip
+              topContenders={liveOddsTopContenders}
+              justChangedIds={liveOddsChangedIds}
+              displayMode={displayMode}
+              onOpenFutures={() => setSidePanelOpen(true)}
+            />
+          </div>
+        ) : null}
         <header className={`eg-header ${isMobile ? "mobile-hidden" : ""}`}>
           <h1>The Bracket Lab</h1>
           <p className="eg-subtitle">
-            March Madness what-if odds. Click picks to condition futures in real time.
+            March Madness what-if odds. Click picks to update futures in real time based on your picks.
           </p>
         </header>
         {isMobile ? (
@@ -3100,6 +3141,7 @@ function App() {
                 <LeaderboardFullWidth
                   isVisible={mainView === "leaderboard"}
                   refreshKey={leaderboardRefreshKey}
+                  onClose={() => setMainView("bracket")}
                 />
               </div>
             </div>
@@ -3165,6 +3207,54 @@ function App() {
         currentPicks={sanitized}
         currentChaosScore={chaosScore ?? 0}
       />
+
+      {showChaosModal && chaosScore !== null ? (
+        <div className="chaos-modal-overlay" onClick={() => setShowChaosModal(false)}>
+          <div className="chaos-modal" onClick={(event) => event.stopPropagation()}>
+            <div className="chaos-modal-header">
+              <span>CHAOS SCORE</span>
+              <button onClick={() => setShowChaosModal(false)} aria-label="Close chaos explainer">
+                ✕
+              </button>
+            </div>
+            <div className="chaos-modal-score">
+              <span className="chaos-number">{chaosScore.toFixed(1)}</span>
+              <span className="chaos-label-lg">
+                {getChaosLabel(chaosScore, pickCount)?.emoji ?? "📋"} {getChaosLabel(chaosScore, pickCount)?.label ?? "Chalk"}
+              </span>
+            </div>
+            <div className="chaos-scale">
+              <div className="chaos-scale-bar">
+                <div className="chaos-scale-fill" style={{ width: `${Math.min(100, (chaosScore / 60) * 100)}%` }} />
+                <div className="chaos-scale-marker" style={{ left: `${Math.min(100, (chaosScore / 60) * 100)}%` }} />
+              </div>
+              <div className="chaos-scale-labels">
+                <span>🧊 Chalk</span>
+                <span>⚡ Balanced</span>
+                <span>🔥 Chaos</span>
+              </div>
+            </div>
+            <p className="chaos-desc">
+              Your Chaos Score sums -ln(model win probability) across your picked winners. Higher means a more upset-heavy bracket.
+            </p>
+            {chaosPercentile !== null && pickCount === URL_EXPECTED_GAME_COUNT ? (
+              <p className="chaos-pct">
+                More upset-heavy than <strong>{Math.round(chaosPercentile)}%</strong> of simulated full brackets.
+              </p>
+            ) : null}
+          </div>
+        </div>
+      ) : null}
+
+      {showCompletionCelebration && completionCelebrationData ? (
+        <BracketCompletionCelebration
+          championName={completionCelebrationData.championName}
+          chaosLabel={completionCelebrationData.chaosLabel}
+          chaosEmoji={completionCelebrationData.chaosEmoji}
+          onSave={onCompletionSave}
+          onClose={() => setShowCompletionCelebration(false)}
+        />
+      ) : null}
 
       <PromoCTA
         visible={promoCTAVisible}
@@ -3309,6 +3399,55 @@ function PromoCTA({
         <button className="promo-cta-skip" onClick={onDismiss}>
           Maybe later
         </button>
+      </div>
+    </div>
+  );
+}
+
+function BracketCompletionCelebration({
+  championName,
+  chaosLabel,
+  chaosEmoji,
+  onSave,
+  onClose,
+}: {
+  championName: string;
+  chaosLabel: string;
+  chaosEmoji: string;
+  onSave: () => void;
+  onClose: () => void;
+}) {
+  return (
+    <div className="completion-overlay" onClick={onClose}>
+      <div className="completion-card" onClick={(event) => event.stopPropagation()}>
+        <div className="completion-particles" aria-hidden="true">
+          {Array.from({ length: 20 }).map((_, index) => (
+            <span
+              key={`completion-particle-${index}`}
+              className="completion-particle"
+              style={{
+                left: `${(index * 11) % 100}%`,
+                animationDelay: `${(index % 5) * 0.2}s`,
+                animationDuration: `${2 + (index % 4) * 0.5}s`,
+              }}
+            />
+          ))}
+        </div>
+        <span className="completion-trophy">🏆</span>
+        <h2 className="completion-headline">Your bracket is set.</h2>
+        <p className="completion-champ">{championName} wins it all.</p>
+        <p className="completion-chaos">
+          {chaosEmoji} {chaosLabel}
+        </p>
+
+        <div className="completion-actions">
+          <button className="completion-btn-primary" onClick={onSave}>
+            Save Bracket
+          </button>
+          <button className="completion-btn-secondary" onClick={onClose}>
+            Keep editing
+          </button>
+        </div>
       </div>
     </div>
   );
@@ -4157,24 +4296,25 @@ function LiveOddsStrip({
   displayMode: OddsDisplayMode;
   onOpenFutures: () => void;
 }) {
+  const isMobileViewport = typeof window !== "undefined" && window.matchMedia("(max-width: 767px)").matches;
+  const tickerTeams = topContenders.slice(0, 5);
+  const loopingTeams = [...tickerTeams, ...tickerTeams];
   return (
     <div className="live-odds-strip">
-      <span className="live-odds-strip-label">Title</span>
-      <div className="live-odds-strip-chips">
-        {topContenders.slice(0, 5).map((team) => (
-          <div
-            key={team.id}
-            className={`live-odds-chip ${justChangedIds.has(team.id) ? "live-odds-chip--changed" : ""}`}
-          >
-            <img src={team.logoUrl} className="live-chip-logo" alt="" />
-            <span className="live-chip-name">{team.shortName}</span>
-            <span className="live-chip-odds">{displayMode === "implied" ? team.titleImpliedPct : team.titleOdds}</span>
+      {isMobileViewport ? <span className="live-odds-strip-label">Title</span> : null}
+      <div className={isMobileViewport ? "live-odds-strip-chips" : "live-odds-inner"}>
+        {(isMobileViewport ? tickerTeams : loopingTeams).map((team, index) => (
+          <div key={`${team.id}-${index}`} className={`live-odds-item ${justChangedIds.has(team.id) ? "live-odds-chip--changed" : ""}`}>
+            <span className="team-abbr">{team.shortName}</span>
+            <span className="odds-val">{displayMode === "implied" ? team.titleImpliedPct : team.titleOdds}</span>
           </div>
         ))}
       </div>
-      <button className="live-odds-strip-expand" onClick={onOpenFutures}>
-        All →
-      </button>
+      {isMobileViewport ? (
+        <button className="live-odds-strip-expand" onClick={onOpenFutures}>
+          All →
+        </button>
+      ) : null}
     </div>
   );
 }
@@ -4374,7 +4514,7 @@ function FinalsChampionshipCard({
             onPick(game, teamA.id);
           }}
         >
-          <span className="championship-seed">{teamA ? `#${teamA.seed}` : "#--"}</span>
+          <span className="championship-seed">{teamA ? `#${teamA.seed}` : <span className="championship-tbd">TBD</span>}</span>
           {teamA ? (
             <TeamLogo teamName={teamA.name} src={teamLogoUrl(teamA)} className="championship-logo" />
           ) : (
@@ -4403,7 +4543,7 @@ function FinalsChampionshipCard({
             onPick(game, teamB.id);
           }}
         >
-          <span className="championship-seed">{teamB ? `#${teamB.seed}` : "#--"}</span>
+          <span className="championship-seed">{teamB ? `#${teamB.seed}` : <span className="championship-tbd">TBD</span>}</span>
           {teamB ? (
             <TeamLogo teamName={teamB.name} src={teamLogoUrl(teamB)} className="championship-logo" />
           ) : (
@@ -4646,6 +4786,20 @@ function GameCard({
         onMouseLeave={() => setShowChaosTooltip(false)}
       >
         <div className="bracket-cell--compact">
+          {game.teamAId && game.teamBId ? (
+            <button
+              type="button"
+              className={`matchup-edit-icon matchup-edit-btn--compact ${game.customProbA !== null ? "is-edited" : ""}`}
+              onClick={(event) => {
+                event.stopPropagation();
+                onOpenProbabilityPopup(game, event.currentTarget);
+              }}
+              title="Edit odds"
+              aria-label="Edit matchup probability"
+            >
+              ✎
+            </button>
+          ) : null}
           {compactTeams.length > 0 ? (
             compactTeams.map((team) => (
               <CompactTeamRow
@@ -4738,7 +4892,7 @@ function GameCard({
                   compact={false}
                   displayMode={displayMode}
                   editedProb={game.customProbA !== null}
-                  canEditProb={!game.winnerId && game.teamAId !== null && game.teamBId !== null}
+                  canEditProb={game.teamAId !== null && game.teamBId !== null}
                   showEditIcon={rowIndex === 0}
                   onOpenProbEditor={(anchorEl) => onOpenProbabilityPopup(game, anchorEl)}
                   onPick={() => onPick(game, canPick ? team.id : null)}
@@ -4819,7 +4973,7 @@ function GameCard({
                       <AdaptiveTeamLabel className={`chip-code ${showLogo ? "" : "no-logo"}`} fullName={teamLabel} />
                     </TeamHoverAnchor>
                     <span className="chip-odds-wrap">
-                      {!game.winnerId && game.teamAId && game.teamBId && rowIndex === 0 ? (
+                      {game.teamAId && game.teamBId && rowIndex === 0 ? (
                         <span
                           role="button"
                           tabIndex={0}

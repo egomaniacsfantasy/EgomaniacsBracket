@@ -7,11 +7,11 @@ type SortBy = "score" | "chaos" | "correct";
 export function LeaderboardFullWidth({
   isVisible = true,
   refreshKey = 0,
-  onBack,
+  onClose,
 }: {
   isVisible?: boolean;
   refreshKey?: number;
-  onBack?: () => void;
+  onClose?: () => void;
 }) {
   const { user } = useAuth();
   const [entries, setEntries] = useState<LeaderboardEntry[]>([]);
@@ -41,19 +41,22 @@ export function LeaderboardFullWidth({
   const totalBrackets = entries.length;
 
   return (
-    <div className="leaderboard-full">
-      {onBack ? (
-        <button className="leaderboard-back-btn" onClick={onBack}>
-          ← Back to Bracket
-        </button>
-      ) : null}
+    <div className="leaderboard-full-wrapper">
+      <div className="leaderboard-full">
       <div className="leaderboard-full-header">
-        <div className="leaderboard-full-title-row">
+        <div className="leaderboard-header-row">
+          <div className="leaderboard-full-title-row">
           <h2 className="leaderboard-full-title">LEADERBOARD</h2>
           <span className="leaderboard-full-count">{totalBrackets} brackets competing</span>
           <button className="leaderboard-full-refresh" onClick={loadLeaderboard} title="Refresh">
             ↻
           </button>
+        </div>
+          {onClose ? (
+            <button className="leaderboard-close-btn" onClick={onClose} aria-label="Close leaderboard">
+              ✕
+            </button>
+          ) : null}
         </div>
 
         <div className="leaderboard-full-prize">🏆 $100 to the top bracket</div>
@@ -136,6 +139,7 @@ export function LeaderboardFullWidth({
       <div className="leaderboard-full-footer">
         Scoring: 10 / 20 / 40 / 80 / 160 / 320 per round · Max possible: 1920
       </div>
+    </div>
     </div>
   );
 }
