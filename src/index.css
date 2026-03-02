@@ -6181,6 +6181,7 @@ body.walkthrough-active .eg-title-choice:hover {
   line-height: 1;
   cursor: default;
   text-align: left;
+  color: #f0e6d0;
   transition: border-color 300ms ease-out, background 300ms ease-out;
 }
 
@@ -6200,7 +6201,7 @@ body.walkthrough-active .eg-title-choice:hover {
   font-size: 11px;
   font-weight: 700;
   letter-spacing: 0.08em;
-  color: var(--text-amber);
+  color: #f0e6d0;
   text-transform: uppercase;
 }
 
@@ -6215,18 +6216,18 @@ body.walkthrough-active .eg-title-choice:hover {
   font-family: var(--font-mono);
   font-size: 10px;
   font-weight: 600;
-  color: var(--text-secondary);
+  color: #f0e6d0;
 }
 
 .chaos-badge-dot {
   font-size: 10px;
-  color: var(--text-tertiary);
+  color: rgba(240, 230, 208, 0.7);
 }
 
 .chaos-badge-pct {
   font-family: var(--font-mono);
   font-size: 10px;
-  color: var(--text-tertiary);
+  color: rgba(240, 230, 208, 0.8);
 }
 
 @keyframes chaosFlash {

@@ -61,8 +61,20 @@ export async function saveBracket(
 ) {
   const serialized = serializePicks(picks);
   const derivedChaosScore = typeof chaosScore === "number" ? chaosScore : computeChaosScoreForPicks(serialized);
-  const isMissingChaosColumn = (message?: string) =>
-    Boolean(message && message.toLowerCase().includes("chaos_score"));
+  const normalizedChaosScore = Math.round(derivedChaosScore * 10) / 10;
+  const isMissingChaosColumn = (message?: string) => {
+    const msg = (message ?? "").toLowerCase();
+    return msg.includes("chaos_score") && (msg.includes("column") || msg.includes("schema cache"));
+  };
+  const isChaosTypeMismatch = (message?: string) => {
+    const msg = (message ?? "").toLowerCase();
+    return (
+      msg.includes("invalid input syntax for type integer") ||
+      msg.includes("out of range for type integer") ||
+      (msg.includes("chaos_score") && msg.includes("integer"))
+    );
+  };
+  const roundedChaosScore = Math.round(normalizedChaosScore);
 
   if (bracketId) {
     const withChaos = await supabase
@@ -70,14 +82,36 @@ export async function saveBracket(
       .update({
         picks: serialized,
         bracket_name: bracketName,
-        chaos_score: derivedChaosScore,
+        chaos_score: normalizedChaosScore,
         updated_at: new Date().toISOString(),
       })
       .eq("id", bracketId)
       .eq("user_id", userId)
       .select()
       .single();
-    if (!withChaos.error || !isMissingChaosColumn(withChaos.error.message)) {
+    if (!withChaos.error) {
+      return { data: withChaos.data as SavedBracket | null, error: withChaos.error };
+    }
+
+    if (isChaosTypeMismatch(withChaos.error.message)) {
+      const withRoundedChaos = await supabase
+        .from("brackets")
+      .update({
+        picks: serialized,
+        bracket_name: bracketName,
+        chaos_score: roundedChaosScore,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", bracketId)
+        .eq("user_id", userId)
+        .select()
+        .single();
+      if (!withRoundedChaos.error) {
+        return { data: withRoundedChaos.data as SavedBracket | null, error: null };
+      }
+    }
+
+    if (!isMissingChaosColumn(withChaos.error.message)) {
       return { data: withChaos.data as SavedBracket | null, error: withChaos.error };
     }
 
@@ -101,11 +135,31 @@ export async function saveBracket(
       user_id: userId,
       picks: serialized,
       bracket_name: bracketName,
-      chaos_score: derivedChaosScore,
+      chaos_score: normalizedChaosScore,
     })
     .select()
     .single();
-  if (!withChaos.error || !isMissingChaosColumn(withChaos.error.message)) {
+  if (!withChaos.error) {
+    return { data: withChaos.data as SavedBracket | null, error: withChaos.error };
+  }
+
+  if (isChaosTypeMismatch(withChaos.error.message)) {
+    const withRoundedChaos = await supabase
+      .from("brackets")
+      .insert({
+        user_id: userId,
+        picks: serialized,
+        bracket_name: bracketName,
+        chaos_score: roundedChaosScore,
+      })
+      .select()
+      .single();
+    if (!withRoundedChaos.error) {
+      return { data: withRoundedChaos.data as SavedBracket | null, error: null };
+    }
+  }
+
+  if (!isMissingChaosColumn(withChaos.error.message)) {
     return { data: withChaos.data as SavedBracket | null, error: withChaos.error };
   }
 
