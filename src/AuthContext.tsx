@@ -13,7 +13,7 @@ type AuthContextValue = {
   profile: Profile | null;
   loading: boolean;
   signUp: (email: string, displayName: string, password: string) => Promise<{ data: unknown; error: unknown }>;
-  signIn: (email: string) => Promise<{ data: unknown; error: unknown }>;
+  signIn: (email: string, password: string) => Promise<{ data: unknown; error: unknown }>;
   signOut: () => Promise<void>;
   isAuthenticated: boolean;
 };
@@ -81,12 +81,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return { data, error };
   };
 
-  const signIn = async (email: string) => {
-    const { data, error } = await supabase.auth.signInWithOtp({
+  const signIn = async (email: string, password: string) => {
+    const { data, error } = await supabase.auth.signInWithPassword({
       email,
-      options: {
-        emailRedirectTo: window.location.origin,
-      },
+      password,
     });
     return { data, error };
   };

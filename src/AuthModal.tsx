@@ -1,6 +1,5 @@
 import { useEffect, useRef, useState, type FormEvent, type MouseEvent } from "react";
 import { useAuth } from "./AuthContext";
-import { supabase } from "./supabaseClient";
 
 type Mode = "signup" | "signin" | "check-email";
 
@@ -19,7 +18,6 @@ export function AuthModal({
   const [submitting, setSubmitting] = useState(false);
   const [submittedMode, setSubmittedMode] = useState<"signup" | "signin">("signup");
   const [password, setPassword] = useState("");
-  const [signinUsePassword, setSigninUsePassword] = useState(false);
   const [signinPassword, setSigninPassword] = useState("");
   const modalRef = useRef<HTMLDivElement | null>(null);
 
@@ -32,7 +30,6 @@ export function AuthModal({
     setSubmitting(false);
     setSubmittedMode("signup");
     setPassword("");
-    setSigninUsePassword(false);
     setSigninPassword("");
   }, [isOpen]);
 
@@ -70,24 +67,14 @@ export function AuthModal({
     event.preventDefault();
     setError("");
     if (!email.trim()) return setError("Email is required");
-    if (signinUsePassword && !signinPassword) return setError("Password is required");
+    if (!signinPassword) return setError("Password is required");
 
     setSubmitting(true);
-    const authResult = signinUsePassword
-      ? await supabase.auth.signInWithPassword({
-          email: email.trim(),
-          password: signinPassword,
-        })
-      : await signIn(email.trim());
+    const authResult = await signIn(email.trim(), signinPassword);
     const authError = authResult.error;
     setSubmitting(false);
     if (authError) return setError((authError as { message?: string })?.message ?? "Unable to log in");
-    if (signinUsePassword) {
-      onClose();
-      return;
-    }
-    setSubmittedMode("signin");
-    setMode("check-email");
+    onClose();
   };
 
   if (!isOpen) return null;
@@ -163,7 +150,6 @@ export function AuthModal({
                   setMode("signin");
                   setError("");
                   setPassword("");
-                  setSigninUsePassword(false);
                   setSigninPassword("");
                 }}
               >
@@ -174,7 +160,7 @@ export function AuthModal({
         ) : (
           <form onSubmit={handleSignIn} className="auth-modal-form">
             <h3 className="auth-modal-title">Welcome back</h3>
-            <p className="auth-modal-subtitle">Enter your email and we&apos;ll send you a log-in link.</p>
+            <p className="auth-modal-subtitle">Enter your email and password to log in.</p>
 
             <label className="auth-modal-label">Email</label>
             <input
@@ -186,35 +172,19 @@ export function AuthModal({
               autoFocus
             />
 
-            {signinUsePassword ? (
-              <>
-                <label className="auth-modal-label">Password</label>
-                <input
-                  className="auth-modal-input"
-                  type="password"
-                  placeholder="Your password"
-                  value={signinPassword}
-                  onChange={(event) => setSigninPassword(event.target.value)}
-                />
-              </>
-            ) : null}
-
-            <button
-              className="auth-modal-password-toggle"
-              type="button"
-              onClick={() => {
-                setSigninUsePassword((prev) => !prev);
-                setSigninPassword("");
-                setError("");
-              }}
-            >
-              {signinUsePassword ? "Use magic link instead" : "Log in with password"}
-            </button>
+            <label className="auth-modal-label">Password</label>
+            <input
+              className="auth-modal-input"
+              type="password"
+              placeholder="Your password"
+              value={signinPassword}
+              onChange={(event) => setSigninPassword(event.target.value)}
+            />
 
             {error ? <p className="auth-modal-error">{error}</p> : null}
 
             <button className="auth-modal-submit" type="submit" disabled={submitting}>
-              {submitting ? "Sending..." : signinUsePassword ? "Log In" : "Send Magic Link"}
+              {submitting ? "Logging in..." : "Log In"}
             </button>
 
             <p className="auth-modal-toggle">
