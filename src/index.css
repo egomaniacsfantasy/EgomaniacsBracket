@@ -3700,16 +3700,16 @@ body {
 }
 
 .eg-showdown-team .team-logo {
-  width: 56px;
-  height: 56px;
+  width: 110px;
+  height: 110px;
   object-fit: contain;
   filter: drop-shadow(0 2px 8px rgba(0, 0, 0, 0.4));
 }
 
 .eg-showdown-card.round-f4 .eg-showdown-team .team-logo,
 .eg-showdown-card.round-champ .eg-showdown-team .team-logo {
-  width: 72px;
-  height: 72px;
+  width: 132px;
+  height: 132px;
 }
 
 .eg-showdown-seed {
@@ -4316,6 +4316,17 @@ body.walkthrough-active .eg-title-choice:hover {
 }
 
 @media (max-width: 767px) {
+  .eg-showdown-team .team-logo {
+    width: 72px;
+    height: 72px;
+  }
+
+  .eg-showdown-card.round-f4 .eg-showdown-team .team-logo,
+  .eg-showdown-card.round-champ .eg-showdown-team .team-logo {
+    width: 88px;
+    height: 88px;
+  }
+
   .eg-showdown-card.round-e8 .eg-showdown-logo {
     width: 72px !important;
     height: 72px !important;

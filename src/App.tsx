@@ -2687,12 +2687,13 @@ function App() {
                             inverted={invertedRegions.has(region)}
                             displayMode={displayMode}
                             onOpenProbabilityPopup={openProbabilityPopup}
-                            onUnavailableRoundClick={onUnavailableRoundClick}
-                            manuallyExpandedRounds={manuallyExpandedRounds}
-                            onToggleRoundExpansion={toggleRoundExpansion}
-                            isRoundComplete={isRoundComplete}
-                          />
-                        ))}
+                          onUnavailableRoundClick={onUnavailableRoundClick}
+                          manuallyExpandedRounds={manuallyExpandedRounds}
+                          onToggleRoundExpansion={toggleRoundExpansion}
+                          isRoundComplete={isRoundComplete}
+                          forceAllRoundsExpanded={topHalfManuallyExpanded}
+                        />
+                      ))}
                       </div>
                     </div>
                   </section>
@@ -2740,12 +2741,13 @@ function App() {
                             inverted={invertedRegions.has(region)}
                             displayMode={displayMode}
                             onOpenProbabilityPopup={openProbabilityPopup}
-                            onUnavailableRoundClick={onUnavailableRoundClick}
-                            manuallyExpandedRounds={manuallyExpandedRounds}
-                            onToggleRoundExpansion={toggleRoundExpansion}
-                            isRoundComplete={isRoundComplete}
-                          />
-                        ))}
+                          onUnavailableRoundClick={onUnavailableRoundClick}
+                          manuallyExpandedRounds={manuallyExpandedRounds}
+                          onToggleRoundExpansion={toggleRoundExpansion}
+                          isRoundComplete={isRoundComplete}
+                          forceAllRoundsExpanded={bottomHalfManuallyExpanded}
+                        />
+                      ))}
                       </div>
                     </div>
                   </section>
@@ -3951,6 +3953,7 @@ function RegionBracket({
   manuallyExpandedRounds,
   onToggleRoundExpansion,
   isRoundComplete,
+  forceAllRoundsExpanded = false,
 }: {
   region: Region;
   games: ResolvedGame[];
@@ -3966,16 +3969,25 @@ function RegionBracket({
   manuallyExpandedRounds: ManualRoundExpansionState;
   onToggleRoundExpansion: (region: Region, round: "R64" | "R32" | "S16") => void;
   isRoundComplete: (region: Region, round: "R64" | "R32" | "S16") => boolean;
+  forceAllRoundsExpanded?: boolean;
 }) {
   const rounds = inverted ? [...regionRounds].reverse() : [...regionRounds];
   const collapseByRound = useMemo(() => {
+    if (forceAllRoundsExpanded) {
+      return {
+        R64: false,
+        R32: false,
+        S16: false,
+        E8: false,
+      } as Record<"R64" | "R32" | "S16" | "E8", boolean>;
+    }
     return {
       R64: isRoundComplete(region, "R64") && !manuallyExpandedRounds[`${region}-R64`],
       R32: isRoundComplete(region, "R32") && !manuallyExpandedRounds[`${region}-R32`],
       S16: isRoundComplete(region, "S16") && !manuallyExpandedRounds[`${region}-S16`],
       E8: false,
     } as Record<"R64" | "R32" | "S16" | "E8", boolean>;
-  }, [isRoundComplete, manuallyExpandedRounds, region]);
+  }, [forceAllRoundsExpanded, isRoundComplete, manuallyExpandedRounds, region]);
   const gridStateClasses = [
     collapseByRound.R64 ? "r64-collapsed" : "",
     collapseByRound.R32 ? "r32-collapsed" : "",
