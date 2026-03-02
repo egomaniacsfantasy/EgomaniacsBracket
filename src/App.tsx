@@ -475,8 +475,6 @@ function App() {
   const [manuallyExpandedRounds, setManuallyExpandedRounds] = useState<ManualRoundExpansionState>({});
   const [topHalfManuallyExpanded, setTopHalfManuallyExpanded] = useState(false);
   const [bottomHalfManuallyExpanded, setBottomHalfManuallyExpanded] = useState(false);
-  const [topHalfRenderEpoch, setTopHalfRenderEpoch] = useState(0);
-  const [bottomHalfRenderEpoch, setBottomHalfRenderEpoch] = useState(0);
   const [shareToastVisible, setShareToastVisible] = useState(false);
   const [shareModalVisible, setShareModalVisible] = useState(false);
   const [shareExporting, setShareExporting] = useState<ShareFormat | null>(null);
@@ -1922,43 +1920,23 @@ function App() {
     });
   };
 
-  const forceHalfDomVisible = (half: "top" | "bottom") => {
-    if (typeof window === "undefined") return;
-    window.requestAnimationFrame(() => {
-      window.requestAnimationFrame(() => {
-        const section = document.querySelector<HTMLElement>(
-          half === "top" ? ".eg-bracket-section.top-half" : ".eg-bracket-section.bottom-half"
-        );
-        if (!section) return;
-        section.style.display = "";
-        section.style.opacity = "1";
-        section.style.maxHeight = "none";
-        section.style.overflow = "visible";
-        section.querySelectorAll<HTMLElement>(".eg-round-col").forEach((col) => {
-          col.classList.remove("eg-round-col--collapsed", "eg-round-col--collapsing", "eg-round-col--pre-expanding", "eg-round-col--expanding");
-        });
-        section.querySelectorAll<HTMLElement>(".eg-round-col-content, .eg-games-lane").forEach((el) => {
-          el.style.opacity = "1";
-          el.style.maxHeight = "none";
-          el.style.overflow = "visible";
-          el.style.display = "";
-          el.style.visibility = "visible";
-        });
-      });
-    });
-  };
-
   const handleExpandHalf = (half: "top" | "bottom") => {
     if (half === "top") {
       setTopHalfManuallyExpanded(true);
-      setTopHalfRenderEpoch((prev) => prev + 1);
     } else {
       setBottomHalfManuallyExpanded(true);
-      setBottomHalfRenderEpoch((prev) => prev + 1);
     }
     setHalfRoundExpansion(half, true);
-    forceHalfDomVisible(half);
     trackEvent("bracket_half_expanded", { half });
+  };
+
+  const handleCollapseHalf = (half: "top" | "bottom") => {
+    if (half === "top") {
+      setTopHalfManuallyExpanded(false);
+    } else {
+      setBottomHalfManuallyExpanded(false);
+    }
+    setHalfRoundExpansion(half, false);
   };
 
   useEffect(() => {
@@ -2700,42 +2678,40 @@ function App() {
               {chaosTrackerBar}
 
               <div className="eg-bracket-stack">
-                {topHalfVisuallyCollapsed ? (
+                <div style={{ display: topHalfVisuallyCollapsed ? "block" : "none" }}>
                   <CollapsedHalfSummary
                     half="top"
                     games={games}
                     onExpand={() => handleExpandHalf("top")}
                   />
-                ) : (
-                  <section className="eg-bracket-section top-half" data-half-expanded={topHalfManuallyExpanded ? "true" : "false"}>
-                    <div className="eg-section-head">
-                      <h2>Top Half Bracket</h2>
-                      <p>{regionSections[0][0]} + {regionSections[0][1]}</p>
-                      {topHalfComplete ? (
-                        <button
-                          className="half-section-collapse-btn"
-                          onClick={() => {
-                            setTopHalfManuallyExpanded(false);
-                            setHalfRoundExpansion("top", false);
-                          }}
-                        >
-                          Collapse
-                        </button>
-                      ) : null}
-                    </div>
-                    <div className="eg-region-scroll">
-                      <div className="eg-region-grid bracket-style">
-                        {regionSections[0].map((region) => (
-                          <RegionBracket
-                            key={`${region}-top-${topHalfRenderEpoch}-${topHalfManuallyExpanded ? "expanded" : "auto"}`}
-                            region={region}
-                            games={games}
-                            gameWinProbs={simResult.gameWinProbs}
-                            possibleWinners={possibleWinners}
-                            onPick={onPick}
-                            lastPickedKey={lastPickedKey}
-                            onResetRegion={onRequestResetRegion}
-                            inverted={invertedRegions.has(region)}
+                </div>
+                <section
+                  className="eg-bracket-section top-half"
+                  data-half-expanded={topHalfManuallyExpanded ? "true" : "false"}
+                  style={{ display: topHalfVisuallyCollapsed ? "none" : undefined }}
+                >
+                  <div className="eg-section-head">
+                    <h2>Top Half Bracket</h2>
+                    <p>{regionSections[0][0]} + {regionSections[0][1]}</p>
+                    {topHalfComplete ? (
+                      <button className="half-section-collapse-btn" onClick={() => handleCollapseHalf("top")}>
+                        Collapse
+                      </button>
+                    ) : null}
+                  </div>
+                  <div className="eg-region-scroll">
+                    <div className="eg-region-grid bracket-style">
+                      {regionSections[0].map((region) => (
+                        <RegionBracket
+                          key={`${region}-top`}
+                          region={region}
+                          games={games}
+                          gameWinProbs={simResult.gameWinProbs}
+                          possibleWinners={possibleWinners}
+                          onPick={onPick}
+                          lastPickedKey={lastPickedKey}
+                          onResetRegion={onRequestResetRegion}
+                          inverted={invertedRegions.has(region)}
                           displayMode={displayMode}
                           onOpenProbabilityPopup={openProbabilityPopup}
                           onUnavailableRoundClick={onUnavailableRoundClick}
@@ -2745,47 +2721,44 @@ function App() {
                           forceAllRoundsExpanded={topHalfManuallyExpanded}
                         />
                       ))}
-                      </div>
                     </div>
-                  </section>
-                )}
+                  </div>
+                </section>
 
-                {bottomHalfVisuallyCollapsed ? (
+                <div style={{ display: bottomHalfVisuallyCollapsed ? "block" : "none" }}>
                   <CollapsedHalfSummary
                     half="bottom"
                     games={games}
                     onExpand={() => handleExpandHalf("bottom")}
                   />
-                ) : (
-                  <section className="eg-bracket-section bottom-half" data-half-expanded={bottomHalfManuallyExpanded ? "true" : "false"}>
-                    <div className="eg-section-head">
-                      <h2>Bottom Half Bracket</h2>
-                      <p>{regionSections[1][0]} + {regionSections[1][1]}</p>
-                      {bottomHalfComplete ? (
-                        <button
-                          className="half-section-collapse-btn"
-                          onClick={() => {
-                            setBottomHalfManuallyExpanded(false);
-                            setHalfRoundExpansion("bottom", false);
-                          }}
-                        >
-                          Collapse
-                        </button>
-                      ) : null}
-                    </div>
-                    <div className="eg-region-scroll">
-                      <div className="eg-region-grid bracket-style">
-                        {regionSections[1].map((region) => (
-                          <RegionBracket
-                            key={`${region}-bottom-${bottomHalfRenderEpoch}-${bottomHalfManuallyExpanded ? "expanded" : "auto"}`}
-                            region={region}
-                            games={games}
-                            gameWinProbs={simResult.gameWinProbs}
-                            possibleWinners={possibleWinners}
-                            onPick={onPick}
-                            lastPickedKey={lastPickedKey}
-                            onResetRegion={onRequestResetRegion}
-                            inverted={invertedRegions.has(region)}
+                </div>
+                <section
+                  className="eg-bracket-section bottom-half"
+                  data-half-expanded={bottomHalfManuallyExpanded ? "true" : "false"}
+                  style={{ display: bottomHalfVisuallyCollapsed ? "none" : undefined }}
+                >
+                  <div className="eg-section-head">
+                    <h2>Bottom Half Bracket</h2>
+                    <p>{regionSections[1][0]} + {regionSections[1][1]}</p>
+                    {bottomHalfComplete ? (
+                      <button className="half-section-collapse-btn" onClick={() => handleCollapseHalf("bottom")}>
+                        Collapse
+                      </button>
+                    ) : null}
+                  </div>
+                  <div className="eg-region-scroll">
+                    <div className="eg-region-grid bracket-style">
+                      {regionSections[1].map((region) => (
+                        <RegionBracket
+                          key={`${region}-bottom`}
+                          region={region}
+                          games={games}
+                          gameWinProbs={simResult.gameWinProbs}
+                          possibleWinners={possibleWinners}
+                          onPick={onPick}
+                          lastPickedKey={lastPickedKey}
+                          onResetRegion={onRequestResetRegion}
+                          inverted={invertedRegions.has(region)}
                           displayMode={displayMode}
                           onOpenProbabilityPopup={openProbabilityPopup}
                           onUnavailableRoundClick={onUnavailableRoundClick}
@@ -2795,10 +2768,9 @@ function App() {
                           forceAllRoundsExpanded={bottomHalfManuallyExpanded}
                         />
                       ))}
-                      </div>
                     </div>
-                  </section>
-                )}
+                  </div>
+                </section>
 
                 <section className="eg-finals-card bracket-finals">
                   <h2>Final Four & Championship</h2>
@@ -4519,15 +4491,15 @@ function ShowdownCard({
   const showdownLogoSize =
     game.round === "CHAMP"
       ? isMobileViewport
-        ? 96
-        : 208
+        ? 52
+        : 88
       : game.round === "F4"
         ? isMobileViewport
-          ? 84
-          : 176
+          ? 48
+          : 80
         : isMobileViewport
-          ? 72
-          : 148;
+          ? 40
+          : 64;
 
   return (
     <div className={`eg-showdown-card ${roundClass} eg-showdown-card--entering ${decided ? "decided" : ""}`}>
