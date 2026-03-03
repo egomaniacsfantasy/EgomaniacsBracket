@@ -14,6 +14,7 @@ type AuthContextValue = {
   loading: boolean;
   signUp: (email: string, displayName: string, password: string) => Promise<{ data: unknown; error: unknown }>;
   signIn: (email: string, password: string) => Promise<{ data: unknown; error: unknown }>;
+  signInWithGoogle: () => Promise<{ data: unknown; error: unknown }>;
   signOut: () => Promise<void>;
   isAuthenticated: boolean;
 };
@@ -25,9 +26,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
 
-  const fetchProfile = async (userId: string) => {
+  const fetchProfile = async (userId: string, authUser?: User | null) => {
     const { data } = await supabase.from("profiles").select("display_name").eq("id", userId).single();
-    setProfile((data as Profile | null) ?? null);
+    const profileData = (data as Profile | null) ?? null;
+    const googleName = authUser?.user_metadata?.full_name as string | undefined;
+
+    if (profileData && (!profileData.display_name || profileData.display_name === "Anonymous") && googleName) {
+      await supabase.from("profiles").update({ display_name: googleName }).eq("id", userId);
+      setProfile({ ...profileData, display_name: googleName });
+      return;
+    }
+
+    setProfile(profileData);
   };
 
   useEffect(() => {
@@ -37,7 +47,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (!mounted) return;
       setUser(session?.user ?? null);
       if (session?.user) {
-        await fetchProfile(session.user.id);
+        await fetchProfile(session.user.id, session.user);
       }
       setLoading(false);
     });
@@ -45,7 +55,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       setUser(session?.user ?? null);
       if (session?.user) {
-        await fetchProfile(session.user.id);
+        await fetchProfile(session.user.id, session.user);
         if (event === "SIGNED_IN") {
           const pendingRaw = window.sessionStorage.getItem("pendingBracketSave");
           if (pendingRaw) {
@@ -89,6 +99,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return { data, error };
   };
 
+  const signInWithGoogle = async () => {
+    const { data, error } = await supabase.auth.signInWithOAuth({
+      provider: "google",
+      options: {
+        redirectTo: window.location.origin,
+      },
+    });
+    return { data, error };
+  };
+
   const signOut = async () => {
     await supabase.auth.signOut();
     setUser(null);
@@ -103,6 +123,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         loading,
         signUp,
         signIn,
+        signInWithGoogle,
         signOut,
         isAuthenticated: Boolean(user),
       }}
