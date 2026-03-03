@@ -43,7 +43,6 @@ const HINTS_STORAGE_KEY = "oddsGods_hintsShown";
 const FIRST_PICK_NUDGE_SESSION_KEY = "oddsGods_firstPickCascadeNudgeSeen";
 const PROMO_DISMISSED_KEY = "bracketlab-promo-dismissed";
 const DESKTOP_FIRST_SEEN_KEY = "bracketlab-desktop-first-seen";
-const MOBILE_ONBOARDING_KEY = "bracketlab-mobile-onboarding-done";
 const ODDS_FORMAT_STORAGE_KEY = "bracketlab-odds-format";
 const STAGGERED_SIM_DELAY_MS = 2000;
 const MIN_STAGGERED_SIM_DELAY_MS = 1000;
@@ -214,7 +213,7 @@ type MobileRegionRound = "FF" | "R64" | "R32" | "S16" | "E8";
 type MobileFfRound = "F4" | "CHAMP" | "WIN";
 type CandidateRow = { teamId: string; prob: number; team: NonNullable<ReturnType<typeof teamsById.get>> };
 const MAJOR_SHIFT_NUDGE_COOLDOWN = 3;
-type WalkthroughStepId = "make-pick" | "watch-reprice" | "see-futures" | "edit-odds" | "ready";
+type WalkthroughStepId = "hook" | "upset-pick" | "bracket-ripple" | "futures-panel" | "ready";
 type WalkthroughStepAdvance = "pick-detected" | "button-click";
 type TooltipPlacement = "above" | "below" | "left" | "right" | "bottom-sheet";
 type HintKey = "undo" | "sim" | "toggle" | "r32";
@@ -239,6 +238,7 @@ type WalkthroughStepConfig = {
   ctaText: string;
   advanceOn: WalkthroughStepAdvance;
   allowSkip: boolean;
+  centered?: boolean;
 };
 
 type ShareFinalFourTeam = {
@@ -355,46 +355,50 @@ const DEFAULT_HINTS_SHOWN: HintsShown = {
   r32: false,
 };
 
+const ONBOARDING_MATCHUP_ID = "South-R64-2";
+
 const WALKTHROUGH_STEPS: WalkthroughStepConfig[] = [
   {
-    id: "make-pick",
-    heading: "Pick the upset",
-    body: "Tap the underdog to see what happens. Pick the upset and watch the entire bracket react.",
+    id: "hook",
+    heading: "Every pick changes everything.",
+    body: "This isn't a regular bracket tool. Every outcome you choose reprices the entire tournament - every round, every contender, all the way to the championship.",
+    ctaText: "Show me →",
+    advanceOn: "button-click",
+    allowSkip: true,
+    centered: true,
+  },
+  {
+    id: "upset-pick",
+    heading: "Pick the upset.",
+    body: "Tap Liberty to knock off 5-seed Tennessee. Then watch what happens to every other team's odds.",
+    ctaText: "Pick Liberty first",
+    advanceOn: "button-click",
+    allowSkip: true,
+  },
+  {
+    id: "bracket-ripple",
+    heading: "Every round reacts.",
+    body: "Tennessee was a factor all the way through the Sweet 16. Now that they're out, every team they would have faced has new odds.",
     ctaText: "Got it →",
     advanceOn: "button-click",
     allowSkip: true,
   },
   {
-    id: "watch-reprice",
-    heading: "Everything just changed",
-    body: "Your upset pick just repriced odds across the entire bracket — Round of 32, Sweet 16, Elite 8, all the way to the championship. These aren't static numbers. Every pick you make recalculates everything.",
-    ctaText: "Got it →",
-    advanceOn: "button-click",
-    allowSkip: true,
-  },
-  {
-    id: "see-futures",
-    heading: "Meet the Futures panel",
-    body: "This shows every team's chances of reaching each round — updated live based on YOUR picks. Scroll down to see the Pre-Tournament Baseline and compare how your picks shifted the odds.",
-    ctaText: "Got it →",
-    advanceOn: "button-click",
-    allowSkip: true,
-  },
-  {
-    id: "edit-odds",
-    heading: "Think the model is wrong?",
-    body: 'Hover over any game to see the edit icon, or tap "Edit odds" on mobile. Drag the slider to set your own win probability — the entire bracket reprices to match.',
+    id: "futures-panel",
+    heading: "Meet the Futures panel.",
+    body: "This tracks every team's championship path - round by round, updated live as you pick.",
     ctaText: "Got it →",
     advanceOn: "button-click",
     allowSkip: true,
   },
   {
     id: "ready",
-    heading: "Your toolkit",
-    body: "You're seeing implied probabilities. Switch to American odds, simulate brackets, undo, or reset anytime.",
-    ctaText: "Start picking →",
+    heading: "Your bracket. Your scenario.",
+    body: "Start picking. Every game you decide reprices every round downstream.",
+    ctaText: "Start building →",
     advanceOn: "button-click",
     allowSkip: false,
+    centered: true,
   },
 ];
 
@@ -479,7 +483,6 @@ function App() {
     return window.localStorage.getItem(ONBOARDING_STORAGE_KEY) !== "true";
   });
   const [showDesktopFirst, setShowDesktopFirst] = useState(false);
-  const [mobileOnboardingOpen, setMobileOnboardingOpen] = useState(false);
   const [walkthroughActive, setWalkthroughActive] = useState(false);
   const [walkthroughStep, setWalkthroughStep] = useState(0);
   const [walkthroughTargetEl, setWalkthroughTargetEl] = useState<HTMLElement | null>(null);
@@ -487,6 +490,9 @@ function App() {
   const [tooltipPlacement, setTooltipPlacement] = useState<TooltipPlacement>("below");
   const [walkthroughFirstPickedTeamId, setWalkthroughFirstPickedTeamId] = useState<string | null>(null);
   const [walkthroughMatchupId, setWalkthroughMatchupId] = useState<string | null>(null);
+  const [walkthroughCascadePhase, setWalkthroughCascadePhase] = useState<"idle" | "pick" | "animating" | "done">("idle");
+  const [walkthroughChangedGameIds, setWalkthroughChangedGameIds] = useState<Set<string>>(new Set());
+  const [walkthroughDontShowAgain, setWalkthroughDontShowAgain] = useState(true);
   const [hintsShown, setHintsShown] = useState<HintsShown>(() => {
     if (typeof window === "undefined") return DEFAULT_HINTS_SHOWN;
     try {
@@ -568,6 +574,8 @@ function App() {
   const previousBottomHalfCollapsedRef = useRef(false);
   const previousTopHalfCompleteRef = useRef(false);
   const previousBottomHalfCompleteRef = useRef(false);
+  const walkthroughBeforeTeamOddsRef = useRef<Map<string, Map<string, number>>>(new Map());
+  const walkthroughCascadeTimerRef = useRef<number | null>(null);
 
   const { games, sanitized } = useMemo(
     () => resolveGames(lockedPicks, customProbByGame),
@@ -578,43 +586,6 @@ function App() {
     () => (walkthroughMatchupId ? games.find((game) => game.id === walkthroughMatchupId) ?? null : null),
     [games, walkthroughMatchupId]
   );
-  const walkthroughPickMade = Boolean(walkthroughMatchupId && sanitized[walkthroughMatchupId]);
-
-  const selectOnboardingMatchupId = (): string | null => {
-    const candidatesFor = (source: ResolvedGame[], minProb: number, maxProb: number) =>
-      source
-        .filter((game) => game.round === "R64" && game.teamAId && game.teamBId)
-        .filter((game) => {
-          const probA = getModelGameWinProb(game, game.teamAId as string);
-          if (probA === null) return false;
-          const underdogProb = Math.min(probA, 1 - probA);
-          return underdogProb >= minProb && underdogProb <= maxProb;
-        })
-        .sort((a, b) => {
-          const teamAA = teamsById.get(a.teamAId as string);
-          const teamAB = teamsById.get(a.teamBId as string);
-          const teamBA = teamsById.get(b.teamAId as string);
-          const teamBB = teamsById.get(b.teamBId as string);
-          const gapA = teamAA && teamAB ? Math.abs(teamAA.seed - teamAB.seed) : 0;
-          const gapB = teamBA && teamBB ? Math.abs(teamBA.seed - teamBB.seed) : 0;
-          return gapB - gapA;
-        });
-
-    const southGames = games.filter((game) => game.region === "South");
-    const primarySouth = candidatesFor(southGames, 0.15, 0.45);
-    if (primarySouth.length > 0) return primarySouth[0].id;
-
-    const primaryAll = candidatesFor(games, 0.15, 0.45);
-    if (primaryAll.length > 0) return primaryAll[0].id;
-
-    const fallbackSouth = candidatesFor(southGames, 0.1, 0.5);
-    if (fallbackSouth.length > 0) return fallbackSouth[0].id;
-
-    const fallbackAll = candidatesFor(games, 0.1, 0.5);
-    if (fallbackAll.length > 0) return fallbackAll[0].id;
-
-    return games.find((game) => game.round === "R64")?.id ?? null;
-  };
 
   useEffect(() => {
     staggeredDelayRef.current = staggeredSimDelayMs;
@@ -648,18 +619,15 @@ function App() {
     if (typeof window === "undefined") return;
     if (!isMobile) {
       setShowDesktopFirst(false);
-      setMobileOnboardingOpen(false);
       setWelcomeGateOpen(window.localStorage.getItem(ONBOARDING_STORAGE_KEY) !== "true");
       return;
     }
 
-    // Mobile uses a dedicated onboarding flow and never runs the desktop walkthrough.
-    setWelcomeGateOpen(false);
+    // Mobile now uses the same 5-step walkthrough after the desktop-first gate.
+    setWelcomeGateOpen(window.localStorage.getItem(ONBOARDING_STORAGE_KEY) !== "true");
     setWalkthroughActive(false);
     const desktopFirstSeen = window.localStorage.getItem(DESKTOP_FIRST_SEEN_KEY) === "1";
-    const mobileOnboardingDone = window.localStorage.getItem(MOBILE_ONBOARDING_KEY) === "1";
     setShowDesktopFirst(!desktopFirstSeen);
-    setMobileOnboardingOpen(desktopFirstSeen && !mobileOnboardingDone);
   }, [isMobile]);
 
   useEffect(() => {
@@ -743,13 +711,26 @@ function App() {
       window.clearTimeout(walkthroughAdvanceTimerRef.current);
       walkthroughAdvanceTimerRef.current = null;
     }
+    if (walkthroughCascadeTimerRef.current !== null) {
+      window.clearTimeout(walkthroughCascadeTimerRef.current);
+      walkthroughCascadeTimerRef.current = null;
+    }
     setWalkthroughActive(false);
     setWalkthroughStep(0);
     setWalkthroughTargetEl(null);
     setWalkthroughTargetRect(null);
     setWalkthroughFirstPickedTeamId(null);
     setWalkthroughMatchupId(null);
-    window.localStorage.setItem(ONBOARDING_STORAGE_KEY, "true");
+    setWalkthroughCascadePhase("idle");
+    setWalkthroughChangedGameIds(new Set());
+    document.querySelectorAll(".futures-row--onboarding-highlight").forEach((el) => {
+      el.classList.remove("futures-row--onboarding-highlight");
+    });
+    if (walkthroughDontShowAgain) {
+      window.localStorage.setItem(ONBOARDING_STORAGE_KEY, "true");
+    } else {
+      window.localStorage.setItem(ONBOARDING_STORAGE_KEY, "false");
+    }
     setWelcomeGateOpen(false);
   };
 
@@ -798,7 +779,7 @@ function App() {
     trackEvent("onboarding_started", {
       replay: Boolean(opts?.replay),
     });
-    const targetMatchupId = selectOnboardingMatchupId();
+    const targetMatchupId = ONBOARDING_MATCHUP_ID;
     if (opts?.replay) {
       window.localStorage.setItem(ONBOARDING_STORAGE_KEY, "false");
       setHintsShown(DEFAULT_HINTS_SHOWN);
@@ -817,6 +798,9 @@ function App() {
         setWalkthroughTargetRect(null);
         setWalkthroughFirstPickedTeamId(null);
         setWalkthroughMatchupId(targetMatchupId);
+        setWalkthroughCascadePhase("pick");
+        setWalkthroughDontShowAgain(true);
+        setWalkthroughChangedGameIds(new Set());
         setWalkthroughActive(true);
       }, sidePanelOpen ? 350 : 0);
       return;
@@ -827,19 +811,14 @@ function App() {
     setWalkthroughTargetRect(null);
     setWalkthroughFirstPickedTeamId(null);
     setWalkthroughMatchupId(targetMatchupId);
+    setWalkthroughCascadePhase("pick");
+    setWalkthroughDontShowAgain(true);
+    setWalkthroughChangedGameIds(new Set());
+    walkthroughBeforeTeamOddsRef.current = new Map();
     setWalkthroughActive(true);
   };
 
   const replayIntro = () => {
-    if (isMobile) {
-      if (typeof window !== "undefined") {
-        window.localStorage.removeItem(MOBILE_ONBOARDING_KEY);
-      }
-      setPromoCTAVisible(false);
-      setShowDesktopFirst(false);
-      setMobileOnboardingOpen(true);
-      return;
-    }
     startWalkthrough({ replay: true });
   };
 
@@ -847,15 +826,7 @@ function App() {
     setShowDesktopFirst(false);
     if (typeof window !== "undefined") {
       window.localStorage.setItem(DESKTOP_FIRST_SEEN_KEY, "1");
-      const mobileOnboardingDone = window.localStorage.getItem(MOBILE_ONBOARDING_KEY) === "1";
-      if (!mobileOnboardingDone) setMobileOnboardingOpen(true);
     }
-  };
-
-  const handleMobileOnboardingComplete = (source: "completed" | "skipped") => {
-    setMobileOnboardingOpen(false);
-    trackEvent(source === "completed" ? "mobile_onboarding_completed" : "mobile_onboarding_skipped");
-    maybeShowPromoCTA();
   };
 
   const showContextualHint = (key: HintKey, message: string, selector: string, durationMs: number) => {
@@ -1506,6 +1477,21 @@ function App() {
   const onPick = (game: ResolvedGame, teamId: string | null) => {
     if (!teamId) return;
     if (teamId !== game.teamAId && teamId !== game.teamBId) return;
+    if (walkthroughActive && currentWalkthroughStep?.id === "upset-pick" && walkthroughCascadePhase === "pick") {
+      const pickedTeam = teamsById.get(teamId);
+      const isForcedUpsetPick = game.id === walkthroughMatchupId && pickedTeam?.seedLabel === "12";
+      if (!isForcedUpsetPick) return;
+      setWalkthroughFirstPickedTeamId(teamId);
+      walkthroughBeforeTeamOddsRef.current = new Map(
+        gameTemplates
+          .filter((tmpl) => tmpl.region === "South" && (tmpl.round === "R32" || tmpl.round === "S16" || tmpl.round === "E8"))
+          .map((tmpl) => [
+            tmpl.id,
+            new Map((simResult.gameWinProbs[tmpl.id] ?? []).map((row) => [row.teamId, row.prob])),
+          ])
+      );
+      setWalkthroughCascadePhase("animating");
+    }
     const previousWinnerId = lockedPicks[game.id] ?? null;
     const pickAction = previousWinnerId === teamId ? "remove" : previousWinnerId ? "switch" : "set";
     const pickedTeam = teamsById.get(teamId);
@@ -2243,7 +2229,7 @@ function App() {
     [playInGames]
   );
   const allPlayInDecided = playInGames.length === 0 || decidedPlayInCount === playInGames.length;
-  const onboardingFlowReady = isMobile ? !showDesktopFirst && !mobileOnboardingOpen : !welcomeGateOpen && !walkthroughActive;
+  const onboardingFlowReady = !showDesktopFirst && !walkthroughActive;
   const leftSemi = finalGames.find((g) => g.id === "F4-Left-0") ?? null;
   const rightSemi = finalGames.find((g) => g.id === "F4-Right-0") ?? null;
   const titleGame = finalGames.find((g) => g.id === "CHAMP-0") ?? null;
@@ -2296,35 +2282,131 @@ function App() {
   const walkthroughDisplayStep = useMemo(() => {
     if (!currentWalkthroughStep) return null;
 
-    if (currentWalkthroughStep.id === "make-pick") {
+    if (currentWalkthroughStep.id === "upset-pick") {
+      if (walkthroughCascadePhase === "animating") {
+        return {
+          ...currentWalkthroughStep,
+          heading: "Watch the field reprice.",
+          body: "Liberty just knocked out Tennessee. Now watch every downstream matchup update - round by round.",
+          ctaText: "Repricing...",
+        };
+      }
+      if (walkthroughCascadePhase === "done") {
+        return {
+          ...currentWalkthroughStep,
+          heading: "That's the cascade.",
+          body: "One upset just repriced every round. Tennessee's gone - and the odds for UConn, NC State, UCLA, and everyone else in the South just shifted.",
+          ctaText: "See the ripple effect →",
+        };
+      }
       return {
         ...currentWalkthroughStep,
-        heading: "Make your first pick",
-        body: "Tap either team to lock in a pick. Watch every number across the bracket update instantly.",
+        heading: "Pick the upset.",
+        body: "Tap Liberty to knock off 5-seed Tennessee. Then watch what happens to every other team's odds.",
+        ctaText: "Pick Liberty first",
       };
     }
 
-    if (currentWalkthroughStep.id === "watch-reprice") {
+    if (currentWalkthroughStep.id === "bracket-ripple") {
       return {
         ...currentWalkthroughStep,
-        body: "Your upset pick just repriced odds across the entire bracket — Round of 32, Sweet 16, Elite 8, all the way to the championship. These aren't static numbers. Every pick you make recalculates everything.",
+        body: "Tennessee was a factor all the way through the Sweet 16. Now they're out, so UConn's likely path shifts and NC State gets an easier route.",
       };
     }
 
-    if (currentWalkthroughStep.id === "ready") {
+    if (currentWalkthroughStep.id === "futures-panel") {
       return {
         ...currentWalkthroughStep,
-        body: "You're seeing implied probabilities. Switch to American odds, simulate brackets, undo, or reset anytime.",
+        body: "Notice how Liberty appears and Tennessee drops. Red/green deltas show exactly how much your upset shifted each team. Scroll to see the pre-tournament baseline.",
       };
     }
 
     return currentWalkthroughStep;
-  }, [currentWalkthroughStep]);
-  const walkthroughCtaDisabled = currentWalkthroughStep?.id === "make-pick" && !walkthroughPickMade;
+  }, [currentWalkthroughStep, walkthroughCascadePhase]);
   const walkthroughCtaLabel =
-    currentWalkthroughStep?.id === "make-pick" && !walkthroughPickMade
-      ? "Pick a team first"
+    currentWalkthroughStep?.id === "upset-pick"
+      ? walkthroughCascadePhase === "pick"
+        ? "Pick Liberty first"
+        : walkthroughCascadePhase === "animating"
+          ? "Repricing..."
+          : "See the ripple effect →"
       : currentWalkthroughStep?.ctaText ?? "Next →";
+  const isWalkthroughStepCentered = Boolean(currentWalkthroughStep?.centered);
+  const walkthroughCtaBlockedByCascade =
+    currentWalkthroughStep?.id === "upset-pick" &&
+    (walkthroughCascadePhase === "pick" || walkthroughCascadePhase === "animating");
+  const walkthroughCtaDisabled = walkthroughCtaBlockedByCascade;
+
+  useEffect(() => {
+    if (!walkthroughActive || currentWalkthroughStep?.id !== "upset-pick" || walkthroughCascadePhase !== "animating") return;
+    const afterMap = new Map<string, Map<string, number>>(
+      gameTemplates
+        .filter((tmpl) => tmpl.region === "South" && (tmpl.round === "R32" || tmpl.round === "S16" || tmpl.round === "E8"))
+        .map((tmpl) => [tmpl.id, new Map((simResult.gameWinProbs[tmpl.id] ?? []).map((row) => [row.teamId, row.prob]))])
+    );
+    const changed = new Set<string>();
+    afterMap.forEach((rowMap, gameId) => {
+      const beforeRows = walkthroughBeforeTeamOddsRef.current.get(gameId) ?? new Map<string, number>();
+      const teamIds = new Set([...beforeRows.keys(), ...rowMap.keys()]);
+      for (const teamId of teamIds) {
+        const before = beforeRows.get(teamId) ?? 0;
+        const after = rowMap.get(teamId) ?? 0;
+        if (Math.abs(before - after) > 1e-6) {
+          changed.add(gameId);
+          break;
+        }
+      }
+    });
+    setWalkthroughChangedGameIds(changed);
+    document.querySelectorAll<HTMLElement>(".odds-value").forEach((el) => el.classList.remove("odds-cascading"));
+    const formatAnimatedOdds = (prob: number) => formatOddsDisplay(prob, displayMode).primary;
+    const animateOddsValue = (el: HTMLElement, fromVal: number, toVal: number, duration = 600) => {
+      const start = performance.now();
+      const tick = (now: number) => {
+        const progress = Math.min(1, (now - start) / duration);
+        const eased = 1 - Math.pow(1 - progress, 3);
+        const current = fromVal + (toVal - fromVal) * eased;
+        el.textContent = formatAnimatedOdds(current);
+        if (progress < 1) {
+          window.requestAnimationFrame(tick);
+        } else {
+          el.textContent = formatAnimatedOdds(toVal);
+          el.classList.add("odds-settled");
+          window.setTimeout(() => el.classList.remove("odds-settled"), 350);
+        }
+      };
+      window.requestAnimationFrame(tick);
+    };
+    const rounds: Array<"R32" | "S16" | "E8"> = ["R32", "S16", "E8"];
+    rounds.forEach((round, index) => {
+      window.setTimeout(() => {
+        changed.forEach((gameId) => {
+          if (!gameId.includes(`-${round}-`)) return;
+          const gameEl = document.querySelector<HTMLElement>(`.eg-game-card[data-game-id="${gameId}"]`);
+          if (!gameEl) return;
+          const beforeRows = walkthroughBeforeTeamOddsRef.current.get(gameId) ?? new Map<string, number>();
+          const afterRows = afterMap.get(gameId) ?? new Map<string, number>();
+          gameEl.querySelectorAll<HTMLElement>(".odds-value").forEach((oddsEl) => {
+            const teamId = oddsEl.dataset.teamId ?? "";
+            const fromVal = beforeRows.get(teamId);
+            const toVal = afterRows.get(teamId);
+            if (fromVal === undefined || toVal === undefined) return;
+            oddsEl.classList.add("odds-cascading");
+            animateOddsValue(oddsEl, fromVal, toVal, 600);
+            window.setTimeout(() => oddsEl.classList.remove("odds-cascading"), 1000);
+          });
+          gameEl.querySelectorAll<HTMLElement>('[data-team-name="Tennessee"]').forEach((row) => {
+            row.classList.add("team-eliminated-anim");
+          });
+        });
+      }, index * 900);
+    });
+    if (walkthroughCascadeTimerRef.current !== null) window.clearTimeout(walkthroughCascadeTimerRef.current);
+    walkthroughCascadeTimerRef.current = window.setTimeout(() => {
+      setWalkthroughCascadePhase("done");
+      walkthroughCascadeTimerRef.current = null;
+    }, 2900);
+  }, [currentWalkthroughStep?.id, displayMode, simResult.gameWinProbs, walkthroughActive, walkthroughCascadePhase]);
 
   useEffect(() => {
     if (!walkthroughActive || !currentWalkthroughStep) return;
@@ -2340,69 +2422,30 @@ function App() {
     const getTargetElement = (): HTMLElement | null => {
       const southRegion = resolveSouthRegion();
       switch (currentWalkthroughStep.id) {
-        case "make-pick": {
-          const bySeeds = document.querySelector<HTMLElement>('[data-seeds="3-14"], [data-seeds="14-3"]');
-          if (isMobile && bySeeds) return bySeeds;
-          if (walkthroughMatchupId) {
-            const byId = document.querySelector<HTMLElement>(`.eg-game-card[data-game-id="${walkthroughMatchupId}"]`);
-            if (byId) return byId;
-            const mobileById = document.querySelector<HTMLElement>(`.m-card[data-game-id="${walkthroughMatchupId}"]`);
-            if (mobileById) return mobileById;
+        case "hook":
+        case "ready":
+          return null;
+        case "upset-pick": {
+          if (walkthroughCascadePhase !== "pick") {
+            if (isMobile) return document.querySelector<HTMLElement>(".m-card");
+            return southRegion;
           }
+          const targetId = walkthroughMatchupId ?? ONBOARDING_MATCHUP_ID;
           if (isMobile) {
-            return document.querySelector<HTMLElement>(".mobile-matchup-card, .m-card, .mobile-matchup-full");
+            return document.querySelector<HTMLElement>(`.m-card[data-game-id="${targetId}"]`);
           }
-          return southRegion?.querySelector<HTMLElement>(".eg-game-card.round-r64") ?? null;
+          return document.querySelector<HTMLElement>(`.eg-game-card[data-game-id="${targetId}"]`);
         }
-        case "watch-reprice": {
-          const sourceTemplate = walkthroughMatchupId ? gameTemplates.find((game) => game.id === walkthroughMatchupId) : null;
-          const nextTemplate = walkthroughMatchupId
-            ? gameTemplates.find(
-                (game) => game.round === "R32" && game.sourceGameIds?.includes(walkthroughMatchupId)
-              )
-            : null;
-          if (nextTemplate) {
-            const byId = document.querySelector<HTMLElement>(`.eg-game-card[data-game-id="${nextTemplate.id}"]`);
-            if (byId) return byId;
-          }
-          if (isMobile) {
-            return document.querySelector<HTMLElement>(".mobile-round-pill.active + * .m-card, .m-card, .mobile-prob-card");
-          }
-          const targetRegionCard =
-            sourceTemplate?.region
-              ? Array.from(document.querySelectorAll<HTMLElement>(".eg-region-card.bracket-region")).find((card) =>
-                  card.querySelector("h2")?.textContent?.trim().toLowerCase().includes(sourceTemplate.region!.toLowerCase())
-                ) ?? southRegion
-              : southRegion;
-          if (targetRegionCard && walkthroughFirstPickedTeamId) {
-            const teamName = teamsById.get(walkthroughFirstPickedTeamId)?.name ?? "";
-            const rows = Array.from(
-              targetRegionCard.querySelectorAll<HTMLElement>(".lane-r32 .matchup-row, .lane-r32 .eg-compact-chip")
-            );
-            const matched = rows.find((row) => row.textContent?.toLowerCase().includes(teamName.toLowerCase()));
-            if (matched) return matched;
-          }
-          return targetRegionCard?.querySelector<HTMLElement>(".lane-r32 .eg-game-card, .lane-r32 .matchup-row") ?? null;
+        case "bracket-ripple": {
+          if (isMobile) return document.querySelector<HTMLElement>(".m-card");
+          return southRegion?.querySelector<HTMLElement>(".lane-r32 .eg-game-card, .lane-s16 .eg-game-card") ?? null;
         }
-        case "see-futures": {
+        case "futures-panel": {
           if (isMobile) {
             return document.querySelector<HTMLElement>(".mobile-futures-view");
           }
-          return document.querySelector<HTMLElement>(".eg-side-panel.open, .eg-side-panel");
+          return document.querySelector<HTMLElement>(".futures-panel");
         }
-        case "edit-odds": {
-          if (isMobile) {
-            return document.querySelector<HTMLElement>(".m-edit-prob-btn");
-          }
-          const r64Cards = southRegion?.querySelectorAll<HTMLElement>(".eg-game-card.round-r64");
-          const iconTarget =
-            r64Cards?.[1]?.querySelector<HTMLElement>(".matchup-edit-icon") ??
-            r64Cards?.[0]?.querySelector<HTMLElement>(".matchup-edit-icon") ??
-            null;
-          return iconTarget?.closest<HTMLElement>(".eg-game-card") ?? null;
-        }
-        case "ready":
-          return document.querySelector<HTMLElement>(".eg-main-actions.toolbar");
         default:
           return null;
       }
@@ -2410,30 +2453,55 @@ function App() {
 
     const runPreAction = () => {
       if (!isMobile) {
-        if (currentWalkthroughStep.id === "see-futures" && !sidePanelOpen) {
+        if (currentWalkthroughStep.id === "hook") {
+          const target = document.querySelector<HTMLElement>(`.eg-game-card[data-game-id="${ONBOARDING_MATCHUP_ID}"]`);
+          target?.scrollIntoView({ behavior: "smooth", block: "center", inline: "center" });
+        }
+        if (currentWalkthroughStep.id === "futures-panel" && !sidePanelOpen) {
           setSidePanelOpen(true);
+        }
+        if (currentWalkthroughStep.id === "futures-panel") {
+          window.setTimeout(() => {
+            const libertyRow = document.querySelector<HTMLElement>('.eg-future-item[data-team-name="Liberty"]');
+            const tennesseeRow = document.querySelector<HTMLElement>('.eg-future-item[data-team-name="Tennessee"]');
+            const target = libertyRow ?? tennesseeRow;
+            target?.scrollIntoView({ behavior: "smooth", block: "center" });
+            libertyRow?.classList.add("futures-row--onboarding-highlight");
+            tennesseeRow?.classList.add("futures-row--onboarding-highlight");
+          }, 350);
+        }
+        if (currentWalkthroughStep.id === "ready") {
+          if (walkthroughMatchupId && lockedPicks[walkthroughMatchupId]) {
+            const nextLocks = { ...lockedPicks };
+            delete nextLocks[walkthroughMatchupId];
+            applyLockedPicksUpdate(nextLocks);
+          }
+          window.scrollTo({ top: 0, behavior: "smooth" });
         }
         return;
       }
-      if (currentWalkthroughStep.id === "make-pick") {
-        setMobileTab("bracket");
-        if (walkthroughMatchup?.region) setMobileSection(walkthroughMatchup.region);
-        setMobileRound("R64");
-      }
-      if (currentWalkthroughStep.id === "watch-reprice") {
-        setMobileTab("bracket");
-        if (walkthroughMatchup?.region) setMobileSection(walkthroughMatchup.region);
-        setMobileRound("R32");
-      }
-      if (currentWalkthroughStep.id === "see-futures") {
-        setMobileTab("futures");
-      }
-      if (currentWalkthroughStep.id === "edit-odds") {
+      if (currentWalkthroughStep.id === "upset-pick") {
         setMobileTab("bracket");
         setMobileSection("South");
         setMobileRound("R64");
       }
+      if (currentWalkthroughStep.id === "bracket-ripple") {
+        setMobileTab("bracket");
+        setMobileSection("South");
+        setMobileRound("R32");
+      }
+      if (currentWalkthroughStep.id === "futures-panel") {
+        setMobileTab("futures");
+      }
       if (currentWalkthroughStep.id === "ready") {
+        if (walkthroughMatchupId && lockedPicks[walkthroughMatchupId]) {
+          const nextLocks = { ...lockedPicks };
+          delete nextLocks[walkthroughMatchupId];
+          applyLockedPicksUpdate(nextLocks);
+        }
+        setMobileTab("bracket");
+        setMobileSection("South");
+        setMobileRound("R64");
         window.scrollTo({ top: 0, behavior: "smooth" });
       }
     };
@@ -2445,6 +2513,11 @@ function App() {
       const maxAttempts = 15;
       for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
         if (cancelled || token !== walkthroughResolveTokenRef.current) return;
+        if (currentWalkthroughStep.centered) {
+          setWalkthroughTargetEl(null);
+          setWalkthroughTargetRect(null);
+          return;
+        }
         const target = getTargetElement();
         if (target) {
           target.scrollIntoView({ behavior: "smooth", block: "center", inline: "nearest" });
@@ -2465,7 +2538,19 @@ function App() {
     return () => {
       cancelled = true;
     };
-  }, [currentWalkthroughStep, isMobile, mobileRound, mobileSection, sidePanelOpen, walkthroughActive, walkthroughFirstPickedTeamId, walkthroughMatchup, walkthroughMatchupId]);
+  }, [
+    currentWalkthroughStep,
+    isMobile,
+    lockedPicks,
+    mobileRound,
+    mobileSection,
+    sidePanelOpen,
+    walkthroughActive,
+    walkthroughCascadePhase,
+    walkthroughFirstPickedTeamId,
+    walkthroughMatchup,
+    walkthroughMatchupId,
+  ]);
 
   useEffect(() => {
     if (!walkthroughActive || !walkthroughTargetEl) return;
@@ -2516,7 +2601,18 @@ function App() {
   }, [walkthroughActive, walkthroughTargetEl]);
 
   useEffect(() => {
+    if (currentWalkthroughStep?.id === "futures-panel") return;
+    document.querySelectorAll(".futures-row--onboarding-highlight").forEach((el) => {
+      el.classList.remove("futures-row--onboarding-highlight");
+    });
+  }, [currentWalkthroughStep?.id]);
+
+  useEffect(() => {
     if (!walkthroughActive || !walkthroughTargetRect) return;
+    if (currentWalkthroughStep?.id === "futures-panel" && !isMobile) {
+      setTooltipPlacement("left");
+      return;
+    }
     if (isMobile) {
       setTooltipPlacement("below");
       return;
@@ -2532,7 +2628,7 @@ function App() {
     const placement: TooltipPlacement =
       canPlaceBelow && canPlaceRight ? "below" : canPlaceAbove ? "above" : canPlaceRight ? "right" : "left";
     setTooltipPlacement(placement);
-  }, [isMobile, walkthroughActive, walkthroughTargetRect]);
+  }, [currentWalkthroughStep?.id, isMobile, walkthroughActive, walkthroughTargetRect]);
 
   useEffect(() => {
     if (!walkthroughActive || !walkthroughMatchupId) return;
@@ -2554,6 +2650,12 @@ function App() {
     window.addEventListener("popstate", onNavigate);
     return () => window.removeEventListener("popstate", onNavigate);
   }, [walkthroughActive]);
+
+  useEffect(() => {
+    if (!welcomeGateOpen || walkthroughActive) return;
+    if (isMobile && showDesktopFirst) return;
+    startWalkthrough();
+  }, [isMobile, showDesktopFirst, startWalkthrough, walkthroughActive, welcomeGateOpen]);
 
   useEffect(() => {
     const inWalkthroughSession = welcomeGateOpen || walkthroughActive;
@@ -2597,7 +2699,7 @@ function App() {
 
   useEffect(() => {
     document.body.classList.remove("walkthrough-step-make-pick");
-    if (walkthroughActive && currentWalkthroughStep?.id === "make-pick") {
+    if (walkthroughActive && currentWalkthroughStep?.id === "upset-pick") {
       document.body.classList.add("walkthrough-step-make-pick");
     }
     return () => document.body.classList.remove("walkthrough-step-make-pick");
@@ -2923,7 +3025,7 @@ function App() {
             const champDeltaPct = (row.champProb - champBaseline) * 100;
             const fullyEliminated = metrics.every((metric) => metric.prob <= 0.000001);
             return (
-              <article key={row.teamId} className="eg-future-item">
+            <article key={row.teamId} className="eg-future-item" data-team-name={team.name}>
                 <div className="team-cell">
                   <TeamHoverAnchor teamName={team.name} logoSrc={teamLogoUrl(team)}>
                     <TeamLogo teamName={team.name} src={teamLogoUrl(team)} />
@@ -3214,6 +3316,8 @@ function App() {
                           onToggleRoundExpansion={toggleRoundExpansion}
                           isRoundComplete={isRoundComplete}
                           isRoundVisuallyCollapsed={isRoundVisuallyCollapsed}
+                          walkthroughChangedGameIds={walkthroughChangedGameIds}
+                          walkthroughChangedOddsVisible={walkthroughActive && (currentWalkthroughStep?.id === "bracket-ripple" || currentWalkthroughStep?.id === "futures-panel")}
                         />
                       ))}
                     </div>
@@ -3261,6 +3365,8 @@ function App() {
                           onToggleRoundExpansion={toggleRoundExpansion}
                           isRoundComplete={isRoundComplete}
                           isRoundVisuallyCollapsed={isRoundVisuallyCollapsed}
+                          walkthroughChangedGameIds={walkthroughChangedGameIds}
+                          walkthroughChangedOddsVisible={walkthroughActive && (currentWalkthroughStep?.id === "bracket-ripple" || currentWalkthroughStep?.id === "futures-panel")}
                         />
                       ))}
                     </div>
@@ -3272,8 +3378,6 @@ function App() {
                   <div className="ff-championship-section">
                     <FinalsSemifinalCard
                       game={leftSemi}
-                      regions={regionSections[0]}
-                      futuresRows={simResult.futures}
                       gameWinProbs={simResult.gameWinProbs}
                       possibleWinners={possibleWinners}
                       displayMode={displayMode}
@@ -3283,7 +3387,6 @@ function App() {
                     />
                     <FinalsChampionshipCard
                       game={titleGame}
-                      futuresRows={simResult.futures}
                       gameWinProbs={simResult.gameWinProbs}
                       possibleWinners={possibleWinners}
                       displayMode={displayMode}
@@ -3292,8 +3395,6 @@ function App() {
                     />
                     <FinalsSemifinalCard
                       game={rightSemi}
-                      regions={regionSections[1]}
-                      futuresRows={simResult.futures}
                       gameWinProbs={simResult.gameWinProbs}
                       possibleWinners={possibleWinners}
                       displayMode={displayMode}
@@ -3349,10 +3450,6 @@ function App() {
           onResetToModel={() => resetProbabilityToModel(probPopup.gameId)}
           onClose={() => closeProbabilityPopup(true)}
         />
-      ) : null}
-
-      {!isMobile && welcomeGateOpen ? (
-        <WelcomeGate onStart={() => startWalkthrough()} onSkip={() => skipWalkthrough()} />
       ) : null}
 
       <ConfirmResetModal
@@ -3436,7 +3533,9 @@ function App() {
         onSignUp={handlePromoSignUp}
       />
 
-      {!isMobile && walkthroughActive && walkthroughTargetRect && walkthroughDisplayStep ? (
+      {walkthroughActive &&
+      walkthroughDisplayStep &&
+      (isWalkthroughStepCentered || Boolean(walkthroughTargetRect)) ? (
         <Suspense fallback={null}>
           <SpotlightWalkthrough
             step={walkthroughDisplayStep}
@@ -3445,6 +3544,9 @@ function App() {
             placement={tooltipPlacement}
             ctaDisabled={walkthroughCtaDisabled}
             ctaLabel={walkthroughCtaLabel}
+            centered={isWalkthroughStepCentered}
+            dontShowAgain={walkthroughDontShowAgain}
+            onDontShowAgainChange={setWalkthroughDontShowAgain}
             onAdvance={() => {
               if (walkthroughCtaDisabled) return;
               const highlighted = walkthroughMatchup;
@@ -3475,10 +3577,6 @@ function App() {
       ) : null}
 
       {showDesktopFirst && isMobile ? <DesktopFirstModal onDismiss={handleDismissDesktopFirst} /> : null}
-
-      {!showDesktopFirst && isMobile && mobileOnboardingOpen ? (
-        <MobileOnboarding onComplete={handleMobileOnboardingComplete} />
-      ) : null}
 
       {showFirstFourModal && onboardingFlowReady ? (
         <FirstFourModal
@@ -3684,7 +3782,7 @@ function FirstFourGameCard({
         >
           <div className="ff-team-info">
             <span className="ff-team-seed">{seedLabel(teamA)}</span>
-            <img src={teamLogoUrl(teamA)} className="ff-team-logo" alt="" loading="lazy" />
+            <TeamLogo teamName={teamA.name} src={teamLogoUrl(teamA)} className="ff-team-logo" teamSeed={seedLabel(teamA)} />
             <span className="ff-team-name">{teamA.name}</span>
           </div>
           <span className="ff-team-pct">{(probA * 100).toFixed(1)}%</span>
@@ -3700,7 +3798,7 @@ function FirstFourGameCard({
         >
           <div className="ff-team-info">
             <span className="ff-team-seed">{seedLabel(teamB)}</span>
-            <img src={teamLogoUrl(teamB)} className="ff-team-logo" alt="" loading="lazy" />
+            <TeamLogo teamName={teamB.name} src={teamLogoUrl(teamB)} className="ff-team-logo" teamSeed={seedLabel(teamB)} />
             <span className="ff-team-name">{teamB.name}</span>
           </div>
           <span className="ff-team-pct">{(probB * 100).toFixed(1)}%</span>
@@ -4531,15 +4629,19 @@ function MobileFinalFourView({
           ))
         : null}
       {activeRound === "CHAMP" && titleGame ? (
-        <MobileMatchupCard
-          game={titleGame}
-          displayMode={displayMode}
-          onPick={handlePickForRound}
-          onSwitchPick={onSwitchPick}
-          onUndoPick={onUndoPick}
-          onEditProb={onEditProb}
-          onOpenMatchupStats={onOpenMatchupStats}
-        />
+        titleGame.winnerId ? (
+          <MobileChampionshipCelebrationCard game={titleGame} onUndoPick={onUndoPick} />
+        ) : (
+          <MobileMatchupCard
+            game={titleGame}
+            displayMode={displayMode}
+            onPick={handlePickForRound}
+            onSwitchPick={onSwitchPick}
+            onUndoPick={onUndoPick}
+            onEditProb={onEditProb}
+            onOpenMatchupStats={onOpenMatchupStats}
+          />
+        )
       ) : null}
       {activeRound === "WIN" ? <MobileChampionCard titleGame={titleGame} /> : null}
     </>
@@ -4565,84 +4667,6 @@ function DesktopFirstModal({ onDismiss }: { onDismiss: () => void }) {
   );
 }
 
-function MobileOnboarding({ onComplete }: { onComplete: (source: "completed" | "skipped") => void }) {
-  const [step, setStep] = useState(0);
-
-  const steps = [
-    {
-      icon: "🏀",
-      title: "Every pick changes everything.",
-      body: "This isn't a regular bracket tool. Every time you pick a winner, the odds for every other team - in every round - update in real time. You're not just filling in a bracket. You're watching the entire tournament reprice around your choices.",
-    },
-    {
-      icon: "👆",
-      title: "Tap a team to pick them.",
-      body: "Each card shows two teams and their win probability. Tap the team you think wins. Changed your mind? Just tap the other team to switch - no undo needed.",
-    },
-    {
-      icon: "📊",
-      title: "Swipe through the rounds.",
-      body: "Use the round pills (R64, R32, S16, E8) to jump between rounds. Rounds you haven't reached yet show live probabilities - who could end up in each slot based on your picks so far.",
-    },
-    {
-      icon: "🔮",
-      title: "Watch the odds cascade.",
-      body: "Switch to the Futures tab at the bottom to see every team's championship odds update as you pick. The bigger the upset you pick, the more the whole field reshuffles.",
-    },
-    {
-      icon: "🏆",
-      title: "Save your bracket. Win $100.",
-      body: "When you're done, save your bracket to enter the leaderboard. Most accurate bracket when the tournament ends wins $100. You can save up to 25 different brackets.",
-    },
-  ] as const;
-
-  const handleNext = () => {
-    if (step >= steps.length - 1) {
-      if (typeof window !== "undefined") window.localStorage.setItem(MOBILE_ONBOARDING_KEY, "1");
-      onComplete("completed");
-      return;
-    }
-    setStep((prev) => prev + 1);
-  };
-
-  const handleSkip = () => {
-    if (typeof window !== "undefined") window.localStorage.setItem(MOBILE_ONBOARDING_KEY, "1");
-    onComplete("skipped");
-  };
-
-  const currentStep = steps[step];
-
-  return (
-    <div className="mob-onboard-overlay">
-      <div className="mob-onboard-card" key={step}>
-        <div className="mob-onboard-progress">
-          {steps.map((_, index) => (
-            <div
-              key={index}
-              className={`mob-onboard-dot ${index === step ? "mob-onboard-dot--active" : ""} ${
-                index < step ? "mob-onboard-dot--done" : ""
-              }`}
-            />
-          ))}
-        </div>
-        <div className="mob-onboard-icon">{currentStep.icon}</div>
-        <h3 className="mob-onboard-title">{currentStep.title}</h3>
-        <p className="mob-onboard-body">{currentStep.body}</p>
-        <div className="mob-onboard-actions">
-          <button className="mob-onboard-btn-primary" onClick={handleNext}>
-            {step === steps.length - 1 ? "Let's go" : "Next"}
-          </button>
-          {step < steps.length - 1 ? (
-            <button className="mob-onboard-btn-skip" onClick={handleSkip}>
-              Skip
-            </button>
-          ) : null}
-        </div>
-      </div>
-    </div>
-  );
-}
-
 function MobileChampionCard({ titleGame }: { titleGame: ResolvedGame | null }) {
   const champion = titleGame?.winnerId ? teamsById.get(titleGame.winnerId) : null;
 
@@ -4662,6 +4686,49 @@ function MobileChampionCard({ titleGame }: { titleGame: ResolvedGame | null }) {
       <div className="m-champion-body">
         <TeamLogo teamName={champion.name} src={teamLogoUrl(champion)} />
         <span className="m-champion-name">{champion.name}</span>
+      </div>
+    </div>
+  );
+}
+
+function MobileChampionshipCelebrationCard({
+  game,
+  onUndoPick,
+}: {
+  game: ResolvedGame;
+  onUndoPick: (gameId: string) => void;
+}) {
+  const winnerTeam = game.winnerId ? teamsById.get(game.winnerId) ?? null : null;
+  const loserTeam =
+    game.winnerId && game.teamAId && game.teamBId
+      ? teamsById.get(game.winnerId === game.teamAId ? game.teamBId : game.teamAId) ?? null
+      : null;
+  if (!winnerTeam || !loserTeam) return null;
+
+  return (
+    <div className="championship-card championship-card--celebration">
+      <ChampionConfetti />
+      <div className="championship-card-inner">
+        <div className="championship-trophy">🏆</div>
+        <TeamLogo
+          teamName={winnerTeam.name}
+          src={teamLogoUrl(winnerTeam)}
+          className="championship-logo"
+          sizePx={64}
+          teamSeed={seedLabel(winnerTeam)}
+        />
+        <h2 className="championship-team-name">{winnerTeam.name}</h2>
+        <div className="championship-badge">NCAA CHAMPION</div>
+        <span className="championship-seed">#{seedLabel(winnerTeam)} seed</span>
+      </div>
+      <div className="championship-runner-up">
+        defeated #{seedLabel(loserTeam)} {loserTeam.name}
+      </div>
+      <div className="m-card-footer">
+        <span className="m-winner-label">Champion selected</span>
+        <button className="m-undo-btn" onClick={() => onUndoPick(game.id)}>
+          Undo
+        </button>
       </div>
     </div>
   );
@@ -4717,6 +4784,8 @@ function MobileMatchupCard({
         className={`m-team ${game.winnerId === teamA.id ? "m-team--winner" : ""} ${
           game.winnerId && game.winnerId !== teamA.id ? "m-team--loser" : ""
         }`}
+        data-team-name={teamA.name}
+        data-team-seed={seedLabel(teamA)}
         onClick={() => {
           if (!isPicked) onPick(game, teamA.id);
           if (isPicked && game.winnerId !== teamA.id) onSwitchPick(game, teamA.id);
@@ -4737,6 +4806,8 @@ function MobileMatchupCard({
         className={`m-team ${game.winnerId === teamB.id ? "m-team--winner" : ""} ${
           game.winnerId && game.winnerId !== teamB.id ? "m-team--loser" : ""
         }`}
+        data-team-name={teamB.name}
+        data-team-seed={seedLabel(teamB)}
         onClick={() => {
           if (!isPicked) onPick(game, teamB.id);
           if (isPicked && game.winnerId !== teamB.id) onSwitchPick(game, teamB.id);
@@ -4838,7 +4909,7 @@ function MobileProbSlotCard({
             <div className="m-prob-row-content">
               <div className="m-prob-row-left">
                 <span className="m-seed">{seedLabel(row.team)}</span>
-                <img src={teamLogoUrl(row.team)} className="m-logo-sm" alt="" />
+                <TeamLogo teamName={row.team.name} src={teamLogoUrl(row.team)} className="m-logo-sm" teamSeed={seedLabel(row.team)} />
                 <div className="m-prob-row-info">
                   <span className="m-name-sm">{row.team.name}</span>
                   <span className="m-prob-reach">{locked ? "✓ Locked in" : `${reach}% to reach`}</span>
@@ -4918,7 +4989,7 @@ function CollapsedHalfSummary({
       <div className="half-collapsed-teams">
         {winners.map((team) => (
             <div key={`${half}-${team.id}`} className="half-collapsed-team">
-              <img src={teamLogoUrl(team)} className="half-collapsed-logo" alt="" loading="lazy" />
+              <TeamLogo teamName={team.name} src={teamLogoUrl(team)} className="half-collapsed-logo" teamSeed={seedLabel(team)} />
               <span className="half-collapsed-name">
                 {seedLabel(team)} {team.name}
               </span>
@@ -4936,8 +5007,6 @@ function CollapsedHalfSummary({
 
 function FinalsSemifinalCard({
   game,
-  regions,
-  futuresRows,
   gameWinProbs,
   possibleWinners,
   displayMode,
@@ -4946,8 +5015,6 @@ function FinalsSemifinalCard({
   onPick,
 }: {
   game: ResolvedGame | null;
-  regions: Region[];
-  futuresRows: SimulationOutput["futures"];
   gameWinProbs: SimulationOutput["gameWinProbs"];
   possibleWinners: Record<string, Set<string>>;
   displayMode: OddsDisplayMode;
@@ -4955,24 +5022,12 @@ function FinalsSemifinalCard({
   lastPickedKey: string | null;
   onPick: (game: ResolvedGame, teamId: string | null) => void;
 }) {
-  const futuresByTeamId = useMemo(() => new Map(futuresRows.map((row) => [row.teamId, row])), [futuresRows]);
   const showdownFinalists = useMemo(() => {
     if (!game) return [];
     return getGameRowsForDisplay(game, gameWinProbs, possibleWinners).filter(
       (candidate) => candidate.team.id === game.teamAId || candidate.team.id === game.teamBId
     );
   }, [game, gameWinProbs, possibleWinners]);
-  const ranked = useMemo(
-    () =>
-      Array.from(teamsById.values())
-        .filter((team) => regions.includes(team.region))
-        .map((team) => ({
-          team,
-          prob: futuresByTeamId.get(team.id)?.titleGameProb ?? 0,
-        }))
-        .sort((a, b) => (b.prob !== a.prob ? b.prob - a.prob : a.team.seed - b.team.seed)),
-    [futuresByTeamId, regions]
-  );
 
   return (
     <div className="ff-semifinal-card semifinal-panel">
@@ -4989,36 +5044,12 @@ function FinalsSemifinalCard({
           onPick={(teamId) => onPick(game, teamId)}
         />
       ) : null}
-      <div className="semifinal-rankings">
-        {ranked.map(({ team, prob }) => {
-          const inMatchup = Boolean(game && (team.id === game.teamAId || team.id === game.teamBId));
-          const selected = game?.winnerId === team.id;
-          const lost = Boolean(game?.winnerId && inMatchup && !selected);
-          return (
-            <button
-              key={team.id}
-              type="button"
-              className={`semifinal-team-row ${inMatchup ? "semifinal-team-row--active" : ""} ${selected ? "semifinal-team-row--winner" : ""} ${lost ? "semifinal-team-row--loser" : ""}`}
-              onClick={() => {
-                if (!game || !inMatchup) return;
-                onPick(game, team.id);
-              }}
-            >
-              <span className="sf-seed">{seedLabel(team)}</span>
-              <img src={teamLogoUrl(team)} className="sf-logo" alt="" loading="lazy" />
-              <span className="sf-name">{abbreviationForTeam(team.name)}</span>
-              <span className="sf-pct">{formatOddsDisplay(prob, displayMode).primary}</span>
-            </button>
-          );
-        })}
-      </div>
     </div>
   );
 }
 
 function FinalsChampionshipCard({
   game,
-  futuresRows,
   gameWinProbs,
   possibleWinners,
   displayMode,
@@ -5026,30 +5057,23 @@ function FinalsChampionshipCard({
   onPick,
 }: {
   game: ResolvedGame | null;
-  futuresRows: SimulationOutput["futures"];
   gameWinProbs: SimulationOutput["gameWinProbs"];
   possibleWinners: Record<string, Set<string>>;
   displayMode: OddsDisplayMode;
   lastPickedKey: string | null;
   onPick: (game: ResolvedGame, teamId: string | null) => void;
 }) {
-  const futuresByTeamId = useMemo(() => new Map(futuresRows.map((row) => [row.teamId, row])), [futuresRows]);
   const showdownFinalists = useMemo(() => {
     if (!game) return [];
     return getGameRowsForDisplay(game, gameWinProbs, possibleWinners).filter(
       (candidate) => candidate.team.id === game.teamAId || candidate.team.id === game.teamBId
     );
   }, [game, gameWinProbs, possibleWinners]);
-  const ranked = useMemo(
-    () =>
-      Array.from(teamsById.values())
-        .map((team) => ({
-          team,
-          prob: futuresByTeamId.get(team.id)?.champProb ?? 0,
-        }))
-        .sort((a, b) => (b.prob !== a.prob ? b.prob - a.prob : a.team.seed - b.team.seed)),
-    [futuresByTeamId]
-  );
+  const winnerTeam = game?.winnerId ? teamsById.get(game.winnerId) ?? null : null;
+  const loserTeam =
+    game?.winnerId && game.teamAId && game.teamBId
+      ? teamsById.get(game.winnerId === game.teamAId ? game.teamBId : game.teamAId) ?? null
+      : null;
 
   return (
     <div className="championship-container championship-panel">
@@ -5057,7 +5081,27 @@ function FinalsChampionshipCard({
         <span className="championship-trophy">🏆</span>
         <span className="championship-label">National Championship</span>
       </div>
-      {game && showdownFinalists.length === 2 ? (
+      {game && winnerTeam && loserTeam ? (
+        <div className="championship-card championship-card--celebration">
+          <ChampionConfetti />
+          <div className="championship-card-inner">
+            <div className="championship-trophy">🏆</div>
+            <TeamLogo
+              teamName={winnerTeam.name}
+              src={teamLogoUrl(winnerTeam)}
+              className="championship-logo"
+              sizePx={80}
+              teamSeed={seedLabel(winnerTeam)}
+            />
+            <h2 className="championship-team-name">{winnerTeam.name}</h2>
+            <div className="championship-badge">NCAA CHAMPION</div>
+            <span className="championship-seed">#{seedLabel(winnerTeam)} seed</span>
+          </div>
+          <div className="championship-runner-up">
+            defeated #{seedLabel(loserTeam)} {loserTeam.name}
+          </div>
+        </div>
+      ) : game && showdownFinalists.length === 2 ? (
         <ShowdownCard
           game={game}
           finalists={showdownFinalists}
@@ -5066,31 +5110,110 @@ function FinalsChampionshipCard({
           onPick={(teamId) => onPick(game, teamId)}
         />
       ) : null}
-      <div className="championship-rankings">
-        {ranked.map(({ team, prob }) => {
-          const inMatchup = Boolean(game && (team.id === game.teamAId || team.id === game.teamBId));
-          const selected = game?.winnerId === team.id;
-          const lost = Boolean(game?.winnerId && inMatchup && !selected);
-          return (
-            <button
-              key={team.id}
-              type="button"
-              className={`championship-team-row ${inMatchup ? "championship-team-row--active" : ""} ${selected ? "championship-team-row--winner" : ""} ${lost ? "championship-team-row--loser" : ""}`}
-              onClick={() => {
-                if (!game || !inMatchup) return;
-                onPick(game, team.id);
-              }}
-            >
-              <span className="champ-seed">{seedLabel(team)}</span>
-              <img src={teamLogoUrl(team)} className="champ-logo" alt="" loading="lazy" />
-              <span className="champ-name">{abbreviationForTeam(team.name)}</span>
-              <span className="champ-pct">{formatOddsDisplay(prob, displayMode).primary}</span>
-            </button>
-          );
-        })}
-      </div>
     </div>
   );
+}
+
+function ChampionConfetti() {
+  const canvasRef = useRef<HTMLCanvasElement | null>(null);
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas || !canvas.parentElement) return;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+
+    const rect = canvas.parentElement.getBoundingClientRect();
+    canvas.width = rect.width;
+    canvas.height = rect.height;
+
+    const particles: Array<{
+      x: number;
+      y: number;
+      vx: number;
+      vy: number;
+      size: number;
+      color: string;
+      rotation: number;
+      rotationSpeed: number;
+      gravity: number;
+      opacity: number;
+      decay: number;
+      shape: "rect" | "circle";
+    }> = [];
+    const particleCount = 80;
+    const colors = [
+      "rgba(184, 125, 24, 1)",
+      "rgba(184, 125, 24, 0.70)",
+      "rgba(240, 230, 208, 0.90)",
+      "rgba(240, 230, 208, 0.50)",
+      "rgba(255, 200, 60, 0.80)",
+    ];
+
+    for (let i = 0; i < particleCount; i += 1) {
+      particles.push({
+        x: canvas.width / 2,
+        y: canvas.height * 0.3,
+        vx: (Math.random() - 0.5) * 8,
+        vy: -(Math.random() * 6 + 2),
+        size: Math.random() * 4 + 2,
+        color: colors[Math.floor(Math.random() * colors.length)],
+        rotation: Math.random() * 360,
+        rotationSpeed: (Math.random() - 0.5) * 12,
+        gravity: 0.12 + Math.random() * 0.06,
+        opacity: 1,
+        decay: 0.008 + Math.random() * 0.008,
+        shape: Math.random() > 0.5 ? "rect" : "circle",
+      });
+    }
+
+    let raf = 0;
+    const draw = () => {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      let alive = false;
+
+      particles.forEach((p) => {
+        if (p.opacity <= 0) return;
+        alive = true;
+
+        p.x += p.vx;
+        p.vy += p.gravity;
+        p.y += p.vy;
+        p.rotation += p.rotationSpeed;
+        p.opacity -= p.decay;
+        p.vx *= 0.99;
+
+        ctx.save();
+        ctx.globalAlpha = Math.max(0, p.opacity);
+        ctx.translate(p.x, p.y);
+        ctx.rotate((p.rotation * Math.PI) / 180);
+        ctx.fillStyle = p.color;
+        if (p.shape === "rect") {
+          ctx.fillRect(-p.size / 2, -p.size, p.size, p.size * 2);
+        } else {
+          ctx.beginPath();
+          ctx.arc(0, 0, p.size, 0, Math.PI * 2);
+          ctx.fill();
+        }
+        ctx.restore();
+      });
+
+      if (alive) {
+        raf = window.requestAnimationFrame(draw);
+      }
+    };
+
+    const startTimer = window.setTimeout(() => {
+      raf = window.requestAnimationFrame(draw);
+    }, 200);
+
+    return () => {
+      window.clearTimeout(startTimer);
+      if (raf) window.cancelAnimationFrame(raf);
+    };
+  }, []);
+
+  return <canvas ref={canvasRef} className="championship-confetti-canvas" />;
 }
 
 function RegionBracket({
@@ -5109,6 +5232,8 @@ function RegionBracket({
   onToggleRoundExpansion,
   isRoundComplete,
   isRoundVisuallyCollapsed,
+  walkthroughChangedGameIds,
+  walkthroughChangedOddsVisible,
 }: {
   region: Region;
   games: ResolvedGame[];
@@ -5125,6 +5250,8 @@ function RegionBracket({
   onToggleRoundExpansion: (region: Region, round: "R64" | "R32" | "S16") => void;
   isRoundComplete: (region: Region, round: RegionalRound) => boolean;
   isRoundVisuallyCollapsed: (region: Region, round: RegionalRound) => boolean;
+  walkthroughChangedGameIds: Set<string>;
+  walkthroughChangedOddsVisible: boolean;
 }) {
   const rounds = (inverted ? [...regionRounds].reverse() : [...regionRounds]).filter((round) => round !== "FF");
   const gamesById = useMemo(() => new Map(games.map((game) => [game.id, game])), [games]);
@@ -5153,6 +5280,15 @@ function RegionBracket({
     F4: "F4",
     CHAMP: "CHAMP",
   };
+  const roundDataValue: Record<ResolvedGame["round"], string> = {
+    FF: "FF",
+    R64: "64",
+    R32: "32",
+    S16: "16",
+    E8: "8",
+    F4: "4",
+    CHAMP: "2",
+  };
 
   return (
     <section className={`eg-region-card bracket-region ${inverted ? "region-inverted" : ""}`}>
@@ -5176,6 +5312,8 @@ function RegionBracket({
             <div
               key={`${region}-${round}`}
               className={`eg-round-col lane-${round.toLowerCase()} ${collapsed ? "eg-round-col--collapsed" : ""} ${round === "E8" && e8Confirmed ? "eg-round-col--e8" : ""} ${round === "E8" && !e8Confirmed ? "eg-round-col--e8-pending" : ""}`}
+              data-region={region}
+              data-round={roundDataValue[round]}
             >
               <div className="eg-round-col-content">
                 {(round === "R64" || round === "R32" || round === "S16") && isRoundComplete(region, round) ? (
@@ -5205,6 +5343,7 @@ function RegionBracket({
                           onOpenProbabilityPopup={onOpenProbabilityPopup}
                           onOpenMatchupStats={onOpenMatchupStats}
                           onUnavailableRoundClick={onUnavailableRoundClick}
+                          highlightOddsChanged={walkthroughChangedOddsVisible && walkthroughChangedGameIds.has(game.id)}
                         />
                       </div>
                     );
@@ -5231,6 +5370,7 @@ function GameCard({
   onOpenProbabilityPopup,
   onOpenMatchupStats,
   onUnavailableRoundClick,
+  highlightOddsChanged,
 }: {
   game: ResolvedGame;
   collapsed?: boolean;
@@ -5243,6 +5383,7 @@ function GameCard({
   onOpenProbabilityPopup: (game: ResolvedGame, anchorEl: HTMLElement) => void;
   onOpenMatchupStats: (game: ResolvedGame) => void;
   onUnavailableRoundClick?: (round: ResolvedGame["round"]) => void;
+  highlightOddsChanged?: boolean;
 }) {
   type CandidateRow = { teamId: string; prob: number; team: NonNullable<ReturnType<typeof teamsById.get>> };
 
@@ -5326,6 +5467,9 @@ function GameCard({
       <article
         className={`eg-game-card round-${game.round.toLowerCase()} collapsed`}
         data-game-id={game.id}
+        data-matchup-id={game.id}
+        data-region={game.region}
+        data-round={game.round}
         data-seeds={dataSeeds}
         onMouseEnter={() => setShowChaosTooltip(true)}
         onMouseLeave={() => setShowChaosTooltip(false)}
@@ -5394,6 +5538,9 @@ function GameCard({
     <article
       className={`eg-game-card round-${game.round.toLowerCase()}`}
       data-game-id={game.id}
+      data-matchup-id={game.id}
+      data-region={game.region}
+      data-round={game.round}
       data-seeds={dataSeeds}
       onMouseEnter={() => setShowChaosTooltip(true)}
       onMouseLeave={() => setShowChaosTooltip(false)}
@@ -5457,6 +5604,8 @@ function GameCard({
                   editedProb={game.customProbA !== null}
                   canEditProb={game.teamAId !== null && game.teamBId !== null}
                   showEditIcon={rowIndex === 0}
+                  teamId={team.id}
+                  oddsChanged={Boolean(highlightOddsChanged)}
                   onOpenProbEditor={(anchorEl) => onOpenProbabilityPopup(game, anchorEl)}
                   onPick={() => onPick(game, canPick ? team.id : null)}
                 />
@@ -5596,7 +5745,14 @@ function GameCard({
                         <span className={`outcome-badge ${outcome}`}>{outcome === "win" ? "✓" : "✕"}</span>
                       ) : (
                         <>
-                          <span className={`chip-prob ${game.customProbA !== null ? "edited-prob" : ""}`}>{primary}</span>
+                          <span
+                            className={`chip-prob odds-value ${game.customProbA !== null ? "edited-prob" : ""} ${
+                              highlightOddsChanged ? "odds-value--changed" : ""
+                            }`}
+                            data-team-id={team.id}
+                          >
+                            {primary}
+                          </span>
                           {secondary ? <span className="chip-sub">{secondary}</span> : null}
                         </>
                       )}
@@ -5684,7 +5840,7 @@ function CompactTeamRow({
       title={`${seedLabel(team)} ${team.name}`}
     >
       <span className="compact-seed">{seedLabel(team)}</span>
-      <img src={teamLogoUrl(team)} className="compact-logo" alt={team.name} loading="lazy" />
+      <TeamLogo teamName={team.name} src={teamLogoUrl(team)} className="compact-logo" teamSeed={seedLabel(team)} />
       <span className="compact-result">{isWinner ? "✓" : "✕"}</span>
     </div>
   );
@@ -5758,9 +5914,14 @@ function ShowdownCard({
                   teamName={team.name}
                   src={teamLogoUrl(team)}
                   sizePx={showdownLogoSize}
+                  teamSeed={seedLabel(team)}
                 />
                 <span className="eg-showdown-name">{showdownTeamName(team.name)}</span>
-                {!decided ? <span className="eg-showdown-odds">{primary}</span> : null}
+                {!decided ? (
+                  <span className="eg-showdown-odds odds-value" data-team-id={team.id}>
+                    {primary}
+                  </span>
+                ) : null}
                 {resultLabel ? <span className="eg-showdown-result">{resultLabel}</span> : null}
               </button>
             </Fragment>
@@ -5807,6 +5968,8 @@ function TeamRow({
   editedProb,
   canEditProb,
   showEditIcon,
+  teamId,
+  oddsChanged,
   onOpenProbEditor,
   onPick,
 }: {
@@ -5825,6 +5988,8 @@ function TeamRow({
   editedProb: boolean;
   canEditProb: boolean;
   showEditIcon: boolean;
+  teamId?: string;
+  oddsChanged?: boolean;
   onOpenProbEditor?: (anchorEl: HTMLElement) => void;
   onPick: () => void;
 }) {
@@ -5848,6 +6013,8 @@ function TeamRow({
       type="button"
       ref={rowRef}
       className={`eg-team-row matchup-row ${canEditProb ? "" : "matchup-row--picked"} ${compact ? "compact" : ""} ${selected ? "selected" : ""} ${freshPick ? "fresh-pick" : ""} ${outcome === "win" ? "result-win" : ""} ${outcome === "loss" ? "result-loss" : ""} ${editedProb ? "matchup-cell--edited" : ""}`}
+      data-team-name={teamName ?? label}
+      data-team-seed={seed !== null ? String(seed) : ""}
       disabled={disabled}
       onClick={(event) => {
         if (longPressFiredRef.current) {
@@ -5918,7 +6085,12 @@ function TeamRow({
             <span className={`outcome-badge ${outcome}`}>{outcome === "win" ? "✓" : "✕"}</span>
         ) : (
           <span className="team-odds-stack">
-            <span className={`team-odds ${editedProb ? "edited-prob" : ""}`}>{formatted.primary}</span>
+            <span
+              className={`team-odds odds-value ${editedProb ? "edited-prob" : ""} ${oddsChanged ? "odds-value--changed" : ""}`}
+              data-team-id={teamId ?? ""}
+            >
+              {formatted.primary}
+            </span>
             {formatted.secondary ? <span className="team-odds-sub">{formatted.secondary}</span> : null}
           </span>
         )}
@@ -5932,22 +6104,32 @@ function TeamLogo({
   src,
   className,
   sizePx,
+  teamSeed,
 }: {
   teamName: string;
   src: string;
   className?: string;
   sizePx?: number;
+  teamSeed?: string | number | null;
 }) {
   const [failed, setFailed] = useState(false);
-  const fallback = fallbackLogo(teamName);
+  const sizeStyle = sizePx ? { width: `${sizePx}px`, height: `${sizePx}px`, objectFit: "contain" as const } : undefined;
+
+  if (failed || !src) {
+    return (
+      <span className={className ? `team-logo team-logo-fallback ${className}` : "team-logo team-logo-fallback"} style={sizeStyle}>
+        <span className="team-logo-fallback-seed">{teamSeed ?? "?"}</span>
+      </span>
+    );
+  }
 
   return (
     <img
       className={className ? `team-logo ${className}` : "team-logo"}
-      src={failed ? fallback : src}
+      src={src}
       alt={`${teamName} logo`}
       loading="lazy"
-      style={sizePx ? { width: `${sizePx}px`, height: `${sizePx}px`, objectFit: "contain" } : undefined}
+      style={sizeStyle}
       onError={() => setFailed(true)}
     />
   );
@@ -5957,13 +6139,13 @@ function ShowdownTeamLogo({
   teamName,
   src,
   sizePx,
+  teamSeed,
 }: {
   teamName: string;
   src: string;
   sizePx: number;
+  teamSeed?: string | number | null;
 }) {
-  const [failed, setFailed] = useState(false);
-  const fallback = fallbackLogo(teamName);
   const size = `${sizePx}px`;
 
   return (
@@ -5982,23 +6164,12 @@ function ShowdownTeamLogo({
         flexShrink: 0,
       }}
     >
-      <img
+      <TeamLogo
         className="eg-showdown-logo-img"
-        src={failed ? fallback : src}
-        alt={`${teamName} logo`}
-        loading="lazy"
-        onError={() => setFailed(true)}
-        style={{
-          width: "100%",
-          height: "100%",
-          minWidth: "100%",
-          minHeight: "100%",
-          maxWidth: "100%",
-          maxHeight: "100%",
-          objectFit: "contain",
-          display: "block",
-          flexShrink: 0,
-        }}
+        teamName={teamName}
+        src={src}
+        sizePx={sizePx}
+        teamSeed={teamSeed}
       />
     </span>
   );
@@ -6158,7 +6329,7 @@ function TeamHoverAnchor({
               aria-label={fullTeamName(teamName)}
               style={{ left: `${pos.x}px`, top: `${pos.y}px` }}
             >
-              <img className="team-hover-logo" src={logoSrc} alt={`${teamName} logo`} loading="lazy" />
+              <TeamLogo className="team-hover-logo" teamName={teamName} src={logoSrc} />
               <span className="team-hover-name">{fullTeamName(teamName)}</span>
             </span>,
             document.body
@@ -6394,25 +6565,6 @@ function ConfirmResetModal({
   );
 }
 
-function WelcomeGate({ onStart, onSkip }: { onStart: () => void; onSkip: () => void }) {
-  return createPortal(
-    <div className="wlcm-gate" role="dialog" aria-modal="true" aria-label="Welcome to The Bracket Lab">
-      <div className="wlcm-gate-card">
-        <h2>THE BRACKET LAB</h2>
-        <p>Pick outcomes. Watch the entire tournament reprice in real time.</p>
-        <button type="button" className="wlcm-start-btn" onClick={onStart}>
-          Show me how →
-        </button>
-        <button type="button" className="wlcm-skip-btn" onClick={onSkip}>
-          Skip — I&apos;ll figure it out
-        </button>
-        <p className="wlcm-gate-hint">You can replay this anytime from the Futures panel → Settings.</p>
-      </div>
-    </div>,
-    document.body
-  );
-}
-
 function SpotlightWalkthrough({
   step,
   stepIndex,
@@ -6420,16 +6572,22 @@ function SpotlightWalkthrough({
   placement,
   ctaDisabled,
   ctaLabel,
+  centered,
+  dontShowAgain,
+  onDontShowAgainChange,
   onAdvance,
   onBack,
   onSkip,
 }: {
   step: WalkthroughStepConfig;
   stepIndex: number;
-  targetRect: DOMRect;
+  targetRect: DOMRect | null;
   placement: TooltipPlacement;
   ctaDisabled: boolean;
   ctaLabel: string;
+  centered: boolean;
+  dontShowAgain: boolean;
+  onDontShowAgainChange: (next: boolean) => void;
   onAdvance: () => void;
   onBack: () => void;
   onSkip: () => void;
@@ -6438,12 +6596,14 @@ function SpotlightWalkthrough({
   const ctaRef = useRef<HTMLButtonElement | null>(null);
   const [tooltipPlacement, setTooltipPlacement] = useState(placement);
   const [tooltipStyle, setTooltipStyle] = useState<React.CSSProperties>({});
-  const stepLabels = ["Pick", "Reprice", "Futures", "Edit Odds", "Toolkit"];
+  const stepLabels = ["Hook", "Upset", "Ripple", "Futures", "Ready"];
+  const fallbackRect = new DOMRect(window.innerWidth / 2 - 1, window.innerHeight / 2 - 1, 2, 2);
+  const effectiveTargetRect = targetRect ?? fallbackRect;
   const padded = {
-    top: Math.max(8, targetRect.top - 8),
-    left: Math.max(8, targetRect.left - 8),
-    width: targetRect.width + 16,
-    height: targetRect.height + 16,
+    top: Math.max(8, effectiveTargetRect.top - 8),
+    left: Math.max(8, effectiveTargetRect.left - 8),
+    width: effectiveTargetRect.width + 16,
+    height: effectiveTargetRect.height + 16,
   };
 
   useEffect(() => {
@@ -6484,6 +6644,11 @@ function SpotlightWalkthrough({
     const tooltipEl = tooltipRef.current;
     if (!tooltipEl) return;
     const isMobile = window.innerWidth <= 767;
+    if (centered) {
+      setTooltipPlacement("below");
+      setTooltipStyle({});
+      return;
+    }
     if (isMobile) {
       setTooltipPlacement("bottom-sheet");
       setTooltipStyle({
@@ -6537,7 +6702,7 @@ function SpotlightWalkthrough({
 
     setTooltipPlacement(nextPlacement);
     setTooltipStyle({ top, left });
-  }, [placement, padded.height, padded.left, padded.top, padded.width, step.id]);
+  }, [centered, placement, padded.height, padded.left, padded.top, padded.width, step.id]);
 
   useEffect(() => {
     const tooltipEl = tooltipRef.current;
@@ -6553,22 +6718,29 @@ function SpotlightWalkthrough({
 
   const viewportWidth = window.innerWidth;
   const viewportHeight = window.innerHeight;
-  const shadeStyles = {
-    top: { left: 0, top: 0, width: viewportWidth, height: padded.top },
-    left: { left: 0, top: padded.top, width: padded.left, height: padded.height },
-    right: {
-      left: padded.left + padded.width,
-      top: padded.top,
-      width: Math.max(0, viewportWidth - (padded.left + padded.width)),
-      height: padded.height,
-    },
-    bottom: {
-      left: 0,
-      top: padded.top + padded.height,
-      width: viewportWidth,
-      height: Math.max(0, viewportHeight - (padded.top + padded.height)),
-    },
-  };
+  const shadeStyles = centered
+    ? {
+        top: { left: 0, top: 0, width: viewportWidth, height: viewportHeight },
+        left: { left: 0, top: 0, width: 0, height: 0 },
+        right: { left: 0, top: 0, width: 0, height: 0 },
+        bottom: { left: 0, top: 0, width: 0, height: 0 },
+      }
+    : {
+        top: { left: 0, top: 0, width: viewportWidth, height: padded.top },
+        left: { left: 0, top: padded.top, width: padded.left, height: padded.height },
+        right: {
+          left: padded.left + padded.width,
+          top: padded.top,
+          width: Math.max(0, viewportWidth - (padded.left + padded.width)),
+          height: padded.height,
+        },
+        bottom: {
+          left: 0,
+          top: padded.top + padded.height,
+          width: viewportWidth,
+          height: Math.max(0, viewportHeight - (padded.top + padded.height)),
+        },
+      };
 
   return createPortal(
     <div className="walkthrough-layer" role="dialog" aria-modal="true" aria-label="Bracket walkthrough">
@@ -6576,19 +6748,35 @@ function SpotlightWalkthrough({
       <div className="walkthrough-shade walkthrough-shade--left" style={shadeStyles.left} />
       <div className="walkthrough-shade walkthrough-shade--right" style={shadeStyles.right} />
       <div className="walkthrough-shade walkthrough-shade--bottom" style={shadeStyles.bottom} />
+      {!centered ? (
+        <div
+          className="walkthrough-cutout"
+          style={{
+            top: `${padded.top}px`,
+            left: `${padded.left}px`,
+            width: `${padded.width}px`,
+            height: `${padded.height}px`,
+          }}
+        />
+      ) : null}
       <div
-        className="walkthrough-cutout"
-        style={{
-          top: `${padded.top}px`,
-          left: `${padded.left}px`,
-          width: `${padded.width}px`,
-          height: `${padded.height}px`,
-        }}
-      />
-      <div className={`walkthrough-tooltip placement-${tooltipPlacement}`} ref={tooltipRef} style={tooltipStyle}>
+        className={`walkthrough-tooltip ${centered ? "walkthrough-tooltip--centered" : ""} placement-${tooltipPlacement}`}
+        ref={tooltipRef}
+        style={tooltipStyle}
+      >
         <p className="walkthrough-step-label">STEP {stepIndex + 1} OF {WALKTHROUGH_STEPS.length}</p>
         <h3>{step.heading}</h3>
         <p>{step.body}</p>
+        {step.id === "ready" ? (
+          <label className="onboarding-checkbox-label">
+            <input
+              type="checkbox"
+              checked={dontShowAgain}
+              onChange={(event) => onDontShowAgainChange(event.target.checked)}
+            />
+            <span>Don&apos;t show this again</span>
+          </label>
+        ) : null}
         <div className="walkthrough-dots" aria-hidden="true">
           {WALKTHROUGH_STEPS.map((_, i) => (
             <span key={i} className={i === stepIndex ? "active" : ""} data-label={stepLabels[i] ?? `Step ${i + 1}`} />

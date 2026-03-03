@@ -87,6 +87,7 @@ const teamDomains: Record<string, string> = {
   "South Carolina": "sc.edu",
   Texas: "utexas.edu",
   "Utah State": "usu.edu",
+  "Utah St": "usu.edu",
   TCU: "tcu.edu",
   Virginia: "virginia.edu",
   Oregon: "uoregon.edu",

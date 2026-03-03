@@ -57,6 +57,7 @@ export const LOGO_MAP: Record<string, number> = {
   Gonzaga: 2250,
   Georgia: 61,
   "Utah State": 328,
+  "Utah St": 328,
   Xavier: 2752,
   McNeese: 2377,
   "High Point": 2272,
@@ -65,7 +66,17 @@ export const LOGO_MAP: Record<string, number> = {
   "SIU Edwardsville": 2565,
 };
 
+const LOGO_ALIASES: Record<string, string> = {
+  "Iowa St": "Iowa State",
+  "Michigan St": "Michigan State",
+  "St Mary's CA": "Saint Mary's",
+  "San Diego St": "San Diego State",
+  "Utah St": "Utah State",
+  "St John's": "St. John's",
+};
+
 export const getMappedEspnLogoPath = (teamName: string): string | null => {
-  const espnId = LOGO_MAP[teamName];
+  const normalized = LOGO_ALIASES[teamName] ?? teamName;
+  const espnId = LOGO_MAP[normalized];
   return espnId ? `/logos/${espnId}.png` : null;
 };

@@ -1250,6 +1250,22 @@ body {
   flex-shrink: 0;
 }
 
+.team-logo-fallback {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 50%;
+}
+
+.team-logo-fallback-seed {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--text-tertiary);
+}
+
 .team-logo-placeholder {
   opacity: 0.28;
 }
@@ -8681,6 +8697,203 @@ body.walkthrough-step-make-pick .wt-spotlight-target .m-team,
 body.walkthrough-step-make-pick .wt-spotlight-target .eg-compact-chip {
   pointer-events: auto !important;
   cursor: pointer;
+}
+
+.walkthrough-tooltip--centered {
+  position: fixed !important;
+  top: 50% !important;
+  left: 50% !important;
+  transform: translate(-50%, -50%) !important;
+}
+
+body.walkthrough-active .odds-value--changed {
+  position: relative;
+}
+
+body.walkthrough-active .odds-value--changed::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -2px;
+  height: 2px;
+  border-radius: 1px;
+  background: rgba(184, 125, 24, 0.55);
+}
+
+.odds-cascading {
+  color: var(--text-amber) !important;
+  text-shadow: 0 0 8px rgba(184, 125, 24, 0.35);
+  transition: color 0.4s ease-out, text-shadow 0.4s ease-out;
+}
+
+.odds-settled {
+  animation: oddsPulse 350ms ease-out;
+}
+
+@keyframes oddsPulse {
+  0% { transform: scale(1); }
+  40% { transform: scale(1.08); }
+  100% { transform: scale(1); }
+}
+
+.team-eliminated-anim {
+  animation: eliminateFade 600ms ease-out forwards;
+}
+
+@keyframes eliminateFade {
+  0% {
+    opacity: 1;
+    filter: none;
+  }
+  100% {
+    opacity: 0.3;
+    filter: grayscale(0.6);
+  }
+}
+
+.futures-row--onboarding-highlight {
+  animation: futuresHighlightPulse 1800ms ease-in-out infinite;
+}
+
+@keyframes futuresHighlightPulse {
+  0%, 100% { background: transparent; }
+  50% { background: rgba(184, 125, 24, 0.08); }
+}
+
+.championship-card--celebration {
+  position: relative;
+  background: radial-gradient(
+    ellipse at 50% 30%,
+    rgba(184, 125, 24, 0.12) 0%,
+    rgba(14, 12, 9, 0.95) 70%
+  );
+  border: 2px solid rgba(184, 125, 24, 0.5);
+  border-radius: 12px;
+  padding: 32px 24px 20px;
+  text-align: center;
+  overflow: hidden;
+  animation: celebrationAppear 600ms ease-out;
+  box-shadow: 0 0 30px rgba(184, 125, 24, 0.15), 0 0 60px rgba(184, 125, 24, 0.05);
+}
+
+@keyframes celebrationAppear {
+  0% {
+    opacity: 0;
+    transform: scale(0.95);
+    border-color: rgba(184, 125, 24, 0);
+    box-shadow: none;
+  }
+  50% {
+    border-color: rgba(184, 125, 24, 0.7);
+    box-shadow: 0 0 40px rgba(184, 125, 24, 0.25);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+    border-color: rgba(184, 125, 24, 0.5);
+  }
+}
+
+.championship-confetti-canvas {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 2;
+}
+
+.championship-card-inner {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+}
+
+.championship-card--celebration .championship-trophy {
+  font-size: 36px;
+  line-height: 1;
+  animation: trophyBounce 800ms ease-out 400ms both;
+}
+
+@keyframes trophyBounce {
+  0% { opacity: 0; transform: scale(0.5) translateY(-20px); }
+  60% { opacity: 1; transform: scale(1.15) translateY(0); }
+  80% { transform: scale(0.95); }
+  100% { transform: scale(1); }
+}
+
+.championship-card--celebration .championship-logo {
+  width: 80px;
+  height: 80px;
+  object-fit: contain;
+  animation: logoReveal 500ms ease-out 200ms both;
+}
+
+@keyframes logoReveal {
+  0% { opacity: 0; transform: scale(0.7); }
+  100% { opacity: 1; transform: scale(1); }
+}
+
+.championship-card--celebration .championship-team-name {
+  font-family: var(--font-serif);
+  font-size: 24px;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin: 0;
+  animation: fadeInUp 400ms ease-out 500ms both;
+}
+
+.championship-card--celebration .championship-badge {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: #0a0806;
+  background: linear-gradient(135deg, rgba(184, 125, 24, 0.95), rgba(210, 160, 50, 0.95));
+  padding: 6px 18px;
+  border-radius: 100px;
+  animation: fadeInUp 400ms ease-out 650ms both;
+}
+
+.championship-card--celebration .championship-seed {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--text-tertiary);
+  animation: fadeInUp 300ms ease-out 750ms both;
+}
+
+.championship-runner-up {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: rgba(240, 230, 208, 0.3);
+  margin-top: 16px;
+  animation: fadeInUp 300ms ease-out 850ms both;
+}
+
+@media (max-width: 767px) {
+  .championship-card--celebration {
+    padding: 24px 16px 16px;
+    margin: 0 16px;
+  }
+
+  .championship-card--celebration .championship-logo {
+    width: 64px;
+    height: 64px;
+  }
+
+  .championship-card--celebration .championship-team-name {
+    font-size: 20px;
+  }
+
+  .championship-card--celebration .championship-trophy {
+    font-size: 28px;
+  }
 }
 
 .wlcm-gate-hint {

@@ -11,16 +11,16 @@ export const BRACKET_HALVES: Array<{
   {
     id: "halfA",
     side: "Left",
-    label: "East/West",
+    label: "South/West",
     semifinalGameId: "F4-Left-0",
-    regions: ["East", "West"],
+    regions: ["South", "West"],
   },
   {
     id: "halfB",
     side: "Right",
-    label: "Midwest/South",
+    label: "East/Midwest",
     semifinalGameId: "F4-Right-0",
-    regions: ["Midwest", "South"],
+    regions: ["East", "Midwest"],
   },
 ];
 

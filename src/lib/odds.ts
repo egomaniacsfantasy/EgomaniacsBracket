@@ -18,7 +18,12 @@ export const toDecimalOdds = (prob: number): number => 1 / clampDisplayProb(prob
 
 export const formatAmerican = (odds: number): string => (odds > 0 ? `+${odds}` : `${odds}`);
 
-export const toImpliedLabel = (prob: number): string => `${(clampDisplayProb(prob) * 100).toFixed(1)}%`;
+export const toImpliedLabel = (prob: number): string => {
+  if (!Number.isFinite(prob)) return "50.0%";
+  if (prob >= 1) return "100%";
+  if (prob <= 0) return "0%";
+  return `${(clampDisplayProb(prob) * 100).toFixed(1)}%`;
+};
 
 export const toOneInX = (prob: number): string => {
   if (prob <= 0) return "Never";
@@ -29,6 +34,14 @@ export const formatOddsDisplay = (
   prob: number,
   mode: OddsDisplayMode
 ): { primary: string; secondary?: string } => {
+  if (Number.isFinite(prob) && (prob >= 1 || prob <= 0)) {
+    const implied = toImpliedLabel(prob);
+    if (mode === "american") return { primary: "—" };
+    if (mode === "implied") return { primary: implied };
+    if (mode === "decimal") return { primary: prob >= 1 ? "1.00" : "—" };
+    return { primary: "—", secondary: implied };
+  }
+
   const american = formatAmerican(toAmericanOdds(prob));
   const implied = toImpliedLabel(prob);
   const decimal = toDecimalOdds(prob).toFixed(2);
