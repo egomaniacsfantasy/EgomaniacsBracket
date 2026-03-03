@@ -4181,7 +4181,7 @@ const TEAM_STAT_LABELS: Record<TeamStatKey, string> = {
   rank_MOR: "rank_MOR",
   elo_last: "elo_last",
   avg_net_rtg: "avg_net_rtg",
-  rankdiff_MAS: "rankdiff_MAS",
+  rank_MAS: "rank_MAS",
   elo_trend: "elo_trend",
   avg_oreb_pct: "avg_oreb_pct",
   last5_Margin: "last5_Margin",
@@ -4194,7 +4194,7 @@ const LOWER_IS_BETTER_STATS = new Set<TeamStatKey>([
   "rank_POM",
   "rank_WLK",
   "rank_MOR",
-  "rankdiff_MAS",
+  "rank_MAS",
   "avg_def_rtg",
   "rank_NET",
 ]);
