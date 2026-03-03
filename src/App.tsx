@@ -283,6 +283,7 @@ type ShareFormat = "story" | "twitter";
 
 type FuturesViewSortMode = "championship_desc" | "championship_asc" | "delta_desc" | "delta_asc" | "seed_asc";
 type FuturesFilterMode = "all" | "alive" | "picked" | "biggest_movers";
+type FuturesContentTab = "overview" | "teams" | "movers" | "picks";
 
 type CompletionCelebrationData = {
   championName: string;
@@ -450,6 +451,8 @@ function App() {
   const [simRuns] = useState<number>(() => getRecommendedSimRuns());
   const [futuresViewSortMode, setFuturesViewSortMode] = useState<FuturesViewSortMode>("championship_desc");
   const [futuresFilterMode, setFuturesFilterMode] = useState<FuturesFilterMode>("all");
+  const [futuresContentTab, setFuturesContentTab] = useState<FuturesContentTab>("overview");
+  const [futuresScrollTop, setFuturesScrollTop] = useState(0);
   const [mainView, setMainView] = useState<"bracket" | "futures" | "leaderboard">("bracket");
   const [isUpdating, setIsUpdating] = useState(false);
   const [lastPickedKey, setLastPickedKey] = useState<string | null>(null);
@@ -1328,6 +1331,13 @@ function App() {
   );
 
   const chaosScore = useMemo(() => computeChaosScoreFromGames(games), [games]);
+  const submittedBracketCount = useMemo(
+    () => userBrackets.filter((bracket) => Boolean(bracket.submitted_at)).length,
+    [userBrackets]
+  );
+  const submissionsLocked = useMemo(() => userBrackets.some((bracket) => bracket.is_locked), [userBrackets]);
+  const submissionLimitReached = submittedBracketCount >= 25;
+  const canSubmitBrackets = isAuthenticated && !submissionsLocked && !submissionLimitReached;
   const pickedChaosGameIds = useMemo(() => getPickedChaosGameIds(games), [games]);
   const chaosPercentile = useMemo(() => {
     if (chaosScore === null || pickedChaosGameIds.length === 0 || !chaosDistribution) return null;
@@ -1675,10 +1685,20 @@ function App() {
       return;
     }
 
+    if (submissionsLocked) {
+      setSaveStatus("error");
+      setSaveErrorText("Submissions are locked at tip-off.");
+      return;
+    }
+    if (submissionLimitReached) {
+      setSaveStatus("error");
+      setSaveErrorText("Submission limit reached (25/25)");
+      return;
+    }
+
     setSaveStatus("saving");
-    const bracketCount = userBrackets.length;
-    const defaultName = bracketCount === 0 ? "My Bracket" : `Bracket #${Math.min(25, bracketCount + 1)}`;
-    const { error } = await saveBracket(user.id, sanitized, defaultName, null, chaosScore ?? 0);
+    const defaultName = submittedBracketCount === 0 ? "My Bracket" : `Bracket #${Math.min(25, submittedBracketCount + 1)}`;
+    const { error } = await saveBracket(user.id, sanitized, defaultName, null, chaosScore ?? 0, { submit: true });
     if (error) {
       setSaveStatus("error");
       setSaveErrorText((error as { message?: string })?.message ?? "Save failed");
@@ -2757,16 +2777,29 @@ function App() {
       <button
         onClick={onSaveBracket}
         className="eg-btn toolbar-btn--save toolbar-btn--save-action"
-        disabled={saveStatus === "saving"}
+        disabled={saveStatus === "saving" || (isAuthenticated && !canSubmitBrackets)}
+        title={
+          !isAuthenticated
+            ? "Sign in to submit your bracket"
+            : submissionsLocked
+              ? "Submissions locked at tip-off"
+              : submissionLimitReached
+                ? "Submission limit reached (25/25)"
+                : `Submitted: ${submittedBracketCount}/25`
+        }
         style={!isMobile && mainView === "leaderboard" ? { display: "none" } : undefined}
       >
         {saveStatus === "saving"
-          ? "Saving..."
+          ? "Submitting..."
           : saveStatus === "saved"
-            ? "✓ Saved"
+            ? "✓ Submitted"
             : saveStatus === "error"
-              ? (saveErrorText?.includes("Maximum of 25") ? "Maximum of 25 brackets per user" : "Error — try again")
-              : "Save Bracket"}
+              ? (saveErrorText?.includes("25")
+                  ? "Submission limit reached (25/25)"
+                  : saveErrorText?.toLowerCase().includes("locked")
+                    ? "Submissions locked"
+                    : "Error — try again")
+              : `Submit Bracket ${isAuthenticated ? `(${submittedBracketCount}/25)` : ""}`}
       </button>
       {playInGames.length > 0 ? (
         <button
@@ -2910,9 +2943,9 @@ function App() {
           </button>
         </div>
       ) : null}
-      {isAuthenticated && userBrackets.some((bracket) => bracket.is_locked) ? (
+      {isAuthenticated && submissionsLocked ? (
         <div className="bracket-lock-banner" style={!isMobile && mainView === "leaderboard" ? { display: "none" } : undefined}>
-          🔒 Brackets are locked. Tournament is live — check the leaderboard!
+          🔒 Submissions locked at tip-off. Tournament is live — check the leaderboard.
         </div>
       ) : null}
     </div>
@@ -3019,6 +3052,27 @@ function App() {
     return sorted;
   }, [futuresFilterMode, futuresViewRows, futuresViewSortMode]);
 
+  useEffect(() => {
+    setFuturesScrollTop(0);
+  }, [futuresContentTab, futuresFilterMode, futuresViewSortMode, pickCount]);
+
+  const topTitleOddsRows = useMemo(
+    () => [...futuresViewRows].sort((a, b) => b.row.champProb - a.row.champProb).slice(0, 12),
+    [futuresViewRows]
+  );
+  const biggestMoverRows = useMemo(
+    () => [...futuresViewRows].sort((a, b) => Math.abs(b.champDelta) - Math.abs(a.champDelta)).slice(0, 10),
+    [futuresViewRows]
+  );
+  const myPickImpactRows = useMemo(
+    () =>
+      [...futuresViewRows]
+        .filter((row) => row.isChampionPick || row.isFinalFourPick || row.hasAnyPick)
+        .sort((a, b) => b.row.champProb - a.row.champProb)
+        .slice(0, 10),
+    [futuresViewRows]
+  );
+
   const championPickTeam = championPickId ? teamsById.get(championPickId) ?? null : null;
   const championPickRow = championPickId ? simResult.futures.find((row) => row.teamId === championPickId) ?? null : null;
   const finalFourPickTeams = games
@@ -3028,6 +3082,20 @@ function App() {
     pickCount === 0 || chaosScore === null
       ? 100
       : Math.max(0, Math.min(100, Math.round((1 - chaosScore / Math.max(1, pickCount)) * 100)));
+  const tabFilteredRows = useMemo(() => {
+    if (futuresContentTab === "movers") return filteredFuturesRows.filter((entry) => Math.abs(entry.champDelta) > 0.001);
+    if (futuresContentTab === "picks") {
+      return filteredFuturesRows.filter((entry) => entry.isChampionPick || entry.isFinalFourPick || entry.hasAnyPick);
+    }
+    return filteredFuturesRows;
+  }, [filteredFuturesRows, futuresContentTab]);
+  const virtualRowHeight = isMobile ? 116 : 104;
+  const virtualViewportHeight = isMobile ? 560 : 640;
+  const virtualStart = Math.max(0, Math.floor(futuresScrollTop / virtualRowHeight) - 5);
+  const virtualCount = Math.ceil(virtualViewportHeight / virtualRowHeight) + 10;
+  const virtualEnd = Math.min(tabFilteredRows.length, virtualStart + virtualCount);
+  const virtualTopSpacer = virtualStart * virtualRowHeight;
+  const virtualBottomSpacer = Math.max(0, (tabFilteredRows.length - virtualEnd) * virtualRowHeight);
 
   const futuresContent = (
     <div className="futures-full">
@@ -3037,34 +3105,23 @@ function App() {
           <span className="futures-subtitle">How your picks shift every team&apos;s odds</span>
         </div>
         <div className="futures-header-controls">
-          <div className="futures-filter-group">
+          <div className="futures-tab-group">
             {[
-              { value: "all", label: "All Teams" },
-              { value: "alive", label: "Still Alive" },
-              { value: "picked", label: "My Picks" },
-              { value: "biggest_movers", label: "Biggest Movers" },
-            ].map((filter) => (
+              { value: "overview", label: "Overview" },
+              { value: "teams", label: "Teams" },
+              { value: "movers", label: "Movers" },
+              { value: "picks", label: "My Picks" },
+            ].map((tab) => (
               <button
-                key={filter.value}
+                key={tab.value}
                 type="button"
-                className={`futures-filter-pill ${futuresFilterMode === filter.value ? "futures-filter-pill--active" : ""}`}
-                onClick={() => setFuturesFilterMode(filter.value as FuturesFilterMode)}
+                className={`futures-filter-pill ${futuresContentTab === tab.value ? "futures-filter-pill--active" : ""}`}
+                onClick={() => setFuturesContentTab(tab.value as FuturesContentTab)}
               >
-                {filter.label}
+                {tab.label}
               </button>
             ))}
           </div>
-          <select
-            className="futures-sort-select"
-            value={futuresViewSortMode}
-            onChange={(event) => setFuturesViewSortMode(event.target.value as FuturesViewSortMode)}
-          >
-            <option value="championship_desc">Championship % ↓</option>
-            <option value="championship_asc">Championship % ↑</option>
-            <option value="delta_desc">Biggest Gains ↓</option>
-            <option value="delta_asc">Biggest Drops ↓</option>
-            <option value="seed_asc">Seed ↑</option>
-          </select>
         </div>
         <button
           className="futures-close"
@@ -3079,6 +3136,37 @@ function App() {
       </div>
 
       {isUpdating ? <p className="eg-updating">Updating…</p> : null}
+
+      <div className="futures-sticky-controls">
+        <div className="futures-filter-group">
+          {[
+            { value: "all", label: "All Teams" },
+            { value: "alive", label: "Still Alive" },
+            { value: "picked", label: "My Picks" },
+            { value: "biggest_movers", label: "Biggest Movers" },
+          ].map((filter) => (
+            <button
+              key={filter.value}
+              type="button"
+              className={`futures-filter-pill ${futuresFilterMode === filter.value ? "futures-filter-pill--active" : ""}`}
+              onClick={() => setFuturesFilterMode(filter.value as FuturesFilterMode)}
+            >
+              {filter.label}
+            </button>
+          ))}
+        </div>
+        <select
+          className="futures-sort-select"
+          value={futuresViewSortMode}
+          onChange={(event) => setFuturesViewSortMode(event.target.value as FuturesViewSortMode)}
+        >
+          <option value="championship_desc">Championship % ↓</option>
+          <option value="championship_asc">Championship % ↑</option>
+          <option value="delta_desc">Biggest Gains ↓</option>
+          <option value="delta_asc">Biggest Drops ↓</option>
+          <option value="seed_asc">Seed ↑</option>
+        </select>
+      </div>
 
       {pickCount === 0 ? (
         <div className="futures-hero futures-hero--empty">
@@ -3158,77 +3246,133 @@ function App() {
               <span className="futures-hero-stat-value">{toImpliedLabel(simResult.likelihoodSimulation)}</span>
               <span className="futures-hero-stat-label">LIKELIHOOD</span>
             </div>
+            <div className="futures-hero-stat">
+              <span className="futures-hero-stat-value">{chaosScore?.toFixed(1) ?? "—"}</span>
+              <span className="futures-hero-stat-label">CHAOS</span>
+            </div>
           </div>
         </div>
       )}
 
-      <div className="ft-grid">
-        <div className="ft-grid-header">
-          <span className="ft-grid-header-team">TEAM</span>
-          <span className="ft-grid-header-champ">CHAMPIONSHIP</span>
-          <span className="ft-grid-header-rounds">R32 · S16 · E8 · F4 · TITLE · CHAMP</span>
-        </div>
-        <div className="ft-grid-list">
-          {filteredFuturesRows.map((entry) => (
-            <article
-              key={entry.row.teamId}
-              className={`ft-card ${entry.isEliminated ? "ft-card--eliminated" : ""} ${entry.isChampionPick ? "ft-card--champion-pick" : ""} ${entry.isFinalFourPick && !entry.isChampionPick ? "ft-card--f4-pick" : ""}`}
-              data-team-name={entry.team.name}
-            >
-              <div className="ft-card-identity">
-                <TeamLogo
-                  teamName={entry.team.name}
-                  src={teamLogoUrl(entry.team)}
-                  className="ft-card-logo"
-                  teamSeed={seedLabel(entry.team)}
-                />
-                <div className="ft-card-team-info">
-                  <span className="ft-card-seed">#{seedLabel(entry.team)}</span>
-                  <span className="ft-card-name">{entry.team.name}</span>
-                  <span className="ft-card-region">{entry.team.region}</span>
+      {futuresContentTab === "overview" ? (
+        <section className="futures-overview-grid">
+          <article className="futures-overview-card">
+            <h3 className="futures-overview-title">Top Title Odds</h3>
+            <div className="futures-overview-list">
+              {topTitleOddsRows.map((entry, index) => (
+                <div key={`top-title-${entry.row.teamId}`} className="futures-overview-row">
+                  <span className="futures-overview-rank">{index + 1}</span>
+                  <TeamLogo teamName={entry.team.name} src={teamLogoUrl(entry.team)} className="futures-overview-logo" teamSeed={seedLabel(entry.team)} />
+                  <span className="futures-overview-name">#{seedLabel(entry.team)} {entry.team.name}</span>
+                  <span className="futures-overview-value">{formatOddsDisplay(entry.row.champProb, displayMode).primary}</span>
                 </div>
-              </div>
-              <div className="ft-card-champ">
-                <span className="ft-card-champ-value">
-                  {entry.isEliminated ? "—" : formatOddsDisplay(entry.row.champProb, displayMode).primary}
-                </span>
-                {!entry.isEliminated && Math.abs(entry.champDelta) >= 0.001 ? (
+              ))}
+            </div>
+          </article>
+          <article className="futures-overview-card">
+            <h3 className="futures-overview-title">Biggest Movers</h3>
+            <div className="futures-overview-list">
+              {biggestMoverRows.map((entry) => (
+                <div key={`mover-${entry.row.teamId}`} className="futures-overview-row">
+                  <TeamLogo teamName={entry.team.name} src={teamLogoUrl(entry.team)} className="futures-overview-logo" teamSeed={seedLabel(entry.team)} />
+                  <span className="futures-overview-name">#{seedLabel(entry.team)} {entry.team.name}</span>
                   <span className={`ft-card-delta ${entry.champDelta > 0 ? "ft-card-delta--up" : "ft-card-delta--down"}`}>
-                    {entry.champDelta > 0 ? "▲" : "▼"}
                     {formatDelta(computeDelta(entry.row.champProb, entry.baseline?.champProb ?? 0, displayMode), displayMode)}
                   </span>
-                ) : null}
-                {entry.isEliminated ? <span className="ft-card-eliminated-badge">✗ Eliminated</span> : null}
-                {entry.isChampionPick ? <span className="ft-card-pick-badge">👑 Your Champion</span> : null}
-                {entry.isFinalFourPick && !entry.isChampionPick ? <span className="ft-card-pick-badge ft-card-pick-badge--f4">Your F4</span> : null}
-              </div>
-              <div className="ft-card-rounds">
-                {entry.rounds.map((round) => {
-                  const roundDelta = computeDelta(round.prob, round.baselineProb, displayMode);
-                  const isLocked = Boolean(entry.state && entry.state.lastWinRank >= round.rank);
-                  const isDead = Boolean(entry.state && entry.state.firstLossRank <= round.rank);
-                  return (
-                    <div
-                      key={`${entry.row.teamId}-${round.key}`}
-                      className={`ft-card-round ${isLocked ? "ft-card-round--locked" : ""} ${isDead ? "ft-card-round--dead" : ""}`}
-                    >
-                      <span className="ft-card-round-label">{round.key}</span>
-                      <span className="ft-card-round-value">
-                        {isLocked ? "✓" : isDead ? "✗" : formatOddsDisplay(round.prob, displayMode).primary}
-                      </span>
-                      {!isLocked && !isDead && hasMeaningfulDelta(roundDelta, displayMode) ? (
-                        <span className={`ft-card-round-delta ${roundDelta > 0 ? "ft-card-round-delta--up" : "ft-card-round-delta--down"}`}>
-                          {formatDelta(roundDelta, displayMode)}
-                        </span>
-                      ) : null}
+                </div>
+              ))}
+            </div>
+            <h3 className="futures-overview-title futures-overview-title--sub">My Picks Impact</h3>
+            <div className="futures-overview-list">
+              {myPickImpactRows.length === 0 ? <p className="futures-overview-empty">No picks yet.</p> : null}
+              {myPickImpactRows.map((entry) => (
+                <div key={`pick-impact-${entry.row.teamId}`} className="futures-overview-row">
+                  <TeamLogo teamName={entry.team.name} src={teamLogoUrl(entry.team)} className="futures-overview-logo" teamSeed={seedLabel(entry.team)} />
+                  <span className="futures-overview-name">#{seedLabel(entry.team)} {entry.team.name}</span>
+                  <span className="futures-overview-value">{formatOddsDisplay(entry.row.champProb, displayMode).primary}</span>
+                </div>
+              ))}
+            </div>
+          </article>
+        </section>
+      ) : null}
+
+      {futuresContentTab !== "overview" ? (
+        <div className="ft-grid">
+          <div className="ft-grid-header">
+            <span className="ft-grid-header-team">TEAM</span>
+            <span className="ft-grid-header-champ">CHAMPIONSHIP</span>
+            <span className="ft-grid-header-rounds">R32 · S16 · E8 · F4 · TITLE · CHAMP</span>
+          </div>
+          <div
+            className="ft-grid-virtual-scroll"
+            onScroll={(event) => setFuturesScrollTop(event.currentTarget.scrollTop)}
+          >
+            <div style={{ height: virtualTopSpacer }} />
+            <div className="ft-grid-list">
+              {tabFilteredRows.slice(virtualStart, virtualEnd).map((entry) => (
+                <article
+                  key={entry.row.teamId}
+                  className={`ft-card ${entry.isEliminated ? "ft-card--eliminated" : ""} ${entry.isChampionPick ? "ft-card--champion-pick" : ""} ${entry.isFinalFourPick && !entry.isChampionPick ? "ft-card--f4-pick" : ""}`}
+                  data-team-name={entry.team.name}
+                >
+                  <div className="ft-card-identity">
+                    <TeamLogo
+                      teamName={entry.team.name}
+                      src={teamLogoUrl(entry.team)}
+                      className="ft-card-logo"
+                      teamSeed={seedLabel(entry.team)}
+                    />
+                    <div className="ft-card-team-info">
+                      <span className="ft-card-seed">#{seedLabel(entry.team)}</span>
+                      <span className="ft-card-name">{entry.team.name}</span>
+                      <span className="ft-card-region">{entry.team.region}</span>
                     </div>
-                  );
-                })}
-              </div>
-            </article>
-          ))}
+                  </div>
+                  <div className="ft-card-champ">
+                    <span className="ft-card-champ-value">
+                      {entry.isEliminated ? "—" : formatOddsDisplay(entry.row.champProb, displayMode).primary}
+                    </span>
+                    {!entry.isEliminated && Math.abs(entry.champDelta) >= 0.001 ? (
+                      <span className={`ft-card-delta ${entry.champDelta > 0 ? "ft-card-delta--up" : "ft-card-delta--down"}`}>
+                        {entry.champDelta > 0 ? "▲" : "▼"}
+                        {formatDelta(computeDelta(entry.row.champProb, entry.baseline?.champProb ?? 0, displayMode), displayMode)}
+                      </span>
+                    ) : null}
+                    {entry.isEliminated ? <span className="ft-card-eliminated-badge">✗ Eliminated</span> : null}
+                    {entry.isChampionPick ? <span className="ft-card-pick-badge">👑 Your Champion</span> : null}
+                    {entry.isFinalFourPick && !entry.isChampionPick ? <span className="ft-card-pick-badge ft-card-pick-badge--f4">Your F4</span> : null}
+                  </div>
+                  <div className="ft-card-rounds">
+                    {entry.rounds.map((round) => {
+                      const roundDelta = computeDelta(round.prob, round.baselineProb, displayMode);
+                      const isLocked = Boolean(entry.state && entry.state.lastWinRank >= round.rank);
+                      const isDead = Boolean(entry.state && entry.state.firstLossRank <= round.rank);
+                      return (
+                        <div
+                          key={`${entry.row.teamId}-${round.key}`}
+                          className={`ft-card-round ${isLocked ? "ft-card-round--locked" : ""} ${isDead ? "ft-card-round--dead" : ""}`}
+                        >
+                          <span className="ft-card-round-label">{round.key}</span>
+                          <span className="ft-card-round-value">
+                            {isLocked ? "✓" : isDead ? "✗" : formatOddsDisplay(round.prob, displayMode).primary}
+                          </span>
+                          {!isLocked && !isDead && hasMeaningfulDelta(roundDelta, displayMode) ? (
+                            <span className={`ft-card-round-delta ${roundDelta > 0 ? "ft-card-round-delta--up" : "ft-card-round-delta--down"}`}>
+                              {formatDelta(roundDelta, displayMode)}
+                            </span>
+                          ) : null}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </article>
+              ))}
+            </div>
+            <div style={{ height: virtualBottomSpacer }} />
+          </div>
         </div>
-      </div>
+      ) : null}
 
       <div className="ft-footer">
         <div className="ft-footer-likelihood">
@@ -3784,7 +3928,7 @@ function PromoCTA({
         <div className="promo-cta-trophy">🏆</div>
         <h3 className="promo-cta-title">Win $100</h3>
         <p className="promo-cta-body">
-          Save your bracket and compete against everyone on our leaderboard. The most accurate bracket wins $100
+          Submit your bracket and compete against everyone on our leaderboard. The most accurate bracket wins $100
           after the championship.
         </p>
         <p className="promo-cta-detail">Free to enter. Up to 25 brackets per account.</p>
@@ -3953,7 +4097,7 @@ function BracketCompletionCelebration({
 
         <div className="completion-actions">
           <button className="completion-btn-primary" onClick={onSave}>
-            Save Bracket
+            Submit Bracket
           </button>
           <button className="completion-btn-secondary" onClick={onClose}>
             Keep editing
@@ -5696,7 +5840,7 @@ function GameCard({
         onMouseLeave={() => setShowChaosTooltip(false)}
       >
         <div className="bracket-cell--compact">
-          {game.teamAId && game.teamBId ? (
+          {game.teamAId && game.teamBId && !game.winnerId ? (
             <button
               type="button"
               className={`matchup-edit-icon matchup-edit-btn--compact ${game.customProbA !== null ? "is-edited" : ""}`}
@@ -5940,7 +6084,7 @@ function GameCard({
                       <AdaptiveTeamLabel className={`chip-code ${showLogo ? "" : "no-logo"}`} fullName={teamLabel} />
                     </TeamHoverAnchor>
                     <span className="chip-odds-wrap">
-                      {game.teamAId && game.teamBId && rowIndex === 0 ? (
+                      {game.teamAId && game.teamBId && rowIndex === 0 && !game.winnerId ? (
                         <span
                           role="button"
                           tabIndex={0}
@@ -6279,7 +6423,7 @@ function TeamRow({
         </TeamHoverAnchor>
       )}
       <span className="team-odds-wrap">
-        {canEditProb && onOpenProbEditor && showEditIcon ? (
+        {canEditProb && onOpenProbEditor && showEditIcon && !outcome ? (
           <span
             role="button"
             tabIndex={0}

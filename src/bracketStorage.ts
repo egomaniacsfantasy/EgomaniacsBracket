@@ -32,6 +32,7 @@ export type SavedBracket = {
   created_at: string;
   updated_at: string;
   is_locked: boolean;
+  submitted_at?: string | null;
 };
 
 export type LeaderboardEntry = {
@@ -68,6 +69,10 @@ type BracketMeta = {
   boldest_pick: LeaderboardBoldestPick | null;
 };
 
+type SaveBracketOptions = {
+  submit?: boolean;
+};
+
 export function serializePicks(picks: LockedPicks | Map<string, string> | Array<{ id: string; winner?: string | null }>): LockedPicks {
   if (picks instanceof Map) return Object.fromEntries(picks);
   if (Array.isArray(picks)) {
@@ -94,8 +99,10 @@ export async function saveBracket(
   picks: LockedPicks,
   bracketName = "My Bracket",
   bracketId: string | null = null,
-  chaosScore?: number | null
+  chaosScore?: number | null,
+  options: SaveBracketOptions = {}
 ) {
+  const shouldSubmit = options.submit ?? true;
   const serialized = serializePicks(picks);
   const meta = extractBracketMeta(serialized);
   const derivedChaosScore = typeof chaosScore === "number" ? chaosScore : computeChaosScoreForPicks(serialized);
@@ -121,6 +128,7 @@ export async function saveBracket(
   const basePayload = {
     picks: serialized,
     bracket_name: bracketName,
+    submitted_at: shouldSubmit ? new Date().toISOString() : null,
     ...meta,
   };
 
@@ -180,6 +188,18 @@ export async function saveBracket(
     return { data: lastData as SavedBracket | null, error: lastError };
   }
 
+  if (shouldSubmit) {
+    const { count, error: countError } = await supabase
+      .from("brackets")
+      .select("id", { count: "exact", head: true })
+      .eq("user_id", userId)
+      .not("submitted_at", "is", null);
+    if (countError) return { data: null, error: countError };
+    if ((count ?? 0) >= 25) {
+      return { data: null, error: { message: "Maximum of 25 submitted brackets per user." } };
+    }
+  }
+
   let lastData: unknown = null;
   let lastError: { message?: string } | null = null;
   for (const payload of buildCandidates(false)) {
@@ -206,7 +226,7 @@ export async function saveBracket(
 export async function getUserBrackets(userId: string) {
   const withChaos = await supabase
     .from("brackets")
-    .select("id, user_id, bracket_name, picks, chaos_score, created_at, updated_at, is_locked")
+    .select("id, user_id, bracket_name, picks, chaos_score, created_at, updated_at, is_locked, submitted_at, champion_name, champion_seed, champion_logo_url, final_four, boldest_pick")
     .eq("user_id", userId)
     .order("created_at", { ascending: true });
   if (!withChaos.error) {
@@ -219,11 +239,46 @@ export async function getUserBrackets(userId: string) {
 
   const { data, error } = await supabase
     .from("brackets")
-    .select("id, user_id, bracket_name, picks, created_at, updated_at, is_locked")
+    .select("id, user_id, bracket_name, picks, created_at, updated_at, is_locked, submitted_at, champion_name, champion_seed, champion_logo_url, final_four, boldest_pick")
     .eq("user_id", userId)
     .order("created_at", { ascending: true });
 
   return { data: (data as SavedBracket[] | null) ?? [], error };
+}
+
+export async function setBracketSubmissionStatus(bracketId: string, userId: string, submit: boolean) {
+  const { data: bracket, error: existingError } = await supabase
+    .from("brackets")
+    .select("id, is_locked")
+    .eq("id", bracketId)
+    .eq("user_id", userId)
+    .single();
+  if (existingError) return { error: existingError };
+  if ((bracket as { is_locked?: boolean } | null)?.is_locked) {
+    return { error: { message: "Submissions are locked at tip-off." } };
+  }
+
+  if (submit) {
+    const { count, error: countError } = await supabase
+      .from("brackets")
+      .select("id", { count: "exact", head: true })
+      .eq("user_id", userId)
+      .not("submitted_at", "is", null);
+    if (countError) return { error: countError };
+    if ((count ?? 0) >= 25) {
+      return { error: { message: "Submission limit reached (25/25)." } };
+    }
+  }
+
+  const { error } = await supabase
+    .from("brackets")
+    .update({
+      submitted_at: submit ? new Date().toISOString() : null,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", bracketId)
+    .eq("user_id", userId);
+  return { error };
 }
 
 export async function deleteBracket(bracketId: string, userId: string) {
@@ -247,12 +302,70 @@ export async function renameBracket(bracketId: string, userId: string, newName: 
 }
 
 export async function getLeaderboard(limit = 50) {
-  const { data, error } = await supabase
-    .from("leaderboard")
-    .select("*")
+  const primary = await supabase
+    .from("bracket_scores")
+    .select(
+      `
+      rank,
+      total_score,
+      correct_picks,
+      possible_picks,
+      max_remaining,
+      r64_score,
+      r32_score,
+      s16_score,
+      e8_score,
+      f4_score,
+      champ_score,
+      bracket_id,
+      user_id,
+      updated_at,
+      brackets!inner(bracket_name, chaos_score, champion_name, champion_seed, champion_logo_url, champion_eliminated, final_four, boldest_pick, submitted_at),
+      profiles!inner(display_name)
+      `
+    )
+    .not("brackets.submitted_at", "is", null)
+    .order("total_score", { ascending: false })
+    .order("correct_picks", { ascending: false })
     .limit(limit);
 
-  return { data: (data as LeaderboardEntry[] | null) ?? [], error };
+  if (primary.error) {
+    const { data, error } = await supabase
+      .from("leaderboard")
+      .select("*")
+      .limit(limit);
+    return { data: (data as LeaderboardEntry[] | null) ?? [], error };
+  }
+
+  const mapped = ((primary.data as Array<Record<string, unknown>> | null) ?? []).map((row) => {
+    const b = (row.brackets as Record<string, unknown>) ?? {};
+    const p = (row.profiles as Record<string, unknown>) ?? {};
+    return {
+      rank: row.rank as number | null | undefined,
+      bracket_id: String(row.bracket_id ?? ""),
+      user_id: String(row.user_id ?? ""),
+      display_name: String(p.display_name ?? "Anonymous"),
+      bracket_name: String(b.bracket_name ?? "Bracket"),
+      chaos_score: (b.chaos_score as number | null | undefined) ?? null,
+      champion_name: (b.champion_name as string | null | undefined) ?? null,
+      champion_seed: (b.champion_seed as number | null | undefined) ?? null,
+      champion_logo_url: (b.champion_logo_url as string | null | undefined) ?? null,
+      champion_eliminated: Boolean(b.champion_eliminated),
+      final_four: (b.final_four as LeaderboardFinalFourTeam[] | string | null | undefined) ?? null,
+      boldest_pick: (b.boldest_pick as LeaderboardBoldestPick | string | null | undefined) ?? null,
+      total_score: Number(row.total_score ?? 0),
+      correct_picks: Number(row.correct_picks ?? 0),
+      possible_picks: (row.possible_picks as number | null | undefined) ?? null,
+      max_remaining: (row.max_remaining as number | null | undefined) ?? null,
+      r64_score: (row.r64_score as number | null | undefined) ?? null,
+      r32_score: (row.r32_score as number | null | undefined) ?? null,
+      s16_score: (row.s16_score as number | null | undefined) ?? null,
+      e8_score: (row.e8_score as number | null | undefined) ?? null,
+      f4_score: (row.f4_score as number | null | undefined) ?? null,
+      champ_score: (row.champ_score as number | null | undefined) ?? null,
+    } satisfies LeaderboardEntry;
+  });
+  return { data: mapped, error: null };
 }
 
 export async function getUserScores(userId: string) {

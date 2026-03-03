@@ -6,6 +6,7 @@ ALTER TABLE public.brackets
   ADD COLUMN IF NOT EXISTS champion_seed INTEGER,
   ADD COLUMN IF NOT EXISTS champion_logo_url TEXT,
   ADD COLUMN IF NOT EXISTS champion_eliminated BOOLEAN DEFAULT FALSE,
+  ADD COLUMN IF NOT EXISTS submitted_at TIMESTAMPTZ,
   ADD COLUMN IF NOT EXISTS final_four JSONB DEFAULT '[]'::jsonb,
   ADD COLUMN IF NOT EXISTS boldest_pick JSONB;
 
@@ -39,4 +40,5 @@ SELECT
 FROM public.bracket_scores bs
 JOIN public.brackets b ON bs.bracket_id = b.id
 JOIN public.profiles p ON bs.user_id = p.id
+WHERE b.submitted_at IS NOT NULL
 ORDER BY bs.total_score DESC, bs.correct_picks DESC;

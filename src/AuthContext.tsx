@@ -15,6 +15,7 @@ type AuthContextValue = {
   signUp: (email: string, displayName: string, password: string) => Promise<{ data: unknown; error: unknown }>;
   signIn: (email: string, password: string) => Promise<{ data: unknown; error: unknown }>;
   signInWithGoogle: () => Promise<{ data: unknown; error: unknown }>;
+  isDisplayNameAvailable: (displayName: string, excludeUserId?: string | null) => Promise<{ available: boolean; error: unknown }>;
   signOut: () => Promise<void>;
   isAuthenticated: boolean;
 };
@@ -80,11 +81,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const signUp = async (email: string, displayName: string, password: string) => {
+    const normalizedDisplayName = displayName.trim();
+    const { data: existingName, error: existingNameError } = await supabase
+      .from("profiles")
+      .select("id, display_name")
+      .ilike("display_name", normalizedDisplayName)
+      .limit(1);
+    if (!existingNameError && (existingName ?? []).length > 0) {
+      return { data: null, error: { message: "Display name already taken. Try adding a number." } };
+    }
+
     const { data, error } = await supabase.auth.signUp({
       email,
       password,
       options: {
-        data: { display_name: displayName },
+        data: { display_name: normalizedDisplayName },
         emailRedirectTo: window.location.origin,
       },
     });
@@ -109,6 +120,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return { data, error };
   };
 
+  const isDisplayNameAvailable = async (displayName: string, excludeUserId?: string | null) => {
+    const normalized = displayName.trim();
+    if (!normalized) return { available: false, error: { message: "Display name is required." } };
+    const { data, error } = await supabase
+      .from("profiles")
+      .select("id")
+      .ilike("display_name", normalized)
+      .limit(5);
+    if (error) return { available: false, error };
+    const taken = (data ?? []).some((row) => String((row as { id?: string }).id ?? "") !== String(excludeUserId ?? ""));
+    return { available: !taken, error: null };
+  };
+
   const signOut = async () => {
     await supabase.auth.signOut();
     setUser(null);
@@ -124,6 +148,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         signUp,
         signIn,
         signInWithGoogle,
+        isDisplayNameAvailable,
         signOut,
         isAuthenticated: Boolean(user),
       }}

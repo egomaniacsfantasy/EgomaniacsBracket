@@ -1242,6 +1242,21 @@ button.lb-row {
   flex-shrink: 0;
 }
 
+.lb-champion-logo-fallback {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.04);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-mono);
+  font-size: 9px;
+  color: var(--text-tertiary);
+  flex-shrink: 0;
+}
+
 .lb-champion-seed {
   font-size: 11px;
   color: var(--text-tertiary);
@@ -1626,9 +1641,31 @@ button.lb-row {
   flex-wrap: wrap;
 }
 
+.futures-tab-group {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
 .futures-filter-group {
   display: flex;
   gap: 6px;
+}
+
+.futures-sticky-controls {
+  position: sticky;
+  top: 60px;
+  z-index: 6;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  background: #0e0c09;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 10px;
+  padding: 10px 12px;
+  margin: 0 0 14px;
 }
 
 .futures-filter-pill {
@@ -1687,12 +1724,92 @@ button.lb-row {
 .futures-hero {
   display: flex;
   align-items: center;
+  justify-content: space-between;
   gap: 24px;
   background: rgba(255, 255, 255, 0.02);
   border: 1px solid rgba(255, 255, 255, 0.06);
   border-radius: 12px;
   padding: 18px 22px;
   margin-bottom: 24px;
+  min-height: 120px;
+}
+
+.futures-overview-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr);
+  gap: 14px;
+  margin-bottom: 16px;
+}
+
+.futures-overview-card {
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 10px;
+  padding: 12px;
+  min-height: 340px;
+}
+
+.futures-overview-title {
+  margin: 0 0 10px;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  color: var(--text-tertiary);
+  text-transform: uppercase;
+}
+
+.futures-overview-title--sub {
+  margin-top: 14px;
+}
+
+.futures-overview-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.futures-overview-row {
+  display: grid;
+  grid-template-columns: 20px 20px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 8px;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.01);
+}
+
+.futures-overview-rank {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--text-tertiary);
+}
+
+.futures-overview-logo {
+  width: 20px;
+  height: 20px;
+}
+
+.futures-overview-name {
+  font-family: var(--font-serif);
+  font-size: 13px;
+  color: var(--text-secondary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.futures-overview-value {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text-amber);
+}
+
+.futures-overview-empty {
+  margin: 0;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--text-tertiary);
 }
 
 .futures-hero--empty {
@@ -1887,6 +2004,12 @@ button.lb-row {
   display: flex;
   flex-direction: column;
   gap: 4px;
+}
+
+.ft-grid-virtual-scroll {
+  max-height: 68vh;
+  overflow-y: auto;
+  padding-right: 2px;
 }
 
 .ft-card {
@@ -2146,8 +2269,45 @@ button.lb-row {
     padding-bottom: 4px;
   }
 
+  .futures-sticky-controls {
+    top: 52px;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+  }
+
+  .futures-tab-group {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    flex-wrap: nowrap;
+    padding-bottom: 3px;
+  }
+
+  .futures-tab-group::-webkit-scrollbar {
+    display: none;
+  }
+
   .futures-filter-group::-webkit-scrollbar {
     display: none;
+  }
+
+  .futures-overview-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .futures-overview-card {
+    min-height: 0;
+  }
+
+  .futures-overview-row {
+    grid-template-columns: 18px 18px minmax(0, 1fr) auto;
+    gap: 6px;
+    padding: 6px;
+  }
+
+  .futures-overview-name {
+    font-size: 12px;
   }
 
   .futures-hero {
@@ -2167,6 +2327,11 @@ button.lb-row {
 
   .ft-grid-header {
     display: none;
+  }
+
+  .ft-grid-virtual-scroll {
+    max-height: none;
+    overflow: visible;
   }
 
   .ft-card {
@@ -6087,6 +6252,10 @@ body {
   margin-top: 8px;
 }
 
+.auth-modal-hint--error {
+  color: rgba(220, 92, 92, 0.95);
+}
+
 .auth-modal-password-toggle {
   font-family: var(--font-mono);
   font-size: 10px;
@@ -8603,13 +8772,13 @@ body.walkthrough-active .eg-title-choice:hover {
 .chaos-score-wrap {
   position: relative;
   display: inline-flex;
-  align-items: flex-start;
+  align-items: center;
 }
 
 .chaos-badge {
   display: inline-flex;
-  flex-direction: column;
-  gap: 2px;
+  align-items: center;
+  gap: 8px;
   padding: 6px 14px;
   background: rgba(184, 125, 24, 0.06);
   border: 1px solid rgba(184, 125, 24, 0.18);
@@ -8619,6 +8788,8 @@ body.walkthrough-active .eg-title-choice:hover {
   text-align: left;
   color: #f0e6d0;
   transition: border-color 300ms ease-out, background 300ms ease-out;
+  white-space: nowrap;
+  min-width: 170px;
 }
 
 .chaos-modal-overlay {
@@ -8873,7 +9044,7 @@ body.walkthrough-active .eg-title-choice:hover {
 .chaos-badge-top {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 5px;
 }
 
 .chaos-badge-emoji {
@@ -8883,7 +9054,7 @@ body.walkthrough-active .eg-title-choice:hover {
 
 .chaos-badge-label {
   font-family: var(--font-mono);
-  font-size: 11px;
+  font-size: 10px;
   font-weight: 700;
   letter-spacing: 0.08em;
   color: #f0e6d0;
@@ -8894,14 +9065,15 @@ body.walkthrough-active .eg-title-choice:hover {
   display: flex;
   align-items: center;
   gap: 5px;
-  padding-left: 20px;
+  padding-left: 0;
 }
 
 .chaos-badge-score {
   font-family: var(--font-mono);
-  font-size: 10px;
-  font-weight: 600;
+  font-size: 14px;
+  font-weight: 700;
   color: #f0e6d0;
+  line-height: 1;
 }
 
 .chaos-badge-dot {
@@ -8911,7 +9083,7 @@ body.walkthrough-active .eg-title-choice:hover {
 
 .chaos-badge-pct {
   font-family: var(--font-mono);
-  font-size: 10px;
+  font-size: 11px;
   color: rgba(240, 230, 208, 0.8);
 }
 
@@ -8952,6 +9124,7 @@ body.walkthrough-active .eg-title-choice:hover {
 @media (max-width: 767px) {
   .chaos-badge {
     padding: 5px 10px;
+    min-width: 0;
   }
 
   .chaos-badge-label {
@@ -8959,12 +9132,12 @@ body.walkthrough-active .eg-title-choice:hover {
   }
 
   .chaos-badge-bottom {
-    padding-left: 18px;
+    padding-left: 0;
   }
 
   .chaos-badge-score,
   .chaos-badge-pct {
-    font-size: 9px;
+    font-size: 10px;
   }
 
   .toolbar .chaos-badge {

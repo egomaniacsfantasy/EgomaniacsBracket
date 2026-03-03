@@ -61,21 +61,45 @@ function safeJsonParse(value: string): unknown {
   }
 }
 
+function LeaderboardTeamLogo({
+  src,
+  seed,
+  name,
+  className,
+  fallbackClassName,
+}: {
+  src: string | null | undefined;
+  seed: number | null;
+  name: string;
+  className: string;
+  fallbackClassName: string;
+}) {
+  const [failed, setFailed] = useState(false);
+  if (!src || failed) {
+    return <span className={fallbackClassName}>{seed !== null ? `#${seed}` : "?"}</span>;
+  }
+  return (
+    <img
+      src={src}
+      alt={name}
+      className={className}
+      onError={() => setFailed(true)}
+    />
+  );
+}
+
 function renderChampion(entry: LeaderboardEntry, showElimination: boolean) {
   const champName = entry.champion_name ?? "—";
   const champSeed = entry.champion_seed ?? null;
   return (
     <span className="lb-col lb-col-champion">
-      {entry.champion_logo_url ? (
-        <img
-          src={entry.champion_logo_url}
-          alt=""
-          className="lb-champion-logo"
-          onError={(event) => {
-            event.currentTarget.style.display = "none";
-          }}
-        />
-      ) : null}
+      <LeaderboardTeamLogo
+        src={entry.champion_logo_url}
+        seed={champSeed}
+        name={champName}
+        className="lb-champion-logo"
+        fallbackClassName="lb-champion-logo-fallback"
+      />
       {champSeed !== null ? <span className="lb-champion-seed">#{champSeed}</span> : null}
       <span className={`lb-champion-name ${showElimination && entry.champion_eliminated ? "lb-champion-name--eliminated" : ""}`}>
         {champName}
@@ -95,7 +119,7 @@ function LBPrizeHero() {
           <p className="lb-prize-subtitle">to the top bracket</p>
         </div>
       </div>
-      <p className="lb-prize-detail">Save your bracket before tip-off. Highest score wins.</p>
+      <p className="lb-prize-detail">Submit your bracket before tip-off. Highest score wins.</p>
     </div>
   );
 }
@@ -117,9 +141,9 @@ function LBEmptyState({ onClose }: { onClose?: () => void }) {
     <div className="lb-empty-state">
       <span className="lb-empty-icon">🏀</span>
       <h3 className="lb-empty-title">No brackets yet</h3>
-      <p className="lb-empty-body">Be the first to save your bracket and compete for the $100 prize.</p>
+      <p className="lb-empty-body">Be the first to submit your bracket and compete for the $100 prize.</p>
       <button className="lb-empty-cta" onClick={() => onClose?.()}>
-        Save my bracket →
+        Submit my bracket →
       </button>
     </div>
   );

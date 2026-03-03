@@ -59,7 +59,7 @@ export function AuthModal({
   isOpen: boolean;
   onClose: () => void;
 }) {
-  const { signUp, signIn, signInWithGoogle } = useAuth();
+  const { signUp, signIn, signInWithGoogle, isDisplayNameAvailable } = useAuth();
   const [mode, setMode] = useState<Mode>("signup");
   const [email, setEmail] = useState("");
   const [displayName, setDisplayName] = useState("");
@@ -68,6 +68,8 @@ export function AuthModal({
   const [submittedMode, setSubmittedMode] = useState<"signup" | "signin">("signup");
   const [password, setPassword] = useState("");
   const [signinPassword, setSigninPassword] = useState("");
+  const [displayNameHint, setDisplayNameHint] = useState("");
+  const [displayNameChecking, setDisplayNameChecking] = useState(false);
   const modalRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
@@ -80,7 +82,31 @@ export function AuthModal({
     setSubmittedMode("signup");
     setPassword("");
     setSigninPassword("");
+    setDisplayNameHint("");
+    setDisplayNameChecking(false);
   }, [isOpen]);
+
+  useEffect(() => {
+    if (!isOpen || mode !== "signup") return;
+    const value = displayName.trim();
+    if (!value) {
+      setDisplayNameHint("");
+      setDisplayNameChecking(false);
+      return;
+    }
+    if (value.length < 3) {
+      setDisplayNameHint("Use at least 3 characters.");
+      setDisplayNameChecking(false);
+      return;
+    }
+    setDisplayNameChecking(true);
+    const timer = window.setTimeout(async () => {
+      const { available } = await isDisplayNameAvailable(value);
+      setDisplayNameHint(available ? "Name available." : "Name taken. Try adding a number.");
+      setDisplayNameChecking(false);
+    }, 250);
+    return () => window.clearTimeout(timer);
+  }, [displayName, isDisplayNameAvailable, isOpen, mode]);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -157,7 +183,7 @@ export function AuthModal({
           </div>
         ) : mode === "signup" ? (
           <form onSubmit={handleSignUp} className="auth-modal-form">
-            <h3 className="auth-modal-title">Save your bracket</h3>
+            <h3 className="auth-modal-title">Submit your bracket</h3>
             <p className="auth-modal-subtitle">
               Create an account to save up to 25 brackets and compete on the leaderboard. Password required.
             </p>
@@ -193,6 +219,11 @@ export function AuthModal({
               maxLength={30}
               autoFocus
             />
+            {displayName.trim() ? (
+              <span className={`auth-modal-hint ${displayNameHint.toLowerCase().includes("taken") ? "auth-modal-hint--error" : ""}`}>
+                {displayNameChecking ? "Checking name availability..." : displayNameHint}
+              </span>
+            ) : null}
 
             <label className="auth-modal-label">Email</label>
             <input
