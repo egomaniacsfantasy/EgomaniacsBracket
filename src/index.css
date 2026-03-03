@@ -5389,6 +5389,13 @@ body.og-onboarding-open {
   text-transform: uppercase;
 }
 
+.matchup-stats-th-help {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
 .matchup-stat-name-cell {
   position: relative;
   display: flex;
@@ -5430,6 +5437,12 @@ body.og-onboarding-open {
   font-size: 11px;
   line-height: 1.45;
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
+}
+
+.matchup-stat-help-popover--header {
+  left: auto;
+  right: 0;
+  top: calc(100% + 8px);
 }
 
 @keyframes fadeInOut {

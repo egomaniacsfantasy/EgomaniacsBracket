@@ -4320,19 +4320,19 @@ function seedLabel(team: NonNullable<ReturnType<typeof teamsById.get>>) {
 }
 
 const TEAM_STAT_LABELS: Record<TeamStatKey, string> = {
-  rank_POM: "rankdiff_POM",
-  rank_MAS: "rankdiff_MAS",
-  rank_WLK: "rankdiff_WLK",
-  rank_MOR: "rankdiff_MOR",
-  elo_sos: "elo_sos_diff",
-  elo_last: "elo_diff",
-  avg_net_rtg: "net_rtg_diff",
-  avg_off_rtg: "off_rtg_diff",
-  elo_trend: "elo_trend_diff",
-  avg_def_rtg: "def_rtg_diff",
-  last5_Margin: "last5_Margin_diff",
-  rank_BIH: "rankdiff_BIH",
-  rank_NET: "rankdiff_NET",
+  rank_POM: "KenPom Rank",
+  rank_MAS: "Massey Rank",
+  rank_WLK: "Whitlock Rank",
+  rank_MOR: "Moore Rankings",
+  elo_sos: "OddsGods Elo Strength of Schedule",
+  elo_last: "OddsGods Elo",
+  avg_net_rtg: "Net Rating",
+  avg_off_rtg: "Offensive Rating",
+  elo_trend: "OddsGods Elo Trend",
+  avg_def_rtg: "Defensive Rating",
+  last5_Margin: "Last 5 Margin",
+  rank_BIH: "Bihl Rank",
+  rank_NET: "NET Rank",
 };
 
 const LOWER_IS_BETTER_STATS = new Set<TeamStatKey>([
@@ -4367,6 +4367,9 @@ const TEAM_STAT_DESCRIPTIONS: Record<TeamStatKey, string> = {
   rank_NET:
     "Official NCAA metric used by the selection committee. Combines game result, strength of schedule, net efficiency, and scoring margin.",
 };
+
+const IMPORTANCE_HELP_TEXT =
+  "Importance % is a practical guide to how much each stat drives model predictions. It comes from a SHAP analysis of our LightGBM model, which measures prediction impact rather than a direct model coefficient weight.";
 
 const formatStatValue = (value: number | null): string => {
   if (value === null || value === undefined || Number.isNaN(value)) return "—";
@@ -6707,7 +6710,7 @@ function TeamHoverAnchor({
 function MatchupStatsModal({ game, onClose }: { game: ResolvedGame; onClose: () => void }) {
   const teamA = game.teamAId ? teamsById.get(game.teamAId) ?? null : null;
   const teamB = game.teamBId ? teamsById.get(game.teamBId) ?? null : null;
-  const [activeStatDescription, setActiveStatDescription] = useState<TeamStatKey | null>(null);
+  const [activeStatDescription, setActiveStatDescription] = useState<TeamStatKey | "importance" | null>(null);
   if (!teamA || !teamB) return null;
 
   const statsA = TEAM_STATS_2026[teamA.name] ?? null;
@@ -6733,7 +6736,20 @@ function MatchupStatsModal({ game, onClose }: { game: ResolvedGame; onClose: () 
                 <th>{teamA.name}</th>
                 <th>{teamB.name}</th>
                 <th>Difference</th>
-                <th>Importance %</th>
+                <th className="matchup-stats-th-help">
+                  <span>Importance %</span>
+                  <button
+                    type="button"
+                    className="matchup-stat-help-btn"
+                    aria-label="About Importance percent"
+                    onClick={() => setActiveStatDescription((prev) => (prev === "importance" ? null : "importance"))}
+                  >
+                    ⓘ
+                  </button>
+                  {activeStatDescription === "importance" ? (
+                    <div className="matchup-stat-help-popover matchup-stat-help-popover--header">{IMPORTANCE_HELP_TEXT}</div>
+                  ) : null}
+                </th>
               </tr>
             </thead>
             <tbody>
