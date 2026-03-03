@@ -116,6 +116,10 @@ export async function saveBracket(
     const fields = ["champion_name", "champion_seed", "champion_logo_url", "champion_eliminated", "final_four", "boldest_pick"];
     return fields.some((field) => msg.includes(field)) && (msg.includes("column") || msg.includes("schema cache"));
   };
+  const isMissingSubmissionColumn = (message?: string) => {
+    const msg = (message ?? "").toLowerCase();
+    return msg.includes("submitted_at") && (msg.includes("column") || msg.includes("schema cache"));
+  };
   const isChaosTypeMismatch = (message?: string) => {
     const msg = (message ?? "").toLowerCase();
     return (
@@ -163,7 +167,7 @@ export async function saveBracket(
   };
 
   const shouldRetry = (message?: string) =>
-    isMissingChaosColumn(message) || isMissingMetaColumn(message) || isChaosTypeMismatch(message);
+    isMissingChaosColumn(message) || isMissingMetaColumn(message) || isMissingSubmissionColumn(message) || isChaosTypeMismatch(message);
 
   if (bracketId) {
     let lastData: unknown = null;
@@ -194,7 +198,7 @@ export async function saveBracket(
       .select("id", { count: "exact", head: true })
       .eq("user_id", userId)
       .not("submitted_at", "is", null);
-    if (countError) return { data: null, error: countError };
+    if (countError && !isMissingSubmissionColumn(countError.message)) return { data: null, error: countError };
     if ((count ?? 0) >= 25) {
       return { data: null, error: { message: "Maximum of 25 submitted brackets per user." } };
     }
@@ -224,29 +228,47 @@ export async function saveBracket(
 }
 
 export async function getUserBrackets(userId: string) {
-  const withChaos = await supabase
+  const withAll = await supabase
     .from("brackets")
     .select("id, user_id, bracket_name, picks, chaos_score, created_at, updated_at, is_locked, submitted_at, champion_name, champion_seed, champion_logo_url, final_four, boldest_pick")
+    .eq("user_id", userId)
+    .order("created_at", { ascending: true });
+  if (!withAll.error) {
+    return { data: (withAll.data as SavedBracket[] | null) ?? [], error: null };
+  }
+
+  const withMeta = await supabase
+    .from("brackets")
+    .select("id, user_id, bracket_name, picks, chaos_score, created_at, updated_at, is_locked, champion_name, champion_seed, champion_logo_url, final_four, boldest_pick")
+    .eq("user_id", userId)
+    .order("created_at", { ascending: true });
+  if (!withMeta.error) {
+    return { data: (withMeta.data as SavedBracket[] | null) ?? [], error: null };
+  }
+
+  const withChaos = await supabase
+    .from("brackets")
+    .select("id, user_id, bracket_name, picks, chaos_score, created_at, updated_at, is_locked")
     .eq("user_id", userId)
     .order("created_at", { ascending: true });
   if (!withChaos.error) {
     return { data: (withChaos.data as SavedBracket[] | null) ?? [], error: null };
   }
 
-  if (!withChaos.error.message?.toLowerCase().includes("chaos_score")) {
-    return { data: [], error: withChaos.error };
-  }
-
   const { data, error } = await supabase
     .from("brackets")
-    .select("id, user_id, bracket_name, picks, created_at, updated_at, is_locked, submitted_at, champion_name, champion_seed, champion_logo_url, final_four, boldest_pick")
+    .select("id, user_id, bracket_name, picks, created_at, updated_at, is_locked")
     .eq("user_id", userId)
     .order("created_at", { ascending: true });
 
-  return { data: (data as SavedBracket[] | null) ?? [], error };
+  return { data: (data as SavedBracket[] | null) ?? [], error: error ?? withAll.error };
 }
 
 export async function setBracketSubmissionStatus(bracketId: string, userId: string, submit: boolean) {
+  const isMissingSubmissionColumn = (message?: string) => {
+    const msg = (message ?? "").toLowerCase();
+    return msg.includes("submitted_at") && (msg.includes("column") || msg.includes("schema cache"));
+  };
   const { data: bracket, error: existingError } = await supabase
     .from("brackets")
     .select("id, is_locked")
@@ -264,7 +286,10 @@ export async function setBracketSubmissionStatus(bracketId: string, userId: stri
       .select("id", { count: "exact", head: true })
       .eq("user_id", userId)
       .not("submitted_at", "is", null);
-    if (countError) return { error: countError };
+    if (countError) {
+      if (isMissingSubmissionColumn(countError.message)) return { error: { message: "Submission system is updating. Please retry in 1 minute." } };
+      return { error: countError };
+    }
     if ((count ?? 0) >= 25) {
       return { error: { message: "Submission limit reached (25/25)." } };
     }
@@ -278,6 +303,9 @@ export async function setBracketSubmissionStatus(bracketId: string, userId: stri
     })
     .eq("id", bracketId)
     .eq("user_id", userId);
+  if (error && isMissingSubmissionColumn(error.message)) {
+    return { error: { message: "Submission system is updating. Please retry in 1 minute." } };
+  }
   return { error };
 }
 
