@@ -4176,28 +4176,53 @@ function seedLabel(team: NonNullable<ReturnType<typeof teamsById.get>>) {
 }
 
 const TEAM_STAT_LABELS: Record<TeamStatKey, string> = {
-  rank_POM: "rank_POM",
-  rank_WLK: "rank_WLK",
-  rank_MOR: "rank_MOR",
-  elo_last: "elo_last",
-  avg_net_rtg: "avg_net_rtg",
-  rank_MAS: "rank_MAS",
-  elo_trend: "elo_trend",
-  avg_oreb_pct: "avg_oreb_pct",
-  last5_Margin: "last5_Margin",
-  avg_off_rtg: "avg_off_rtg",
-  avg_def_rtg: "avg_def_rtg",
-  rank_NET: "rank_NET",
+  rank_POM: "rankdiff_POM",
+  rank_MAS: "rankdiff_MAS",
+  rank_WLK: "rankdiff_WLK",
+  rank_MOR: "rankdiff_MOR",
+  elo_sos: "elo_sos_diff",
+  elo_last: "elo_diff",
+  avg_net_rtg: "net_rtg_diff",
+  avg_off_rtg: "off_rtg_diff",
+  elo_trend: "elo_trend_diff",
+  avg_def_rtg: "def_rtg_diff",
+  last5_Margin: "last5_Margin_diff",
+  rank_BIH: "rankdiff_BIH",
+  rank_NET: "rankdiff_NET",
 };
 
 const LOWER_IS_BETTER_STATS = new Set<TeamStatKey>([
   "rank_POM",
+  "rank_MAS",
   "rank_WLK",
   "rank_MOR",
-  "rank_MAS",
+  "rank_BIH",
   "avg_def_rtg",
   "rank_NET",
 ]);
+
+const TEAM_STAT_DESCRIPTIONS: Record<TeamStatKey, string> = {
+  rank_POM: "KenPom rankings (tempo adjusted efficiency rating).",
+  rank_MAS:
+    "Massey rankings. We use the ranking differences from the best-performing team-strength set to help compute win probability.",
+  rank_WLK:
+    "Whitlock rankings. Computer generated power ranking system assigning a numerical strength to each team based on game results and strength of schedule.",
+  rank_MOR:
+    "Moore rankings. A rating algorithm that evaluates teams using statistical game data to estimate relative performance.",
+  elo_sos:
+    "Mean of opponents' pre-game Elo across all games this season. OddsGods created SOS metric that prioritizes opponent strength at the time of each game.",
+  elo_last:
+    "OddsGods custom built Elo system. Continuous rating that carries across seasons and updates after every game based on opponent quality, season phase, and conference context.",
+  avg_net_rtg: "Offensive rating minus defensive rating. Overall efficiency margin per 100 possessions.",
+  avg_off_rtg: "Offensive rating. 100 * points / possessions.",
+  elo_trend:
+    "OddsGods Elo trend. Slope of a linear regression line fit to a team's season Elo history, representing average Elo points gained or lost per game.",
+  avg_def_rtg: "Defensive rating. 100 * opponent points / opponent possessions.",
+  last5_Margin: "Rolling 5-game mean of scoring margin.",
+  rank_BIH: "Bihl rankings. Rating system producing strength scores based on game outcomes and strength of schedule.",
+  rank_NET:
+    "Official NCAA metric used by the selection committee. Combines game result, strength of schedule, net efficiency, and scoring margin.",
+};
 
 const formatStatValue = (value: number | null): string => {
   if (value === null || value === undefined || Number.isNaN(value)) return "—";
@@ -6538,6 +6563,7 @@ function TeamHoverAnchor({
 function MatchupStatsModal({ game, onClose }: { game: ResolvedGame; onClose: () => void }) {
   const teamA = game.teamAId ? teamsById.get(game.teamAId) ?? null : null;
   const teamB = game.teamBId ? teamsById.get(game.teamBId) ?? null : null;
+  const [activeStatDescription, setActiveStatDescription] = useState<TeamStatKey | null>(null);
   if (!teamA || !teamB) return null;
 
   const statsA = TEAM_STATS_2026[teamA.name] ?? null;
@@ -6572,7 +6598,22 @@ function MatchupStatsModal({ game, onClose }: { game: ResolvedGame; onClose: () 
                 const bValue = statsB?.[key] ?? null;
                 return (
                   <tr key={key}>
-                    <td>{TEAM_STAT_LABELS[key]}</td>
+                    <td className="matchup-stat-name-cell">
+                      <span>{TEAM_STAT_LABELS[key]}</span>
+                      <button
+                        type="button"
+                        className="matchup-stat-help-btn"
+                        aria-label={`About ${TEAM_STAT_LABELS[key]}`}
+                        onClick={() =>
+                          setActiveStatDescription((prev) => (prev === key ? null : key))
+                        }
+                      >
+                        ⓘ
+                      </button>
+                      {activeStatDescription === key ? (
+                        <div className="matchup-stat-help-popover">{TEAM_STAT_DESCRIPTIONS[key]}</div>
+                      ) : null}
+                    </td>
                     <td>{formatStatValue(aValue)}</td>
                     <td>{formatStatValue(bValue)}</td>
                     <td>{differenceForStat(teamA.name, aValue, teamB.name, bValue, key)}</td>

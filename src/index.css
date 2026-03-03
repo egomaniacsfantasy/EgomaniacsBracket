@@ -5224,6 +5224,49 @@ body.og-onboarding-open {
   text-transform: uppercase;
 }
 
+.matchup-stat-name-cell {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.matchup-stat-help-btn {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  background: none;
+  color: rgba(240, 230, 208, 0.5);
+  font-size: 10px;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0;
+  flex-shrink: 0;
+}
+
+.matchup-stat-help-btn:hover {
+  color: rgba(240, 230, 208, 0.85);
+  border-color: rgba(184, 125, 24, 0.5);
+}
+
+.matchup-stat-help-popover {
+  position: absolute;
+  left: 0;
+  top: calc(100% + 6px);
+  z-index: 4;
+  width: min(460px, 80vw);
+  white-space: normal;
+  background: #1b1611;
+  border: 1px solid rgba(184, 125, 24, 0.32);
+  border-radius: 8px;
+  padding: 10px 12px;
+  color: rgba(240, 230, 208, 0.8);
+  font-size: 11px;
+  line-height: 1.45;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
+}
+
 @keyframes fadeInOut {
   0% { opacity: 0; }
   15% { opacity: 1; }
