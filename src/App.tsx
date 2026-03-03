@@ -4771,20 +4771,18 @@ function MobileMatchupCard({
 
   return (
     <div className={`m-card ${isPicked ? "m-card--picked" : ""}`} ref={cardRef} data-game-id={game.id} data-seeds={dataSeeds}>
-      {isPicked ? (
-        <button
-          type="button"
-          className="matchup-stats-icon matchup-stats-icon--mobile"
-          onClick={(event) => {
-            event.stopPropagation();
-            onOpenMatchupStats(game);
-          }}
-          title="View matchup stats"
-          aria-label="View matchup stats"
-        >
-          ⓘ
-        </button>
-      ) : null}
+      <button
+        type="button"
+        className="matchup-stats-icon matchup-stats-icon--mobile"
+        onClick={(event) => {
+          event.stopPropagation();
+          onOpenMatchupStats(game);
+        }}
+        title="View matchup stats"
+        aria-label="View matchup stats"
+      >
+        ⓘ
+      </button>
       <button
         className={`m-team ${game.winnerId === teamA.id ? "m-team--winner" : ""} ${
           game.winnerId && game.winnerId !== teamA.id ? "m-team--loser" : ""
@@ -5644,20 +5642,18 @@ function GameCard({
       onMouseEnter={() => setShowChaosTooltip(true)}
       onMouseLeave={() => setShowChaosTooltip(false)}
     >
-      {game.lockedByUser && game.teamAId && game.teamBId ? (
-        <button
-          type="button"
-          className="matchup-stats-icon"
-          onClick={(event) => {
-            event.stopPropagation();
-            onOpenMatchupStats(game);
-          }}
-          title="View matchup stats"
-          aria-label="View matchup stats"
-        >
-          ⓘ
-        </button>
-      ) : null}
+      <button
+        type="button"
+        className="matchup-stats-icon"
+        onClick={(event) => {
+          event.stopPropagation();
+          onOpenMatchupStats(game);
+        }}
+        title="View matchup stats"
+        aria-label="View matchup stats"
+      >
+        ⓘ
+      </button>
       <div className="eg-game-list">
         {useShowdownCard ? (
           <ShowdownCard

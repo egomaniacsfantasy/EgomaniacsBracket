@@ -3986,10 +3986,15 @@ body.og-onboarding-open {
   justify-content: center;
   cursor: pointer;
   z-index: 3;
+  transition: color 140ms ease, background 140ms ease;
+}
+
+.eg-game-card:hover .matchup-stats-icon {
+  color: rgba(240, 230, 208, 0.65);
 }
 
 .matchup-stats-icon:hover {
-  color: rgba(240, 230, 208, 0.65);
+  color: rgba(240, 230, 208, 0.85);
   background: rgba(255, 255, 255, 0.06);
 }
 
