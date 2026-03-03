@@ -566,6 +566,8 @@ function App() {
   const previousStaggeredRunningRef = useRef(false);
   const previousTopHalfCollapsedRef = useRef(false);
   const previousBottomHalfCollapsedRef = useRef(false);
+  const previousTopHalfCompleteRef = useRef(false);
+  const previousBottomHalfCompleteRef = useRef(false);
 
   const { games, sanitized } = useMemo(
     () => resolveGames(lockedPicks, customProbByGame),
@@ -1927,6 +1929,8 @@ function App() {
     setMajorShiftNudgeVisible(false);
     closeProbabilityPopup(true);
     pushUndo(lockedPicks);
+    setTopHalfManuallyExpanded(false);
+    setBottomHalfManuallyExpanded(false);
     const baseLocks = getUserLockedPicks(lockedPicks);
     const nextLocks = sanitizeLockedPicks(generateSimulatedBracket(baseLocks, customProbByGame));
     simGeneratedGameIdsRef.current = new Set(
@@ -1959,6 +1963,8 @@ function App() {
     }
 
     pushUndo(baseLocks);
+    setTopHalfManuallyExpanded(false);
+    setBottomHalfManuallyExpanded(false);
     setStaggeredChaosTotal(computeChaosScoreFromGames(resolveGames(baseLocks).games) ?? 0);
     setStaggeredLastGameChaos(null);
     setStaggeredLastGameLabel("");
@@ -2206,6 +2212,20 @@ function App() {
   }, [bottomHalfComplete, bottomHalfManuallyExpanded, topHalfComplete, topHalfManuallyExpanded]);
 
   useEffect(() => {
+    if (!previousTopHalfCompleteRef.current && topHalfComplete) {
+      setTopHalfManuallyExpanded(false);
+    }
+    previousTopHalfCompleteRef.current = topHalfComplete;
+  }, [topHalfComplete]);
+
+  useEffect(() => {
+    if (!previousBottomHalfCompleteRef.current && bottomHalfComplete) {
+      setBottomHalfManuallyExpanded(false);
+    }
+    previousBottomHalfCompleteRef.current = bottomHalfComplete;
+  }, [bottomHalfComplete]);
+
+  useEffect(() => {
     if (!previousTopHalfCollapsedRef.current && topHalfVisuallyCollapsed) {
       trackEvent("bracket_half_collapsed", { half: "top" });
     }
@@ -2247,7 +2267,7 @@ function App() {
           logoUrl: team ? teamLogoUrl(team) : fallbackLogo(row.teamId),
           shortName: team ? mobileShortName(team.name) : row.teamId,
           titleOdds: formatOddsDisplay(row.champProb, displayMode).primary,
-          titleImpliedPct: `${Math.round(row.champProb * 100)}%`,
+          titleImpliedPct: toImpliedLabel(row.champProb),
         };
       });
   }, [displayMode, pickCount, preTournamentBaseline.futures, simResult.futures]);
@@ -2257,11 +2277,6 @@ function App() {
     setShowFirstFourModal(true);
     firstFourAutoShownRef.current = true;
   }, [allPlayInDecided, onboardingFlowReady]);
-
-  useEffect(() => {
-    if (!showFirstFourModal) return;
-    if (allPlayInDecided) setShowFirstFourModal(false);
-  }, [allPlayInDecided, showFirstFourModal]);
 
   useEffect(() => {
     if (mobileSection === "FF") return;
@@ -3175,7 +3190,7 @@ function App() {
                     <p>· {regionSections[0][0]} + {regionSections[0][1]}</p>
                     {topHalfComplete ? (
                       <button className="half-section-collapse-btn" onClick={() => handleCollapseHalf("top")}>
-                        Collapse
+                        Collapse ↑
                       </button>
                     ) : null}
                   </div>
@@ -3222,7 +3237,7 @@ function App() {
                     <p>· {regionSections[1][0]} + {regionSections[1][1]}</p>
                     {bottomHalfComplete ? (
                       <button className="half-section-collapse-btn" onClick={() => handleCollapseHalf("bottom")}>
-                        Collapse
+                        Collapse ↑
                       </button>
                     ) : null}
                   </div>
@@ -3259,22 +3274,31 @@ function App() {
                       game={leftSemi}
                       regions={regionSections[0]}
                       futuresRows={simResult.futures}
+                      gameWinProbs={simResult.gameWinProbs}
+                      possibleWinners={possibleWinners}
                       displayMode={displayMode}
                       regionLabel={`${regionSections[0][0]} + ${regionSections[0][1]}`}
+                      lastPickedKey={lastPickedKey}
                       onPick={onPick}
                     />
                     <FinalsChampionshipCard
                       game={titleGame}
                       futuresRows={simResult.futures}
+                      gameWinProbs={simResult.gameWinProbs}
+                      possibleWinners={possibleWinners}
                       displayMode={displayMode}
+                      lastPickedKey={lastPickedKey}
                       onPick={onPick}
                     />
                     <FinalsSemifinalCard
                       game={rightSemi}
                       regions={regionSections[1]}
                       futuresRows={simResult.futures}
+                      gameWinProbs={simResult.gameWinProbs}
+                      possibleWinners={possibleWinners}
                       displayMode={displayMode}
                       regionLabel={`${regionSections[1][0]} + ${regionSections[1][1]}`}
+                      lastPickedKey={lastPickedKey}
                       onPick={onPick}
                     />
                   </div>
@@ -4665,12 +4689,12 @@ function MobileMatchupCard({
   const teamB = game.teamBId ? teamsById.get(game.teamBId) ?? null : null;
   if (!teamA || !teamB) return null;
 
-  const probA = Math.round((getGameWinProb(game, teamA.id) ?? 0) * 100);
-  const probB = Math.round((getGameWinProb(game, teamB.id) ?? 0) * 100);
+  const probA = getGameWinProb(game, teamA.id) ?? 0;
+  const probB = getGameWinProb(game, teamB.id) ?? 0;
   const isPicked = Boolean(game.winnerId);
   const isEdited = game.customProbA !== null;
-  const teamAOdds = formatOddsDisplay(probA / 100, displayMode).primary;
-  const teamBOdds = formatOddsDisplay(probB / 100, displayMode).primary;
+  const teamAOdds = formatOddsDisplay(probA, displayMode).primary;
+  const teamBOdds = formatOddsDisplay(probB, displayMode).primary;
   const dataSeeds = `${Math.min(teamA.seed, teamB.seed)}-${Math.max(teamA.seed, teamB.seed)}`;
 
   return (
@@ -4702,7 +4726,7 @@ function MobileMatchupCard({
         <TeamLogo teamName={teamA.name} src={teamLogoUrl(teamA)} />
         <span className="m-name">{teamA.name}</span>
         <div className="m-stats">
-          <span className="m-prob">{probA}%</span>
+          <span className="m-prob">{toImpliedLabel(probA)}</span>
           <span className={`m-odds ${isEdited ? "m-odds--edited" : ""}`}>{teamAOdds}</span>
         </div>
       </button>
@@ -4722,7 +4746,7 @@ function MobileMatchupCard({
         <TeamLogo teamName={teamB.name} src={teamLogoUrl(teamB)} />
         <span className="m-name">{teamB.name}</span>
         <div className="m-stats">
-          <span className="m-prob">{probB}%</span>
+          <span className="m-prob">{toImpliedLabel(probB)}</span>
           <span className={`m-odds ${isEdited ? "m-odds--edited" : ""}`}>{teamBOdds}</span>
         </div>
       </button>
@@ -4914,18 +4938,30 @@ function FinalsSemifinalCard({
   game,
   regions,
   futuresRows,
+  gameWinProbs,
+  possibleWinners,
   displayMode,
   regionLabel,
+  lastPickedKey,
   onPick,
 }: {
   game: ResolvedGame | null;
   regions: Region[];
   futuresRows: SimulationOutput["futures"];
+  gameWinProbs: SimulationOutput["gameWinProbs"];
+  possibleWinners: Record<string, Set<string>>;
   displayMode: OddsDisplayMode;
   regionLabel: string;
+  lastPickedKey: string | null;
   onPick: (game: ResolvedGame, teamId: string | null) => void;
 }) {
   const futuresByTeamId = useMemo(() => new Map(futuresRows.map((row) => [row.teamId, row])), [futuresRows]);
+  const showdownFinalists = useMemo(() => {
+    if (!game) return [];
+    return getGameRowsForDisplay(game, gameWinProbs, possibleWinners).filter(
+      (candidate) => candidate.team.id === game.teamAId || candidate.team.id === game.teamBId
+    );
+  }, [game, gameWinProbs, possibleWinners]);
   const ranked = useMemo(
     () =>
       Array.from(teamsById.values())
@@ -4944,6 +4980,15 @@ function FinalsSemifinalCard({
         <span className="semifinal-label">Semifinal</span>
         <span className="semifinal-regions">{regionLabel}</span>
       </div>
+      {game && showdownFinalists.length === 2 ? (
+        <ShowdownCard
+          game={game}
+          finalists={showdownFinalists}
+          displayMode={displayMode}
+          lastPickedKey={lastPickedKey}
+          onPick={(teamId) => onPick(game, teamId)}
+        />
+      ) : null}
       <div className="semifinal-rankings">
         {ranked.map(({ team, prob }) => {
           const inMatchup = Boolean(game && (team.id === game.teamAId || team.id === game.teamBId));
@@ -4974,15 +5019,27 @@ function FinalsSemifinalCard({
 function FinalsChampionshipCard({
   game,
   futuresRows,
+  gameWinProbs,
+  possibleWinners,
   displayMode,
+  lastPickedKey,
   onPick,
 }: {
   game: ResolvedGame | null;
   futuresRows: SimulationOutput["futures"];
+  gameWinProbs: SimulationOutput["gameWinProbs"];
+  possibleWinners: Record<string, Set<string>>;
   displayMode: OddsDisplayMode;
+  lastPickedKey: string | null;
   onPick: (game: ResolvedGame, teamId: string | null) => void;
 }) {
   const futuresByTeamId = useMemo(() => new Map(futuresRows.map((row) => [row.teamId, row])), [futuresRows]);
+  const showdownFinalists = useMemo(() => {
+    if (!game) return [];
+    return getGameRowsForDisplay(game, gameWinProbs, possibleWinners).filter(
+      (candidate) => candidate.team.id === game.teamAId || candidate.team.id === game.teamBId
+    );
+  }, [game, gameWinProbs, possibleWinners]);
   const ranked = useMemo(
     () =>
       Array.from(teamsById.values())
@@ -5000,6 +5057,15 @@ function FinalsChampionshipCard({
         <span className="championship-trophy">🏆</span>
         <span className="championship-label">National Championship</span>
       </div>
+      {game && showdownFinalists.length === 2 ? (
+        <ShowdownCard
+          game={game}
+          finalists={showdownFinalists}
+          displayMode={displayMode}
+          lastPickedKey={lastPickedKey}
+          onPick={(teamId) => onPick(game, teamId)}
+        />
+      ) : null}
       <div className="championship-rankings">
         {ranked.map(({ team, prob }) => {
           const inMatchup = Boolean(game && (team.id === game.teamAId || team.id === game.teamBId));
@@ -5264,20 +5330,6 @@ function GameCard({
         onMouseEnter={() => setShowChaosTooltip(true)}
         onMouseLeave={() => setShowChaosTooltip(false)}
       >
-        {game.lockedByUser && game.teamAId && game.teamBId ? (
-          <button
-            type="button"
-            className="matchup-stats-icon"
-            onClick={(event) => {
-              event.stopPropagation();
-              onOpenMatchupStats(game);
-            }}
-            title="View matchup stats"
-            aria-label="View matchup stats"
-          >
-            ⓘ
-          </button>
-        ) : null}
         <div className="bracket-cell--compact">
           {game.teamAId && game.teamBId ? (
             <button
