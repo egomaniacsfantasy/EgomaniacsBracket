@@ -281,7 +281,8 @@ type ShareCardData = {
 
 type ShareFormat = "story" | "twitter";
 
-type FuturesSortMode = "champ_desc" | "champ_asc";
+type FuturesViewSortMode = "championship_desc" | "championship_asc" | "delta_desc" | "delta_asc" | "seed_asc";
+type FuturesFilterMode = "all" | "alive" | "picked" | "biggest_movers";
 
 type CompletionCelebrationData = {
   championName: string;
@@ -447,11 +448,11 @@ function App() {
     return saved === "american" || saved === "implied" ? saved : "implied";
   });
   const [simRuns] = useState<number>(() => getRecommendedSimRuns());
-  const [futuresSortMode, setFuturesSortMode] = useState<FuturesSortMode>("champ_desc");
-  const [mainView, setMainView] = useState<"bracket" | "leaderboard">("bracket");
+  const [futuresViewSortMode, setFuturesViewSortMode] = useState<FuturesViewSortMode>("championship_desc");
+  const [futuresFilterMode, setFuturesFilterMode] = useState<FuturesFilterMode>("all");
+  const [mainView, setMainView] = useState<"bracket" | "futures" | "leaderboard">("bracket");
   const [isUpdating, setIsUpdating] = useState(false);
   const [lastPickedKey, setLastPickedKey] = useState<string | null>(null);
-  const [sidePanelOpen, setSidePanelOpen] = useState(false);
   const [compactDesktop, setCompactDesktop] = useState(false);
   const [isMobile, setIsMobile] = useState(() =>
     typeof window !== "undefined" ? window.matchMedia("(max-width: 767px)").matches : false
@@ -462,7 +463,6 @@ function App() {
   const [mobileFfRound, setMobileFfRound] = useState<MobileFfRound>("F4");
   const [liveOddsChangedIds, setLiveOddsChangedIds] = useState<Set<string>>(new Set());
   const [mobileRoundDeltas, setMobileRoundDeltas] = useState<Partial<Record<MobileRegionRound, number>>>({});
-  const [futuresDeltaChangedKeys, setFuturesDeltaChangedKeys] = useState<Set<string>>(new Set());
   const [hasSeenFirstPickNudge, setHasSeenFirstPickNudge] = useState(() => {
     if (typeof window === "undefined") return false;
     return window.sessionStorage.getItem(FIRST_PICK_NUDGE_SESSION_KEY) === "1";
@@ -473,11 +473,9 @@ function App() {
   const [majorShiftTeamName, setMajorShiftTeamName] = useState("");
   const [majorShiftPct, setMajorShiftPct] = useState(0);
   const [majorShiftTargetRound, setMajorShiftTargetRound] = useState<MobileRegionRound>("R64");
-  const [ifYoureRightCollapsed, setIfYoureRightCollapsed] = useState(false);
   const [staggeredSimRunning, setStaggeredSimRunning] = useState(false);
   const [staggeredSimPaused, setStaggeredSimPaused] = useState(false);
   const [staggeredSimDelayMs, setStaggeredSimDelayMs] = useState(STAGGERED_SIM_DELAY_MS);
-  const [showFuturesInfo, setShowFuturesInfo] = useState(false);
   const [welcomeGateOpen, setWelcomeGateOpen] = useState(() => {
     if (typeof window === "undefined") return false;
     return window.localStorage.getItem(ONBOARDING_STORAGE_KEY) !== "true";
@@ -700,11 +698,12 @@ function App() {
   }, [sanitized]);
 
   useEffect(() => {
-    if (!sidePanelOpen) return;
+    if (isMobile) return;
+    if (mainView !== "futures") return;
     trackEvent("futures_opened", {
-      source: isMobile ? "mobile" : "desktop",
+      source: "desktop",
     });
-  }, [isMobile, sidePanelOpen]);
+  }, [isMobile, mainView]);
 
   const closeWalkthrough = () => {
     if (walkthroughAdvanceTimerRef.current !== null) {
@@ -789,7 +788,7 @@ function App() {
         delete nextLocks[targetMatchupId];
         applyLockedPicksUpdate(nextLocks);
       }
-      if (sidePanelOpen) setSidePanelOpen(false);
+      setMainView("bracket");
       window.scrollTo({ top: 0, behavior: "smooth" });
       window.setTimeout(() => {
         setWelcomeGateOpen(false);
@@ -802,7 +801,7 @@ function App() {
         setWalkthroughDontShowAgain(true);
         setWalkthroughChangedGameIds(new Set());
         setWalkthroughActive(true);
-      }, sidePanelOpen ? 350 : 0);
+      }, 0);
       return;
     }
     setWelcomeGateOpen(false);
@@ -816,10 +815,6 @@ function App() {
     setWalkthroughChangedGameIds(new Set());
     walkthroughBeforeTeamOddsRef.current = new Map();
     setWalkthroughActive(true);
-  };
-
-  const replayIntro = () => {
-    startWalkthrough({ replay: true });
   };
 
   const handleDismissDesktopFirst = () => {
@@ -1096,13 +1091,11 @@ function App() {
 
     if (changed.size > 0 || changedDeltaKeys.size > 0) {
       setLiveOddsChangedIds(changed);
-      setFuturesDeltaChangedKeys(changedDeltaKeys);
       if (mobileFlashTimeoutRef.current !== null) {
         window.clearTimeout(mobileFlashTimeoutRef.current);
       }
       mobileFlashTimeoutRef.current = window.setTimeout(() => {
         setLiveOddsChangedIds(new Set());
-        setFuturesDeltaChangedKeys(new Set());
         mobileFlashTimeoutRef.current = null;
       }, 850);
     }
@@ -1199,15 +1192,6 @@ function App() {
     () => new Map(preTournamentBaseline.futures.map((row) => [row.teamId, row])),
     [preTournamentBaseline.futures]
   );
-
-  const sortedFutures = useMemo(() => {
-    const rows = [...simResult.futures];
-    rows.sort((a, b) => {
-      if (futuresSortMode === "champ_desc") return b.champProb - a.champProb;
-      return a.champProb - b.champProb;
-    });
-    return rows;
-  }, [futuresSortMode, simResult.futures]);
 
   const teamProgress = useMemo(() => {
     const progress = new Map<string, { lastWinRank: number; firstLossRank: number }>();
@@ -1729,7 +1713,7 @@ function App() {
     setShowCompletionCelebration(false);
     setCustomProbByGame({});
     setLockedPicks(picks);
-    setSidePanelOpen(false);
+    setMainView("bracket");
     setMobileTab("bracket");
     window.scrollTo({ top: 0, behavior: "smooth" });
     trackEvent("saved_bracket_loaded", {
@@ -1886,16 +1870,6 @@ function App() {
   const onChaosPillTap = () => {
     if (chaosScore === null) return;
     setShowChaosModal(true);
-  };
-
-  const onCycleFuturesSort = () => {
-    setFuturesSortMode((prev) => {
-      const next: FuturesSortMode = prev === "champ_desc" ? "champ_asc" : "champ_desc";
-      trackEvent("futures_sort_changed", {
-        sort_mode: next,
-      });
-      return next;
-    });
   };
 
   const onModelSim = () => {
@@ -2444,7 +2418,7 @@ function App() {
           if (isMobile) {
             return document.querySelector<HTMLElement>(".mobile-futures-view");
           }
-          return document.querySelector<HTMLElement>(".futures-panel");
+          return document.querySelector<HTMLElement>(".futures-full");
         }
         default:
           return null;
@@ -2457,13 +2431,11 @@ function App() {
           const target = document.querySelector<HTMLElement>(`.eg-game-card[data-game-id="${ONBOARDING_MATCHUP_ID}"]`);
           target?.scrollIntoView({ behavior: "smooth", block: "center", inline: "center" });
         }
-        if (currentWalkthroughStep.id === "futures-panel" && !sidePanelOpen) {
-          setSidePanelOpen(true);
-        }
         if (currentWalkthroughStep.id === "futures-panel") {
+          setMainView("futures");
           window.setTimeout(() => {
-            const libertyRow = document.querySelector<HTMLElement>('.eg-future-item[data-team-name="Liberty"]');
-            const tennesseeRow = document.querySelector<HTMLElement>('.eg-future-item[data-team-name="Tennessee"]');
+            const libertyRow = document.querySelector<HTMLElement>('.ft-card[data-team-name="Liberty"]');
+            const tennesseeRow = document.querySelector<HTMLElement>('.ft-card[data-team-name="Tennessee"]');
             const target = libertyRow ?? tennesseeRow;
             target?.scrollIntoView({ behavior: "smooth", block: "center" });
             libertyRow?.classList.add("futures-row--onboarding-highlight");
@@ -2544,7 +2516,6 @@ function App() {
     lockedPicks,
     mobileRound,
     mobileSection,
-    sidePanelOpen,
     walkthroughActive,
     walkthroughCascadePhase,
     walkthroughFirstPickedTeamId,
@@ -2670,6 +2641,18 @@ function App() {
   }, [welcomeGateOpen, walkthroughActive, skipWalkthrough]);
 
   useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key.toLowerCase() !== "f" || event.metaKey || event.ctrlKey || event.altKey) return;
+      const active = document.activeElement as HTMLElement | null;
+      if (active && ["INPUT", "TEXTAREA", "SELECT"].includes(active.tagName)) return;
+      event.preventDefault();
+      setMainView((prev) => (prev === "futures" ? "bracket" : "futures"));
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, []);
+
+  useEffect(() => {
     if (welcomeGateOpen) {
       document.body.classList.add("og-onboarding-open");
     } else {
@@ -2726,7 +2709,7 @@ function App() {
     );
     targets.forEach((el) => observer.observe(el));
     return () => observer.disconnect();
-  }, [isMobile, sidePanelOpen]);
+  }, [isMobile, mainView]);
 
   const toolbar = (
     <div className="eg-main-actions toolbar">
@@ -2745,6 +2728,17 @@ function App() {
       >
         Reset All
       </button>
+      {!isMobile ? (
+        <button
+          onClick={() => setMainView((prev) => (prev === "futures" ? "bracket" : "futures"))}
+          className={`eg-btn toolbar-btn--futures ${mainView === "futures" ? "toolbar-btn--futures-active" : ""}`}
+          style={!isMobile && mainView === "leaderboard" ? { display: "none" } : undefined}
+        >
+          <span className="futures-btn-icon">📊</span>
+          <span className="futures-btn-label">Futures</span>
+          {pickCount > 0 ? <span className="futures-btn-badge">{pickCount}</span> : null}
+        </button>
+      ) : null}
       <button
         onClick={onModelSim}
         className="eg-btn toolbar-btn--instant"
@@ -2965,160 +2959,287 @@ function App() {
       </button>
     ) : null;
 
-  const futuresSections = (
-    <>
-      <section className="eg-panel-block">
-        <div className="eg-panel-head">
-          <h3>
-            If You&apos;re Right
-            <button
-              type="button"
-              className="eg-info futures-info-btn"
-              onClick={() => setShowFuturesInfo((prev) => !prev)}
-              aria-label="How futures are calculated"
-            >
-              ⓘ
-            </button>
-          </h3>
-          <div className="futures-head-actions">
-            <button className="futures-sort-btn" onClick={onCycleFuturesSort}>
-              Sort: CHAMP {futuresSortMode === "champ_desc" ? "↓" : "↑"}
-            </button>
-            <button
-              type="button"
-              className="futures-collapse-btn"
-              onClick={() => setIfYoureRightCollapsed((prev) => !prev)}
-              aria-expanded={!ifYoureRightCollapsed}
-              aria-label={ifYoureRightCollapsed ? "Expand If You're Right section" : "Collapse If You're Right section"}
-            >
-              {ifYoureRightCollapsed ? "▾" : "▴"}
-            </button>
-          </div>
-        </div>
-        <div className={`futures-collapsible ${ifYoureRightCollapsed ? "is-collapsed" : ""}`}>
-          <p className="eg-metric-label">How your picks shift the odds</p>
-          {showFuturesInfo ? (
-            <div className="futures-info-tooltip">
-              These odds update in real time based on your picks. They show each team&apos;s probability of advancing
-              through each round based on your current bracket.
-              <button type="button" onClick={() => setShowFuturesInfo(false)}>
-                Got it
-              </button>
-            </div>
-          ) : null}
-
-          {isUpdating ? <p className="eg-updating">Updating…</p> : null}
-          <div className="eg-futures-list">
-          {sortedFutures.map((row) => {
-            const team = teamsById.get(row.teamId);
-            if (!team) return null;
-            const metrics: Array<{ label: "R32" | "S16" | "E8" | "F4" | "Title" | "Champ"; prob: number }> = [
-              { label: "R32", prob: row.round2Prob },
-              { label: "S16", prob: row.sweet16Prob },
-              { label: "E8", prob: row.elite8Prob },
-              { label: "F4", prob: row.final4Prob },
-              { label: "Title", prob: row.titleGameProb },
-              { label: "Champ", prob: row.champProb },
-            ];
-            const baselineRow = baselineByTeamId.get(row.teamId);
-            const champBaseline = baselineRow?.champProb ?? 0;
-            const champDeltaPct = (row.champProb - champBaseline) * 100;
-            const fullyEliminated = metrics.every((metric) => metric.prob <= 0.000001);
-            return (
-            <article key={row.teamId} className="eg-future-item" data-team-name={team.name}>
-                <div className="team-cell">
-                  <TeamHoverAnchor teamName={team.name} logoSrc={teamLogoUrl(team)}>
-                    <TeamLogo teamName={team.name} src={teamLogoUrl(team)} />
-                  </TeamHoverAnchor>
-                  <span className="seed">{seedLabel(team)}</span>
-                  <TeamHoverAnchor teamName={team.name} logoSrc={teamLogoUrl(team)}>
-                    <span className="future-team-name">{team.name}</span>
-                  </TeamHoverAnchor>
-                  <span
-                    className={`futures-delta futures-delta--hero ${champDeltaPct > 0 ? "futures-delta--up" : champDeltaPct < 0 ? "futures-delta--down" : ""}`}
-                  >
-                    {champDeltaPct > 0 ? "▲" : champDeltaPct < 0 ? "▼" : ""}
-                    {Math.abs(champDeltaPct).toFixed(1)}%
-                  </span>
-                </div>
-                <span className="futures-transition">{(champBaseline * 100).toFixed(1)}% → {(row.champProb * 100).toFixed(1)}%</span>
-                <div className="future-metric-grid">
-                  {metrics.map((metric) => {
-                    const formatted = formatOddsDisplay(metric.prob, displayMode);
-                    const state = teamProgress.get(row.teamId);
-                    const requiredRank = stageRankByMetric[metric.label];
-                    const isAchieved = Boolean(state && state.lastWinRank >= requiredRank);
-                    const isEliminated = Boolean(state && state.firstLossRank <= requiredRank);
-                    const baselineProb = baselineRow ? getMetricProb(baselineRow, metric.label) : null;
-                    const delta =
-                      baselineProb === null || baselineProb === undefined
-                        ? null
-                        : computeDelta(metric.prob, baselineProb, displayMode);
-                    const showDelta = Boolean(
-                      delta !== null &&
-                        hasMeaningfulDelta(delta, displayMode) &&
-                        !fullyEliminated
-                    );
-                    const deltaClass = delta !== null && delta > 0 ? "delta-up" : "delta-down";
-                    const deltaChanged = futuresDeltaChangedKeys.has(`${row.teamId}-${metric.label}`);
-                    return (
-                      <div key={`${row.teamId}-${metric.label}`} className="future-metric">
-                        <span className="future-metric-label">{metric.label}</span>
-                        <span className="future-metric-value">
-                          {isAchieved ? (
-                            <span className="outcome-badge win">✓</span>
-                          ) : isEliminated ? (
-                            <span className="outcome-badge loss">✕</span>
-                          ) : (
-                            formatted.primary
-                          )}
-                        </span>
-                        {showDelta && delta !== null ? (
-                          <span
-                            className={`futures-delta ${deltaClass} ${deltaChanged ? "futures-delta--changed" : ""}`}
-                          >
-                            {formatDelta(delta, displayMode)}
-                          </span>
-                        ) : null}
-                      </div>
-                    );
-                  })}
-                </div>
-              </article>
-            );
-          })}
-          </div>
-        </div>
-      </section>
-
-      <section className="eg-panel-block">
-        <h3>Your Bracket</h3>
-        <p className="eg-metric-label">Likelihood of your picks so far (simulation-based)</p>
-        <p className="eg-metric-value">{toImpliedLabel(simResult.likelihoodSimulation)}</p>
-        <p className="eg-metric-sub">{toOneInX(simResult.likelihoodSimulation)}</p>
-
-        <p className="eg-metric-label">Fast approximation (product of locked game win probs)</p>
-        <p className="eg-metric-value">{toImpliedLabel(simResult.likelihoodApprox)}</p>
-        <p className="eg-metric-sub">{toOneInX(simResult.likelihoodApprox)}</p>
-      </section>
-
-      <section className="eg-panel-block settings-block">
-        <h3>Settings</h3>
-        <p className="eg-setting-label">Side definition</p>
-        <p className="eg-setting-value">Half A: South/West, Half B: East/Midwest</p>
-
-        <p className="eg-setting-label">Current lock count</p>
-        <p className="eg-setting-value">{Object.keys(sanitized).length} picks</p>
-        <button className="eg-mini-btn onboarding-replay-btn" onClick={replayIntro}>
-          Replay Intro
-        </button>
-      </section>
-    </>
+  const championGame = games.find((game) => game.round === "CHAMP");
+  const championPickId = championGame?.winnerId ?? null;
+  const finalFourPickIds = new Set(
+    games
+      .filter((game) => game.round === "E8" && game.winnerId)
+      .map((game) => game.winnerId as string)
   );
+  const futuresViewRows = useMemo(() => {
+    return simResult.futures
+      .map((row) => {
+        const team = teamsById.get(row.teamId);
+        if (!team) return null;
+        const baseline = baselineByTeamId.get(row.teamId);
+        const champDelta = row.champProb - (baseline?.champProb ?? 0);
+        const state = teamProgress.get(row.teamId);
+        const rounds = [
+          { key: "R32", prob: row.round2Prob, baselineProb: baseline?.round2Prob ?? 0, rank: stageRankByMetric.R32 },
+          { key: "S16", prob: row.sweet16Prob, baselineProb: baseline?.sweet16Prob ?? 0, rank: stageRankByMetric.S16 },
+          { key: "E8", prob: row.elite8Prob, baselineProb: baseline?.elite8Prob ?? 0, rank: stageRankByMetric.E8 },
+          { key: "F4", prob: row.final4Prob, baselineProb: baseline?.final4Prob ?? 0, rank: stageRankByMetric.F4 },
+          { key: "TITLE", prob: row.titleGameProb, baselineProb: baseline?.titleGameProb ?? 0, rank: stageRankByMetric.Title },
+          { key: "CHAMP", prob: row.champProb, baselineProb: baseline?.champProb ?? 0, rank: stageRankByMetric.Champ },
+        ];
+        return {
+          row,
+          team,
+          baseline,
+          champDelta,
+          isEliminated: row.champProb <= 0.000001,
+          isChampionPick: championPickId === row.teamId,
+          isFinalFourPick: finalFourPickIds.has(row.teamId),
+          hasAnyPick: Boolean(state && (state.lastWinRank >= 0 || Number.isFinite(state.firstLossRank))),
+          rounds,
+          state,
+        };
+      })
+      .filter((entry): entry is NonNullable<typeof entry> => Boolean(entry));
+  }, [simResult.futures, baselineByTeamId, teamProgress, championPickId, finalFourPickIds]);
+
+  const filteredFuturesRows = useMemo(() => {
+    let rows = futuresViewRows;
+    if (futuresFilterMode === "alive") {
+      rows = rows.filter((entry) => !entry.isEliminated);
+    } else if (futuresFilterMode === "picked") {
+      rows = rows.filter((entry) => entry.isChampionPick || entry.isFinalFourPick || entry.hasAnyPick);
+    } else if (futuresFilterMode === "biggest_movers") {
+      rows = [...rows].sort((a, b) => Math.abs(b.champDelta) - Math.abs(a.champDelta)).slice(0, 20);
+    }
+
+    const sorted = [...rows];
+    sorted.sort((a, b) => {
+      if (futuresViewSortMode === "championship_desc") return b.row.champProb - a.row.champProb;
+      if (futuresViewSortMode === "championship_asc") return a.row.champProb - b.row.champProb;
+      if (futuresViewSortMode === "delta_desc") return b.champDelta - a.champDelta;
+      if (futuresViewSortMode === "delta_asc") return a.champDelta - b.champDelta;
+      return a.team.seed - b.team.seed || b.row.champProb - a.row.champProb;
+    });
+    return sorted;
+  }, [futuresFilterMode, futuresViewRows, futuresViewSortMode]);
+
+  const championPickTeam = championPickId ? teamsById.get(championPickId) ?? null : null;
+  const championPickRow = championPickId ? simResult.futures.find((row) => row.teamId === championPickId) ?? null : null;
+  const finalFourPickTeams = games
+    .filter((game) => game.round === "E8")
+    .map((game) => (game.winnerId ? teamsById.get(game.winnerId) ?? null : null));
+  const estimatedChalkScore =
+    pickCount === 0 || chaosScore === null
+      ? 100
+      : Math.max(0, Math.min(100, Math.round((1 - chaosScore / Math.max(1, pickCount)) * 100)));
 
   const futuresContent = (
-    <div className="futures-panel">
-      {futuresSections}
+    <div className="futures-full">
+      <div className="futures-header">
+        <div className="futures-header-left">
+          <h2 className="futures-title">FUTURES</h2>
+          <span className="futures-subtitle">How your picks shift every team&apos;s odds</span>
+        </div>
+        <div className="futures-header-controls">
+          <div className="futures-filter-group">
+            {[
+              { value: "all", label: "All Teams" },
+              { value: "alive", label: "Still Alive" },
+              { value: "picked", label: "My Picks" },
+              { value: "biggest_movers", label: "Biggest Movers" },
+            ].map((filter) => (
+              <button
+                key={filter.value}
+                type="button"
+                className={`futures-filter-pill ${futuresFilterMode === filter.value ? "futures-filter-pill--active" : ""}`}
+                onClick={() => setFuturesFilterMode(filter.value as FuturesFilterMode)}
+              >
+                {filter.label}
+              </button>
+            ))}
+          </div>
+          <select
+            className="futures-sort-select"
+            value={futuresViewSortMode}
+            onChange={(event) => setFuturesViewSortMode(event.target.value as FuturesViewSortMode)}
+          >
+            <option value="championship_desc">Championship % ↓</option>
+            <option value="championship_asc">Championship % ↑</option>
+            <option value="delta_desc">Biggest Gains ↓</option>
+            <option value="delta_asc">Biggest Drops ↓</option>
+            <option value="seed_asc">Seed ↑</option>
+          </select>
+        </div>
+        <button
+          className="futures-close"
+          type="button"
+          onClick={() => {
+            if (isMobile) setMobileTab("bracket");
+            else setMainView("bracket");
+          }}
+        >
+          ✕ Back to Bracket
+        </button>
+      </div>
+
+      {isUpdating ? <p className="eg-updating">Updating…</p> : null}
+
+      {pickCount === 0 ? (
+        <div className="futures-hero futures-hero--empty">
+          <span className="futures-hero-empty-icon">🏀</span>
+          <p className="futures-hero-empty-text">Make your first pick to see how the odds shift</p>
+          <button
+            className="futures-hero-empty-cta"
+            type="button"
+            onClick={() => {
+              if (isMobile) setMobileTab("bracket");
+              else setMainView("bracket");
+            }}
+          >
+            ← Start picking
+          </button>
+        </div>
+      ) : (
+        <div className="futures-hero">
+          <div className="futures-hero-section futures-hero-champion">
+            <span className="futures-hero-label">YOUR CHAMPION</span>
+            {championPickTeam ? (
+              <div className="futures-hero-champion-display">
+                <TeamLogo
+                  teamName={championPickTeam.name}
+                  src={teamLogoUrl(championPickTeam)}
+                  className="futures-hero-champion-logo"
+                  teamSeed={seedLabel(championPickTeam)}
+                />
+                <div className="futures-hero-champion-info">
+                  <span className="futures-hero-champion-name">
+                    #{seedLabel(championPickTeam)} {championPickTeam.name}
+                  </span>
+                  <span className="futures-hero-champion-odds">
+                    Title odds: {formatOddsDisplay(championPickRow?.champProb ?? 0, displayMode).primary}
+                  </span>
+                </div>
+              </div>
+            ) : (
+              <span className="futures-hero-tbd">Not yet picked</span>
+            )}
+          </div>
+          <div className="futures-hero-divider" />
+          <div className="futures-hero-section futures-hero-f4">
+            <span className="futures-hero-label">FINAL FOUR</span>
+            <div className="futures-hero-f4-row">
+              {[0, 1, 2, 3].map((idx) => {
+                const team = finalFourPickTeams[idx];
+                return team ? (
+                  <div key={`${team.id}-${idx}`} className="futures-hero-f4-team" title={`#${team.seed} ${team.name}`}>
+                    <TeamLogo
+                      teamName={team.name}
+                      src={teamLogoUrl(team)}
+                      className="futures-hero-f4-logo"
+                      teamSeed={seedLabel(team)}
+                    />
+                    <span className="futures-hero-f4-seed">#{seedLabel(team)}</span>
+                  </div>
+                ) : (
+                  <div key={`f4-empty-${idx}`} className="futures-hero-f4-team futures-hero-f4-team--empty">
+                    <span className="futures-hero-f4-placeholder">?</span>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+          <div className="futures-hero-divider" />
+          <div className="futures-hero-section futures-hero-stats">
+            <div className="futures-hero-stat">
+              <span className="futures-hero-stat-value">{pickCount}/63</span>
+              <span className="futures-hero-stat-label">PICKS</span>
+            </div>
+            <div className="futures-hero-stat">
+              <span className="futures-hero-stat-value">{estimatedChalkScore}%</span>
+              <span className="futures-hero-stat-label">CHALK</span>
+            </div>
+            <div className="futures-hero-stat">
+              <span className="futures-hero-stat-value">{toImpliedLabel(simResult.likelihoodSimulation)}</span>
+              <span className="futures-hero-stat-label">LIKELIHOOD</span>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <div className="ft-grid">
+        <div className="ft-grid-header">
+          <span className="ft-grid-header-team">TEAM</span>
+          <span className="ft-grid-header-champ">CHAMPIONSHIP</span>
+          <span className="ft-grid-header-rounds">R32 · S16 · E8 · F4 · TITLE · CHAMP</span>
+        </div>
+        <div className="ft-grid-list">
+          {filteredFuturesRows.map((entry) => (
+            <article
+              key={entry.row.teamId}
+              className={`ft-card ${entry.isEliminated ? "ft-card--eliminated" : ""} ${entry.isChampionPick ? "ft-card--champion-pick" : ""} ${entry.isFinalFourPick && !entry.isChampionPick ? "ft-card--f4-pick" : ""}`}
+              data-team-name={entry.team.name}
+            >
+              <div className="ft-card-identity">
+                <TeamLogo
+                  teamName={entry.team.name}
+                  src={teamLogoUrl(entry.team)}
+                  className="ft-card-logo"
+                  teamSeed={seedLabel(entry.team)}
+                />
+                <div className="ft-card-team-info">
+                  <span className="ft-card-seed">#{seedLabel(entry.team)}</span>
+                  <span className="ft-card-name">{entry.team.name}</span>
+                  <span className="ft-card-region">{entry.team.region}</span>
+                </div>
+              </div>
+              <div className="ft-card-champ">
+                <span className="ft-card-champ-value">
+                  {entry.isEliminated ? "—" : formatOddsDisplay(entry.row.champProb, displayMode).primary}
+                </span>
+                {!entry.isEliminated && Math.abs(entry.champDelta) >= 0.001 ? (
+                  <span className={`ft-card-delta ${entry.champDelta > 0 ? "ft-card-delta--up" : "ft-card-delta--down"}`}>
+                    {entry.champDelta > 0 ? "▲" : "▼"}
+                    {formatDelta(computeDelta(entry.row.champProb, entry.baseline?.champProb ?? 0, displayMode), displayMode)}
+                  </span>
+                ) : null}
+                {entry.isEliminated ? <span className="ft-card-eliminated-badge">✗ Eliminated</span> : null}
+                {entry.isChampionPick ? <span className="ft-card-pick-badge">👑 Your Champion</span> : null}
+                {entry.isFinalFourPick && !entry.isChampionPick ? <span className="ft-card-pick-badge ft-card-pick-badge--f4">Your F4</span> : null}
+              </div>
+              <div className="ft-card-rounds">
+                {entry.rounds.map((round) => {
+                  const roundDelta = computeDelta(round.prob, round.baselineProb, displayMode);
+                  const isLocked = Boolean(entry.state && entry.state.lastWinRank >= round.rank);
+                  const isDead = Boolean(entry.state && entry.state.firstLossRank <= round.rank);
+                  return (
+                    <div
+                      key={`${entry.row.teamId}-${round.key}`}
+                      className={`ft-card-round ${isLocked ? "ft-card-round--locked" : ""} ${isDead ? "ft-card-round--dead" : ""}`}
+                    >
+                      <span className="ft-card-round-label">{round.key}</span>
+                      <span className="ft-card-round-value">
+                        {isLocked ? "✓" : isDead ? "✗" : formatOddsDisplay(round.prob, displayMode).primary}
+                      </span>
+                      {!isLocked && !isDead && hasMeaningfulDelta(roundDelta, displayMode) ? (
+                        <span className={`ft-card-round-delta ${roundDelta > 0 ? "ft-card-round-delta--up" : "ft-card-round-delta--down"}`}>
+                          {formatDelta(roundDelta, displayMode)}
+                        </span>
+                      ) : null}
+                    </div>
+                  );
+                })}
+              </div>
+            </article>
+          ))}
+        </div>
+      </div>
+
+      <div className="ft-footer">
+        <div className="ft-footer-likelihood">
+          <span className="ft-footer-label">YOUR BRACKET LIKELIHOOD</span>
+          <span className="ft-footer-value">{toImpliedLabel(simResult.likelihoodSimulation)}</span>
+          <span className="ft-footer-approx">(approx {toImpliedLabel(simResult.likelihoodApprox)})</span>
+        </div>
+        <p className="ft-footer-explainer">
+          Odds shown are conditioned on your picks. Make a pick in the bracket to see how every team&apos;s odds shift.
+        </p>
+      </div>
     </div>
   );
 
@@ -3186,7 +3307,7 @@ function App() {
               topContenders={liveOddsTopContenders}
               justChangedIds={liveOddsChangedIds}
               displayMode={displayMode}
-              onOpenFutures={() => setSidePanelOpen(true)}
+              onOpenFutures={() => setMainView("futures")}
             />
           </div>
         ) : null}
@@ -3270,7 +3391,7 @@ function App() {
             <MobileTabBar activeTab={mobileTab} onTabChange={setMobileTab} />
           </section>
         ) : (
-          <section className={`eg-layout ${sidePanelOpen ? "panel-open" : "panel-collapsed"}`}>
+          <section className="eg-layout">
             <div className="eg-main-panel">
               {toolbar}
               {chaosTrackerBar}
@@ -3417,30 +3538,8 @@ function App() {
                   onClose={() => setMainView("bracket")}
                 />
               </div>
+              <div style={{ display: mainView === "futures" ? undefined : "none" }}>{futuresContent}</div>
             </div>
-            <aside
-              className={`eg-side-panel ${sidePanelOpen ? "open" : "collapsed"}`}
-              style={{ display: mainView === "bracket" ? undefined : "none" }}
-            >
-              <button
-                type="button"
-                className="eg-side-toggle"
-                onClick={() =>
-                  setSidePanelOpen((v) => {
-                    const next = !v;
-                    trackEvent("futures_toggle_clicked", {
-                      next_open: next,
-                      source: isMobile ? "mobile" : "desktop",
-                    });
-                    return next;
-                  })
-                }
-                aria-expanded={sidePanelOpen}
-              >
-                {sidePanelOpen ? "Collapse ▸" : "Futures ▾"}
-              </button>
-              {futuresContent}
-            </aside>
           </section>
         )}
       </main>
@@ -5642,18 +5741,20 @@ function GameCard({
       onMouseEnter={() => setShowChaosTooltip(true)}
       onMouseLeave={() => setShowChaosTooltip(false)}
     >
-      <button
-        type="button"
-        className="matchup-stats-icon"
-        onClick={(event) => {
-          event.stopPropagation();
-          onOpenMatchupStats(game);
-        }}
-        title="View matchup stats"
-        aria-label="View matchup stats"
-      >
-        ⓘ
-      </button>
+      {game.teamAId && game.teamBId ? (
+        <button
+          type="button"
+          className="matchup-stats-icon"
+          onClick={(event) => {
+            event.stopPropagation();
+            onOpenMatchupStats(game);
+          }}
+          title="View matchup stats"
+          aria-label="View matchup stats"
+        >
+          ⓘ
+        </button>
+      ) : null}
       <div className="eg-game-list">
         {useShowdownCard ? (
           <ShowdownCard
