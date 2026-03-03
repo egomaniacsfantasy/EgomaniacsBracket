@@ -3378,8 +3378,10 @@ function App() {
                   <div className="ff-championship-section">
                     <FinalsSemifinalCard
                       game={leftSemi}
+                      regions={regionSections[0]}
                       gameWinProbs={simResult.gameWinProbs}
                       possibleWinners={possibleWinners}
+                      futuresRows={simResult.futures}
                       displayMode={displayMode}
                       regionLabel={`${regionSections[0][0]} + ${regionSections[0][1]}`}
                       lastPickedKey={lastPickedKey}
@@ -3389,14 +3391,17 @@ function App() {
                       game={titleGame}
                       gameWinProbs={simResult.gameWinProbs}
                       possibleWinners={possibleWinners}
+                      futuresRows={simResult.futures}
                       displayMode={displayMode}
                       lastPickedKey={lastPickedKey}
                       onPick={onPick}
                     />
                     <FinalsSemifinalCard
                       game={rightSemi}
+                      regions={regionSections[1]}
                       gameWinProbs={simResult.gameWinProbs}
                       possibleWinners={possibleWinners}
+                      futuresRows={simResult.futures}
                       displayMode={displayMode}
                       regionLabel={`${regionSections[1][0]} + ${regionSections[1][1]}`}
                       lastPickedKey={lastPickedKey}
@@ -5007,27 +5012,45 @@ function CollapsedHalfSummary({
 
 function FinalsSemifinalCard({
   game,
+  regions,
   gameWinProbs,
   possibleWinners,
+  futuresRows,
   displayMode,
   regionLabel,
   lastPickedKey,
   onPick,
 }: {
   game: ResolvedGame | null;
+  regions: Region[];
   gameWinProbs: SimulationOutput["gameWinProbs"];
   possibleWinners: Record<string, Set<string>>;
+  futuresRows: SimulationOutput["futures"];
   displayMode: OddsDisplayMode;
   regionLabel: string;
   lastPickedKey: string | null;
   onPick: (game: ResolvedGame, teamId: string | null) => void;
 }) {
+  const futuresByTeamId = useMemo(() => new Map(futuresRows.map((row) => [row.teamId, row])), [futuresRows]);
   const showdownFinalists = useMemo(() => {
     if (!game) return [];
     return getGameRowsForDisplay(game, gameWinProbs, possibleWinners).filter(
       (candidate) => candidate.team.id === game.teamAId || candidate.team.id === game.teamBId
     );
   }, [game, gameWinProbs, possibleWinners]);
+  const ranked = useMemo(
+    () =>
+      Array.from(teamsById.values())
+        .filter((team) => regions.includes(team.region))
+        .map((team) => ({
+          team,
+          prob: futuresByTeamId.get(team.id)?.final4Prob ?? 0,
+        }))
+        .filter((entry) => entry.prob > 0)
+        .sort((a, b) => (b.prob !== a.prob ? b.prob - a.prob : a.team.seed - b.team.seed)),
+    [futuresByTeamId, regions]
+  );
+  const semifinalReady = Boolean(game?.teamAId && game?.teamBId);
 
   return (
     <div className="ff-semifinal-card semifinal-panel">
@@ -5035,7 +5058,7 @@ function FinalsSemifinalCard({
         <span className="semifinal-label">Semifinal</span>
         <span className="semifinal-regions">{regionLabel}</span>
       </div>
-      {game && showdownFinalists.length === 2 ? (
+      {semifinalReady && game && showdownFinalists.length === 2 ? (
         <ShowdownCard
           game={game}
           finalists={showdownFinalists}
@@ -5043,13 +5066,42 @@ function FinalsSemifinalCard({
           lastPickedKey={lastPickedKey}
           onPick={(teamId) => onPick(game, teamId)}
         />
-      ) : null}
+      ) : (
+        <div className="ff-panel ff-panel--ranking">
+          <div className="ff-panel-subheader">FINAL FOUR ODDS</div>
+          <div className="ff-ranking-list">
+            {ranked.map(({ team, prob }) => {
+              const locked = prob >= 1;
+              return (
+                <div key={team.id} className={`ff-ranking-row ${locked ? "ff-ranking-row--locked" : ""}`}>
+                  <div className="ff-ranking-row-left">
+                    <span className="ff-ranking-seed">{seedLabel(team)}</span>
+                    <TeamLogo
+                      src={teamLogoUrl(team)}
+                      teamName={team.name}
+                      teamSeed={seedLabel(team)}
+                      className="ff-ranking-logo"
+                    />
+                    <span className="ff-ranking-name">{team.name}</span>
+                  </div>
+                  <div className="ff-ranking-row-right">
+                    <span className={`ff-ranking-prob ${locked ? "ff-ranking-prob--locked" : ""}`}>
+                      {locked ? "✓ Locked" : formatOddsDisplay(prob, displayMode).primary}
+                    </span>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
 
 function FinalsChampionshipCard({
   game,
+  futuresRows,
   gameWinProbs,
   possibleWinners,
   displayMode,
@@ -5057,18 +5109,31 @@ function FinalsChampionshipCard({
   onPick,
 }: {
   game: ResolvedGame | null;
+  futuresRows: SimulationOutput["futures"];
   gameWinProbs: SimulationOutput["gameWinProbs"];
   possibleWinners: Record<string, Set<string>>;
   displayMode: OddsDisplayMode;
   lastPickedKey: string | null;
   onPick: (game: ResolvedGame, teamId: string | null) => void;
 }) {
+  const futuresByTeamId = useMemo(() => new Map(futuresRows.map((row) => [row.teamId, row])), [futuresRows]);
   const showdownFinalists = useMemo(() => {
     if (!game) return [];
     return getGameRowsForDisplay(game, gameWinProbs, possibleWinners).filter(
       (candidate) => candidate.team.id === game.teamAId || candidate.team.id === game.teamBId
     );
   }, [game, gameWinProbs, possibleWinners]);
+  const ranked = useMemo(
+    () =>
+      Array.from(teamsById.values())
+        .map((team) => ({
+          team,
+          prob: futuresByTeamId.get(team.id)?.champProb ?? 0,
+        }))
+        .filter((entry) => entry.prob > 0)
+        .sort((a, b) => (b.prob !== a.prob ? b.prob - a.prob : a.team.seed - b.team.seed)),
+    [futuresByTeamId]
+  );
   const winnerTeam = game?.winnerId ? teamsById.get(game.winnerId) ?? null : null;
   const loserTeam =
     game?.winnerId && game.teamAId && game.teamBId
@@ -5097,9 +5162,15 @@ function FinalsChampionshipCard({
             <div className="championship-badge">NCAA CHAMPION</div>
             <span className="championship-seed">#{seedLabel(winnerTeam)} seed</span>
           </div>
-          <div className="championship-runner-up">
+          <button
+            type="button"
+            className="championship-runner-up"
+            onClick={() => onPick(game, loserTeam.id)}
+            title={`Switch pick to ${loserTeam.name}`}
+          >
             defeated #{seedLabel(loserTeam)} {loserTeam.name}
-          </div>
+            <span className="championship-switch-hint">tap to switch pick</span>
+          </button>
         </div>
       ) : game && showdownFinalists.length === 2 ? (
         <ShowdownCard
@@ -5109,7 +5180,35 @@ function FinalsChampionshipCard({
           lastPickedKey={lastPickedKey}
           onPick={(teamId) => onPick(game, teamId)}
         />
-      ) : null}
+      ) : (
+        <div className="ff-panel ff-panel--championship-ranking">
+          <div className="ff-panel-subheader">TITLE ODDS</div>
+          <div className="ff-ranking-list">
+            {ranked.map(({ team, prob }) => {
+              const locked = prob >= 1;
+              return (
+                <div key={team.id} className={`ff-ranking-row ${locked ? "ff-ranking-row--locked" : ""}`}>
+                  <div className="ff-ranking-row-left">
+                    <span className="ff-ranking-seed">{seedLabel(team)}</span>
+                    <TeamLogo
+                      src={teamLogoUrl(team)}
+                      teamName={team.name}
+                      teamSeed={seedLabel(team)}
+                      className="ff-ranking-logo"
+                    />
+                    <span className="ff-ranking-name">{team.name}</span>
+                  </div>
+                  <div className="ff-ranking-row-right">
+                    <span className={`ff-ranking-prob ${locked ? "ff-ranking-prob--locked" : ""}`}>
+                      {locked ? "✓ Locked" : formatOddsDisplay(prob, displayMode).primary}
+                    </span>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -5917,11 +6016,11 @@ function ShowdownCard({
                   teamSeed={seedLabel(team)}
                 />
                 <span className="eg-showdown-name">{showdownTeamName(team.name)}</span>
-                {!decided ? (
-                  <span className="eg-showdown-odds odds-value" data-team-id={team.id}>
-                    {primary}
-                  </span>
-                ) : null}
+                <span className="eg-showdown-odds odds-value" data-team-id={team.id}>
+                  {decided
+                    ? formatOddsDisplay(outcome === "win" ? 1 : 0, displayMode).primary
+                    : primary}
+                </span>
                 {resultLabel ? <span className="eg-showdown-result">{resultLabel}</span> : null}
               </button>
             </Fragment>

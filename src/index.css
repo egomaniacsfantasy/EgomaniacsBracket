@@ -1906,6 +1906,104 @@ body {
   margin-top: 32px;
 }
 
+.ff-panel--ranking,
+.ff-panel--championship-ranking {
+  background: rgba(14, 12, 9, 0.8);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.ff-panel-subheader {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--text-tertiary);
+  padding: 8px 16px 4px;
+}
+
+.ff-ranking-list {
+  display: flex;
+  flex-direction: column;
+  max-height: 320px;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.08) transparent;
+}
+
+.ff-ranking-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 16px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+  transition: background 120ms ease;
+}
+
+.ff-ranking-row:last-child {
+  border-bottom: none;
+}
+
+.ff-ranking-row:hover {
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.ff-ranking-row--locked {
+  background: rgba(184, 125, 24, 0.04);
+}
+
+.ff-ranking-row-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  flex: 1;
+}
+
+.ff-ranking-seed {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--text-tertiary);
+  width: 16px;
+  text-align: right;
+  flex-shrink: 0;
+}
+
+.ff-ranking-logo {
+  width: 20px;
+  height: 20px;
+  object-fit: contain;
+  flex-shrink: 0;
+}
+
+.ff-ranking-name {
+  font-family: var(--font-serif);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ff-ranking-row-right {
+  flex-shrink: 0;
+  margin-left: 8px;
+}
+
+.ff-ranking-prob {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-secondary);
+}
+
+.ff-ranking-prob--locked {
+  color: var(--text-amber);
+  font-size: 11px;
+}
+
 .ff-semifinal-header {
   font-family: var(--font-mono);
   font-size: 9px;
@@ -6101,7 +6199,7 @@ body.walkthrough-active .eg-title-choice:hover {
 }
 
 .eg-showdown-card.decided .eg-showdown-odds {
-  display: none;
+  display: inline;
 }
 
 .eg-showdown-card.decided .eg-showdown-team.loser {
@@ -6118,7 +6216,7 @@ body.walkthrough-active .eg-title-choice:hover {
 }
 
 .eg-showdown-card.decided .eg-showdown-team.winner::after {
-  content: "ADVANCES";
+  content: none;
   display: block;
   font-size: 10px;
   font-weight: 700;
@@ -6128,7 +6226,7 @@ body.walkthrough-active .eg-title-choice:hover {
 }
 
 .eg-showdown-card.round-champ.decided .eg-showdown-team.winner::after {
-  content: "NCAA CHAMPION";
+  content: none;
 }
 
 .og-top-nav-mobile {
@@ -8869,11 +8967,36 @@ body.walkthrough-active .odds-value--changed::after {
 }
 
 .championship-runner-up {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 8px 12px;
+  border-radius: 6px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  transition: background 140ms ease, color 140ms ease;
   font-family: var(--font-mono);
   font-size: 11px;
   color: rgba(240, 230, 208, 0.3);
   margin-top: 16px;
   animation: fadeInUp 300ms ease-out 850ms both;
+}
+
+.championship-runner-up:hover {
+  background: rgba(255, 255, 255, 0.04);
+  color: rgba(240, 230, 208, 0.55);
+}
+
+.championship-switch-hint {
+  font-size: 9px;
+  color: rgba(240, 230, 208, 0.18);
+  transition: color 140ms ease;
+}
+
+.championship-runner-up:hover .championship-switch-hint {
+  color: rgba(184, 125, 24, 0.5);
 }
 
 @media (max-width: 767px) {
