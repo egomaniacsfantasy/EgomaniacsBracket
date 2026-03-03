@@ -283,7 +283,6 @@ type ShareFormat = "story" | "twitter";
 
 type FuturesViewSortMode = "championship_desc" | "championship_asc" | "delta_desc" | "delta_asc" | "seed_asc";
 type FuturesFilterMode = "all" | "alive" | "picked" | "biggest_movers";
-type FuturesContentTab = "overview" | "teams" | "movers" | "picks";
 
 type CompletionCelebrationData = {
   championName: string;
@@ -451,8 +450,6 @@ function App() {
   const [simRuns] = useState<number>(() => getRecommendedSimRuns());
   const [futuresViewSortMode, setFuturesViewSortMode] = useState<FuturesViewSortMode>("championship_desc");
   const [futuresFilterMode, setFuturesFilterMode] = useState<FuturesFilterMode>("all");
-  const [futuresContentTab, setFuturesContentTab] = useState<FuturesContentTab>("overview");
-  const [futuresScrollTop, setFuturesScrollTop] = useState(0);
   const [mainView, setMainView] = useState<"bracket" | "futures" | "leaderboard">("bracket");
   const [isUpdating, setIsUpdating] = useState(false);
   const [lastPickedKey, setLastPickedKey] = useState<string | null>(null);
@@ -3052,27 +3049,6 @@ function App() {
     return sorted;
   }, [futuresFilterMode, futuresViewRows, futuresViewSortMode]);
 
-  useEffect(() => {
-    setFuturesScrollTop(0);
-  }, [futuresContentTab, futuresFilterMode, futuresViewSortMode, pickCount]);
-
-  const topTitleOddsRows = useMemo(
-    () => [...futuresViewRows].sort((a, b) => b.row.champProb - a.row.champProb).slice(0, 12),
-    [futuresViewRows]
-  );
-  const biggestMoverRows = useMemo(
-    () => [...futuresViewRows].sort((a, b) => Math.abs(b.champDelta) - Math.abs(a.champDelta)).slice(0, 10),
-    [futuresViewRows]
-  );
-  const myPickImpactRows = useMemo(
-    () =>
-      [...futuresViewRows]
-        .filter((row) => row.isChampionPick || row.isFinalFourPick || row.hasAnyPick)
-        .sort((a, b) => b.row.champProb - a.row.champProb)
-        .slice(0, 10),
-    [futuresViewRows]
-  );
-
   const championPickTeam = championPickId ? teamsById.get(championPickId) ?? null : null;
   const championPickRow = championPickId ? simResult.futures.find((row) => row.teamId === championPickId) ?? null : null;
   const finalFourPickTeams = games
@@ -3082,20 +3058,6 @@ function App() {
     pickCount === 0 || chaosScore === null
       ? 100
       : Math.max(0, Math.min(100, Math.round((1 - chaosScore / Math.max(1, pickCount)) * 100)));
-  const tabFilteredRows = useMemo(() => {
-    if (futuresContentTab === "movers") return filteredFuturesRows.filter((entry) => Math.abs(entry.champDelta) > 0.001);
-    if (futuresContentTab === "picks") {
-      return filteredFuturesRows.filter((entry) => entry.isChampionPick || entry.isFinalFourPick || entry.hasAnyPick);
-    }
-    return filteredFuturesRows;
-  }, [filteredFuturesRows, futuresContentTab]);
-  const virtualRowHeight = isMobile ? 116 : 104;
-  const virtualViewportHeight = isMobile ? 560 : 640;
-  const virtualStart = Math.max(0, Math.floor(futuresScrollTop / virtualRowHeight) - 5);
-  const virtualCount = Math.ceil(virtualViewportHeight / virtualRowHeight) + 10;
-  const virtualEnd = Math.min(tabFilteredRows.length, virtualStart + virtualCount);
-  const virtualTopSpacer = virtualStart * virtualRowHeight;
-  const virtualBottomSpacer = Math.max(0, (tabFilteredRows.length - virtualEnd) * virtualRowHeight);
 
   const futuresContent = (
     <div className="futures-full">
@@ -3105,23 +3067,34 @@ function App() {
           <span className="futures-subtitle">How your picks shift every team&apos;s odds</span>
         </div>
         <div className="futures-header-controls">
-          <div className="futures-tab-group">
+          <div className="futures-filter-group">
             {[
-              { value: "overview", label: "Overview" },
-              { value: "teams", label: "Teams" },
-              { value: "movers", label: "Movers" },
-              { value: "picks", label: "My Picks" },
-            ].map((tab) => (
+              { value: "all", label: "All Teams" },
+              { value: "alive", label: "Still Alive" },
+              { value: "picked", label: "My Picks" },
+              { value: "biggest_movers", label: "Biggest Movers" },
+            ].map((filter) => (
               <button
-                key={tab.value}
+                key={filter.value}
                 type="button"
-                className={`futures-filter-pill ${futuresContentTab === tab.value ? "futures-filter-pill--active" : ""}`}
-                onClick={() => setFuturesContentTab(tab.value as FuturesContentTab)}
+                className={`futures-filter-pill ${futuresFilterMode === filter.value ? "futures-filter-pill--active" : ""}`}
+                onClick={() => setFuturesFilterMode(filter.value as FuturesFilterMode)}
               >
-                {tab.label}
+                {filter.label}
               </button>
             ))}
           </div>
+          <select
+            className="futures-sort-select"
+            value={futuresViewSortMode}
+            onChange={(event) => setFuturesViewSortMode(event.target.value as FuturesViewSortMode)}
+          >
+            <option value="championship_desc">Championship % ↓</option>
+            <option value="championship_asc">Championship % ↑</option>
+            <option value="delta_desc">Biggest Gains ↓</option>
+            <option value="delta_asc">Biggest Drops ↓</option>
+            <option value="seed_asc">Seed ↑</option>
+          </select>
         </div>
         <button
           className="futures-close"
@@ -3136,37 +3109,6 @@ function App() {
       </div>
 
       {isUpdating ? <p className="eg-updating">Updating…</p> : null}
-
-      <div className="futures-sticky-controls">
-        <div className="futures-filter-group">
-          {[
-            { value: "all", label: "All Teams" },
-            { value: "alive", label: "Still Alive" },
-            { value: "picked", label: "My Picks" },
-            { value: "biggest_movers", label: "Biggest Movers" },
-          ].map((filter) => (
-            <button
-              key={filter.value}
-              type="button"
-              className={`futures-filter-pill ${futuresFilterMode === filter.value ? "futures-filter-pill--active" : ""}`}
-              onClick={() => setFuturesFilterMode(filter.value as FuturesFilterMode)}
-            >
-              {filter.label}
-            </button>
-          ))}
-        </div>
-        <select
-          className="futures-sort-select"
-          value={futuresViewSortMode}
-          onChange={(event) => setFuturesViewSortMode(event.target.value as FuturesViewSortMode)}
-        >
-          <option value="championship_desc">Championship % ↓</option>
-          <option value="championship_asc">Championship % ↑</option>
-          <option value="delta_desc">Biggest Gains ↓</option>
-          <option value="delta_asc">Biggest Drops ↓</option>
-          <option value="seed_asc">Seed ↑</option>
-        </select>
-      </div>
 
       {pickCount === 0 ? (
         <div className="futures-hero futures-hero--empty">
@@ -3246,71 +3188,18 @@ function App() {
               <span className="futures-hero-stat-value">{toImpliedLabel(simResult.likelihoodSimulation)}</span>
               <span className="futures-hero-stat-label">LIKELIHOOD</span>
             </div>
-            <div className="futures-hero-stat">
-              <span className="futures-hero-stat-value">{chaosScore?.toFixed(1) ?? "—"}</span>
-              <span className="futures-hero-stat-label">CHAOS</span>
-            </div>
           </div>
         </div>
       )}
 
-      {futuresContentTab === "overview" ? (
-        <section className="futures-overview-grid">
-          <article className="futures-overview-card">
-            <h3 className="futures-overview-title">Top Title Odds</h3>
-            <div className="futures-overview-list">
-              {topTitleOddsRows.map((entry, index) => (
-                <div key={`top-title-${entry.row.teamId}`} className="futures-overview-row">
-                  <span className="futures-overview-rank">{index + 1}</span>
-                  <TeamLogo teamName={entry.team.name} src={teamLogoUrl(entry.team)} className="futures-overview-logo" teamSeed={seedLabel(entry.team)} />
-                  <span className="futures-overview-name">#{seedLabel(entry.team)} {entry.team.name}</span>
-                  <span className="futures-overview-value">{formatOddsDisplay(entry.row.champProb, displayMode).primary}</span>
-                </div>
-              ))}
-            </div>
-          </article>
-          <article className="futures-overview-card">
-            <h3 className="futures-overview-title">Biggest Movers</h3>
-            <div className="futures-overview-list">
-              {biggestMoverRows.map((entry) => (
-                <div key={`mover-${entry.row.teamId}`} className="futures-overview-row">
-                  <TeamLogo teamName={entry.team.name} src={teamLogoUrl(entry.team)} className="futures-overview-logo" teamSeed={seedLabel(entry.team)} />
-                  <span className="futures-overview-name">#{seedLabel(entry.team)} {entry.team.name}</span>
-                  <span className={`ft-card-delta ${entry.champDelta > 0 ? "ft-card-delta--up" : "ft-card-delta--down"}`}>
-                    {formatDelta(computeDelta(entry.row.champProb, entry.baseline?.champProb ?? 0, displayMode), displayMode)}
-                  </span>
-                </div>
-              ))}
-            </div>
-            <h3 className="futures-overview-title futures-overview-title--sub">My Picks Impact</h3>
-            <div className="futures-overview-list">
-              {myPickImpactRows.length === 0 ? <p className="futures-overview-empty">No picks yet.</p> : null}
-              {myPickImpactRows.map((entry) => (
-                <div key={`pick-impact-${entry.row.teamId}`} className="futures-overview-row">
-                  <TeamLogo teamName={entry.team.name} src={teamLogoUrl(entry.team)} className="futures-overview-logo" teamSeed={seedLabel(entry.team)} />
-                  <span className="futures-overview-name">#{seedLabel(entry.team)} {entry.team.name}</span>
-                  <span className="futures-overview-value">{formatOddsDisplay(entry.row.champProb, displayMode).primary}</span>
-                </div>
-              ))}
-            </div>
-          </article>
-        </section>
-      ) : null}
-
-      {futuresContentTab !== "overview" ? (
-        <div className="ft-grid">
-          <div className="ft-grid-header">
-            <span className="ft-grid-header-team">TEAM</span>
-            <span className="ft-grid-header-champ">CHAMPIONSHIP</span>
-            <span className="ft-grid-header-rounds">R32 · S16 · E8 · F4 · TITLE · CHAMP</span>
-          </div>
-          <div
-            className="ft-grid-virtual-scroll"
-            onScroll={(event) => setFuturesScrollTop(event.currentTarget.scrollTop)}
-          >
-            <div style={{ height: virtualTopSpacer }} />
-            <div className="ft-grid-list">
-              {tabFilteredRows.slice(virtualStart, virtualEnd).map((entry) => (
+      <div className="ft-grid">
+        <div className="ft-grid-header">
+          <span className="ft-grid-header-team">TEAM</span>
+          <span className="ft-grid-header-champ">CHAMPIONSHIP</span>
+          <span className="ft-grid-header-rounds">R32 · S16 · E8 · F4 · TITLE · CHAMP</span>
+        </div>
+        <div className="ft-grid-list">
+          {filteredFuturesRows.map((entry) => (
                 <article
                   key={entry.row.teamId}
                   className={`ft-card ${entry.isEliminated ? "ft-card--eliminated" : ""} ${entry.isChampionPick ? "ft-card--champion-pick" : ""} ${entry.isFinalFourPick && !entry.isChampionPick ? "ft-card--f4-pick" : ""}`}
@@ -3368,11 +3257,8 @@ function App() {
                   </div>
                 </article>
               ))}
-            </div>
-            <div style={{ height: virtualBottomSpacer }} />
-          </div>
         </div>
-      ) : null}
+        </div>
 
       <div className="ft-footer">
         <div className="ft-footer-likelihood">
