@@ -5044,7 +5044,7 @@ function FinalsSemifinalCard({
         .filter((team) => regions.includes(team.region))
         .map((team) => ({
           team,
-          prob: futuresByTeamId.get(team.id)?.final4Prob ?? 0,
+          prob: futuresByTeamId.get(team.id)?.titleGameProb ?? 0,
         }))
         .filter((entry) => entry.prob > 0)
         .sort((a, b) => (b.prob !== a.prob ? b.prob - a.prob : a.team.seed - b.team.seed)),
@@ -5068,7 +5068,7 @@ function FinalsSemifinalCard({
         />
       ) : (
         <div className="ff-panel ff-panel--ranking">
-          <div className="ff-panel-subheader">FINAL FOUR ODDS</div>
+          <div className="ff-panel-subheader">CHAMPIONSHIP ODDS</div>
           <div className="ff-ranking-list">
             {ranked.map(({ team, prob }) => {
               const locked = prob >= 1;
