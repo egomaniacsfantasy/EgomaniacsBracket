@@ -2707,7 +2707,7 @@ function App() {
 
     const runPreAction = () => {
       if (!isMobile) {
-        if (currentWalkthroughStep.id === "upset-pick" && walkthroughCascadePhase === "pick") {
+        if (currentWalkthroughStep.id === "bracket-ripple") {
           window.scrollTo({ top: 0, left: 0, behavior: "instant" as ScrollBehavior });
         }
         if (currentWalkthroughStep.id === "futures-panel") {
