@@ -11793,3 +11793,607 @@ body.walkthrough-active .odds-value--changed::after {
     padding: 20px;
   }
 }
+
+/* ── Conference Tournament Styles ── */
+
+.conf-page {
+  padding: 24px 32px;
+  max-width: 900px;
+  margin: 0 auto;
+}
+
+.conf-page-title {
+  font-family: "Instrument Serif", serif;
+  font-size: 1.8rem;
+  color: var(--text);
+  margin: 0 0 4px;
+}
+
+.conf-page-subtitle {
+  color: var(--text-dim);
+  font-size: 0.85rem;
+  margin: 0 0 24px;
+}
+
+.conf-selector-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 12px;
+}
+
+.conf-selector-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px;
+  background: rgba(30, 24, 12, 0.7);
+  border: 1px solid var(--panel-line);
+  border-radius: 10px;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+  text-align: left;
+  color: var(--text);
+  font-family: inherit;
+  font-size: inherit;
+}
+
+.conf-selector-card:hover {
+  background: rgba(45, 36, 18, 0.8);
+  border-color: rgba(171, 138, 69, 0.7);
+}
+
+.conf-selector-logo {
+  width: 40px;
+  height: 40px;
+  border-radius: 6px;
+  object-fit: contain;
+  flex-shrink: 0;
+}
+
+.conf-selector-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.conf-selector-name {
+  font-weight: 600;
+  font-size: 0.95rem;
+}
+
+.conf-selector-meta {
+  color: var(--text-dim);
+  font-size: 0.75rem;
+}
+
+/* Conference Bracket View */
+
+.conf-bracket-page {
+  padding: 16px 24px;
+}
+
+.conf-bracket-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.conf-back-btn {
+  font-size: 0.85rem;
+}
+
+.conf-bracket-title {
+  font-family: "Instrument Serif", serif;
+  font-size: 1.4rem;
+  color: var(--text);
+  margin: 0;
+  flex: 1;
+}
+
+.conf-futures-toggle {
+  font-size: 0.8rem;
+  padding: 6px 14px;
+}
+
+.conf-futures-toggle--active {
+  background: rgba(171, 138, 69, 0.3);
+  border-color: rgba(171, 138, 69, 0.6);
+}
+
+/* Conference Round Pills (Mobile) */
+
+.conf-round-pills {
+  display: flex;
+  gap: 6px;
+  overflow-x: auto;
+  padding: 0 0 12px;
+  -webkit-overflow-scrolling: touch;
+}
+
+.conf-round-pill {
+  flex-shrink: 0;
+  padding: 6px 14px;
+  font-size: 0.75rem;
+  font-weight: 500;
+  background: rgba(30, 24, 12, 0.7);
+  border: 1px solid var(--panel-line);
+  border-radius: 20px;
+  color: var(--text-dim);
+  cursor: pointer;
+  white-space: nowrap;
+  font-family: inherit;
+  transition: all 0.15s;
+}
+
+.conf-round-pill--active {
+  background: rgba(171, 138, 69, 0.25);
+  border-color: rgba(171, 138, 69, 0.6);
+  color: var(--text);
+}
+
+/* Conference Bracket Grid */
+
+.conf-bracket-grid {
+  display: grid;
+  grid-auto-columns: minmax(0, 1fr);
+  grid-auto-flow: column;
+  gap: 0;
+  min-height: 400px;
+}
+
+.conf-bracket-grid--mobile {
+  display: block;
+}
+
+.conf-round-col {
+  display: flex;
+  flex-direction: column;
+  padding: 0 4px;
+}
+
+.conf-round-label {
+  text-align: center;
+  font-size: 0.7rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-dim);
+  margin: 0 0 8px;
+  padding: 6px 0;
+  border-bottom: 1px solid var(--panel-line);
+}
+
+.conf-games-lane {
+  position: relative;
+  flex: 1;
+  min-height: 200px;
+}
+
+.conf-bracket-grid:not(.conf-bracket-grid--mobile) .conf-game-node {
+  position: absolute;
+  left: 4px;
+  right: 4px;
+  transform: translateY(-50%);
+}
+
+.conf-bracket-grid--mobile .conf-game-node {
+  margin-bottom: 8px;
+}
+
+/* Conference Game Card */
+
+.conf-game-card {
+  background: rgba(20, 16, 8, 0.85);
+  border: 1px solid var(--panel-line);
+  border-radius: 8px;
+  overflow: hidden;
+  transition: border-color 0.15s;
+}
+
+.conf-game-card--locked {
+  border-color: rgba(171, 138, 69, 0.65);
+}
+
+.conf-team-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 8px;
+  width: 100%;
+  border: none;
+  background: transparent;
+  color: var(--text);
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 0.78rem;
+  text-align: left;
+  transition: background 0.12s;
+}
+
+.conf-team-row:hover:not(:disabled) {
+  background: rgba(171, 138, 69, 0.1);
+}
+
+.conf-team-row.top {
+  border-bottom: 1px solid rgba(171, 138, 69, 0.15);
+}
+
+.conf-team-row--winner {
+  background: rgba(171, 138, 69, 0.15);
+}
+
+.conf-team-row--loser {
+  opacity: 0.45;
+}
+
+.conf-team-row:disabled {
+  cursor: default;
+}
+
+.conf-team-logo {
+  width: 20px;
+  height: 20px;
+  border-radius: 3px;
+  object-fit: contain;
+  flex-shrink: 0;
+}
+
+.conf-team-seed {
+  font-size: 0.65rem;
+  font-weight: 700;
+  color: var(--text-dim);
+  min-width: 14px;
+  text-align: center;
+}
+
+.conf-team-name {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 500;
+}
+
+.conf-team-odds {
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: var(--text-dim);
+  font-family: "Space Grotesk", monospace;
+  min-width: 32px;
+  text-align: right;
+}
+
+.conf-team-tbd {
+  color: var(--text-soft);
+  font-style: italic;
+  font-size: 0.75rem;
+}
+
+/* Conference Futures Table */
+
+.conf-futures {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.conf-futures-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.8rem;
+}
+
+.conf-futures-th {
+  padding: 8px 10px;
+  text-align: center;
+  font-size: 0.7rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-dim);
+  border-bottom: 1px solid var(--panel-line);
+  cursor: pointer;
+  user-select: none;
+  white-space: nowrap;
+}
+
+.conf-futures-th:hover {
+  color: var(--text);
+}
+
+.conf-futures-th--team {
+  text-align: left;
+}
+
+.conf-futures-th--champ {
+  color: #b87d18;
+}
+
+.conf-futures-row {
+  border-bottom: 1px solid rgba(171, 138, 69, 0.12);
+}
+
+.conf-futures-row:hover {
+  background: rgba(171, 138, 69, 0.06);
+}
+
+.conf-futures-td {
+  padding: 6px 10px;
+  text-align: center;
+  font-family: "Space Grotesk", monospace;
+  font-size: 0.78rem;
+}
+
+.conf-futures-td--team {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  text-align: left;
+}
+
+.conf-futures-td--champ {
+  font-weight: 600;
+  color: #b87d18;
+}
+
+.conf-futures-logo {
+  width: 22px;
+  height: 22px;
+  border-radius: 3px;
+  object-fit: contain;
+}
+
+.conf-futures-seed {
+  font-size: 0.65rem;
+  font-weight: 700;
+  color: var(--text-dim);
+  min-width: 14px;
+}
+
+.conf-futures-name {
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+/* ── Rankings Page Styles ── */
+
+.rank-page {
+  padding: 24px 32px;
+  max-width: 960px;
+  margin: 0 auto;
+}
+
+.rank-title {
+  font-family: "Instrument Serif", serif;
+  font-size: 1.8rem;
+  color: var(--text);
+  margin: 0 0 16px;
+}
+
+.rank-controls {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+}
+
+.rank-metric-select,
+.rank-conf-select {
+  padding: 8px 12px;
+  font-size: 0.82rem;
+  font-family: "Space Grotesk", sans-serif;
+  background: rgba(20, 16, 8, 0.85);
+  border: 1px solid var(--panel-line);
+  border-radius: 8px;
+  color: var(--text);
+  cursor: pointer;
+}
+
+.rank-metric-select:focus,
+.rank-conf-select:focus {
+  outline: none;
+  border-color: rgba(171, 138, 69, 0.6);
+}
+
+.rank-search {
+  flex: 1;
+  min-width: 140px;
+  padding: 8px 12px;
+  font-size: 0.82rem;
+  font-family: "Space Grotesk", sans-serif;
+  background: rgba(20, 16, 8, 0.85);
+  border: 1px solid var(--panel-line);
+  border-radius: 8px;
+  color: var(--text);
+}
+
+.rank-search::placeholder {
+  color: var(--text-soft);
+}
+
+.rank-search:focus {
+  outline: none;
+  border-color: rgba(171, 138, 69, 0.6);
+}
+
+.rank-table-wrap {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.rank-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.rank-th {
+  padding: 8px 10px;
+  font-size: 0.7rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-dim);
+  border-bottom: 1px solid var(--panel-line);
+  text-align: left;
+  white-space: nowrap;
+}
+
+.rank-th--rank {
+  width: 36px;
+  text-align: center;
+}
+
+.rank-th--metric {
+  text-align: right;
+  cursor: pointer;
+}
+
+.rank-th--metric:hover {
+  color: var(--text);
+}
+
+.rank-th--secondary {
+  text-align: right;
+  color: var(--text-soft);
+}
+
+.rank-row {
+  border-bottom: 1px solid rgba(171, 138, 69, 0.1);
+  transition: background 0.1s;
+}
+
+.rank-row:hover {
+  background: rgba(171, 138, 69, 0.06);
+}
+
+.rank-td {
+  padding: 6px 10px;
+  font-size: 0.82rem;
+}
+
+.rank-td--rank {
+  text-align: center;
+  font-weight: 600;
+  color: var(--text-dim);
+  font-size: 0.75rem;
+}
+
+.rank-td--team {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.rank-team-logo {
+  width: 24px;
+  height: 24px;
+  border-radius: 4px;
+  object-fit: contain;
+  flex-shrink: 0;
+}
+
+.rank-team-name {
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.rank-team-conf-badge {
+  font-size: 0.6rem;
+  color: var(--text-soft);
+  background: rgba(171, 138, 69, 0.12);
+  padding: 1px 5px;
+  border-radius: 4px;
+  white-space: nowrap;
+}
+
+.rank-td--conf {
+  color: var(--text-dim);
+  font-size: 0.78rem;
+}
+
+.rank-td--metric {
+  text-align: right;
+  font-family: "Space Grotesk", monospace;
+  font-weight: 600;
+}
+
+.rank-td--secondary {
+  text-align: right;
+  font-family: "Space Grotesk", monospace;
+  font-size: 0.75rem;
+  color: var(--text-dim);
+}
+
+.rank-empty {
+  text-align: center;
+  padding: 32px;
+  color: var(--text-soft);
+  font-style: italic;
+}
+
+/* Conference & Rankings toolbar button styles */
+.toolbar-btn--conferences,
+.toolbar-btn--rankings {
+  font-size: 0.82rem;
+}
+
+/* Mobile responsive adjustments */
+@media (max-width: 767px) {
+  .conf-page {
+    padding: 16px;
+  }
+
+  .conf-selector-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 8px;
+  }
+
+  .conf-selector-card {
+    padding: 12px;
+    gap: 8px;
+  }
+
+  .conf-selector-logo {
+    width: 32px;
+    height: 32px;
+  }
+
+  .conf-bracket-page {
+    padding: 12px 8px;
+  }
+
+  .conf-bracket-title {
+    font-size: 1.1rem;
+  }
+
+  .rank-page {
+    padding: 16px 12px;
+  }
+
+  .rank-controls {
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .rank-search {
+    min-width: unset;
+  }
+
+  .rank-title {
+    font-size: 1.4rem;
+  }
+
+  .mobile-tab-bar {
+    justify-content: space-between;
+  }
+
+  .mobile-tab {
+    flex: 1;
+    min-width: 0;
+    padding: 8px 4px;
+  }
+
+  .mobile-tab-label {
+    font-size: 0.6rem;
+  }
+}
