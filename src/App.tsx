@@ -361,15 +361,15 @@ const WALKTHROUGH_STEPS: WalkthroughStepConfig[] = [
   {
     id: "upset-pick",
     heading: "Pick the upset.",
-    body: "Tap #15 Merrimack to upset #2 Florida. A 15-seed over a 2-seed is pure chaos - watch what happens to the entire South region.",
-    ctaText: "Pick a team first",
+    body: "Tap #15 Merrimack to knock off #2 Florida. Then watch what happens to every team in the South.",
+    ctaText: "Pick a team",
     advanceOn: "button-click",
     allowSkip: true,
   },
   {
     id: "bracket-ripple",
-    heading: "That's the cascade.",
-    body: "One upset just reshaped the entire South. Florida's out - and the odds for Connecticut, Purdue, Texas Tech, and everyone else just shifted.",
+    heading: "Every pick does this.",
+    body: "You just saw one upset reshape an entire region. Now imagine 63 picks — each one sending ripples across the whole tournament. That's what Bracket Lab shows you.",
     ctaText: "Got it →",
     advanceOn: "button-click",
     allowSkip: true,
@@ -1579,12 +1579,22 @@ function App() {
   const handleRandomizeFirstFour = () => {
     const unresolved = playInGames.filter((game) => !game.winnerId && game.teamAId && game.teamBId);
     if (unresolved.length === 0) return;
+    cancelStaggeredSim();
+    chaosScoreSourceRef.current = "manual";
+    pendingPickMetaRef.current = null;
+    setFirstPickNudgeVisible(false);
+    setMajorShiftNudgeVisible(false);
+    closeProbabilityPopup(true);
+    pushUndo(lockedPicks);
+    const nextLocks: LockedPicks = { ...lockedPicks };
     for (const game of unresolved) {
       if (!game.teamAId || !game.teamBId) continue;
       const probA = getGameWinProb(game, game.teamAId, simResult.gameWinProbs) ?? getModelGameWinProb(game, game.teamAId) ?? 0.5;
       const winnerId = Math.random() < probA ? game.teamAId : game.teamBId;
-      onPick(game, winnerId);
+      nextLocks[game.id] = winnerId;
     }
+    setLastPickedKey(`ff-batch:${Date.now()}`);
+    applyLockedPicksUpdate(nextLocks);
     trackEvent("first_four_randomized", {
       games_randomized: unresolved.length,
     });
@@ -2323,35 +2333,19 @@ function App() {
     if (!currentWalkthroughStep) return null;
 
     if (currentWalkthroughStep.id === "upset-pick") {
-      if (walkthroughCascadePhase === "animating") {
-        return {
-          ...currentWalkthroughStep,
-          heading: "Watch the field reprice.",
-          body: "Merrimack just knocked out Florida. Now watch every downstream matchup update - round by round.",
-          ctaText: "Repricing...",
-        };
-      }
-      if (walkthroughCascadePhase === "done") {
-        return {
-          ...currentWalkthroughStep,
-          heading: "That's the cascade.",
-          body: "One upset just reshaped the entire South. Florida is out - and the odds for Connecticut, Purdue, Texas Tech, and everyone else just shifted.",
-          ctaText: "See the cascade →",
-        };
-      }
       return {
         ...currentWalkthroughStep,
         heading: "Pick the upset.",
-        body: "Tap #15 Merrimack to upset #2 Florida. A 15-seed over a 2-seed is pure chaos - watch what happens to the entire South region.",
-        ctaText: "Pick a team first",
+        body: "Tap #15 Merrimack to knock off #2 Florida. Then watch what happens to every team in the South.",
+        ctaText: "Pick a team",
       };
     }
 
     if (currentWalkthroughStep.id === "bracket-ripple") {
       return {
         ...currentWalkthroughStep,
-        heading: "That's the cascade.",
-        body: "One upset just reshaped the entire South. Florida is out - and the odds for Connecticut, Purdue, Texas Tech, and everyone else just shifted.",
+        heading: "Every pick does this.",
+        body: "You just saw one upset reshape an entire region. Now imagine 63 picks — each one sending ripples across the whole tournament. That's what Bracket Lab shows you.",
       };
     }
 
@@ -2366,11 +2360,7 @@ function App() {
   }, [currentWalkthroughStep, walkthroughCascadePhase]);
   const walkthroughCtaLabel =
     currentWalkthroughStep?.id === "upset-pick"
-      ? walkthroughCascadePhase === "pick"
-        ? "Pick a team first"
-        : walkthroughCascadePhase === "animating"
-          ? "Repricing..."
-          : "See the cascade →"
+      ? "Pick a team"
       : currentWalkthroughStep?.ctaText ?? "Next →";
   const isWalkthroughStepCentered = Boolean(currentWalkthroughStep?.centered);
   const walkthroughCtaBlockedByCascade =
@@ -2407,6 +2397,18 @@ function App() {
     setWalkthroughChangedGameIds(changed);
     document.querySelectorAll<HTMLElement>(".odds-value").forEach((el) => el.classList.remove("odds-cascading"));
     const formatAnimatedOdds = (prob: number) => formatOddsDisplay(prob, displayMode).primary;
+    // Keep old values visible through the onboarding sequence until each round animates.
+    changed.forEach((gameId) => {
+      const gameEl = document.querySelector<HTMLElement>(`.eg-game-card[data-game-id="${gameId}"]`);
+      if (!gameEl) return;
+      const beforeRows = walkthroughBeforeTeamOddsRef.current.get(gameId) ?? new Map<string, number>();
+      gameEl.querySelectorAll<HTMLElement>(".odds-value").forEach((oddsEl) => {
+        const teamId = oddsEl.dataset.teamId ?? "";
+        const fromVal = beforeRows.get(teamId);
+        if (fromVal === undefined) return;
+        oddsEl.textContent = formatAnimatedOdds(fromVal);
+      });
+    });
     const animateOddsValue = (el: HTMLElement, fromVal: number, toVal: number, duration = 600) => {
       el.classList.remove("team-odds--flash-green", "team-odds--flash-red");
       const start = performance.now();
@@ -2519,6 +2521,7 @@ function App() {
     const hideCaptionTimer = window.setTimeout(() => {
       setWalkthroughCascadeCaption(null);
       setWalkthroughCascadePhase("done");
+      setWalkthroughStep((prev) => (prev < 2 ? 2 : prev));
     }, 14700);
     walkthroughCascadeStepTimersRef.current.push(hideCaptionTimer);
   }, [
@@ -4076,7 +4079,6 @@ function FirstFourModal({
 }) {
   const allDecided = playInGames.every((game) => Boolean(game.winnerId));
   const decidedCount = playInGames.filter((game) => Boolean(game.winnerId)).length;
-  const unresolvedCount = Math.max(0, playInGames.length - decidedCount);
 
   return (
     <div className="ff-modal-overlay" onClick={onClose}>
@@ -4092,7 +4094,7 @@ function FirstFourModal({
           </div>
           {!allDecided ? (
             <button className="ff-randomize-btn" onClick={onRandomize}>
-              🎲 Pick all {unresolvedCount} for me
+              🎲 Pick for me
             </button>
           ) : null}
           <button className="ff-modal-close" onClick={onClose}>
@@ -5800,6 +5802,26 @@ function RegionBracket({
       <div className={`eg-round-grid bracket-grid ${gridStateClasses}`}>
         {rounds.map((round) => {
           const roundGames = gamesByRegionAndRound(games, region, round);
+          const isCascadeRound = round === "R32" || round === "S16" || round === "E8";
+          const activeCascade = Boolean(
+            walkthroughCascadeSpotlightRound && region === ONBOARDING_UPSET_REGION && isCascadeRound
+          );
+          const currentRoundRank = round === "R32" ? 1 : round === "S16" ? 2 : round === "E8" ? 3 : 0;
+          const spotlightRoundRank =
+            walkthroughCascadeSpotlightRound === "R32"
+              ? 1
+              : walkthroughCascadeSpotlightRound === "S16"
+                ? 2
+                : walkthroughCascadeSpotlightRound === "E8"
+                  ? 3
+                  : 0;
+          const cascadeColClass = activeCascade
+            ? round === walkthroughCascadeSpotlightRound
+              ? "cascade-spotlight"
+              : currentRoundRank < spotlightRoundRank
+                ? "cascade-dimmed-soft"
+                : "cascade-dimmed"
+            : "";
           const collapsed =
             round === "R64" || round === "R32" || round === "S16" || round === "E8"
               ? Boolean(collapseByRound[round])
@@ -5809,7 +5831,7 @@ function RegionBracket({
           return (
             <div
               key={`${region}-${round}`}
-              className={`eg-round-col lane-${round.toLowerCase()} ${collapsed ? "eg-round-col--collapsed" : ""} ${round === "E8" && e8Confirmed ? "eg-round-col--e8" : ""} ${round === "E8" && !e8Confirmed ? "eg-round-col--e8-pending" : ""}`}
+              className={`eg-round-col lane-${round.toLowerCase()} ${collapsed ? "eg-round-col--collapsed" : ""} ${round === "E8" && e8Confirmed ? "eg-round-col--e8" : ""} ${round === "E8" && !e8Confirmed ? "eg-round-col--e8-pending" : ""} ${cascadeColClass}`}
               data-region={region}
               data-round={roundDataValue[round]}
             >
@@ -5827,28 +5849,11 @@ function RegionBracket({
                   {roundGames.map((game, idx) => {
                     const topPercent = ((idx + 0.5) / Math.max(1, roundGames.length)) * 100;
                     const nodeStyle = { top: `${topPercent}%` } as React.CSSProperties;
-                    const isCascadeRound = round === "R32" || round === "S16" || round === "E8";
-                    const activeCascade = Boolean(walkthroughCascadeSpotlightRound && region === ONBOARDING_UPSET_REGION && isCascadeRound);
                     const isPathGame = isCascadeRound ? walkthroughCascadePathByRound[round].has(game.id) : false;
-                    const currentRoundRank = round === "R32" ? 1 : round === "S16" ? 2 : round === "E8" ? 3 : 0;
-                    const spotlightRoundRank =
-                      walkthroughCascadeSpotlightRound === "R32"
-                        ? 1
-                        : walkthroughCascadeSpotlightRound === "S16"
-                          ? 2
-                          : walkthroughCascadeSpotlightRound === "E8"
-                            ? 3
-                            : 0;
-                    const cascadeNodeClass = activeCascade
-                      ? round === walkthroughCascadeSpotlightRound
-                        ? isPathGame
-                          ? "cascade-spotlight"
-                          : "cascade-dimmed"
-                        : currentRoundRank < spotlightRoundRank
-                          ? isPathGame
-                            ? "cascade-dimmed-soft"
-                            : "cascade-dimmed"
-                          : "cascade-dimmed"
+                    const cascadeNodeClass = activeCascade && round === walkthroughCascadeSpotlightRound
+                      ? isPathGame
+                        ? ""
+                        : "cascade-nonpath-dim"
                       : "";
                     return (
                       <div key={game.id} className={`eg-game-node ${cascadeNodeClass}`} style={nodeStyle}>
@@ -7340,12 +7345,12 @@ function SpotlightWalkthrough({
           ) : null}
           <button
             type="button"
-            className={`walkthrough-cta-btn ${ctaDisabled ? "walkthrough-cta-btn--disabled" : ""}`}
+            className={`walkthrough-cta-btn ${ctaDisabled || step.id === "upset-pick" ? "walkthrough-cta-btn--disabled" : ""}`}
             ref={ctaRef}
             onClick={onAdvance}
-            disabled={ctaDisabled}
+            disabled={ctaDisabled || step.id === "upset-pick"}
           >
-            {ctaLabel}
+            {step.id === "upset-pick" ? "Pick a team" : ctaLabel}
           </button>
           {step.allowSkip ? (
             <button type="button" className="walkthrough-skip-link" onClick={onSkip}>

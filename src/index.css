@@ -11462,21 +11462,21 @@ body.walkthrough-active .odds-value--changed::after {
   transition: opacity 400ms ease;
 }
 
-.eg-game-node.cascade-dimmed {
+.eg-round-col.cascade-dimmed {
   opacity: 0.15;
 }
 
-.eg-game-node.cascade-dimmed-soft {
+.eg-round-col.cascade-dimmed-soft {
   opacity: 0.4;
 }
 
-.eg-game-node.cascade-spotlight {
+.eg-round-col.cascade-spotlight {
   opacity: 1;
   position: relative;
   z-index: 2;
 }
 
-.eg-game-node.cascade-spotlight::after {
+.eg-round-col.cascade-spotlight::after {
   content: "";
   position: absolute;
   inset: -4px;
@@ -11494,6 +11494,11 @@ body.walkthrough-active .odds-value--changed::after {
   50% {
     border-color: rgba(184, 125, 24, 0.55);
   }
+}
+
+.eg-game-node.cascade-nonpath-dim {
+  opacity: 0.15;
+  transition: opacity 400ms ease;
 }
 
 .cascade-caption {
