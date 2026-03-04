@@ -1,14 +1,14 @@
 import type { Round } from "../types";
 
 const TEAM_NAME_ALIASES: Record<string, string> = {
-  'connecticut': 'Connecticut',
-  'iowa st': 'Iowa St',
-  'michigan st': 'Michigan St',
-  'st john s': "St John's",
-  'st mary s ca': "St Mary's CA",
-  'san diego st': 'San Diego St',
-  'n dakota st': 'N Dakota St',
-  'morehead st': 'Morehead St',
+  "connecticut": "Connecticut",
+  "iowa st": "Iowa St",
+  "michigan st": "Michigan St",
+  "st john s": "St John's",
+  "st mary s ca": "St Mary's CA",
+  "san diego st": "San Diego St",
+  "n dakota st": "N Dakota St",
+  "morehead st": "Morehead St",
 };
 
 const normalizeTeamToken = (name: string): string =>
@@ -35,5 +35,5 @@ export const getMatchupWinProbForRound = (teamA: string, teamB: string, round: R
   return MATCHUP_PROB_BY_STAGE[key] ?? null;
 };
 
-// Generated from matchup_probs_2026-3.xlsx with averaged duplicate stage columns and mirrored keys.
-// Source: /Users/andrevlahakis/Downloads/matchup_probs_2026-3.xlsx
+// Generated from matchup_probs_2026-4.xlsx with averaged duplicate stage columns and mirrored keys.
+// Source: /Users/andrevlahakis/Downloads/matchup_probs_2026-4.xlsx

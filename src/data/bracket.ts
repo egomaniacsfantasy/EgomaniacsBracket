@@ -46,14 +46,14 @@ const regionToSide = (region: Region): Side =>
   BRACKET_HALVES.find((half) => half.regions.includes(region))?.side ?? "Left";
 
 const firstFourByRegionSeed: Record<string, string> = {
-  "South-11": "South-FF-11",
+  "East-11": "East-FF-11",
   "South-16": "South-FF-16",
   "Midwest-11": "Midwest-FF-11",
   "Midwest-16": "Midwest-FF-16",
 };
 
 const firstFourParticipants: Record<string, [string, string]> = {
-  "South-FF-11": ["South-11a", "South-11b"],
+  "East-FF-11": ["East-11a", "East-11b"],
   "South-FF-16": ["South-16a", "South-16b"],
   "Midwest-FF-11": ["Midwest-11a", "Midwest-11b"],
   "Midwest-FF-16": ["Midwest-16a", "Midwest-16b"],
