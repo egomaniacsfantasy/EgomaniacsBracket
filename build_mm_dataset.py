@@ -1103,7 +1103,7 @@ print("Done.")
 # ---------------------------------------------------------------------------
 import subprocess, datetime
 
-def _git(*args, cwd=str(BASE)):
+def _git(*args, cwd=str(DATA_DIR)):
     return subprocess.run(["git"] + list(args), cwd=cwd,
                           capture_output=True, text=True)
 
