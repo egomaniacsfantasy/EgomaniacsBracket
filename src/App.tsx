@@ -449,6 +449,12 @@ const findOnboardingUpsetMatchupId = (games: ResolvedGame[]): string => {
   return bySeed?.id ?? "South-R64-2";
 };
 
+const ROUND_TO_DATA_ATTR: Record<"R32" | "S16" | "E8", string> = {
+  R32: "32",
+  S16: "16",
+  E8: "8",
+};
+
 const getOnboardingPathByRound = (startGameId: string | null): Record<"R32" | "S16" | "E8", Set<string>> => {
   const path: Record<"R32" | "S16" | "E8", Set<string>> = {
     R32: new Set<string>(),
@@ -798,11 +804,7 @@ function App() {
   }, [displayMode, simResult.gameWinProbs]);
 
   const resetUpsetStepState = useCallback(() => {
-    if (walkthroughMatchupId && lockedPicks[walkthroughMatchupId]) {
-      const nextLocks = { ...lockedPicks };
-      delete nextLocks[walkthroughMatchupId];
-      applyLockedPicksUpdate(nextLocks);
-    }
+    applyLockedPicksUpdate(resetRegionPicks(lockedPicks, ONBOARDING_UPSET_REGION));
     walkthroughCascadeStepTimersRef.current.forEach((timer) => window.clearTimeout(timer));
     walkthroughCascadeStepTimersRef.current = [];
     if (walkthroughCascadeTimerRef.current !== null) {
@@ -814,7 +816,7 @@ function App() {
     setWalkthroughCascadeCaption(null);
     setWalkthroughChangedGameIds(new Set());
     setWalkthroughCascadePhase("pick");
-  }, [clearOnboardingVisualArtifacts, lockedPicks, walkthroughMatchupId]);
+  }, [clearOnboardingVisualArtifacts, lockedPicks]);
 
   const closeWalkthrough = () => {
     if (walkthroughAdvanceTimerRef.current !== null) {
@@ -2539,10 +2541,62 @@ function App() {
       },
     ];
 
+    const spotlightAndScroll = (round: "R32" | "S16" | "E8", caption: string) => {
+      setWalkthroughCascadeSpotlightRound(round);
+      setWalkthroughCascadeCaption(caption);
+      window.requestAnimationFrame(() => {
+        // AUDIT DOM map:
+        // section.eg-region-card.bracket-region (South)
+        //   div.eg-round-grid.bracket-grid
+        //     div.eg-round-col[data-round="32" | "16" | "8"]
+        //       div.eg-games-lane
+        //         div.eg-game-node
+        //           button.eg-team-row[data-team-name]
+        const southRegion = Array.from(document.querySelectorAll<HTMLElement>(".eg-region-card.bracket-region")).find((regionCard) =>
+          regionCard.querySelector("h2")?.textContent?.trim().toLowerCase().includes("south")
+        );
+        if (!southRegion) return;
+        const targetCol = southRegion.querySelector<HTMLElement>(`.eg-round-col[data-round="${ROUND_TO_DATA_ATTR[round]}"]`);
+        if (!targetCol) return;
+        const scrollContainer =
+          targetCol.closest<HTMLElement>(".eg-region-scroll") ??
+          southRegion.closest<HTMLElement>(".eg-region-scroll") ??
+          null;
+
+        if (scrollContainer) {
+          const colRect = targetCol.getBoundingClientRect();
+          const containerRect = scrollContainer.getBoundingClientRect();
+          const left =
+            scrollContainer.scrollLeft +
+            (colRect.left - containerRect.left) -
+            containerRect.width / 2 +
+            colRect.width / 2;
+          const top =
+            scrollContainer.scrollTop +
+            (colRect.top - containerRect.top) -
+            containerRect.height / 2 +
+            colRect.height / 2;
+          scrollContainer.scrollTo({ left, top, behavior: "smooth" });
+        } else {
+          targetCol.scrollIntoView({ behavior: "smooth", block: "center", inline: "center" });
+        }
+
+        const rowCount = targetCol.querySelectorAll(".eg-team-row").length;
+        // Debug validation per audit prompt.
+        // eslint-disable-next-line no-console
+        console.log("[CASCADE] spotlight", {
+          round,
+          width: targetCol.offsetWidth,
+          regionWidth: southRegion.offsetWidth,
+          teamRows: rowCount,
+          classes: targetCol.className,
+        });
+      });
+    };
+
     steps.forEach((step) => {
       const spotlightTimer = window.setTimeout(() => {
-        setWalkthroughCascadeSpotlightRound(step.round);
-        setWalkthroughCascadeCaption(step.preCaption);
+        spotlightAndScroll(step.round, step.preCaption);
       }, step.spotlightAt);
       walkthroughCascadeStepTimersRef.current.push(spotlightTimer);
 
@@ -2799,7 +2853,11 @@ function App() {
       });
     };
 
-    if (!walkthroughActive || !walkthroughTargetEl) {
+    const suppressSpotlight =
+      (currentWalkthroughStep?.id === "upset-pick" && walkthroughCascadePhase === "animating") ||
+      currentWalkthroughStep?.id === "bracket-ripple";
+
+    if (!walkthroughActive || !walkthroughTargetEl || suppressSpotlight) {
       clearSpotlight();
       return;
     }
@@ -2813,7 +2871,7 @@ function App() {
       window.clearTimeout(timer);
       walkthroughTargetEl.classList.remove("wt-spotlight-target");
     };
-  }, [walkthroughActive, walkthroughTargetEl]);
+  }, [currentWalkthroughStep?.id, walkthroughActive, walkthroughCascadePhase, walkthroughTargetEl]);
 
   useEffect(() => {
     if (currentWalkthroughStep?.id === "futures-panel") return;

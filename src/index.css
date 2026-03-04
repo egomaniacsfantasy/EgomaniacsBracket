@@ -11517,7 +11517,7 @@ body.walkthrough-active .odds-value--changed::after {
 
 .cascade-caption {
   position: fixed;
-  bottom: 100px;
+  top: 80px;
   left: 50%;
   transform: translateX(-50%);
   background: rgba(14, 12, 9, 0.92);
@@ -11531,12 +11531,13 @@ body.walkthrough-active .odds-value--changed::after {
   animation: captionFadeIn 300ms ease-out;
   max-width: 400px;
   text-align: center;
+  pointer-events: none;
 }
 
 @keyframes captionFadeIn {
   from {
     opacity: 0;
-    transform: translateX(-50%) translateY(8px);
+    transform: translateX(-50%) translateY(-6px);
   }
   to {
     opacity: 1;
