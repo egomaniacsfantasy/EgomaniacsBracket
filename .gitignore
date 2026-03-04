@@ -1,0 +1,39 @@
+# Large Kaggle source data
+*.csv
+
+# Large intermediate/model files
+master_dataset.xlsx
+master_dataset.parquet
+model_mm_artifacts.pkl
+matchup_probs_2025.xlsx
+predictions.xlsx
+predictions2.xlsx
+predictions_test.xlsx
+tournament_elo_2025_updated.xlsx
+massey_new_snapshots.xlsx
+ProjectedBrackets.xlsx
+
+# Raw Massey text snapshots
+massey_raw/
+
+# Jupyter internals
+.ipynb_checkpoints/
+Untitled.ipynb
+
+# Logs and status files
+*.log
+*.status
+build_mm_dataset_exit.txt
+build_mm_dataset_stderr.log
+build_mm_dataset_stdout.log
+bracket_sim_run.log
+
+# Python environment
+.venv/
+__pycache__/
+*.pyc
+*.pyo
+
+# OS
+.DS_Store
+Thumbs.db
