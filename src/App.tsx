@@ -2449,10 +2449,6 @@ function App() {
     if (!walkthroughActive || currentWalkthroughStep?.id !== "upset-pick" || walkthroughCascadePhase !== "animating") return;
     walkthroughCascadeStepTimersRef.current.forEach((timer) => window.clearTimeout(timer));
     walkthroughCascadeStepTimersRef.current = [];
-    const floridaMatchup = walkthroughMatchupId
-      ? document.querySelector<HTMLElement>(`.eg-game-card[data-game-id="${walkthroughMatchupId}"]`)
-      : null;
-    floridaMatchup?.scrollIntoView({ behavior: "smooth", block: "center", inline: "center" });
     const afterMap = new Map<string, Map<string, number>>(
       gameTemplates
         .filter((tmpl) => tmpl.region === "South" && (tmpl.round === "R32" || tmpl.round === "S16" || tmpl.round === "E8"))
@@ -2569,22 +2565,6 @@ function App() {
         targetCol.scrollIntoView({ behavior: "smooth", block: "nearest", inline: "center" });
       });
     };
-
-    // Pre-scroll to R32 area before cascade spotlight begins
-    const preScrollTimer = window.setTimeout(() => {
-      const southRegion = Array.from(document.querySelectorAll<HTMLElement>(".eg-region-card.bracket-region")).find((regionCard) =>
-        regionCard.querySelector("h2")?.textContent?.trim().toLowerCase().includes("south")
-      );
-      if (southRegion) {
-        const r32Col = southRegion.querySelector<HTMLElement>(`.eg-round-col[data-round="${ROUND_TO_DATA_ATTR["R32"]}"]`);
-        if (r32Col) {
-          const scrollContainer = r32Col.closest<HTMLElement>(".eg-region-scroll");
-          if (scrollContainer) scrollContainer.style.overflowX = "auto";
-          r32Col.scrollIntoView({ behavior: "smooth", block: "nearest", inline: "center" });
-        }
-      }
-    }, 400);
-    walkthroughCascadeStepTimersRef.current.push(preScrollTimer);
 
     steps.forEach((step) => {
       const spotlightTimer = window.setTimeout(() => {
@@ -2763,7 +2743,11 @@ function App() {
         }
         const target = getTargetElement();
         if (target) {
-          target.scrollIntoView({ behavior: "smooth", block: "center", inline: "nearest" });
+          // Don't scroll during cascade — the cascade animation handles its own scrolling
+          const skipScroll = currentWalkthroughStep.id === "upset-pick" && walkthroughCascadePhase !== "pick";
+          if (!skipScroll) {
+            target.scrollIntoView({ behavior: "smooth", block: "center", inline: "nearest" });
+          }
           await wait(400);
           if (cancelled || token !== walkthroughResolveTokenRef.current) return;
           setWalkthroughTargetEl(target);
