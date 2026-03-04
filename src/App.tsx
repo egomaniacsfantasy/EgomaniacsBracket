@@ -449,6 +449,29 @@ const findOnboardingUpsetMatchupId = (games: ResolvedGame[]): string => {
   return bySeed?.id ?? "South-R64-2";
 };
 
+const getOnboardingPathByRound = (startGameId: string | null): Record<"R32" | "S16" | "E8", Set<string>> => {
+  const path: Record<"R32" | "S16" | "E8", Set<string>> = {
+    R32: new Set<string>(),
+    S16: new Set<string>(),
+    E8: new Set<string>(),
+  };
+  if (!startGameId) return path;
+  let currentIds = [startGameId];
+  const rounds: Array<"R32" | "S16" | "E8"> = ["R32", "S16", "E8"];
+  for (const round of rounds) {
+    const next = gameTemplates.find(
+      (tmpl) =>
+        tmpl.region === ONBOARDING_UPSET_REGION &&
+        tmpl.round === round &&
+        Boolean(tmpl.sourceGameIds?.some((sourceId) => sourceId && currentIds.includes(sourceId)))
+    );
+    if (!next) break;
+    path[round].add(next.id);
+    currentIds = [next.id];
+  }
+  return path;
+};
+
 function App() {
   const { user, profile, isAuthenticated, signOut, loading: authLoading } = useAuth();
   const [lockedPicks, setLockedPicks] = useState<LockedPicks>({});
@@ -498,11 +521,15 @@ function App() {
   const [walkthroughTargetEl, setWalkthroughTargetEl] = useState<HTMLElement | null>(null);
   const [walkthroughTargetRect, setWalkthroughTargetRect] = useState<DOMRect | null>(null);
   const [tooltipPlacement, setTooltipPlacement] = useState<TooltipPlacement>("below");
-  const [walkthroughFirstPickedTeamId, setWalkthroughFirstPickedTeamId] = useState<string | null>(null);
   const [walkthroughMatchupId, setWalkthroughMatchupId] = useState<string | null>(null);
   const [walkthroughCascadePhase, setWalkthroughCascadePhase] = useState<"idle" | "pick" | "animating" | "done">("idle");
   const [walkthroughCascadeSpotlightRound, setWalkthroughCascadeSpotlightRound] = useState<"R32" | "S16" | "E8" | null>(null);
   const [walkthroughCascadeCaption, setWalkthroughCascadeCaption] = useState<string | null>(null);
+  const [walkthroughCascadePathByRound, setWalkthroughCascadePathByRound] = useState<Record<"R32" | "S16" | "E8", Set<string>>>({
+    R32: new Set(),
+    S16: new Set(),
+    E8: new Set(),
+  });
   const [walkthroughChangedGameIds, setWalkthroughChangedGameIds] = useState<Set<string>>(new Set());
   const [walkthroughDontShowAgain, setWalkthroughDontShowAgain] = useState(true);
   const [hintsShown, setHintsShown] = useState<HintsShown>(() => {
@@ -735,11 +762,11 @@ function App() {
     setWalkthroughStep(0);
     setWalkthroughTargetEl(null);
     setWalkthroughTargetRect(null);
-    setWalkthroughFirstPickedTeamId(null);
     setWalkthroughMatchupId(null);
     setWalkthroughCascadePhase("idle");
     setWalkthroughCascadeSpotlightRound(null);
     setWalkthroughCascadeCaption(null);
+    setWalkthroughCascadePathByRound({ R32: new Set(), S16: new Set(), E8: new Set() });
     setWalkthroughChangedGameIds(new Set());
     document.querySelectorAll(".futures-row--onboarding-highlight").forEach((el) => {
       el.classList.remove("futures-row--onboarding-highlight");
@@ -814,11 +841,11 @@ function App() {
         setWalkthroughStep(0);
         setWalkthroughTargetEl(null);
         setWalkthroughTargetRect(null);
-        setWalkthroughFirstPickedTeamId(null);
         setWalkthroughMatchupId(targetMatchupId);
         setWalkthroughCascadePhase("pick");
         setWalkthroughCascadeSpotlightRound(null);
         setWalkthroughCascadeCaption(null);
+        setWalkthroughCascadePathByRound(getOnboardingPathByRound(targetMatchupId));
         setWalkthroughDontShowAgain(true);
         setWalkthroughChangedGameIds(new Set());
         setWalkthroughActive(true);
@@ -829,11 +856,11 @@ function App() {
     setWalkthroughStep(0);
     setWalkthroughTargetEl(null);
     setWalkthroughTargetRect(null);
-    setWalkthroughFirstPickedTeamId(null);
     setWalkthroughMatchupId(targetMatchupId);
     setWalkthroughCascadePhase("pick");
     setWalkthroughCascadeSpotlightRound(null);
     setWalkthroughCascadeCaption(null);
+    setWalkthroughCascadePathByRound(getOnboardingPathByRound(targetMatchupId));
     setWalkthroughDontShowAgain(true);
     setWalkthroughChangedGameIds(new Set());
     walkthroughBeforeTeamOddsRef.current = new Map();
@@ -1481,7 +1508,7 @@ function App() {
               (pickedTeam.seedLabel === "15" && pickedTeam.region === ONBOARDING_UPSET_REGION))
         );
       if (!isForcedUpsetPick) return;
-      setWalkthroughFirstPickedTeamId(teamId);
+      setWalkthroughCascadePathByRound(getOnboardingPathByRound(game.id));
       walkthroughBeforeTeamOddsRef.current = new Map(
         gameTemplates
           .filter((tmpl) => tmpl.region === "South" && (tmpl.round === "R32" || tmpl.round === "S16" || tmpl.round === "E8"))
@@ -2355,6 +2382,10 @@ function App() {
     if (!walkthroughActive || currentWalkthroughStep?.id !== "upset-pick" || walkthroughCascadePhase !== "animating") return;
     walkthroughCascadeStepTimersRef.current.forEach((timer) => window.clearTimeout(timer));
     walkthroughCascadeStepTimersRef.current = [];
+    const floridaMatchup = walkthroughMatchupId
+      ? document.querySelector<HTMLElement>(`.eg-game-card[data-game-id="${walkthroughMatchupId}"]`)
+      : null;
+    floridaMatchup?.scrollIntoView({ behavior: "smooth", block: "center", inline: "center" });
     const afterMap = new Map<string, Map<string, number>>(
       gameTemplates
         .filter((tmpl) => tmpl.region === "South" && (tmpl.round === "R32" || tmpl.round === "S16" || tmpl.round === "E8"))
@@ -2377,6 +2408,7 @@ function App() {
     document.querySelectorAll<HTMLElement>(".odds-value").forEach((el) => el.classList.remove("odds-cascading"));
     const formatAnimatedOdds = (prob: number) => formatOddsDisplay(prob, displayMode).primary;
     const animateOddsValue = (el: HTMLElement, fromVal: number, toVal: number, duration = 600) => {
+      el.classList.remove("team-odds--flash-green", "team-odds--flash-red");
       const start = performance.now();
       const tick = (now: number) => {
         const progress = Math.min(1, (now - start) / duration);
@@ -2388,25 +2420,78 @@ function App() {
         } else {
           el.textContent = formatAnimatedOdds(toVal);
           el.classList.add("odds-settled");
+          if (toVal > fromVal + 1e-6) el.classList.add("team-odds--flash-green");
+          if (toVal < fromVal - 1e-6) el.classList.add("team-odds--flash-red");
           window.setTimeout(() => el.classList.remove("odds-settled"), 350);
+          window.setTimeout(() => el.classList.remove("team-odds--flash-green", "team-odds--flash-red"), 900);
         }
       };
       window.requestAnimationFrame(tick);
     };
-    const rounds: Array<"R32" | "S16" | "E8"> = ["R32", "S16", "E8"];
-    const captions: Record<(typeof rounds)[number], string> = {
-      R32: "Florida's gone. Watch the Round of 32 odds shift.",
-      S16: "Now the Sweet 16 picture has changed.",
-      E8: "The Elite Eight race just got blown wide open.",
-    };
-    const delays = [500, 2500, 4500];
+    const loserName = ONBOARDING_UPSET_LOSER;
+    const steps: Array<{
+      round: "R32" | "S16" | "E8";
+      spotlightAt: number;
+      fadeAt: number;
+      fadeMs: number;
+      oddsAt: number;
+      preCaption: string;
+      postCaption: string;
+    }> = [
+      {
+        round: "R32",
+        spotlightAt: 1100,
+        fadeAt: 1600,
+        fadeMs: 1200,
+        oddsAt: 3300,
+        preCaption: "Florida was projected here. Now they're gone.",
+        postCaption: "The remaining teams just absorbed Florida's odds.",
+      },
+      {
+        round: "S16",
+        spotlightAt: 5600,
+        fadeAt: 6100,
+        fadeMs: 1000,
+        oddsAt: 7500,
+        preCaption: "Now watch the Sweet 16.",
+        postCaption: "Connecticut and Purdue just got a much easier path.",
+      },
+      {
+        round: "E8",
+        spotlightAt: 9500,
+        fadeAt: 9900,
+        fadeMs: 800,
+        oddsAt: 11000,
+        preCaption: "The Elite Eight too.",
+        postCaption: "Every team's path to the Final Four just changed.",
+      },
+    ];
 
-    rounds.forEach((round, index) => {
-      const timer = window.setTimeout(() => {
-        setWalkthroughCascadeSpotlightRound(round);
-        setWalkthroughCascadeCaption(captions[round]);
+    steps.forEach((step) => {
+      const spotlightTimer = window.setTimeout(() => {
+        setWalkthroughCascadeSpotlightRound(step.round);
+        setWalkthroughCascadeCaption(step.preCaption);
+      }, step.spotlightAt);
+      walkthroughCascadeStepTimersRef.current.push(spotlightTimer);
+
+      const fadeTimer = window.setTimeout(() => {
+        const pathGames = walkthroughCascadePathByRound[step.round];
+        pathGames.forEach((gameId) => {
+          const gameEl = document.querySelector<HTMLElement>(`.eg-game-card[data-game-id="${gameId}"]`);
+          if (!gameEl) return;
+          gameEl.querySelectorAll<HTMLElement>(`[data-team-name="${loserName}"]`).forEach((row) => {
+            row.style.setProperty("--florida-fade-duration", `${step.fadeMs}ms`);
+            row.classList.add("team-row--fading-out");
+          });
+        });
+      }, step.fadeAt);
+      walkthroughCascadeStepTimersRef.current.push(fadeTimer);
+
+      const oddsTimer = window.setTimeout(() => {
+        setWalkthroughCascadeCaption(step.postCaption);
+        setWalkthroughCascadeSpotlightRound(step.round);
         changed.forEach((gameId) => {
-          if (!gameId.includes(`-${round}-`)) return;
+          if (!gameId.includes(`-${step.round}-`)) return;
           const gameEl = document.querySelector<HTMLElement>(`.eg-game-card[data-game-id="${gameId}"]`);
           if (!gameEl) return;
           const beforeRows = walkthroughBeforeTeamOddsRef.current.get(gameId) ?? new Map<string, number>();
@@ -2420,39 +2505,29 @@ function App() {
             animateOddsValue(oddsEl, fromVal, toVal, 600);
             window.setTimeout(() => oddsEl.classList.remove("odds-cascading"), 1000);
           });
-          const matchup = walkthroughMatchupId ? games.find((g) => g.id === walkthroughMatchupId) ?? null : null;
-          const loserId =
-            matchup && walkthroughFirstPickedTeamId
-              ? matchup.teamAId === walkthroughFirstPickedTeamId
-                ? matchup.teamBId
-                : matchup.teamAId
-              : null;
-          const loserName = loserId ? teamsById.get(loserId)?.name : null;
-          if (loserName) {
-            gameEl.querySelectorAll<HTMLElement>(`[data-team-name="${loserName}"]`).forEach((row) => {
-              row.classList.add("team-eliminated-anim");
-            });
-          }
         });
-      }, delays[index]);
-      walkthroughCascadeStepTimersRef.current.push(timer);
-
+      }, step.oddsAt);
+      walkthroughCascadeStepTimersRef.current.push(oddsTimer);
     });
 
     const finalizeTimer = window.setTimeout(() => {
       setWalkthroughCascadeSpotlightRound(null);
+      setWalkthroughCascadeCaption("One upset. The entire South reshaped.");
+    }, 12700);
+    walkthroughCascadeStepTimersRef.current.push(finalizeTimer);
+
+    const hideCaptionTimer = window.setTimeout(() => {
       setWalkthroughCascadeCaption(null);
       setWalkthroughCascadePhase("done");
-    }, 6200);
-    walkthroughCascadeStepTimersRef.current.push(finalizeTimer);
+    }, 14700);
+    walkthroughCascadeStepTimersRef.current.push(hideCaptionTimer);
   }, [
     currentWalkthroughStep?.id,
     displayMode,
-    games,
     simResult.gameWinProbs,
     walkthroughActive,
     walkthroughCascadePhase,
-    walkthroughFirstPickedTeamId,
+    walkthroughCascadePathByRound,
     walkthroughMatchupId,
   ]);
 
@@ -2486,7 +2561,14 @@ function App() {
         }
         case "bracket-ripple": {
           if (isMobile) return document.querySelector<HTMLElement>(".m-card");
-          return southRegion?.querySelector<HTMLElement>(".lane-r32 .eg-game-card, .lane-s16 .eg-game-card") ?? null;
+          const pathR32 = Array.from(walkthroughCascadePathByRound.R32)[0];
+          const pathS16 = Array.from(walkthroughCascadePathByRound.S16)[0];
+          return (
+            (pathR32 ? document.querySelector<HTMLElement>(`.eg-game-card[data-game-id="${pathR32}"]`) : null) ??
+            (pathS16 ? document.querySelector<HTMLElement>(`.eg-game-card[data-game-id="${pathS16}"]`) : null) ??
+            southRegion?.querySelector<HTMLElement>(".lane-r32 .eg-game-card, .lane-s16 .eg-game-card") ??
+            null
+          );
         }
         case "futures-panel": {
           if (isMobile) {
@@ -2593,7 +2675,7 @@ function App() {
     mobileSection,
     walkthroughActive,
     walkthroughCascadePhase,
-    walkthroughFirstPickedTeamId,
+    walkthroughCascadePathByRound,
     walkthroughMatchup,
     walkthroughMatchupId,
   ]);
@@ -2677,20 +2759,12 @@ function App() {
   }, [currentWalkthroughStep?.id, isMobile, walkthroughActive, walkthroughTargetRect]);
 
   useEffect(() => {
-    if (!walkthroughActive || !walkthroughMatchupId) return;
-    const winnerId = sanitized[walkthroughMatchupId];
-    if (!winnerId) return;
-    setWalkthroughFirstPickedTeamId(winnerId);
-  }, [sanitized, walkthroughActive, walkthroughMatchupId]);
-
-  useEffect(() => {
     if (!walkthroughActive) return;
     const onNavigate = () => {
       setWalkthroughActive(false);
       setWalkthroughStep(0);
       setWalkthroughTargetEl(null);
       setWalkthroughTargetRect(null);
-      setWalkthroughFirstPickedTeamId(null);
       setWalkthroughMatchupId(null);
     };
     window.addEventListener("popstate", onNavigate);
@@ -2726,6 +2800,21 @@ function App() {
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, []);
+
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== "Escape") return;
+      if (isMobile) {
+        if (mobileTab !== "futures") return;
+        setMobileTab("bracket");
+        return;
+      }
+      if (mainView !== "futures") return;
+      setMainView("bracket");
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [isMobile, mainView, mobileTab]);
 
   useEffect(() => {
     if (welcomeGateOpen) {
@@ -3149,14 +3238,14 @@ function App() {
           <span className="futures-subtitle">How your picks shift every team&apos;s odds</span>
         </div>
         <button
-          className="futures-close"
+          className="ft-back-btn"
           type="button"
           onClick={() => {
             if (isMobile) setMobileTab("bracket");
             else setMainView("bracket");
           }}
         >
-          ✕ Back to Bracket
+          ← Back to Bracket
         </button>
       </div>
 
@@ -3240,6 +3329,8 @@ function App() {
                   );
                 }
                 const teamRow = futuresViewRows.find((entry) => entry.team.id === team.id);
+                const isChampion = championPickId === team.id;
+                const shownProb = isChampion ? teamRow?.row.champProb ?? 0 : teamRow?.row.final4Prob ?? 0;
                 return (
                   <article key={`${team.id}-${idx}`} className="ft-pick-card ft-pick-card--f4">
                     <span className="ft-pick-card-badge-muted">F4 · {team.region}</span>
@@ -3252,8 +3343,9 @@ function App() {
                     </div>
                     <div className="ft-pick-card-odds">
                       <span className="ft-pick-card-odds-value ft-pick-card-odds-value--sm">
-                        {futuresOddsLabel(teamRow?.row.champProb ?? 0)}
+                        {futuresOddsLabel(shownProb)}
                       </span>
+                      <span className="ft-pick-card-odds-label">{isChampion ? "TITLE" : "F4"}</span>
                     </div>
                   </article>
                 );
@@ -3597,6 +3689,7 @@ function App() {
                               ? walkthroughCascadeSpotlightRound
                               : null
                           }
+                          walkthroughCascadePathByRound={walkthroughCascadePathByRound}
                         />
                       ))}
                     </div>
@@ -3651,6 +3744,7 @@ function App() {
                               ? walkthroughCascadeSpotlightRound
                               : null
                           }
+                          walkthroughCascadePathByRound={walkthroughCascadePathByRound}
                         />
                       ))}
                     </div>
@@ -3982,6 +4076,7 @@ function FirstFourModal({
 }) {
   const allDecided = playInGames.every((game) => Boolean(game.winnerId));
   const decidedCount = playInGames.filter((game) => Boolean(game.winnerId)).length;
+  const unresolvedCount = Math.max(0, playInGames.length - decidedCount);
 
   return (
     <div className="ff-modal-overlay" onClick={onClose}>
@@ -3997,7 +4092,7 @@ function FirstFourModal({
           </div>
           {!allDecided ? (
             <button className="ff-randomize-btn" onClick={onRandomize}>
-              🎲 Pick for me
+              🎲 Pick all {unresolvedCount} for me
             </button>
           ) : null}
           <button className="ff-modal-close" onClick={onClose}>
@@ -5634,6 +5729,7 @@ function RegionBracket({
   walkthroughChangedGameIds,
   walkthroughChangedOddsVisible,
   walkthroughCascadeSpotlightRound,
+  walkthroughCascadePathByRound,
 }: {
   region: Region;
   games: ResolvedGame[];
@@ -5653,6 +5749,7 @@ function RegionBracket({
   walkthroughChangedGameIds: Set<string>;
   walkthroughChangedOddsVisible: boolean;
   walkthroughCascadeSpotlightRound: "R32" | "S16" | "E8" | null;
+  walkthroughCascadePathByRound: Record<"R32" | "S16" | "E8", Set<string>>;
 }) {
   const rounds = (inverted ? [...regionRounds].reverse() : [...regionRounds]).filter((round) => round !== "FF");
   const gamesById = useMemo(() => new Map(games.map((game) => [game.id, game])), [games]);
@@ -5712,13 +5809,7 @@ function RegionBracket({
           return (
             <div
               key={`${region}-${round}`}
-              className={`eg-round-col lane-${round.toLowerCase()} ${collapsed ? "eg-round-col--collapsed" : ""} ${round === "E8" && e8Confirmed ? "eg-round-col--e8" : ""} ${round === "E8" && !e8Confirmed ? "eg-round-col--e8-pending" : ""} ${
-                walkthroughCascadeSpotlightRound && region === ONBOARDING_UPSET_REGION
-                  ? round === walkthroughCascadeSpotlightRound
-                    ? "cascade-spotlight"
-                    : "cascade-dimmed"
-                  : ""
-              }`}
+              className={`eg-round-col lane-${round.toLowerCase()} ${collapsed ? "eg-round-col--collapsed" : ""} ${round === "E8" && e8Confirmed ? "eg-round-col--e8" : ""} ${round === "E8" && !e8Confirmed ? "eg-round-col--e8-pending" : ""}`}
               data-region={region}
               data-round={roundDataValue[round]}
             >
@@ -5736,8 +5827,31 @@ function RegionBracket({
                   {roundGames.map((game, idx) => {
                     const topPercent = ((idx + 0.5) / Math.max(1, roundGames.length)) * 100;
                     const nodeStyle = { top: `${topPercent}%` } as React.CSSProperties;
+                    const isCascadeRound = round === "R32" || round === "S16" || round === "E8";
+                    const activeCascade = Boolean(walkthroughCascadeSpotlightRound && region === ONBOARDING_UPSET_REGION && isCascadeRound);
+                    const isPathGame = isCascadeRound ? walkthroughCascadePathByRound[round].has(game.id) : false;
+                    const currentRoundRank = round === "R32" ? 1 : round === "S16" ? 2 : round === "E8" ? 3 : 0;
+                    const spotlightRoundRank =
+                      walkthroughCascadeSpotlightRound === "R32"
+                        ? 1
+                        : walkthroughCascadeSpotlightRound === "S16"
+                          ? 2
+                          : walkthroughCascadeSpotlightRound === "E8"
+                            ? 3
+                            : 0;
+                    const cascadeNodeClass = activeCascade
+                      ? round === walkthroughCascadeSpotlightRound
+                        ? isPathGame
+                          ? "cascade-spotlight"
+                          : "cascade-dimmed"
+                        : currentRoundRank < spotlightRoundRank
+                          ? isPathGame
+                            ? "cascade-dimmed-soft"
+                            : "cascade-dimmed"
+                          : "cascade-dimmed"
+                      : "";
                     return (
-                      <div key={game.id} className="eg-game-node" style={nodeStyle}>
+                      <div key={game.id} className={`eg-game-node ${cascadeNodeClass}`} style={nodeStyle}>
                         <GameCard
                           game={game}
                           collapsed={collapsed}

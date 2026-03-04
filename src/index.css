@@ -11462,16 +11462,21 @@ body.walkthrough-active .odds-value--changed::after {
   transition: opacity 400ms ease;
 }
 
-.eg-round-col.cascade-dimmed {
+.eg-game-node.cascade-dimmed {
   opacity: 0.15;
 }
 
-.eg-round-col.cascade-spotlight {
-  opacity: 1;
-  position: relative;
+.eg-game-node.cascade-dimmed-soft {
+  opacity: 0.4;
 }
 
-.eg-round-col.cascade-spotlight::after {
+.eg-game-node.cascade-spotlight {
+  opacity: 1;
+  position: relative;
+  z-index: 2;
+}
+
+.eg-game-node.cascade-spotlight::after {
   content: "";
   position: absolute;
   inset: -4px;
@@ -11539,6 +11544,71 @@ body.walkthrough-active .odds-value--changed::after {
   border-color: rgba(184, 125, 24, 0.4);
 }
 
+.team-row--fading-out {
+  animation: floridaFadeOut var(--florida-fade-duration, 1200ms) ease-in forwards;
+  overflow: hidden;
+}
+
+@keyframes floridaFadeOut {
+  0% {
+    opacity: 1;
+    transform: scale(1);
+    background: transparent;
+    max-height: 50px;
+  }
+  15% {
+    background: rgba(239, 83, 80, 0.15);
+  }
+  60% {
+    opacity: 0.2;
+    transform: scale(0.97);
+    background: rgba(239, 83, 80, 0.05);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(0.94) translateX(-8px);
+    max-height: 0;
+    padding-top: 0;
+    padding-bottom: 0;
+    margin-top: 0;
+    margin-bottom: 0;
+  }
+}
+
+.team-odds--flash-green {
+  animation: oddsFlashGreen 800ms ease-out;
+}
+
+.team-odds--flash-red {
+  animation: oddsFlashRed 800ms ease-out;
+}
+
+@keyframes oddsFlashGreen {
+  0% {
+    color: rgba(76, 175, 80, 0.95);
+    transform: scale(1.06);
+    text-shadow: 0 0 8px rgba(76, 175, 80, 0.3);
+  }
+  100% {
+    color: var(--text-secondary);
+    transform: scale(1);
+    text-shadow: none;
+  }
+}
+
+@keyframes oddsFlashRed {
+  0% {
+    color: rgba(239, 83, 80, 0.85);
+    transform: scale(1.06);
+    text-shadow: 0 0 8px rgba(239, 83, 80, 0.25);
+  }
+  100% {
+    color: var(--text-secondary);
+    transform: scale(1);
+    text-shadow: none;
+  }
+}
+
 /* Futures spacing + readability */
 .ft-picks-empty-compact {
   display: flex;
@@ -11565,32 +11635,119 @@ body.walkthrough-active .odds-value--changed::after {
 }
 
 .ft-mover-logo {
-  width: 24px;
-  height: 24px;
+  width: 28px;
+  height: 28px;
 }
 
 .ft-mover-name {
-  font-size: 14px;
-}
-
-.ft-mover-odds {
   font-size: 15px;
 }
 
-.ft-contender-logo {
-  width: 26px;
-  height: 26px;
-}
-
-.ft-contender-name {
-  font-size: 14px;
-}
-
-.ft-contender-odds {
+.ft-mover-odds {
   font-size: 16px;
 }
 
+.ft-contender-logo {
+  width: 30px;
+  height: 30px;
+}
+
+.ft-contender-name {
+  font-size: 15px;
+}
+
+.ft-contender-odds {
+  font-size: 18px;
+}
+
+.ft-mover-row {
+  padding: 10px 14px;
+}
+
+.ft-delta--up,
+.ft-delta--down {
+  font-size: 13px;
+}
+
+.ft-contender-card {
+  padding: 14px 18px;
+}
+
+.ft-pick-card--champion {
+  padding: 28px 32px;
+  gap: 24px;
+}
+
+.ft-pick-card--champion .ft-pick-card-logo {
+  width: 56px;
+  height: 56px;
+}
+
+.ft-pick-card--champion .ft-pick-card-name {
+  font-size: 22px;
+}
+
+.ft-pick-card--champion .ft-pick-card-seed {
+  font-size: 12px;
+}
+
+.ft-pick-card--champion .ft-pick-card-odds-value {
+  font-size: 32px;
+}
+
+.ft-pick-card--champion .ft-pick-card-delta {
+  font-size: 15px;
+}
+
+.ft-pick-card--f4 {
+  padding: 20px;
+  gap: 12px;
+}
+
+.ft-pick-card--f4 .ft-pick-card-logo {
+  width: 36px;
+  height: 36px;
+}
+
+.ft-pick-card--f4 .ft-pick-card-name {
+  font-size: 15px;
+}
+
+.ft-pick-card--f4 .ft-pick-card-odds-value {
+  font-size: 18px;
+}
+
+.ft-back-btn {
+  position: fixed;
+  top: 16px;
+  right: 24px;
+  z-index: 1001;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 20px;
+  background: rgba(184, 125, 24, 0.15);
+  border: 1px solid rgba(184, 125, 24, 0.35);
+  border-radius: 8px;
+  color: var(--text-amber);
+  font-family: var(--font-mono);
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 140ms;
+}
+
+.ft-back-btn:hover {
+  background: rgba(184, 125, 24, 0.25);
+  border-color: rgba(184, 125, 24, 0.5);
+}
+
 @media (max-width: 767px) {
+  .ft-back-btn {
+    position: static;
+    align-self: flex-end;
+  }
+
   .walkthrough-tooltip {
     width: calc(100vw - 32px);
     max-width: calc(100vw - 32px);
