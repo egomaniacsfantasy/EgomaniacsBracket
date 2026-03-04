@@ -1,9 +1,6 @@
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
-import App from "./App";
-import { AdminPage } from "./AdminPage";
 import { initAnalytics } from "./lib/analytics";
-import { AuthProvider } from "./AuthContext";
 
 if (window.location.pathname === "/bracket") {
   window.history.replaceState({}, "", "/");
@@ -11,10 +8,26 @@ if (window.location.pathname === "/bracket") {
 
 initAnalytics();
 
-createRoot(document.getElementById("root")!).render(
-  <StrictMode>
-    <AuthProvider>
-      {window.location.pathname === "/admin" ? <AdminPage /> : <App />}
-    </AuthProvider>
-  </StrictMode>
-);
+const path = window.location.pathname;
+
+if (path === "/demo") {
+  const { CascadeDemoPage } = await import("./CascadeDemoPage");
+  createRoot(document.getElementById("root")!).render(
+    <StrictMode>
+      <CascadeDemoPage />
+    </StrictMode>
+  );
+} else {
+  const [{ default: App }, { AdminPage }, { AuthProvider }] = await Promise.all([
+    import("./App"),
+    import("./AdminPage"),
+    import("./AuthContext"),
+  ]);
+  createRoot(document.getElementById("root")!).render(
+    <StrictMode>
+      <AuthProvider>
+        {path === "/admin" ? <AdminPage /> : <App />}
+      </AuthProvider>
+    </StrictMode>
+  );
+}
