@@ -36,5 +36,5 @@ jobs:
             src/conferences/data/confTeams.ts \
             src/conferences/data/confMatchupProbs.ts \
             src/rankings/data/d1Rankings.ts
-          git diff --staged --quiet || git commit -m "Auto-regenerate TypeScript data files [skip ci]"
+          git diff --staged --quiet || git commit -m "Auto-regenerate TypeScript data files"
           git push
