@@ -28,6 +28,8 @@ import {
 import { fallbackLogo, teamLogoUrl } from "./lib/logo";
 import { fullTeamName } from "./lib/teamNames";
 import { trackEvent } from "./lib/analytics";
+import { ConferenceTournaments } from "./conferences/ConferenceTournaments";
+import { ExpandedRankings } from "./rankings/ExpandedRankings";
 import { useAuth } from "./AuthContext";
 import { AuthModal } from "./AuthModal";
 import { MyBracketsModal } from "./MyBracketsModal";
@@ -198,7 +200,7 @@ type ProbabilityPopupState = {
   savedProbA: number | null;
 };
 
-type MobileTab = "bracket" | "futures" | "leaderboard";
+type MobileTab = "bracket" | "futures" | "leaderboard" | "conferences" | "rankings";
 type MobileSection = Region | "FF";
 type MobileRegionRound = "FF" | "R64" | "R32" | "S16" | "E8";
 type MobileFfRound = "F4" | "CHAMP" | "WIN";
@@ -492,7 +494,7 @@ function App() {
   const [simRuns] = useState<number>(() => getRecommendedSimRuns());
   const [futuresFieldExpanded, setFuturesFieldExpanded] = useState(false);
   const [futuresEliminatedExpanded, setFuturesEliminatedExpanded] = useState(false);
-  const [mainView, setMainView] = useState<"bracket" | "futures" | "leaderboard">("bracket");
+  const [mainView, setMainView] = useState<"bracket" | "futures" | "leaderboard" | "conferences" | "rankings">("bracket");
   const [isUpdating, setIsUpdating] = useState(false);
   const [lastPickedKey, setLastPickedKey] = useState<string | null>(null);
   const [compactDesktop, setCompactDesktop] = useState(false);
@@ -2994,14 +2996,14 @@ function App() {
         onClick={onUndo}
         disabled={undoStack.length === 0}
         className="eg-btn toolbar-btn--undo"
-        style={!isMobile && mainView === "leaderboard" ? { display: "none" } : undefined}
+        style={!isMobile && mainView !== "bracket" && mainView !== "futures" ? { display: "none" } : undefined}
       >
         Undo
       </button>
       <button
         onClick={onRequestResetAll}
         className="eg-btn toolbar-btn--reset"
-        style={!isMobile && mainView === "leaderboard" ? { display: "none" } : undefined}
+        style={!isMobile && mainView !== "bracket" && mainView !== "futures" ? { display: "none" } : undefined}
       >
         Reset All
       </button>
@@ -3009,7 +3011,7 @@ function App() {
         <button
           onClick={() => setMainView((prev) => (prev === "futures" ? "bracket" : "futures"))}
           className={`eg-btn toolbar-btn--futures ${mainView === "futures" ? "toolbar-btn--futures-active" : ""}`}
-          style={!isMobile && mainView === "leaderboard" ? { display: "none" } : undefined}
+          style={!isMobile && mainView !== "bracket" && mainView !== "futures" ? { display: "none" } : undefined}
         >
           <span className="futures-btn-icon">📊</span>
           <span className="futures-btn-label">Futures</span>
@@ -3019,7 +3021,7 @@ function App() {
       <button
         onClick={onModelSim}
         className="eg-btn toolbar-btn--instant"
-        style={!isMobile && mainView === "leaderboard" ? { display: "none" } : undefined}
+        style={!isMobile && mainView !== "bracket" && mainView !== "futures" ? { display: "none" } : undefined}
       >
         Instant Sim
       </button>
@@ -3027,7 +3029,7 @@ function App() {
         onClick={onModelSimStaggered}
         className="eg-btn toolbar-btn--staggered"
         disabled={staggeredSimRunning}
-        style={!isMobile && mainView === "leaderboard" ? { display: "none" } : undefined}
+        style={!isMobile && mainView !== "bracket" && mainView !== "futures" ? { display: "none" } : undefined}
       >
         {staggeredSimRunning ? "Staggered Sim Running..." : "Staggered Sim"}
       </button>
@@ -3044,7 +3046,7 @@ function App() {
                 ? "Submission limit reached (25/25)"
                 : `Submitted: ${submittedBracketCount}/25`
         }
-        style={!isMobile && mainView === "leaderboard" ? { display: "none" } : undefined}
+        style={!isMobile && mainView !== "bracket" && mainView !== "futures" ? { display: "none" } : undefined}
       >
         {saveStatus === "saving"
           ? "Submitting..."
@@ -3062,7 +3064,7 @@ function App() {
         <button
           onClick={() => setShowFirstFourModal(true)}
           className="eg-btn toolbar-btn--firstfour"
-          style={!isMobile && mainView === "leaderboard" ? { display: "none" } : undefined}
+          style={!isMobile && mainView !== "bracket" && mainView !== "futures" ? { display: "none" } : undefined}
         >
           First Four {allPlayInDecided ? "✓" : `(${decidedPlayInCount}/${playInGames.length})`}
         </button>
@@ -3071,7 +3073,7 @@ function App() {
         <button
           onClick={() => setMyBracketsOpen(true)}
           className="eg-btn toolbar-btn--mybrackets"
-          style={!isMobile && mainView === "leaderboard" ? { display: "none" } : undefined}
+          style={!isMobile && mainView !== "bracket" && mainView !== "futures" ? { display: "none" } : undefined}
         >
           My Brackets
         </button>
@@ -3084,19 +3086,33 @@ function App() {
           🏆 Leaderboard
         </button>
       ) : (
-        <button
-          onClick={() => setMainView((prev) => (prev === "leaderboard" ? "bracket" : "leaderboard"))}
-          className={`eg-btn toolbar-btn--leaderboard ${mainView === "leaderboard" ? "toolbar-btn--active-view" : ""}`}
-        >
-          {mainView === "leaderboard" ? "← Bracket" : "🏆 Leaderboard"}
-        </button>
+        <>
+          <button
+            onClick={() => setMainView((prev) => (prev === "conferences" ? "bracket" : "conferences"))}
+            className={`eg-btn toolbar-btn--conferences ${mainView === "conferences" ? "toolbar-btn--active-view" : ""}`}
+          >
+            {mainView === "conferences" ? "← Bracket" : "Conf. Tourneys"}
+          </button>
+          <button
+            onClick={() => setMainView((prev) => (prev === "rankings" ? "bracket" : "rankings"))}
+            className={`eg-btn toolbar-btn--rankings ${mainView === "rankings" ? "toolbar-btn--active-view" : ""}`}
+          >
+            {mainView === "rankings" ? "← Bracket" : "Rankings"}
+          </button>
+          <button
+            onClick={() => setMainView((prev) => (prev === "leaderboard" ? "bracket" : "leaderboard"))}
+            className={`eg-btn toolbar-btn--leaderboard ${mainView === "leaderboard" ? "toolbar-btn--active-view" : ""}`}
+          >
+            {mainView === "leaderboard" ? "← Bracket" : "🏆 Leaderboard"}
+          </button>
+        </>
       )}
       <button
         onClick={onCopyShareLink}
         className="eg-btn copy-link-btn toolbar-btn--copy"
         data-copied={linkCopied ? "true" : "false"}
         aria-label="Copy shareable bracket link"
-        style={!isMobile && mainView === "leaderboard" ? { display: "none" } : undefined}
+        style={!isMobile && mainView !== "bracket" && mainView !== "futures" ? { display: "none" } : undefined}
       >
         {linkCopied ? "✓ Copied!" : "Copy Link"}
       </button>
@@ -3106,7 +3122,7 @@ function App() {
           className="eg-btn toolbar-btn--staggered-toggle"
           aria-label={staggeredSimPaused ? "Resume staggered simulation" : "Pause staggered simulation"}
           title={staggeredSimPaused ? "Resume staggered simulation" : "Pause staggered simulation"}
-          style={!isMobile && mainView === "leaderboard" ? { display: "none" } : undefined}
+          style={!isMobile && mainView !== "bracket" && mainView !== "futures" ? { display: "none" } : undefined}
         >
           {staggeredSimPaused ? "▶" : "⏸"}
         </button>
@@ -3114,7 +3130,7 @@ function App() {
       {staggeredSimRunning ? (
         <div
           className="eg-stagger-controls toolbar-btn--stagger-controls"
-          style={!isMobile && mainView === "leaderboard" ? { display: "none" } : undefined}
+          style={!isMobile && mainView !== "bracket" && mainView !== "futures" ? { display: "none" } : undefined}
         >
           <label htmlFor="stagger-delay" className="eg-stagger-label">
             Stagger Delay: {(staggeredSimDelayMs / 1000).toFixed(1)}s
@@ -3133,7 +3149,7 @@ function App() {
       ) : null}
       <div
         className="odds-mode-toggle toolbar-btn--odds"
-        style={!isMobile && mainView === "leaderboard" ? { display: "none" } : undefined}
+        style={!isMobile && mainView !== "bracket" && mainView !== "futures" ? { display: "none" } : undefined}
       >
         <button
           className={`odds-mode-btn ${displayMode === "american" ? "odds-mode-btn--active" : ""}`}
@@ -3193,7 +3209,7 @@ function App() {
         </div>
       ) : null}
       {isAuthenticated && submissionsLocked ? (
-        <div className="bracket-lock-banner" style={!isMobile && mainView === "leaderboard" ? { display: "none" } : undefined}>
+        <div className="bracket-lock-banner" style={!isMobile && mainView !== "bracket" && mainView !== "futures" ? { display: "none" } : undefined}>
           🔒 Submissions locked at tip-off. Tournament is live — check the leaderboard.
         </div>
       ) : null}
@@ -3745,6 +3761,14 @@ function App() {
               </>
             ) : mobileTab === "futures" ? (
               <div className="mobile-futures-view">{futuresContent}</div>
+            ) : mobileTab === "conferences" ? (
+              <div className="mobile-futures-view">
+                <ConferenceTournaments displayMode={displayMode} isMobile={isMobile} />
+              </div>
+            ) : mobileTab === "rankings" ? (
+              <div className="mobile-futures-view">
+                <ExpandedRankings displayMode={displayMode} isMobile={isMobile} />
+              </div>
             ) : (
               <div className="mobile-futures-view">
                 <LeaderboardFullWidth
@@ -3921,6 +3945,12 @@ function App() {
                   onClose={() => setMainView("bracket")}
                 />
               </div>
+              {mainView === "conferences" && (
+                <ConferenceTournaments displayMode={displayMode} isMobile={isMobile} />
+              )}
+              {mainView === "rankings" && (
+                <ExpandedRankings displayMode={displayMode} isMobile={isMobile} />
+              )}
               <div style={{ display: mainView === "futures" ? undefined : "none" }}>{futuresContent}</div>
             </div>
           </section>
@@ -4865,6 +4895,20 @@ function MobileTabBar({
       >
         <span className="mobile-tab-icon">↗</span>
         <span className="mobile-tab-label">Futures</span>
+      </button>
+      <button
+        className={`mobile-tab ${activeTab === "conferences" ? "active" : ""}`}
+        onClick={() => onTabChange("conferences")}
+      >
+        <span className="mobile-tab-icon">🏀</span>
+        <span className="mobile-tab-label">Conf.</span>
+      </button>
+      <button
+        className={`mobile-tab ${activeTab === "rankings" ? "active" : ""}`}
+        onClick={() => onTabChange("rankings")}
+      >
+        <span className="mobile-tab-icon">📊</span>
+        <span className="mobile-tab-label">Ranks</span>
       </button>
       <button
         className={`mobile-tab ${activeTab === "leaderboard" ? "active" : ""}`}
