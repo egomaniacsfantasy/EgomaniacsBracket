@@ -801,6 +801,10 @@ function App() {
     document.querySelectorAll<HTMLElement>(".odds-value").forEach((el) => {
       el.classList.remove("odds-cascading", "odds-settled", "team-odds--flash-green", "team-odds--flash-red");
     });
+    // Reset overflow-x on scroll containers (set to auto during cascade scrolling)
+    document.querySelectorAll<HTMLElement>(".eg-region-scroll").forEach((el) => {
+      el.style.overflowX = "";
+    });
   }, [displayMode, simResult.gameWinProbs]);
 
   const resetUpsetStepState = useCallback(() => {
@@ -2545,54 +2549,41 @@ function App() {
       setWalkthroughCascadeSpotlightRound(round);
       setWalkthroughCascadeCaption(caption);
       window.requestAnimationFrame(() => {
-        // AUDIT DOM map:
-        // section.eg-region-card.bracket-region (South)
-        //   div.eg-round-grid.bracket-grid
-        //     div.eg-round-col[data-round="32" | "16" | "8"]
-        //       div.eg-games-lane
-        //         div.eg-game-node
-        //           button.eg-team-row[data-team-name]
         const southRegion = Array.from(document.querySelectorAll<HTMLElement>(".eg-region-card.bracket-region")).find((regionCard) =>
           regionCard.querySelector("h2")?.textContent?.trim().toLowerCase().includes("south")
         );
         if (!southRegion) return;
         const targetCol = southRegion.querySelector<HTMLElement>(`.eg-round-col[data-round="${ROUND_TO_DATA_ATTR[round]}"]`);
         if (!targetCol) return;
+
+        // Temporarily enable scrolling on the scroll container (normally overflow-x: hidden)
         const scrollContainer =
           targetCol.closest<HTMLElement>(".eg-region-scroll") ??
           southRegion.closest<HTMLElement>(".eg-region-scroll") ??
           null;
-
         if (scrollContainer) {
-          const colRect = targetCol.getBoundingClientRect();
-          const containerRect = scrollContainer.getBoundingClientRect();
-          const left =
-            scrollContainer.scrollLeft +
-            (colRect.left - containerRect.left) -
-            containerRect.width / 2 +
-            colRect.width / 2;
-          const top =
-            scrollContainer.scrollTop +
-            (colRect.top - containerRect.top) -
-            containerRect.height / 2 +
-            colRect.height / 2;
-          scrollContainer.scrollTo({ left, top, behavior: "smooth" });
-        } else {
-          targetCol.scrollIntoView({ behavior: "smooth", block: "center", inline: "center" });
+          scrollContainer.style.overflowX = "auto";
         }
 
-        const rowCount = targetCol.querySelectorAll(".eg-team-row").length;
-        // Debug validation per audit prompt.
-        // eslint-disable-next-line no-console
-        console.log("[CASCADE] spotlight", {
-          round,
-          width: targetCol.offsetWidth,
-          regionWidth: southRegion.offsetWidth,
-          teamRows: rowCount,
-          classes: targetCol.className,
-        });
+        targetCol.scrollIntoView({ behavior: "smooth", block: "nearest", inline: "center" });
       });
     };
+
+    // Pre-scroll to R32 area before cascade spotlight begins
+    const preScrollTimer = window.setTimeout(() => {
+      const southRegion = Array.from(document.querySelectorAll<HTMLElement>(".eg-region-card.bracket-region")).find((regionCard) =>
+        regionCard.querySelector("h2")?.textContent?.trim().toLowerCase().includes("south")
+      );
+      if (southRegion) {
+        const r32Col = southRegion.querySelector<HTMLElement>(`.eg-round-col[data-round="${ROUND_TO_DATA_ATTR["R32"]}"]`);
+        if (r32Col) {
+          const scrollContainer = r32Col.closest<HTMLElement>(".eg-region-scroll");
+          if (scrollContainer) scrollContainer.style.overflowX = "auto";
+          r32Col.scrollIntoView({ behavior: "smooth", block: "nearest", inline: "center" });
+        }
+      }
+    }, 400);
+    walkthroughCascadeStepTimersRef.current.push(preScrollTimer);
 
     steps.forEach((step) => {
       const spotlightTimer = window.setTimeout(() => {
@@ -2646,7 +2637,10 @@ function App() {
     walkthroughCascadeStepTimersRef.current.push(finalizeTimer);
 
     const hideCaptionTimer = window.setTimeout(() => {
+      // Clear all imperative DOM artifacts before advancing to bracket-ripple step
+      clearOnboardingVisualArtifacts();
       setWalkthroughCascadeCaption(null);
+      setWalkthroughCascadeSpotlightRound(null);
       setWalkthroughCascadePhase("done");
       setWalkthroughStep((prev) => (prev < 2 ? 2 : prev));
     }, 14700);
@@ -4100,6 +4094,9 @@ function App() {
             }}
             onBack={() => {
               if (currentWalkthroughStep?.id === "bracket-ripple") {
+                // Full region reset: clears simGeneratedGameIds, expanded rounds, etc.
+                onResetRegion(ONBOARDING_UPSET_REGION);
+                // Also clear cascade timers/visual artifacts and reset cascade phase
                 resetUpsetStepState();
                 setWalkthroughStep(1);
                 return;
