@@ -11422,3 +11422,178 @@ body.walkthrough-active .odds-value--changed::after {
     font-size: 11px;
   }
 }
+
+/* Onboarding cascade + tooltip polish */
+.walkthrough-tooltip {
+  width: 440px;
+  max-width: min(440px, calc(100vw - 32px));
+  padding: 32px 36px;
+  border-radius: 14px;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  transform: none;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  will-change: auto;
+}
+
+.walkthrough-step-label {
+  font-size: 11px;
+  letter-spacing: 0.14em;
+}
+
+.walkthrough-tooltip h3 {
+  font-size: 22px;
+  margin: 0 0 10px;
+}
+
+.walkthrough-tooltip p {
+  font-size: 14px;
+  line-height: 1.7;
+}
+
+.walkthrough-cta-btn {
+  font-size: 14px;
+  padding: 14px 28px;
+  border-radius: 10px;
+}
+
+.eg-round-col {
+  transition: opacity 400ms ease;
+}
+
+.eg-round-col.cascade-dimmed {
+  opacity: 0.15;
+}
+
+.eg-round-col.cascade-spotlight {
+  opacity: 1;
+  position: relative;
+}
+
+.eg-round-col.cascade-spotlight::after {
+  content: "";
+  position: absolute;
+  inset: -4px;
+  border: 2px solid rgba(184, 125, 24, 0.4);
+  border-radius: 8px;
+  pointer-events: none;
+  animation: cascadePulse 1.5s ease-in-out infinite;
+}
+
+@keyframes cascadePulse {
+  0%,
+  100% {
+    border-color: rgba(184, 125, 24, 0.25);
+  }
+  50% {
+    border-color: rgba(184, 125, 24, 0.55);
+  }
+}
+
+.cascade-caption {
+  position: fixed;
+  bottom: 100px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(14, 12, 9, 0.92);
+  border: 1px solid rgba(184, 125, 24, 0.3);
+  border-radius: 10px;
+  padding: 14px 24px;
+  font-family: var(--font-mono);
+  font-size: 14px;
+  color: var(--text-primary);
+  z-index: 10000;
+  animation: captionFadeIn 300ms ease-out;
+  max-width: 400px;
+  text-align: center;
+}
+
+@keyframes captionFadeIn {
+  from {
+    opacity: 0;
+    transform: translateX(-50%) translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+}
+
+/* First Four randomizer */
+.ff-randomize-btn {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-amber);
+  background: rgba(184, 125, 24, 0.1);
+  border: 1px solid rgba(184, 125, 24, 0.25);
+  border-radius: 100px;
+  padding: 8px 16px;
+  cursor: pointer;
+  transition: all 140ms;
+}
+
+.ff-randomize-btn:hover {
+  background: rgba(184, 125, 24, 0.18);
+  border-color: rgba(184, 125, 24, 0.4);
+}
+
+/* Futures spacing + readability */
+.ft-picks-empty-compact {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 16px 20px;
+  border: 1px dashed rgba(255, 255, 255, 0.08);
+  border-radius: 10px;
+  margin-bottom: 24px;
+}
+
+.ft-picks-empty-label {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  color: var(--text-tertiary);
+  text-transform: uppercase;
+}
+
+.ft-picks-empty-text {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: rgba(240, 230, 208, 0.25);
+}
+
+.ft-mover-logo {
+  width: 24px;
+  height: 24px;
+}
+
+.ft-mover-name {
+  font-size: 14px;
+}
+
+.ft-mover-odds {
+  font-size: 15px;
+}
+
+.ft-contender-logo {
+  width: 26px;
+  height: 26px;
+}
+
+.ft-contender-name {
+  font-size: 14px;
+}
+
+.ft-contender-odds {
+  font-size: 16px;
+}
+
+@media (max-width: 767px) {
+  .walkthrough-tooltip {
+    width: calc(100vw - 32px);
+    max-width: calc(100vw - 32px);
+    padding: 20px;
+  }
+}

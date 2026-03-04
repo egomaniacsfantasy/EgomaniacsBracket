@@ -34,15 +34,28 @@ export const formatOddsDisplay = (
   prob: number,
   mode: OddsDisplayMode
 ): { primary: string; secondary?: string } => {
-  if (Number.isFinite(prob) && (prob >= 1 || prob <= 0)) {
+  if (Number.isFinite(prob) && prob >= 1) {
     const implied = toImpliedLabel(prob);
-    if (mode === "american") return { primary: "—" };
+    if (mode === "american") return { primary: "LOCK" };
     if (mode === "implied") return { primary: implied };
-    if (mode === "decimal") return { primary: prob >= 1 ? "1.00" : "—" };
+    if (mode === "decimal") return { primary: "1.00" };
+    return { primary: "LOCK", secondary: implied };
+  }
+
+  if (Number.isFinite(prob) && prob <= 0) {
+    const implied = toImpliedLabel(prob);
+    if (mode === "american") return { primary: "0%" };
+    if (mode === "implied") return { primary: implied };
+    if (mode === "decimal") return { primary: "—" };
     return { primary: "—", secondary: implied };
   }
 
-  const american = formatAmerican(toAmericanOdds(prob));
+  if (mode === "american" && prob >= 0.95) {
+    return { primary: `${(prob * 100).toFixed(1)}%` };
+  }
+
+  const americanRaw = toAmericanOdds(prob);
+  const american = americanRaw > 50000 ? "+50000+" : formatAmerican(americanRaw);
   const implied = toImpliedLabel(prob);
   const decimal = toDecimalOdds(prob).toFixed(2);
 
