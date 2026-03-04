@@ -925,22 +925,6 @@ function App() {
         setWalkthroughDontShowAgain(true);
         setWalkthroughChangedGameIds(new Set());
         setWalkthroughActive(true);
-
-        // Scroll bracket to top-left of South region so cascade columns are in view
-        requestAnimationFrame(() => {
-          const southRegion = Array.from(document.querySelectorAll<HTMLElement>(".eg-region-card.bracket-region")).find((card) =>
-            card.querySelector("h2")?.textContent?.trim().toLowerCase().includes("south")
-          );
-          if (southRegion) {
-            const scrollContainer = southRegion.closest<HTMLElement>(".eg-region-scroll");
-            if (scrollContainer) {
-              scrollContainer.style.overflowX = "auto";
-              scrollContainer.scrollTo({ top: 0, left: 0, behavior: "instant" as ScrollBehavior });
-            }
-            southRegion.scrollIntoView({ behavior: "instant" as ScrollBehavior, block: "start", inline: "start" });
-          }
-          window.scrollTo({ top: 0, left: 0, behavior: "instant" as ScrollBehavior });
-        });
       }, 0);
       return;
     }
@@ -957,22 +941,6 @@ function App() {
     setWalkthroughChangedGameIds(new Set());
     walkthroughBeforeTeamOddsRef.current = new Map();
     setWalkthroughActive(true);
-
-    // Scroll bracket to top-left of South region so cascade columns are in view
-    requestAnimationFrame(() => {
-      const southRegion = Array.from(document.querySelectorAll<HTMLElement>(".eg-region-card.bracket-region")).find((card) =>
-        card.querySelector("h2")?.textContent?.trim().toLowerCase().includes("south")
-      );
-      if (southRegion) {
-        const scrollContainer = southRegion.closest<HTMLElement>(".eg-region-scroll");
-        if (scrollContainer) {
-          scrollContainer.style.overflowX = "auto";
-          scrollContainer.scrollTo({ top: 0, left: 0, behavior: "instant" as ScrollBehavior });
-        }
-        southRegion.scrollIntoView({ behavior: "instant" as ScrollBehavior, block: "start", inline: "start" });
-      }
-      window.scrollTo({ top: 0, left: 0, behavior: "instant" as ScrollBehavior });
-    });
   };
 
   const handleDismissDesktopFirst = () => {
@@ -2739,30 +2707,8 @@ function App() {
 
     const runPreAction = () => {
       if (!isMobile) {
-        if (currentWalkthroughStep.id === "hook") {
-          // Scroll to top-left of South region so bracket is in starting position
-          const southRegion = resolveSouthRegion();
-          if (southRegion) {
-            const scrollContainer = southRegion.closest<HTMLElement>(".eg-region-scroll");
-            if (scrollContainer) {
-              scrollContainer.style.overflowX = "auto";
-              scrollContainer.scrollTo({ top: 0, left: 0, behavior: "instant" as ScrollBehavior });
-            }
-            southRegion.scrollIntoView({ behavior: "instant" as ScrollBehavior, block: "start", inline: "start" });
-          }
-          window.scrollTo({ top: 0, left: 0, behavior: "instant" as ScrollBehavior });
-        }
         if (currentWalkthroughStep.id === "upset-pick" && walkthroughCascadePhase === "pick") {
-          // Scroll to R64 column so Florida/Merrimack matchup is visible
-          const southRegion = resolveSouthRegion();
-          if (southRegion) {
-            const r64Col = southRegion.querySelector<HTMLElement>('.eg-round-col[data-round="64"]');
-            if (r64Col) {
-              const scrollContainer = r64Col.closest<HTMLElement>(".eg-region-scroll");
-              if (scrollContainer) scrollContainer.style.overflowX = "auto";
-              r64Col.scrollIntoView({ behavior: "smooth", block: "center", inline: "center" });
-            }
-          }
+          window.scrollTo({ top: 0, left: 0, behavior: "instant" as ScrollBehavior });
         }
         if (currentWalkthroughStep.id === "futures-panel") {
           setMainView("futures");
