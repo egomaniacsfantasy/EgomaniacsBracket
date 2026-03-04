@@ -3659,6 +3659,9 @@ function App() {
               >
                 Blog
               </a>
+              <a className="og-top-nav-link" href="/god-rankings.html" target="_blank" rel="noopener noreferrer">
+                Odds Gods Rankings
+              </a>
             </div>
             <div className="og-top-nav-auth">
               {authLoading ? (
@@ -3688,6 +3691,9 @@ function App() {
             <div className="nav-right">
               <a className="og-top-nav-link" href="https://oddsgods.net/blog" target="_blank" rel="noopener noreferrer">
                 Blog
+              </a>
+              <a className="og-top-nav-link" href="/god-rankings.html" target="_blank" rel="noopener noreferrer">
+                Rankings
               </a>
               {isAuthenticated ? (
                 <>

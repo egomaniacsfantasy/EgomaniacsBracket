@@ -1,0 +1,195 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Odds Gods Rankings 2026</title>
+    <meta name="description" content="Odds Gods Rankings 2026 - all 365 teams by MR Rank." />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600;700&family=Instrument+Serif:ital@0;1&family=Space+Grotesk:wght@400;500;700&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      :root {
+        --bg: #0e0c09;
+        --surface: rgba(255, 255, 255, 0.02);
+        --line: rgba(255, 255, 255, 0.08);
+        --text: #f0e6d0;
+        --muted: rgba(240, 230, 208, 0.55);
+        --amber: #b87d18;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        min-height: 100vh;
+        background: radial-gradient(900px 500px at 76% 15%, rgba(195, 136, 43, 0.08), transparent 60%), var(--bg);
+        color: var(--text);
+        font-family: "Space Grotesk", sans-serif;
+      }
+      .wrap {
+        max-width: 980px;
+        margin: 0 auto;
+        padding: 28px 16px 48px;
+      }
+      .topbar {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 12px;
+        margin-bottom: 18px;
+      }
+      .brand {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        text-decoration: none;
+        color: var(--text);
+        font-family: "Instrument Serif", serif;
+        letter-spacing: 0.1em;
+      }
+      .brand img {
+        width: 22px;
+        height: 22px;
+        object-fit: contain;
+      }
+      .back {
+        text-decoration: none;
+        color: var(--muted);
+        font-family: "IBM Plex Mono", monospace;
+        font-size: 12px;
+      }
+      .back:hover {
+        color: var(--text);
+      }
+      h1 {
+        margin: 8px 0 4px;
+        font-family: "Instrument Serif", serif;
+        font-size: 44px;
+        font-weight: 400;
+      }
+      .sub {
+        margin: 0 0 20px;
+        color: var(--muted);
+        font-family: "IBM Plex Mono", monospace;
+        font-size: 12px;
+      }
+      .card {
+        background: var(--surface);
+        border: 1px solid var(--line);
+        border-radius: 12px;
+        overflow: hidden;
+      }
+      .head,
+      .row {
+        display: grid;
+        grid-template-columns: 90px 1fr;
+        gap: 12px;
+        align-items: center;
+        padding: 12px 16px;
+      }
+      .head {
+        border-bottom: 1px solid var(--line);
+        font-family: "IBM Plex Mono", monospace;
+        font-size: 10px;
+        text-transform: uppercase;
+        letter-spacing: 0.12em;
+        color: var(--muted);
+        position: sticky;
+        top: 0;
+        backdrop-filter: blur(6px);
+        background: rgba(14, 12, 9, 0.94);
+        z-index: 2;
+      }
+      .rows {
+        max-height: calc(100vh - 240px);
+        overflow: auto;
+      }
+      .row {
+        border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+      }
+      .row:last-child {
+        border-bottom: none;
+      }
+      .rank {
+        font-family: "IBM Plex Mono", monospace;
+        font-weight: 700;
+        color: var(--amber);
+      }
+      .team {
+        font-size: 15px;
+      }
+      .loading,
+      .error {
+        padding: 20px 16px;
+        font-family: "IBM Plex Mono", monospace;
+        color: var(--muted);
+      }
+      .error {
+        color: #ef5350;
+      }
+      @media (max-width: 767px) {
+        h1 {
+          font-size: 34px;
+        }
+        .head,
+        .row {
+          grid-template-columns: 72px 1fr;
+          padding: 11px 12px;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <main class="wrap">
+      <div class="topbar">
+        <a class="brand" href="/">
+          <img src="/logo-icon.png?v=20260225" alt="Odds Gods" />
+          <span>ODDS GODS</span>
+        </a>
+        <a class="back" href="/">← Back to Bracket Lab</a>
+      </div>
+
+      <h1>Odds Gods Rankings</h1>
+      <p class="sub">2026 model rankings · 365 teams · MR Rank</p>
+
+      <section class="card">
+        <div class="head">
+          <span>Rank</span>
+          <span>Team</span>
+        </div>
+        <div id="rows" class="rows">
+          <div class="loading">Loading rankings…</div>
+        </div>
+      </section>
+    </main>
+
+    <script>
+      (async function () {
+        const rowsEl = document.getElementById("rows");
+        try {
+          const res = await fetch("/assets/god-rankings-2026.json", { cache: "no-store" });
+          if (!res.ok) throw new Error("Failed to load rankings data");
+          const rows = await res.json();
+          rows.sort((a, b) => a.rank - b.rank || String(a.team).localeCompare(String(b.team)));
+          rowsEl.innerHTML = rows
+            .map(
+              (item) => `
+                <div class="row">
+                  <div class="rank">${item.rank}</div>
+                  <div class="team">${item.team}</div>
+                </div>
+              `
+            )
+            .join("");
+        } catch (err) {
+          rowsEl.innerHTML = `<div class="error">${err && err.message ? err.message : "Unable to render rankings."}</div>`;
+        }
+      })();
+    </script>
+  </body>
+</html>
+
