@@ -1096,3 +1096,43 @@ except PermissionError:
 print("Done.")
 
 # %%
+# ---------------------------------------------------------------------------
+# AUTO-PUSH TO GITHUB
+# Stages and pushes the snapshot outputs produced by this run.
+# Silently skips if git is unavailable or there are no changes.
+# ---------------------------------------------------------------------------
+import subprocess, datetime
+
+def _git(*args, cwd=str(BASE)):
+    return subprocess.run(["git"] + list(args), cwd=cwd,
+                          capture_output=True, text=True)
+
+_push_files = [
+    "team_snapshot_2026.xlsx",
+    "team_snapshot_2026.parquet",
+]
+
+print("\n" + "=" * 60)
+print("AUTO-PUSH: staging snapshot files → GitHub")
+print("=" * 60)
+
+try:
+    _git("add", *_push_files)
+    _status = _git("status", "--porcelain")
+    if not _status.stdout.strip():
+        print("  No changes to commit — GitHub already up to date.")
+    else:
+        _msg = f"Update team snapshot ({datetime.date.today()})"
+        _commit = _git("commit", "-m", _msg)
+        if _commit.returncode != 0:
+            print(f"  Commit failed: {_commit.stderr.strip()}")
+        else:
+            _push = _git("push")
+            if _push.returncode == 0:
+                print(f"  Pushed: {_msg}")
+            else:
+                print(f"  Push failed: {_push.stderr.strip()}")
+except Exception as _e:
+    print(f"  Git push skipped: {_e}")
+
+# %%

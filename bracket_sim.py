@@ -2202,3 +2202,50 @@ else:
         print(f"Saved (fallback — close Excel): {_fb}")
 
 # %%
+# ---------------------------------------------------------------------------
+# AUTO-PUSH TO GITHUB
+# Stages and pushes all output files produced by this run.
+# Silently skips if git is unavailable or there are no changes.
+# ---------------------------------------------------------------------------
+import subprocess, datetime
+
+def _git(*args, cwd=str(BASE)):
+    return subprocess.run(["git"] + list(args), cwd=cwd,
+                          capture_output=True, text=True)
+
+_push_files = [
+    "2026_bracket_preds.xlsx",
+    "matchup_probs_2026.xlsx",
+    "team_stats_2026.xlsx",
+    "conf_tourney_preds_2026.xlsx",
+    "conf_team_stats_2026.xlsx",
+    "conf_matchup_probs_2026.xlsx",
+    "model_rankings_2026.xlsx",
+]
+
+print("\n" + "=" * 60)
+print("AUTO-PUSH: staging output files → GitHub")
+print("=" * 60)
+
+try:
+    # Only add files that exist
+    _existing = [f for f in _push_files if (BASE / f).exists()]
+    _git("add", *_existing)
+    _status = _git("status", "--porcelain")
+    if not _status.stdout.strip():
+        print("  No changes to commit — GitHub already up to date.")
+    else:
+        _msg = f"Update bracket sim outputs ({datetime.date.today()})"
+        _commit = _git("commit", "-m", _msg)
+        if _commit.returncode != 0:
+            print(f"  Commit failed: {_commit.stderr.strip()}")
+        else:
+            _push = _git("push")
+            if _push.returncode == 0:
+                print(f"  Pushed: {_msg}")
+            else:
+                print(f"  Push failed: {_push.stderr.strip()}")
+except Exception as _e:
+    print(f"  Git push skipped: {_e}")
+
+# %%
