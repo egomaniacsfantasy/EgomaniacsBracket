@@ -38,7 +38,7 @@ import { deserializePicks, getUserBrackets, saveBracket, serializePicks, type Sa
 import { TEAM_STAT_IMPORTANCE, TEAM_STAT_ORDER, TEAM_STATS_2026, type TeamStatKey } from "./data/teamStats2026";
 import type { OddsDisplayMode, Region, ResolvedGame, SimulationOutput } from "./types";
 
-const DEFAULT_SIM_RUNS = 5000;
+const DEFAULT_SIM_RUNS = 10000;
 const CHAOS_DISTRIBUTION_SIM_RUNS = 10000;
 const ONBOARDING_STORAGE_KEY = "oddsGods_onboardingDismissed";
 const HINTS_STORAGE_KEY = "oddsGods_hintsShown";

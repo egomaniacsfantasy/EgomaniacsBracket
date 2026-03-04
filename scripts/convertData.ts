@@ -1,17 +1,21 @@
 /**
- * One-time script to convert xlsx data files into TypeScript source files.
+ * Script to convert xlsx data files into TypeScript source files.
  * Run with: npx tsx scripts/convertData.ts
  *
- * Input files (from /Users/andrevlahakis/Downloads/Data God/):
+ * Input files (from MM pipeline root):
  *   - conf_team_stats_2026.xlsx
  *   - conf_matchup_probs_2026.xlsx
  *   - team_snapshot_2026.xlsx
  *   - model_rankings_2026.xlsx
+ *   - matchup_probs_2026.xlsx
+ *   - 2026_bracket_preds.xlsx
  *
  * Output files:
  *   - src/conferences/data/confTeams.ts
  *   - src/conferences/data/confMatchupProbs.ts
  *   - src/rankings/data/d1Rankings.ts
+ *   - src/lib/matchupProbData.ts
+ *   - src/data/bracketPreds2026.ts
  */
 
 import XLSX from "xlsx";
@@ -22,8 +26,8 @@ import { fileURLToPath } from "url";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-const DATA_DIR = "/Users/andrevlahakis/Downloads/Data God";
 const ROOT = path.resolve(__dirname, "..");
+const DATA_DIR = ROOT;
 
 // ─── Conference ID mapping (sheet name → key) ───
 const SHEET_TO_CONF_ID: Record<string, string> = {
@@ -333,6 +337,92 @@ export const D1_TEAMS: D1Team[] = ${JSON.stringify(teams, null, 2)};
   console.log(`✓ Wrote ${outPath} (${teams.length} teams)`);
 }
 
+// ─── 4. NCAA Tournament Matchup Probabilities ───
+function convertNCAAMatchupProbs(): void {
+  const wb = XLSX.readFile(path.join(DATA_DIR, "matchup_probs_2026.xlsx"));
+  const rows = XLSX.utils.sheet_to_json<Record<string, unknown>>(wb.Sheets[wb.SheetNames[0]]);
+
+  // Map: Python round label → website round key, first DayNum column to use
+  const roundMap: Array<{ pyLabel: string; daynum: number; webRound: string }> = [
+    { pyLabel: "FF",     daynum: 134, webRound: "FF"    },
+    { pyLabel: "R64",    daynum: 136, webRound: "R64"   },
+    { pyLabel: "R32",    daynum: 138, webRound: "R32"   },
+    { pyLabel: "S16",    daynum: 143, webRound: "S16"   },
+    { pyLabel: "E8",     daynum: 145, webRound: "E8"    },
+    { pyLabel: "F4",     daynum: 152, webRound: "F4"    },
+    { pyLabel: "Finals", daynum: 154, webRound: "CHAMP" },
+  ];
+
+  const probs: Record<string, number> = {};
+
+  for (const row of rows) {
+    const t1 = String(row["team1_name"]);
+    const t2 = String(row["team2_name"]);
+
+    for (const { pyLabel, daynum, webRound } of roundMap) {
+      const col = `prob_team1_wins_${pyLabel}_D${daynum}`;
+      const p = Number(row[col]);
+      if (Number.isFinite(p)) {
+        probs[`${t1}|${t2}|${webRound}`] = round6(p);
+        probs[`${t2}|${t1}|${webRound}`] = round6(1 - p);
+      }
+    }
+  }
+
+  const output = `// Auto-generated from matchup_probs_2026.xlsx — do not edit manually
+export const MATCHUP_PROB_BY_STAGE: Record<string, number> = ${JSON.stringify(probs)};
+`;
+
+  const outPath = path.join(ROOT, "src/lib/matchupProbData.ts");
+  fs.writeFileSync(outPath, output, "utf-8");
+  console.log(`✓ Wrote ${outPath} (${Object.keys(probs).length} matchup-round entries)`);
+}
+
+// ─── 5. NCAA Tournament Bracket Predictions ───
+function convertNCAABracketPreds(): void {
+  const wb = XLSX.readFile(path.join(DATA_DIR, "2026_bracket_preds.xlsx"));
+  const rows = XLSX.utils.sheet_to_json<Record<string, unknown>>(wb.Sheets[wb.SheetNames[0]]);
+
+  const preds: Record<string, {
+    round2Prob: number;
+    sweet16Prob: number;
+    elite8Prob: number;
+    final4Prob: number;
+    titleGameProb: number;
+    champProb: number;
+  }> = {};
+
+  for (const row of rows) {
+    const name = String(row["TeamName"]);
+    preds[name] = {
+      round2Prob:    round6(Number(row["pct_R32"])      / 100),
+      sweet16Prob:   round6(Number(row["pct_S16"])      / 100),
+      elite8Prob:    round6(Number(row["pct_E8"])       / 100),
+      final4Prob:    round6(Number(row["pct_F4"])       / 100),
+      titleGameProb: round6(Number(row["pct_Finals"])   / 100),
+      champProb:     round6(Number(row["pct_Champion"]) / 100),
+    };
+  }
+
+  const output = `// Auto-generated from 2026_bracket_preds.xlsx — do not edit manually
+export interface BracketPred {
+  round2Prob: number;
+  sweet16Prob: number;
+  elite8Prob: number;
+  final4Prob: number;
+  titleGameProb: number;
+  champProb: number;
+}
+
+/** Pre-computed Monte Carlo advancement probabilities keyed by team name. */
+export const BRACKET_PREDS_2026: Record<string, BracketPred> = ${JSON.stringify(preds, null, 2)};
+`;
+
+  const outPath = path.join(ROOT, "src/data/bracketPreds2026.ts");
+  fs.writeFileSync(outPath, output, "utf-8");
+  console.log(`✓ Wrote ${outPath} (${Object.keys(preds).length} teams)`);
+}
+
 // ─── Helpers ───
 function round1(n: number): number {
   return Math.round(n * 10) / 10;
@@ -352,4 +442,6 @@ console.log("Converting xlsx data files to TypeScript...\n");
 convertConfTeams();
 convertConfMatchupProbs();
 convertD1Rankings();
+convertNCAAMatchupProbs();
+convertNCAABracketPreds();
 console.log("\nDone!");

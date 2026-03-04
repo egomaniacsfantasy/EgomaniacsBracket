@@ -1,5 +1,6 @@
 import { gameTemplates } from "../data/bracket";
 import { teams, teamsById } from "../data/teams";
+import { BRACKET_PREDS_2026 } from "../data/bracketPreds2026";
 import type { ChaosDistribution, FuturesRow, GameWinProbability, Region, ResolvedGame, Round, SimulationOutput } from "../types";
 import type { CustomProbByGame, LockedPicks } from "./bracket";
 import { getGameWinProb, resolveGames } from "./bracket";
@@ -326,12 +327,44 @@ const normalizeGameWinProbs = (
   return out;
 };
 
+const buildPrecomputedBaseline = (simRuns: number): SimulationOutput => {
+  const { games: resolvedGames } = resolveGames({}, {});
+  const resolvedById = new Map(resolvedGames.map((game) => [game.id, game]));
+  const emptyWinCounts = new Map<string, Map<string, number>>();
+  for (const game of gameTemplates) {
+    emptyWinCounts.set(game.id, new Map<string, number>());
+  }
+  const futures: FuturesRow[] = teams.map((team) => {
+    const preds = BRACKET_PREDS_2026[team.name];
+    return {
+      teamId: team.id,
+      round2Prob: preds?.round2Prob ?? 0,
+      sweet16Prob: preds?.sweet16Prob ?? 0,
+      elite8Prob: preds?.elite8Prob ?? 0,
+      final4Prob: preds?.final4Prob ?? 0,
+      titleGameProb: preds?.titleGameProb ?? 0,
+      champProb: preds?.champProb ?? 0,
+    };
+  });
+  return {
+    futures: futures.sort((a, b) => b.champProb - a.champProb),
+    gameWinProbs: normalizeGameWinProbs(emptyWinCounts, simRuns, resolvedById),
+    likelihoodSimulation: 1,
+    likelihoodApprox: 1,
+  };
+};
+
 export const runSimulation = (
   locks: LockedPicks,
   simRuns: number,
   customProbByGame: CustomProbByGame = {},
   options?: { trackChaosDistribution?: boolean }
 ): SimulationOutput => {
+  // Short-circuit: use pre-computed Python baseline when no picks have been made
+  if (Object.keys(locks).length === 0 && Object.keys(customProbByGame).length === 0 && !options?.trackChaosDistribution) {
+    return buildPrecomputedBaseline(simRuns);
+  }
+
   const seedInput = hashLocks(locks, simRuns, customProbByGame);
   const rootSeed = fnv1aHash(`${DEFAULT_SIM_SEED}::${seedInput}`);
   const forcedRng = mulberry32(rootSeed ^ 0xa5a5a5a5);
