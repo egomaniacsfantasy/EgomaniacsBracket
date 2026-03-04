@@ -373,6 +373,7 @@ const WALKTHROUGH_STEPS: WalkthroughStepConfig[] = [
     ctaText: "Got it →",
     advanceOn: "button-click",
     allowSkip: true,
+    centered: true,
   },
   {
     id: "futures-panel",
@@ -2683,17 +2684,8 @@ function App() {
           }
           return document.querySelector<HTMLElement>(`.eg-game-card[data-game-id="${targetId}"]`);
         }
-        case "bracket-ripple": {
-          if (isMobile) return document.querySelector<HTMLElement>(".m-card");
-          const pathR32 = Array.from(walkthroughCascadePathByRound.R32)[0];
-          const pathS16 = Array.from(walkthroughCascadePathByRound.S16)[0];
-          return (
-            (pathR32 ? document.querySelector<HTMLElement>(`.eg-game-card[data-game-id="${pathR32}"]`) : null) ??
-            (pathS16 ? document.querySelector<HTMLElement>(`.eg-game-card[data-game-id="${pathS16}"]`) : null) ??
-            southRegion?.querySelector<HTMLElement>(".lane-r32 .eg-game-card, .lane-s16 .eg-game-card") ??
-            null
-          );
-        }
+        case "bracket-ripple":
+          return null;
         case "futures-panel": {
           if (isMobile) {
             return document.querySelector<HTMLElement>(".mobile-futures-view");
