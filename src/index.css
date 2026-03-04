@@ -11470,6 +11470,10 @@ body.walkthrough-active .odds-value--changed::after {
   opacity: 0.4;
 }
 
+.eg-round-col.cascade-r64-muted {
+  opacity: 0.6;
+}
+
 .eg-round-col.cascade-spotlight {
   opacity: 1;
   position: relative;
@@ -11497,6 +11501,16 @@ body.walkthrough-active .odds-value--changed::after {
 }
 
 .eg-game-node.cascade-nonpath-dim {
+  opacity: 0.15;
+  transition: opacity 400ms ease;
+}
+
+.eg-region-card.cascade-region-dimmed {
+  opacity: 0.1;
+  transition: opacity 400ms ease;
+}
+
+.team-row.cascade-row-dimmed {
   opacity: 0.15;
   transition: opacity 400ms ease;
 }
@@ -11554,6 +11568,10 @@ body.walkthrough-active .odds-value--changed::after {
   overflow: hidden;
 }
 
+.team-row--removed {
+  display: none !important;
+}
+
 @keyframes floridaFadeOut {
   0% {
     opacity: 1;
@@ -11577,6 +11595,21 @@ body.walkthrough-active .odds-value--changed::after {
     padding-bottom: 0;
     margin-top: 0;
     margin-bottom: 0;
+  }
+}
+
+.matchup-highlight-pulse {
+  animation: matchupPulse 1.5s ease-in-out infinite;
+  border-radius: 6px;
+}
+
+@keyframes matchupPulse {
+  0%,
+  100% {
+    box-shadow: 0 0 0 2px rgba(184, 125, 24, 0.2);
+  }
+  50% {
+    box-shadow: 0 0 0 4px rgba(184, 125, 24, 0.5);
   }
 }
 

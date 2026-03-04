@@ -1,4 +1,4 @@
-import { Fragment, Suspense, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { Fragment, Suspense, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import html2canvas from "html2canvas";
 import "./index.css";
@@ -747,6 +747,75 @@ function App() {
     });
   }, [isMobile, mainView]);
 
+  const clearOnboardingVisualArtifacts = useCallback(() => {
+    document
+      .querySelectorAll<HTMLElement>('.eg-region-card.bracket-region h2')
+      .forEach((heading) => {
+        const regionName = heading.textContent?.trim().toLowerCase();
+        if (regionName !== ONBOARDING_UPSET_REGION.toLowerCase()) return;
+        const regionCard = heading.closest<HTMLElement>(".eg-region-card.bracket-region");
+        if (!regionCard) return;
+        regionCard.querySelectorAll<HTMLElement>(".eg-game-card[data-game-id]").forEach((gameEl) => {
+          const gameId = gameEl.getAttribute("data-game-id");
+          if (!gameId) return;
+          const rows = simResult.gameWinProbs[gameId] ?? [];
+          const probByTeam = new Map(rows.map((row) => [row.teamId, row.prob]));
+          gameEl.querySelectorAll<HTMLElement>(".odds-value[data-team-id]").forEach((oddsEl) => {
+            const teamId = oddsEl.dataset.teamId ?? "";
+            const prob = probByTeam.get(teamId);
+            if (prob === undefined) return;
+            oddsEl.textContent = formatOddsDisplay(prob, displayMode).primary;
+          });
+        });
+      });
+
+    document.querySelectorAll<HTMLElement>(".team-row--fading-out, .team-row--removed").forEach((el) => {
+      el.classList.remove("team-row--fading-out", "team-row--removed", "cascade-row-dimmed");
+      el.style.display = "";
+      el.style.opacity = "";
+      el.style.maxHeight = "";
+      el.style.paddingTop = "";
+      el.style.paddingBottom = "";
+      el.style.marginTop = "";
+      el.style.marginBottom = "";
+      el.style.removeProperty("--florida-fade-duration");
+    });
+    document.querySelectorAll<HTMLElement>(".eg-round-col").forEach((el) => {
+      el.classList.remove("cascade-spotlight", "cascade-dimmed", "cascade-dimmed-soft", "cascade-r64-muted");
+      el.style.opacity = "";
+    });
+    document.querySelectorAll<HTMLElement>(".eg-region-card").forEach((el) => {
+      el.classList.remove("cascade-region-dimmed");
+      el.style.opacity = "";
+    });
+    document.querySelectorAll<HTMLElement>(".eg-game-node").forEach((el) => {
+      el.classList.remove("cascade-nonpath-dim");
+      el.style.opacity = "";
+    });
+    document.querySelectorAll<HTMLElement>(".odds-value").forEach((el) => {
+      el.classList.remove("odds-cascading", "odds-settled", "team-odds--flash-green", "team-odds--flash-red");
+    });
+  }, [displayMode, simResult.gameWinProbs]);
+
+  const resetUpsetStepState = useCallback(() => {
+    if (walkthroughMatchupId && lockedPicks[walkthroughMatchupId]) {
+      const nextLocks = { ...lockedPicks };
+      delete nextLocks[walkthroughMatchupId];
+      applyLockedPicksUpdate(nextLocks);
+    }
+    walkthroughCascadeStepTimersRef.current.forEach((timer) => window.clearTimeout(timer));
+    walkthroughCascadeStepTimersRef.current = [];
+    if (walkthroughCascadeTimerRef.current !== null) {
+      window.clearTimeout(walkthroughCascadeTimerRef.current);
+      walkthroughCascadeTimerRef.current = null;
+    }
+    clearOnboardingVisualArtifacts();
+    setWalkthroughCascadeSpotlightRound(null);
+    setWalkthroughCascadeCaption(null);
+    setWalkthroughChangedGameIds(new Set());
+    setWalkthroughCascadePhase("pick");
+  }, [clearOnboardingVisualArtifacts, lockedPicks, walkthroughMatchupId]);
+
   const closeWalkthrough = () => {
     if (walkthroughAdvanceTimerRef.current !== null) {
       window.clearTimeout(walkthroughAdvanceTimerRef.current);
@@ -758,6 +827,7 @@ function App() {
     }
     walkthroughCascadeStepTimersRef.current.forEach((timer) => window.clearTimeout(timer));
     walkthroughCascadeStepTimersRef.current = [];
+    clearOnboardingVisualArtifacts();
     setWalkthroughActive(false);
     setWalkthroughStep(0);
     setWalkthroughTargetEl(null);
@@ -2484,6 +2554,9 @@ function App() {
           gameEl.querySelectorAll<HTMLElement>(`[data-team-name="${loserName}"]`).forEach((row) => {
             row.style.setProperty("--florida-fade-duration", `${step.fadeMs}ms`);
             row.classList.add("team-row--fading-out");
+            window.setTimeout(() => {
+              row.classList.add("team-row--removed");
+            }, step.fadeMs);
           });
         });
       }, step.fadeAt);
@@ -2707,6 +2780,17 @@ function App() {
       if (raf) window.cancelAnimationFrame(raf);
     };
   }, [walkthroughActive, walkthroughTargetEl]);
+
+  useEffect(() => {
+    const targetId = walkthroughMatchupId ?? findOnboardingUpsetMatchupId(games);
+    const target =
+      (targetId ? document.querySelector<HTMLElement>(`.eg-game-card[data-game-id="${targetId}"]`) : null) ??
+      (targetId ? document.querySelector<HTMLElement>(`.m-card[data-game-id="${targetId}"]`) : null);
+    if (!target) return;
+    const shouldPulse = walkthroughActive && currentWalkthroughStep?.id === "upset-pick" && walkthroughCascadePhase === "pick";
+    target.classList.toggle("matchup-highlight-pulse", shouldPulse);
+    return () => target.classList.remove("matchup-highlight-pulse");
+  }, [currentWalkthroughStep?.id, games, walkthroughActive, walkthroughCascadePhase, walkthroughMatchupId]);
 
   useEffect(() => {
     const clearSpotlight = () => {
@@ -3508,6 +3592,16 @@ function App() {
               <span className="odds">ODDS</span> <span className="gods">GODS</span>
               <span className="beta-badge">BETA</span>
             </a>
+            <div className="og-top-nav-tabs">
+              <a
+                className="og-top-nav-link"
+                href="https://oddsgods.net/blog"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                Blog
+              </a>
+            </div>
             <div className="og-top-nav-auth">
               {authLoading ? (
                 <span className="nav-auth-loading">...</span>
@@ -3534,6 +3628,9 @@ function App() {
               <span className="beta-badge nav-beta">BETA</span>
             </div>
             <div className="nav-right">
+              <a className="og-top-nav-link" href="https://oddsgods.net/blog" target="_blank" rel="noopener noreferrer">
+                Blog
+              </a>
               {isAuthenticated ? (
                 <>
                   <span className="nav-user-name nav-user-name--mobile">{profile?.display_name || user?.email || "User"}</span>
@@ -3903,6 +4000,7 @@ function App() {
 
       {walkthroughActive &&
       walkthroughDisplayStep &&
+      !(currentWalkthroughStep?.id === "upset-pick" && walkthroughCascadePhase === "animating") &&
       (isWalkthroughStepCentered || Boolean(walkthroughTargetRect)) ? (
         <Suspense fallback={null}>
           <SpotlightWalkthrough
@@ -3937,6 +4035,11 @@ function App() {
               setWalkthroughStep((prev) => Math.min(prev + 1, WALKTHROUGH_STEPS.length - 1));
             }}
             onBack={() => {
+              if (currentWalkthroughStep?.id === "bracket-ripple") {
+                resetUpsetStepState();
+                setWalkthroughStep(1);
+                return;
+              }
               setWalkthroughStep((prev) => Math.max(0, prev - 1));
             }}
             onSkip={() => skipWalkthrough()}
@@ -5791,7 +5894,11 @@ function RegionBracket({
   };
 
   return (
-    <section className={`eg-region-card bracket-region ${inverted ? "region-inverted" : ""}`}>
+    <section
+      className={`eg-region-card bracket-region ${inverted ? "region-inverted" : ""} ${
+        walkthroughCascadeSpotlightRound && region !== ONBOARDING_UPSET_REGION ? "cascade-region-dimmed" : ""
+      }`}
+    >
       <div className="eg-region-head">
         <h2>{region}</h2>
         <button className="eg-mini-btn" onClick={() => onResetRegion(region)}>
@@ -5803,9 +5910,8 @@ function RegionBracket({
         {rounds.map((round) => {
           const roundGames = gamesByRegionAndRound(games, region, round);
           const isCascadeRound = round === "R32" || round === "S16" || round === "E8";
-          const activeCascade = Boolean(
-            walkthroughCascadeSpotlightRound && region === ONBOARDING_UPSET_REGION && isCascadeRound
-          );
+          const regionCascadeActive = Boolean(walkthroughCascadeSpotlightRound && region === ONBOARDING_UPSET_REGION);
+          const activeCascade = Boolean(regionCascadeActive && isCascadeRound);
           const currentRoundRank = round === "R32" ? 1 : round === "S16" ? 2 : round === "E8" ? 3 : 0;
           const spotlightRoundRank =
             walkthroughCascadeSpotlightRound === "R32"
@@ -5821,7 +5927,9 @@ function RegionBracket({
               : currentRoundRank < spotlightRoundRank
                 ? "cascade-dimmed-soft"
                 : "cascade-dimmed"
-            : "";
+            : regionCascadeActive && round === "R64"
+              ? "cascade-r64-muted"
+              : "";
           const collapsed =
             round === "R64" || round === "R32" || round === "S16" || round === "E8"
               ? Boolean(collapseByRound[round])
