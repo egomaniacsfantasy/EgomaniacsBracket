@@ -6,6 +6,9 @@ on:
     paths:
       - "*.xlsx"
 
+permissions:
+  contents: write
+
 jobs:
   rebuild:
     runs-on: ubuntu-latest
