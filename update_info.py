@@ -15,12 +15,12 @@
 
 # %%
 """
-update_info.py  — Extend Kaggle CSV files through March 1, 2026
+update_info.py  — Extend Kaggle CSV files through March 3, 2026
 ==============================================================
-Appends DayNum 117-118 (Feb 28 - March 1, 2026) data to:
+Appends DayNum 119-120 (March 2-3, 2026) data to:
   • MRegularSeasonCompactResults.csv   (game results)
   • MRegularSeasonDetailedResults.csv  (box scores)
-  • MMasseyOrdinals.csv                (weekly snapshots DayNum 100, 107, 114, 118)
+  • MMasseyOrdinals.csv                (weekly snapshots — no new snapshot this run)
 
 Run in Jupyter cell-by-cell (# %% separators) or as a script:
     python update_info.py
@@ -63,8 +63,8 @@ except NameError:
 SEASON    = 2026
 DAY_ZERO  = date(2025, 11, 3)      # from MSeasons.csv DayZero 2026
 
-DATE_START = date(2026, 2, 28)     # DayNum 117 (re-check boundary + add March 1)
-DATE_END   = date(2026, 3, 1)      # DayNum 118 (last day we want)
+DATE_START = date(2026, 3, 2)      # DayNum 119 (CSV already has through DayNum 118)
+DATE_END   = date(2026, 3, 3)      # DayNum 120 (last day we want)
 
 # Massey snapshots loaded from massey_raw/*.txt (see Phase 3).
 # This list is informational only — the actual source of truth is MASSEY_WEEK_FILES in Phase 3.
@@ -78,10 +78,13 @@ MASSEY_TARGETS = [
 ]
 
 # ── File paths ─────────────────────────────────────────────────────────────
-COMPACT_CSV   = DATA_DIR / "MRegularSeasonCompactResults.csv"
-DETAILED_CSV  = DATA_DIR / "MRegularSeasonDetailedResults.csv"
-MASSEY_CSV    = DATA_DIR / "MMasseyOrdinals.csv"
-SPELLINGS_CSV = DATA_DIR / "MTeamSpellings.csv"
+COMPACT_CSV      = DATA_DIR / "MRegularSeasonCompactResults.csv"
+DETAILED_CSV     = DATA_DIR / "MRegularSeasonDetailedResults.csv"
+MASSEY_CSV       = DATA_DIR / "MMasseyOrdinals.csv"
+SPELLINGS_CSV    = DATA_DIR / "MTeamSpellings.csv"
+CONF_TOURNEY_CSV = DATA_DIR / "MConferenceTourneyGames.csv"
+NCAA_COMPACT_CSV = DATA_DIR / "MNCAATourneyCompactResults.csv"
+TEAM_CONF_CSV    = DATA_DIR / "MTeamConferences.csv"
 
 SCRATCH_COMPACT  = DATA_DIR / "_new_compact.csv"
 SCRATCH_DETAILED = DATA_DIR / "_new_detailed.csv"
@@ -154,9 +157,17 @@ print("  HTTP session configured.")
 
 # %%
 # ---------------------------------------------------------------------------
-# PHASE 0c — Team name → Kaggle TeamID lookup
+# PHASE 0c — Team name → Kaggle TeamID lookup + team→conference mapping
 # ---------------------------------------------------------------------------
 spellings_df = pd.read_csv(SPELLINGS_CSV)
+
+# Build TeamID → ConfAbbrev for current season (used for MConferenceTourneyGames)
+_tc = pd.read_csv(TEAM_CONF_CSV)
+_tc_season = _tc[_tc["Season"] == SEASON]
+if _tc_season.empty:
+    # Fall back to most recent season available
+    _tc_season = _tc[_tc["Season"] == _tc["Season"].max()]
+team_to_conf: dict[int, str] = dict(zip(_tc_season["TeamID"], _tc_season["ConfAbbrev"]))
 
 
 def _norm(s: str) -> str:
@@ -289,6 +300,20 @@ def parse_espn_scoreboard(data: dict, target_date: date) -> list[dict]:
         espn_home_id  = str(home["team"]["id"])
         espn_away_id  = str(away["team"]["id"])
 
+        # Detect game type from ESPN event notes
+        # Conference tournament: notes headline contains a conference name + "Tournament"
+        # NCAA tournament: notes headline contains "NCAA"
+        notes = comp.get("notes", [])
+        note_headlines = [n.get("headline", "").upper() for n in notes]
+        is_ncaa = any("NCAA" in h for h in note_headlines)
+        is_conf_tourney = (
+            not is_ncaa
+            and any(
+                "TOURNAMENT" in h or "TOURNEY" in h
+                for h in note_headlines
+            )
+        )
+
         if home_won:
             w_name, w_score = home_name, home_score
             l_name, l_score = away_name, away_score
@@ -308,15 +333,17 @@ def parse_espn_scoreboard(data: dict, target_date: date) -> list[dict]:
             continue
 
         games.append({
-            "date":          target_date.isoformat(),
-            "daynum":        daynum(target_date),
-            "w_name":        w_name,        "w_score":       w_score,
-            "l_name":        l_name,        "l_score":       l_score,
-            "wloc":          wloc,          "num_ot":        num_ot,
-            "espn_event_id": espn_event_id,
-            "espn_home_id":  espn_home_id,
-            "espn_away_id":  espn_away_id,
-            "w_id":          w_id,          "l_id":          l_id,
+            "date":            target_date.isoformat(),
+            "daynum":          daynum(target_date),
+            "w_name":          w_name,        "w_score":       w_score,
+            "l_name":          l_name,        "l_score":       l_score,
+            "wloc":            wloc,          "num_ot":        num_ot,
+            "espn_event_id":   espn_event_id,
+            "espn_home_id":    espn_home_id,
+            "espn_away_id":    espn_away_id,
+            "w_id":            w_id,          "l_id":          l_id,
+            "is_conf_tourney": is_conf_tourney,
+            "is_ncaa":         is_ncaa,
         })
 
     if unknown_teams:
@@ -709,18 +736,22 @@ print("\n" + "=" * 65)
 print("  PHASE 4 — Append to Kaggle CSVs")
 print("=" * 65)
 
-# ── 4a. Compact results ────────────────────────────────────────────────────
+# ── 4a. Compact results (regular season + conf tourney only — NOT NCAA) ────
 if SCRATCH_COMPACT.exists():
     sc = pd.read_csv(SCRATCH_COMPACT)
+
+    # Regular + conf tourney go to MRegularSeasonCompactResults; NCAA goes elsewhere
+    sc_reg = sc[sc.get("is_ncaa", pd.Series(False, index=sc.index)) != True].copy()
+
     compact_new = pd.DataFrame({
         "Season":  SEASON,
-        "DayNum":  sc["daynum"].astype(int),
-        "WTeamID": sc["w_id"].astype(int),
-        "WScore":  sc["w_score"].astype(int),
-        "LTeamID": sc["l_id"].astype(int),
-        "LScore":  sc["l_score"].astype(int),
-        "WLoc":    sc["wloc"],
-        "NumOT":   sc["num_ot"].astype(int),
+        "DayNum":  sc_reg["daynum"].astype(int),
+        "WTeamID": sc_reg["w_id"].astype(int),
+        "WScore":  sc_reg["w_score"].astype(int),
+        "LTeamID": sc_reg["l_id"].astype(int),
+        "LScore":  sc_reg["l_score"].astype(int),
+        "WLoc":    sc_reg["wloc"],
+        "NumOT":   sc_reg["num_ot"].astype(int),
     })
 
     compact_existing = pd.read_csv(COMPACT_CSV)
@@ -738,7 +769,6 @@ if SCRATCH_COMPACT.exists():
     print(f"    existing rows : {len(compact_existing):,}")
     print(f"    new rows added: {len(new_only):,}")
     print(f"    total rows    : {len(combined):,}")
-    SCRATCH_COMPACT.unlink()   # clean up
 
 # ── 4b. Detailed results ───────────────────────────────────────────────────
 if SCRATCH_DETAILED.exists():
@@ -782,6 +812,79 @@ if not massey_scratch.empty:
 else:
     print("\n  MMasseyOrdinals.csv — no new Massey data to append.")
 
+# ── 4d. Conference tourney game keys → MConferenceTourneyGames.csv ─────────
+# Scratch was NOT unlinked in 4a so it's still available here
+_sc_for_tourney = pd.read_csv(SCRATCH_COMPACT) if SCRATCH_COMPACT.exists() else None
+
+if _sc_for_tourney is not None and "is_conf_tourney" in _sc_for_tourney.columns:
+    sc_ct = _sc_for_tourney[_sc_for_tourney["is_conf_tourney"] == True].copy()
+    if not sc_ct.empty:
+        # Look up ConfAbbrev from winner's team ID
+        sc_ct = sc_ct.copy()
+        sc_ct["ConfAbbrev"] = sc_ct["w_id"].astype(int).map(team_to_conf).fillna("unk")
+        ctag_new = pd.DataFrame({
+            "Season":     SEASON,
+            "ConfAbbrev": sc_ct["ConfAbbrev"],
+            "DayNum":     sc_ct["daynum"].astype(int),
+            "WTeamID":    sc_ct["w_id"].astype(int),
+            "LTeamID":    sc_ct["l_id"].astype(int),
+        })
+        ctag_existing = pd.read_csv(CONF_TOURNEY_CSV)
+        merge_keys = ["Season", "DayNum", "WTeamID", "LTeamID"]
+        already_ct = ctag_existing[ctag_existing["Season"] == SEASON]
+        new_ct = ctag_new[
+            ~ctag_new.set_index(merge_keys).index.isin(
+                already_ct.set_index(merge_keys).index
+            )
+        ]
+        combined_ct = pd.concat([ctag_existing, new_ct], ignore_index=True)
+        combined_ct.to_csv(CONF_TOURNEY_CSV, index=False)
+        print(f"\n  MConferenceTourneyGames.csv")
+        print(f"    existing rows : {len(ctag_existing):,}")
+        print(f"    new rows added: {len(new_ct):,}")
+        print(f"    total rows    : {len(combined_ct):,}")
+        if not new_ct.empty:
+            print(f"    conferences   : {sorted(new_ct['ConfAbbrev'].unique())}")
+    else:
+        print("\n  MConferenceTourneyGames.csv — no conference tournament games detected.")
+else:
+    print("\n  MConferenceTourneyGames.csv — skipped (no scratch data or old-format scratch).")
+
+# ── 4e. NCAA tournament games → MNCAATourneyCompactResults.csv ────────────
+if _sc_for_tourney is not None and "is_ncaa" in _sc_for_tourney.columns:
+    sc_ncaa = _sc_for_tourney[_sc_for_tourney["is_ncaa"] == True].copy()
+    if not sc_ncaa.empty:
+        ncaa_new = pd.DataFrame({
+            "Season":  SEASON,
+            "DayNum":  sc_ncaa["daynum"].astype(int),
+            "WTeamID": sc_ncaa["w_id"].astype(int),
+            "WScore":  sc_ncaa["w_score"].astype(int),
+            "LTeamID": sc_ncaa["l_id"].astype(int),
+            "LScore":  sc_ncaa["l_score"].astype(int),
+            "WLoc":    sc_ncaa["wloc"],
+            "NumOT":   sc_ncaa["num_ot"].astype(int),
+        })
+        ncaa_existing = pd.read_csv(NCAA_COMPACT_CSV)
+        merge_keys = ["Season", "DayNum", "WTeamID", "LTeamID"]
+        already_ncaa = ncaa_existing[ncaa_existing["Season"] == SEASON]
+        new_ncaa = ncaa_new[
+            ~ncaa_new.set_index(merge_keys).index.isin(
+                already_ncaa.set_index(merge_keys).index
+            )
+        ]
+        combined_ncaa = pd.concat([ncaa_existing, new_ncaa], ignore_index=True)
+        combined_ncaa.to_csv(NCAA_COMPACT_CSV, index=False)
+        print(f"\n  MNCAATourneyCompactResults.csv")
+        print(f"    existing rows : {len(ncaa_existing):,}")
+        print(f"    new rows added: {len(new_ncaa):,}")
+        print(f"    total rows    : {len(combined_ncaa):,}")
+    else:
+        print("\n  MNCAATourneyCompactResults.csv — no NCAA tournament games detected.")
+
+# ── Clean up compact scratch after all Phase 4 sections ───────────────────
+if SCRATCH_COMPACT.exists():
+    SCRATCH_COMPACT.unlink()
+
 # %%
 # ---------------------------------------------------------------------------
 # PHASE 5 — Validation summary
@@ -818,6 +921,14 @@ for dn in sorted(m26["RankingDayNum"].unique()):
         "MISSING: " + str([s for s in req_systems
                            if s not in snap["SystemName"].values]))
     print(f"    DayNum {dn:3d}: {n_teams:3d} teams  {req_str}")
+
+ctag_check = pd.read_csv(CONF_TOURNEY_CSV)
+ct26 = ctag_check[ctag_check["Season"] == SEASON]
+print(f"\n  MConferenceTourneyGames (2026)")
+print(f"    rows         : {len(ct26):,}")
+if not ct26.empty:
+    print(f"    DayNum range : {ct26['DayNum'].min()} – {ct26['DayNum'].max()}")
+    print(f"    conferences  : {sorted(ct26['ConfAbbrev'].unique())}")
 
 # Check compact / detailed row counts match
 if len(c26) != len(d26):
