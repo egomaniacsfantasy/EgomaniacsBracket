@@ -38,7 +38,7 @@
 # ---------------------------------------------------------------------------
 import sys
 import io
-import pickle
+import joblib
 import datetime
 import subprocess
 import warnings
@@ -114,11 +114,10 @@ if not ARTIFACT.exists():
         f"model_mm_artifacts.pkl not found at {ARTIFACT}. Run model_mm.py first."
     )
 
-with open(ARTIFACT, "rb") as f:
-    arts = pickle.load(f)
+arts = joblib.load(ARTIFACT)
 
-model      = arts["model"]
-calibrator = arts["calibrator"]
+model      = arts["final_model"]
+calibrator = arts["iso"]
 le_loc     = arts["le_loc"]
 n_trees    = arts.get("n_trees", None)
 feat_cols  = list(arts["feature_cols"])
@@ -234,11 +233,10 @@ print(f"\nRunning model predictions in batches of {BATCH:,} ...")
 for start in range(0, len(rows), BATCH):
     batch_df = pd.DataFrame(rows[start:start + BATCH], columns=FEATURE_COLS)
     batch_df["location"] = batch_df["location"].astype(int)
-    raw  = model.predict(
+    raw  = model.predict_proba(
         batch_df,
-        num_iteration=n_trees if n_trees else model.best_iteration,
-        categorical_feature=["location"],
-    )
+        num_iteration=n_trees if n_trees else model.best_iteration_,
+    )[:, 1]
     cal = calibrator.predict(raw)
     all_probs.append(cal)
     end = min(start + BATCH, len(rows))
