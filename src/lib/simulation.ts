@@ -1,6 +1,5 @@
 import { gameTemplates } from "../data/bracket";
 import { teams, teamsById } from "../data/teams";
-import { BRACKET_PREDS_2026 } from "../data/bracketPreds2026";
 import type { ChaosDistribution, FuturesRow, GameWinProbability, Region, ResolvedGame, Round, SimulationOutput } from "../types";
 import type { CustomProbByGame, LockedPicks } from "./bracket";
 import { getGameWinProb, resolveGames } from "./bracket";
@@ -340,31 +339,37 @@ export const buildPrecomputedBaseline = (simRuns: number): SimulationOutput => {
   for (const game of gameTemplates) {
     gameWinCounts.set(game.id, new Map<string, number>());
   }
+  const rows = makeEmptyFutures();
+  const rowMap = new Map(rows.map((row) => [row.teamId, row]));
+
   for (let i = 0; i < simRuns; i += 1) {
     const { winners } = simulateBracket({}, false, {}, rng);
     for (const game of gameTemplates) {
       const winnerId = winners[game.id];
-      if (winnerId) {
-        const byTeam = gameWinCounts.get(game.id)!;
-        byTeam.set(winnerId, (byTeam.get(winnerId) ?? 0) + 1);
-      }
+      if (!winnerId) continue;
+      const byTeam = gameWinCounts.get(game.id)!;
+      byTeam.set(winnerId, (byTeam.get(winnerId) ?? 0) + 1);
+      const row = rowMap.get(winnerId);
+      if (!row) continue;
+      if (game.round === "R64") row.round2Prob += 1;
+      if (game.round === "R32") row.sweet16Prob += 1;
+      if (game.round === "S16") row.elite8Prob += 1;
+      if (game.round === "E8") row.final4Prob += 1;
+      if (game.round === "F4") row.titleGameProb += 1;
+      if (game.round === "CHAMP") row.champProb += 1;
     }
   }
-
-  const futures: FuturesRow[] = teams.map((team) => {
-    const preds = BRACKET_PREDS_2026[team.name];
-    return {
-      teamId: team.id,
-      round2Prob: preds?.round2Prob ?? 0,
-      sweet16Prob: preds?.sweet16Prob ?? 0,
-      elite8Prob: preds?.elite8Prob ?? 0,
-      final4Prob: preds?.final4Prob ?? 0,
-      titleGameProb: preds?.titleGameProb ?? 0,
-      champProb: preds?.champProb ?? 0,
-    };
+  rows.forEach((row) => {
+    row.round2Prob /= simRuns;
+    row.sweet16Prob /= simRuns;
+    row.elite8Prob /= simRuns;
+    row.final4Prob /= simRuns;
+    row.titleGameProb /= simRuns;
+    row.champProb /= simRuns;
   });
+
   return {
-    futures: futures.sort((a, b) => b.champProb - a.champProb),
+    futures: rows.sort((a, b) => b.champProb - a.champProb),
     gameWinProbs: normalizeGameWinProbs(gameWinCounts, simRuns, resolvedById),
     likelihoodSimulation: 1,
     likelihoodApprox: 1,

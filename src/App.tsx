@@ -19,7 +19,6 @@ import {
 import { abbreviationForTeam } from "./lib/abbreviation";
 import { formatOddsDisplay, toAmericanOdds, toImpliedLabel, toOneInX } from "./lib/odds";
 import {
-  buildPrecomputedBaseline,
   generateSimulatedBracket,
   generateSimulatedBracketSteps,
   getChaosScorePercentileForPickedGames,
@@ -1317,7 +1316,7 @@ function App() {
     pendingPickMetaRef.current = null;
   }, [simResult.gameWinProbs, games, mobileSection, mobileRound]);
 
-  const preTournamentBaseline = useMemo(() => buildPrecomputedBaseline(simRuns), [simRuns]);
+  const preTournamentBaseline = useMemo(() => runSimulation({}, simRuns), [simRuns]);
   const baselineByTeamId = useMemo(
     () => new Map(preTournamentBaseline.futures.map((row) => [row.teamId, row])),
     [preTournamentBaseline.futures]
