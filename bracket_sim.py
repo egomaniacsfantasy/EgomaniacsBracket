@@ -31,6 +31,8 @@
 # IMPORTS & CONSTANTS
 # ---------------------------------------------------------------------------
 import warnings
+import itertools
+import re
 import numpy as np
 import pandas as pd
 import lightgbm as lgb
@@ -374,7 +376,7 @@ else:
         "feature_cols": FEATURE_COLS,
     }, MODEL_ARTIFACT_PATH)
 
-    print(f"  Saved model artifacts → {MODEL_ARTIFACT_PATH}")
+    print(f"  Saved model artifacts -> {MODEL_ARTIFACT_PATH}")
 
 # %%
 # ---------------------------------------------------------------------------
@@ -417,7 +419,7 @@ df_season = df[df.Season == SEASON].copy()
 ff_rows  = df_season[df_season.DayNum.isin([134, 135]) & (df_season.game_type == "NCAA")]
 r64_rows = df_season[df_season.DayNum.isin([136, 137]) & (df_season.game_type == "NCAA")]
 
-# Lookup: (team_id_lo, team_id_hi) → actual DayNum for each R64 game.
+# Lookup: (team_id_lo, team_id_hi) -> actual DayNum for each R64 game.
 # Used in Phase 6 so the simulation uses the same DayNum (136 or 137) as
 # predictions.xlsx for every R64 matchup, eliminating the ~2% discrepancy
 # that arises when DayNum is a model feature.
@@ -484,7 +486,7 @@ print("\n" + "=" * 70)
 print("PHASE 4: BUILD BRACKET STRUCTURE")
 print("=" * 70)
 
-# Map ALL seed codes → TeamID (including W16a/W16b etc.)
+# Map ALL seed codes -> TeamID (including W16a/W16b etc.)
 seed_map = {
     row["Seed"]: int(row["TeamID"])
     for _, row in s2025.iterrows()
@@ -504,7 +506,7 @@ all_slots = [
 
 all_slots.sort(key=lambda x: (x[0], x[1]))
 
-# Lookup: slot → round key
+# Lookup: slot -> round key
 slot_round_lookup = {
     s[1]: str(s[0])
     for s in all_slots
@@ -816,7 +818,7 @@ MATCHUP_PROB_PATH = BASE / "matchup_probs_2025.xlsx"
 tid_to_name = dict(zip(teams_df["TeamID"], teams_df["TeamName"]))
 seed_info   = {int(r["TeamID"]): r["Seed"] for _, r in s2025.iterrows()}
 
-# Full round → DayNum mapping (split days included)
+# Full round -> DayNum mapping (split days included)
 ROUND_DAYNUM_MAP = {
     "0": [134, 135],        # First Four
     "1": [136, 137],        # R64
@@ -874,8 +876,8 @@ df_matchups = pd.DataFrame(matchup_rows)
 
 try:
     df_matchups.to_excel(MATCHUP_PROB_PATH, index=False)
-    print(f"Saved → {MATCHUP_PROB_PATH}  "
-          f"({len(df_matchups):,} matchups × {len(df_matchups.columns)} cols)")
+    print(f"Saved: {MATCHUP_PROB_PATH}  "
+          f"({len(df_matchups):,} matchups x {len(df_matchups.columns)} cols)")
 except PermissionError:
     fb2 = MATCHUP_PROB_PATH.with_name("matchup_probs_2025_new.xlsx")
     df_matchups.to_excel(fb2, index=False)
@@ -948,7 +950,7 @@ print(f"Champion % sum: {champ_sum:.1f}%  (expected ~100%)")
 # Save
 try:
     df_2025_preds.to_excel(BRACKET_PREDS_PATH, index=False)
-    print(f"Saved → {BRACKET_PREDS_PATH}  "
+    print(f"Saved -> {BRACKET_PREDS_PATH}  "
           f"({len(df_2025_preds)} teams)")
 except PermissionError:
     fb = BRACKET_PREDS_PATH.with_name("2025_bracket_preds_new.xlsx")
@@ -991,7 +993,7 @@ print("=" * 70)
 
 def _build_bracket_26(bracket_file, sheet, f4_region_pairs):
     """Load SEED_MAP and SLOTS dynamically from ProjectedBrackets.xlsx."""
-    # -- name → TeamID lookup --------------------------------------------------
+    # -- name -> TeamID lookup --------------------------------------------------
     sp = pd.read_csv(BASE / "MTeamSpellings.csv")
     spell2tid = dict(zip(sp["TeamNameSpelling"].str.lower().str.strip(),
                          sp["TeamID"]))
@@ -1006,7 +1008,7 @@ def _build_bracket_26(bracket_file, sheet, f4_region_pairs):
 
     region_abbr = {"East": "E", "South": "S", "Midwest": "MW", "West": "W"}
 
-    seed_map   = {}   # "E01" / "S16a" / etc. → TeamID
+    seed_map   = {}   # "E01" / "S16a" / etc. -> TeamID
     ff_seeds   = {}   # {"E": {11}, "S": {16}, "MW": {11, 16}, "W": set()}
     unresolved = []
 
@@ -1585,7 +1587,7 @@ def _conf_matchups_df(seed_map, slots, win_probs):
     """
     Build head-to-head matchup probability DataFrame for one conference.
     One row per team pair; one column pair per (stage, DayNum) in the bracket.
-    win_probs keys: (min_tid, max_tid, daynum) → p(min_tid wins).
+    win_probs keys: (min_tid, max_tid, daynum) -> p(min_tid wins).
     """
     tid2name    = dict(zip(teams_df["TeamID"], teams_df["TeamName"]))
     seed_by_tid = {v: k for k, v in seed_map.items()}
@@ -1701,11 +1703,11 @@ def _run_conf(conf_name, seed_map, slots, rng_seed):
     return df_out, df_stats, df_matchup
 
 
-_conf_results         = {}   # key → advancement pct DataFrame
-_conf_stats_results   = {}   # key → team stats DataFrame
-_conf_matchup_results = {}   # key → matchup probs DataFrame
+_conf_results         = {}   # key -> advancement pct DataFrame
+_conf_stats_results   = {}   # key -> team stats DataFrame
+_conf_matchup_results = {}   # key -> matchup probs DataFrame
 print("Conference tournament helpers loaded.")
-print(f"Outputs → {OUT_CONF} | {OUT_CONF_STATS} | {OUT_CONF_MATCHUP}")
+print(f"Outputs -> {OUT_CONF} | {OUT_CONF_STATS} | {OUT_CONF_MATCHUP}")
 
 # %%
 
@@ -2045,7 +2047,7 @@ _write_conf_excel(OUT_CONF_MATCHUP, _conf_matchup_results, _CONF_SHEET_NAMES)
 # Math:
 #   P[i,j] = P(team i beats team j)   (P[i,i] = 0, P[i,j]+P[j,i] = 1)
 #   M[i,j] = P[i,j] / sum_k P[k,j]   (column-normalised)
-#   π = M @ π  →  dominant eigenvector  (Perron-Frobenius guarantees uniqueness)
+#   π = M @ π  ->  dominant eigenvector  (Perron-Frobenius guarantees uniqueness)
 #
 # Interpretation: team i's score = weighted sum of (prob i beats j) × (j's
 # score), normalised by how hard j is to beat.  Beating a hard-to-beat team
@@ -2139,7 +2141,7 @@ else:
         _P[_ai, _bi] = float(_p)
         _P[_bi, _ai] = 1.0 - float(_p)
 
-    # ── Column-normalise → transition matrix M ─────────────────────────────
+    # ── Column-normalise -> transition matrix M ─────────────────────────────
     # Column j sums to: "total probability mass of beating team j"
     # Dividing gives: P(team i is the one who beats team j | someone does)
     # Beating a hard-to-beat team (small column sum) yields more credit.
@@ -2203,6 +2205,125 @@ else:
 
 # %%
 # ---------------------------------------------------------------------------
+# ALL-D1 MATCHUP PREDICTOR
+# Win probabilities for all C(365,2)=66,430 D1 pairs × 3 locations.
+# Uses identical feature construction + predict pattern as the bracket sim.
+# Output: matchup_predictor_2026.xlsx -> triggers GitHub Actions -> matchupPredictor.ts
+# ---------------------------------------------------------------------------
+print("\n" + "=" * 70)
+print("ALL-D1 MATCHUP PREDICTOR")
+print("=" * 70)
+
+DAYNUM_PREDICTOR = 121       # current regular-season context (~Mar 4 2026)
+OUT_PREDICTOR_26 = BASE / "matchup_predictor_2026.xlsx"
+
+# Load all 365 D1 teams from snapshot (parquet preferred, xlsx fallback)
+_pred_snap_path = BASE / "team_snapshot_2026.parquet"
+if _pred_snap_path.exists():
+    _pred_snap_df = pd.read_parquet(_pred_snap_path)
+else:
+    _pred_snap_df = pd.read_excel(BASE / "team_snapshot_2026.xlsx")
+
+_pred_snap_df = _pred_snap_df.dropna(subset=["TeamID"]).copy()
+_pred_snap_df["TeamID"] = _pred_snap_df["TeamID"].astype(int)
+for _rc in ["POM", "MAS", "MOR", "WLK", "BIH", "NET"]:
+    _pred_snap_df[_rc] = _pred_snap_df[_rc].fillna(400)
+_pred_snap_df = _pred_snap_df.sort_values("TeamID").reset_index(drop=True)
+
+_pred_teams = _pred_snap_df.to_dict("records")
+_N_pred     = len(_pred_teams)
+_pred_pairs = list(itertools.combinations(range(_N_pred), 2))
+
+LOC_H = int(le_loc_fresh.transform(["H"])[0])   # team1 (lower ID) is home
+LOC_A = int(le_loc_fresh.transform(["A"])[0])   # team1 away = team2 home
+
+print(f"Teams: {_N_pred}  |  Pairs: {len(_pred_pairs):,}  |  Rows: {len(_pred_pairs)*3:,}")
+
+_pred_rows = []
+_pred_meta = []
+
+for _pi, _pj in _pred_pairs:
+    f1 = _pred_teams[_pi]
+    f2 = _pred_teams[_pj]
+    _base = dict(
+        team1_elo_last    = f1["elo_last"],
+        team2_elo_last    = f2["elo_last"],
+        elo_diff          = f1["elo_last"]     - f2["elo_last"],
+        team1_elo_trend   = f1["elo_trend"],
+        team2_elo_trend   = f2["elo_trend"],
+        elo_trend_diff    = f1["elo_trend"]    - f2["elo_trend"],
+        rankdiff_POM      = f1["POM"]          - f2["POM"],
+        rankdiff_MAS      = f1["MAS"]          - f2["MAS"],
+        rankdiff_MOR      = f1["MOR"]          - f2["MOR"],
+        rankdiff_WLK      = f1["WLK"]          - f2["WLK"],
+        rankdiff_BIH      = f1["BIH"]          - f2["BIH"],
+        rankdiff_NET      = f1["NET"]          - f2["NET"],
+        team1_avg_off_rtg = f1["avg_off_rtg"],
+        team2_avg_off_rtg = f2["avg_off_rtg"],
+        off_rtg_diff      = f1["avg_off_rtg"]  - f2["avg_off_rtg"],
+        team1_avg_def_rtg = f1["avg_def_rtg"],
+        team2_avg_def_rtg = f2["avg_def_rtg"],
+        def_rtg_diff      = f1["avg_def_rtg"]  - f2["avg_def_rtg"],
+        team1_avg_net_rtg = f1["avg_net_rtg"],
+        team2_avg_net_rtg = f2["avg_net_rtg"],
+        net_rtg_diff      = f1["avg_net_rtg"]  - f2["avg_net_rtg"],
+        team1_avg_oreb_pct= f1["avg_oreb_pct"],
+        team2_avg_oreb_pct= f2["avg_oreb_pct"],
+        oreb_pct_diff     = f1["avg_oreb_pct"] - f2["avg_oreb_pct"],
+        team1_avg_tov_pct = f1["avg_tov_pct"],
+        team2_avg_tov_pct = f2["avg_tov_pct"],
+        tov_pct_diff      = f1["avg_tov_pct"]  - f2["avg_tov_pct"],
+        team1_last5_Margin= f1["last5_Margin"],
+        team2_last5_Margin= f2["last5_Margin"],
+        last5_Margin_diff = f1["last5_Margin"] - f2["last5_Margin"],
+        team1_elo_sos     = f1["elo_sos"],
+        team2_elo_sos     = f2["elo_sos"],
+        elo_sos_diff      = f1["elo_sos"]      - f2["elo_sos"],
+    )
+    for _loc in [LOC_NEUTRAL, LOC_H, LOC_A]:
+        _row = dict(_base)
+        _row["location"] = _loc
+        _row["DayNum"]   = DAYNUM_PREDICTOR
+        _pred_rows.append(_row)
+    _pred_meta.append((
+        int(f1["TeamID"]), f1["TeamName"], f1["Conf"],
+        int(f2["TeamID"]), f2["TeamName"], f2["Conf"],
+    ))
+
+X_pred = pd.DataFrame(_pred_rows)[FEATURE_COLS]
+
+if n_trees:
+    _p_raw_pred = final_model.predict_proba(X_pred, num_iteration=n_trees)[:, 1]
+else:
+    _p_raw_pred = final_model.predict_proba(X_pred)[:, 1]
+
+_p_cal_pred = iso.predict(_p_raw_pred).clip(1e-7, 1 - 1e-7)
+_p_mat_pred = _p_cal_pred.reshape(len(_pred_pairs), 3)
+
+_pred_out = pd.DataFrame(
+    _pred_meta,
+    columns=["TeamID_A", "TeamName_A", "Conf_A", "TeamID_B", "TeamName_B", "Conf_B"],
+)
+_pred_out["prob_neutral"] = np.round(_p_mat_pred[:, 0], 6)
+_pred_out["prob_A_home"]  = np.round(_p_mat_pred[:, 1], 6)
+_pred_out["prob_B_home"]  = np.round(_p_mat_pred[:, 2], 6)
+
+print(f"Predictions done: {len(_p_cal_pred):,} values")
+print(f"  min={_p_cal_pred.min():.4f}  max={_p_cal_pred.max():.4f}  mean={_p_cal_pred.mean():.4f}")
+print(f"Writing {OUT_PREDICTOR_26.name}  ({len(_pred_out):,} rows) ...")
+
+try:
+    _pred_out.to_excel(OUT_PREDICTOR_26, index=False)
+    print(f"  Written: {OUT_PREDICTOR_26.stat().st_size / 1024 / 1024:.1f} MB")
+except PermissionError:
+    _fb = OUT_PREDICTOR_26.with_name("matchup_predictor_2026_new.xlsx")
+    _pred_out.to_excel(_fb, index=False)
+    print(f"  Saved (fallback — close Excel): {_fb}")
+
+print(_pred_out.head(3).to_string(index=False))
+
+# %%
+# ---------------------------------------------------------------------------
 # AUTO-PUSH TO GITHUB
 # Stages and pushes all output files produced by this run.
 # Silently skips if git is unavailable or there are no changes.
@@ -2216,6 +2337,7 @@ def _git(*args, cwd=str(BASE)):
 _push_files = [
     "2026_bracket_preds.xlsx",
     "matchup_probs_2026.xlsx",
+    "matchup_predictor_2026.xlsx",
     "team_stats_2026.xlsx",
     "conf_tourney_preds_2026.xlsx",
     "conf_team_stats_2026.xlsx",
@@ -2224,7 +2346,7 @@ _push_files = [
 ]
 
 print("\n" + "=" * 60)
-print("AUTO-PUSH: staging output files → GitHub")
+print("AUTO-PUSH: staging output files -> GitHub")
 print("=" * 60)
 
 try:
