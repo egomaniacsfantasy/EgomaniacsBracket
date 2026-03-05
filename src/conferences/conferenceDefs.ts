@@ -119,13 +119,14 @@ export const CONFERENCE_DEFS: ConfDefWithProbMap[] = [
     shortName: "WCC",
     teamCount: 12,
     rounds: [
-      { id: "R1", label: "First Round", gameCount: 4 },
-      { id: "QF", label: "Quarterfinals", gameCount: 4 },
+      { id: "R1", label: "First Round", gameCount: 2 },
+      { id: "R2", label: "Second Round", gameCount: 2 },
+      { id: "R3", label: "Third Round", gameCount: 2 },
+      { id: "QF", label: "Quarterfinals", gameCount: 2 },
       { id: "SF", label: "Semifinals", gameCount: 2 },
       { id: "F", label: "Final", gameCount: 1 },
     ],
-    // Data has R1,R2,R3,QF,SF,Final but bracket only uses 4 rounds
-    probRoundMap: { R1: "R1", QF: "QF", SF: "SF", F: "Final" },
+    probRoundMap: { R1: "R1", R2: "R2", R3: "R3", QF: "QF", SF: "SF", F: "Final" },
   },
   {
     id: "mvc",

@@ -3,142 +3,207 @@ import type { ConfDefWithProbMap } from "./conferenceDefs";
 import type { ConfTeam } from "./data/confTeams";
 
 /**
- * Builds an array of ConfGameTemplate for a conference tournament bracket.
+ * Explicit per-conference bracket recipes.
  *
- * Algorithm:
- * 1. Work through rounds from first to last
- * 2. For the first round, pair bottom seeds (highest vs lowest)
- * 3. For subsequent rounds, pair bye teams with previous round winners
- *    using bracket-position ordering (top seed gets weakest path)
- * 4. Wire sourceGameIds to connect rounds
+ * Each recipe is an ordered list of rounds (first → final). Each round
+ * specifies its matchups as pairs of SlotDefs:
+ *   s(n)      — seed n gets a bye to this round (initialTeamId)
+ *   g(r, s)   — winner of round-index r, slot s feeds this side (sourceGameId)
+ *
+ * Slot ordering within each round matters for:
+ *   1. Visual bracket layout (slot 0 = top)
+ *   2. Correct SF pairings: slots {0,1} form one semi, {2,3} the other
+ *
+ * Standard QF pattern used by all conferences except WCC and MAC:
+ *   [1 vs path-for-8, 4 vs path-for-5, 2 vs path-for-7, 3 vs path-for-6]
+ *   → SF-0: 1/4 bracket half; SF-1: 2/3 bracket half
  */
+
+type SlotDef =
+  | { kind: "seed"; seed: number }
+  | { kind: "game"; roundIdx: number; slotIdx: number };
+
+type RoundRecipe = { id: string; games: [SlotDef, SlotDef][] };
+
+const s = (seed: number): SlotDef => ({ kind: "seed", seed });
+const g = (roundIdx: number, slotIdx: number): SlotDef => ({ kind: "game", roundIdx, slotIdx });
+
+const BRACKET_RECIPES: Record<string, RoundRecipe[]> = {
+  // ── SEC (16 teams) ────────────────────────────────────────────────────────
+  // R1:  9v16, 12v13, 10v15, 11v14
+  // R2:  8v(9/16), 5v(12/13), 7v(10/15), 6v(11/14)
+  // QF:  1v(8/...), 4v(5/...), 2v(7/...), 3v(6/...)
+  sec: [
+    { id: "R1", games: [[s(9), s(16)], [s(12), s(13)], [s(10), s(15)], [s(11), s(14)]] },
+    { id: "R2", games: [[s(8), g(0, 0)], [s(5), g(0, 1)], [s(7), g(0, 2)], [s(6), g(0, 3)]] },
+    { id: "QF", games: [[s(1), g(1, 0)], [s(4), g(1, 1)], [s(2), g(1, 2)], [s(3), g(1, 3)]] },
+    { id: "SF", games: [[g(2, 0), g(2, 1)], [g(2, 2), g(2, 3)]] },
+    { id: "F",  games: [[g(3, 0), g(3, 1)]] },
+  ],
+
+  // ── Big 12 (16 teams) ─────────────────────────────────────────────────────
+  // Same structure as SEC
+  big12: [
+    { id: "R1", games: [[s(9), s(16)], [s(12), s(13)], [s(10), s(15)], [s(11), s(14)]] },
+    { id: "R2", games: [[s(8), g(0, 0)], [s(5), g(0, 1)], [s(7), g(0, 2)], [s(6), g(0, 3)]] },
+    { id: "QF", games: [[s(1), g(1, 0)], [s(4), g(1, 1)], [s(2), g(1, 2)], [s(3), g(1, 3)]] },
+    { id: "SF", games: [[g(2, 0), g(2, 1)], [g(2, 2), g(2, 3)]] },
+    { id: "F",  games: [[g(3, 0), g(3, 1)]] },
+  ],
+
+  // ── Big Ten (18 teams) ────────────────────────────────────────────────────
+  // R1:  16v17, 15v18
+  // R2:  9v(16/17), 12v13, 10v(15/18), 11v14   ← 12v13 and 11v14 are bye-vs-bye
+  // R3:  8v(9/...), 5v(12/13), 7v(10/...), 6v(11/14)
+  // QF:  1v(8/...), 4v(5/...), 2v(7/...), 3v(6/...)
+  bigTen: [
+    { id: "R1", games: [[s(16), s(17)], [s(15), s(18)]] },
+    { id: "R2", games: [[s(9), g(0, 0)], [s(12), s(13)], [s(10), g(0, 1)], [s(11), s(14)]] },
+    { id: "R3", games: [[s(8), g(1, 0)], [s(5), g(1, 1)], [s(7), g(1, 2)], [s(6), g(1, 3)]] },
+    { id: "QF", games: [[s(1), g(2, 0)], [s(4), g(2, 1)], [s(2), g(2, 2)], [s(3), g(2, 3)]] },
+    { id: "SF", games: [[g(3, 0), g(3, 1)], [g(3, 2), g(3, 3)]] },
+    { id: "F",  games: [[g(4, 0), g(4, 1)]] },
+  ],
+
+  // ── ACC (15 teams) ────────────────────────────────────────────────────────
+  // R1:  10v15, 12v13, 11v14
+  // R2:  8v9 (bye-bye), 7v(10/15), 5v(12/13), 6v(11/14)
+  // QF:  1v(8/9), 4v(5/...), 2v(7/...), 3v(6/...)
+  acc: [
+    { id: "R1", games: [[s(10), s(15)], [s(12), s(13)], [s(11), s(14)]] },
+    { id: "R2", games: [[s(8), s(9)], [s(7), g(0, 0)], [s(5), g(0, 1)], [s(6), g(0, 2)]] },
+    { id: "QF", games: [[s(1), g(1, 0)], [s(4), g(1, 2)], [s(2), g(1, 1)], [s(3), g(1, 3)]] },
+    { id: "SF", games: [[g(2, 0), g(2, 1)], [g(2, 2), g(2, 3)]] },
+    { id: "F",  games: [[g(3, 0), g(3, 1)]] },
+  ],
+
+  // ── Atlantic 10 (14 teams) ────────────────────────────────────────────────
+  // R1:  11v14, 12v13
+  // R2:  8v9 (bye-bye), 7v10 (bye-bye), 5v(12/13), 6v(11/14)
+  // QF:  1v(8/9), 4v(5/...), 2v(7/10), 3v(6/...)
+  a10: [
+    { id: "R1", games: [[s(11), s(14)], [s(12), s(13)]] },
+    { id: "R2", games: [[s(8), s(9)], [s(7), s(10)], [s(5), g(0, 1)], [s(6), g(0, 0)]] },
+    { id: "QF", games: [[s(1), g(1, 0)], [s(4), g(1, 2)], [s(2), g(1, 1)], [s(3), g(1, 3)]] },
+    { id: "SF", games: [[g(2, 0), g(2, 1)], [g(2, 2), g(2, 3)]] },
+    { id: "F",  games: [[g(3, 0), g(3, 1)]] },
+  ],
+
+  // ── Big East (11 teams) ───────────────────────────────────────────────────
+  // R1:  8v9, 7v10, 6v11
+  // QF:  1v(8/9), 4v5 (bye-bye), 2v(7/10), 3v(6/11)
+  bigEast: [
+    { id: "R1", games: [[s(8), s(9)], [s(7), s(10)], [s(6), s(11)]] },
+    { id: "QF", games: [[s(1), g(0, 0)], [s(4), s(5)], [s(2), g(0, 1)], [s(3), g(0, 2)]] },
+    { id: "SF", games: [[g(1, 0), g(1, 1)], [g(1, 2), g(1, 3)]] },
+    { id: "F",  games: [[g(2, 0), g(2, 1)]] },
+  ],
+
+  // ── Missouri Valley (11 teams) ────────────────────────────────────────────
+  // Same structure as Big East
+  mvc: [
+    { id: "R1", games: [[s(8), s(9)], [s(7), s(10)], [s(6), s(11)]] },
+    { id: "QF", games: [[s(1), g(0, 0)], [s(4), s(5)], [s(2), g(0, 1)], [s(3), g(0, 2)]] },
+    { id: "SF", games: [[g(1, 0), g(1, 1)], [g(1, 2), g(1, 3)]] },
+    { id: "F",  games: [[g(2, 0), g(2, 1)]] },
+  ],
+
+  // ── Mountain West (12 teams) ──────────────────────────────────────────────
+  // R1:  8v9, 5v12, 7v10, 6v11
+  // QF:  1v(8/9), 4v(5/12), 2v(7/10), 3v(6/11)
+  mwc: [
+    { id: "R1", games: [[s(8), s(9)], [s(5), s(12)], [s(7), s(10)], [s(6), s(11)]] },
+    { id: "QF", games: [[s(1), g(0, 0)], [s(4), g(0, 1)], [s(2), g(0, 2)], [s(3), g(0, 3)]] },
+    { id: "SF", games: [[g(1, 0), g(1, 1)], [g(1, 2), g(1, 3)]] },
+    { id: "F",  games: [[g(2, 0), g(2, 1)]] },
+  ],
+
+  // ── WCC (12 teams, 6 rounds) ──────────────────────────────────────────────
+  // Unique format: only 2 games per round; seeds 1 and 2 don't enter until SF.
+  // R1:  9v12, 10v11
+  // R2:  8v(9/12), 7v(10/11)
+  // R3:  5v(8/...), 6v(7/...)
+  // QF:  4v(5/...), 3v(6/...)
+  // SF:  1v(4/...), 2v(3/...)
+  wcc: [
+    { id: "R1", games: [[s(9), s(12)], [s(10), s(11)]] },
+    { id: "R2", games: [[s(8), g(0, 0)], [s(7), g(0, 1)]] },
+    { id: "R3", games: [[s(5), g(1, 0)], [s(6), g(1, 1)]] },
+    { id: "QF", games: [[s(4), g(2, 0)], [s(3), g(2, 1)]] },
+    { id: "SF", games: [[s(1), g(3, 0)], [s(2), g(3, 1)]] },
+    { id: "F",  games: [[g(4, 0), g(4, 1)]] },
+  ],
+
+  // ── MAC (8 teams) ─────────────────────────────────────────────────────────
+  // All 8 teams enter QF directly (no first round)
+  // QF:  1v8, 4v5, 2v7, 3v6
+  mac: [
+    { id: "QF", games: [[s(1), s(8)], [s(4), s(5)], [s(2), s(7)], [s(3), s(6)]] },
+    { id: "SF", games: [[g(0, 0), g(0, 1)], [g(0, 2), g(0, 3)]] },
+    { id: "F",  games: [[g(1, 0), g(1, 1)]] },
+  ],
+};
+
 export function buildConferenceBracket(
   def: ConfDefWithProbMap,
   teams: ConfTeam[]
 ): ConfGameTemplate[] {
-  const allGames: ConfGameTemplate[] = [];
-  const { id: confId, rounds } = def;
-
-  // Sort teams by seed ascending
-  const sortedTeams = [...teams].sort((a, b) => a.seed - b.seed);
-  const totalTeams = sortedTeams.length;
-
-  // Track which teams have byes to which round
-  // First round participants are the bottom seeds
-  const firstRoundGames = rounds[0].gameCount;
-  const firstRoundTeams = firstRoundGames * 2;
-  const byeTeamCount = totalTeams - firstRoundTeams;
-
-  // Seeds 1..byeTeamCount get byes past the first round
-  const byeTeams = sortedTeams.slice(0, byeTeamCount);
-  const firstRoundParticipants = sortedTeams.slice(byeTeamCount);
-
-  // Build first round: pair highest seed vs lowest seed from participants
-  const r0Games: ConfGameTemplate[] = [];
-  for (let i = 0; i < firstRoundGames; i++) {
-    const topSeed = firstRoundParticipants[i]; // lower seed number (better)
-    const bottomSeed = firstRoundParticipants[firstRoundParticipants.length - 1 - i]; // higher seed number (worse)
-    const game: ConfGameTemplate = {
-      id: `${confId}-${rounds[0].id}-${i}`,
-      confId,
-      round: rounds[0].id,
-      slot: i,
-      sourceGameIds: null,
-      initialTeamIds: [topSeed.id, bottomSeed.id],
-    };
-    r0Games.push(game);
+  const recipe = BRACKET_RECIPES[def.id];
+  if (!recipe) {
+    console.warn(`No bracket recipe for conference: ${def.id}`);
+    return [];
   }
-  allGames.push(...r0Games);
 
-  // For subsequent rounds, we need to figure out entrants:
-  // - Winners from previous round's games
-  // - Bye teams entering this round
-  //
-  // We assign bye teams to enter at the earliest round where the bracket
-  // needs them, filling from the top seeds first.
-  //
-  // Structure: each subsequent round has `gameCount` games.
-  // Entrants = 2 * gameCount. From previous round we get `prevGameCount` winners.
-  // Remaining slots filled by bye teams.
+  // Build seed → teamId lookup
+  const seedToTeamId = new Map<number, number>();
+  for (const t of teams) {
+    seedToTeamId.set(t.seed, t.id);
+  }
 
-  let prevGames = r0Games;
-  let remainingByeTeams = [...byeTeams]; // sorted by seed ascending (best first)
+  const allGames: ConfGameTemplate[] = [];
+  // gameIdByRound[roundIdx][slotIdx] → game ID string
+  const gameIdByRound: string[][] = [];
 
-  for (let roundIdx = 1; roundIdx < rounds.length; roundIdx++) {
-    const roundDef = rounds[roundIdx];
-    const roundGames: ConfGameTemplate[] = [];
-    const totalSlots = roundDef.gameCount * 2;
-    const winnersFromPrev = prevGames.length;
-    const byesThisRound = totalSlots - winnersFromPrev;
-    const byeEntrants = remainingByeTeams.splice(0, byesThisRound);
+  for (let roundIdx = 0; roundIdx < recipe.length; roundIdx++) {
+    const roundRecipe = recipe[roundIdx];
+    const roundGameIds: string[] = [];
 
-    // Build entrant list: alternate bye teams and winners to create
-    // bracket-style matchups (top bye seed vs weakest winner path)
-    //
-    // Standard bracket ordering:
-    // Game 0: seed 1 (bye) vs winner of game with lowest seeds
-    // Game N-1: seed 2 (bye) vs winner of game with next lowest
-    //
-    // We pair bye teams (sorted best to worst) with prev winners (sorted worst to best)
-    // to create standard bracket seeding.
+    for (let slotIdx = 0; slotIdx < roundRecipe.games.length; slotIdx++) {
+      const [slotA, slotB] = roundRecipe.games[slotIdx];
+      const gameId = `${def.id}-${roundRecipe.id}-${slotIdx}`;
 
-    // Bye teams sorted by seed ascending (1, 2, 3, 4)
-    // Prev game winners: slot 0 had the matchup of best-in-group vs worst-in-group
-
-    for (let i = 0; i < roundDef.gameCount; i++) {
-      const game: ConfGameTemplate = {
-        id: `${confId}-${roundDef.id}-${i}`,
-        confId,
-        round: roundDef.id,
-        slot: i,
-        sourceGameIds: null,
-        initialTeamIds: null,
-      };
-
-      if (byesThisRound > 0 && winnersFromPrev > 0) {
-        // Mixed: bye teams + winners from previous round
-        // Pair top bye seed with bottom bracket winner (weakest path)
-        if (i < byeEntrants.length) {
-          // This game has a bye team vs a previous round winner
-          const byeTeam = byeEntrants[i];
-          // Pair with the winner from the opposite end of the previous round
-          const prevGameIdx = prevGames.length - 1 - i;
-          if (prevGameIdx >= 0 && prevGameIdx < prevGames.length) {
-            game.initialTeamIds = [byeTeam.id, null];
-            game.sourceGameIds = [null, prevGames[prevGameIdx].id];
-          } else {
-            game.initialTeamIds = [byeTeam.id, null];
-          }
-        } else {
-          // Both slots are winners from previous round
-          const winnerIdx1 = (i - byeEntrants.length) * 2;
-          const winnerIdx2 = winnerIdx1 + 1;
-          if (winnerIdx1 < prevGames.length && winnerIdx2 < prevGames.length) {
-            game.sourceGameIds = [prevGames[winnerIdx1].id, prevGames[winnerIdx2].id];
-          }
-        }
-      } else if (byesThisRound === 0) {
-        // All entrants are winners from previous round
-        // Pair winners: first vs last, second vs second-to-last, etc.
-        const idx1 = i;
-        const idx2 = prevGames.length - 1 - i;
-        if (idx1 < prevGames.length && idx2 < prevGames.length && idx1 !== idx2) {
-          game.sourceGameIds = [prevGames[idx1].id, prevGames[idx2].id];
-        } else if (idx1 < prevGames.length) {
-          game.sourceGameIds = [prevGames[idx1].id, null];
-        }
+      // Resolve slot A
+      let teamAId: number | null = null;
+      let sourceGameIdA: string | null = null;
+      if (slotA.kind === "seed") {
+        teamAId = seedToTeamId.get(slotA.seed) ?? null;
       } else {
-        // All entrants are bye teams (shouldn't happen in practice)
-        if (i * 2 < byeEntrants.length && i * 2 + 1 < byeEntrants.length) {
-          game.initialTeamIds = [byeEntrants[i * 2].id, byeEntrants[i * 2 + 1].id];
-        }
+        sourceGameIdA = gameIdByRound[slotA.roundIdx]?.[slotA.slotIdx] ?? null;
       }
 
-      roundGames.push(game);
+      // Resolve slot B
+      let teamBId: number | null = null;
+      let sourceGameIdB: string | null = null;
+      if (slotB.kind === "seed") {
+        teamBId = seedToTeamId.get(slotB.seed) ?? null;
+      } else {
+        sourceGameIdB = gameIdByRound[slotB.roundIdx]?.[slotB.slotIdx] ?? null;
+      }
+
+      const game: ConfGameTemplate = {
+        id: gameId,
+        confId: def.id,
+        round: roundRecipe.id,
+        slot: slotIdx,
+        initialTeamIds: teamAId !== null || teamBId !== null ? [teamAId, teamBId] : null,
+        sourceGameIds: sourceGameIdA !== null || sourceGameIdB !== null ? [sourceGameIdA, sourceGameIdB] : null,
+      };
+
+      allGames.push(game);
+      roundGameIds.push(gameId);
     }
 
-    allGames.push(...roundGames);
-    prevGames = roundGames;
+    gameIdByRound.push(roundGameIds);
   }
 
   return allGames;
