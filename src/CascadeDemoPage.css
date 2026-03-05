@@ -1,6 +1,6 @@
 /* ═══════════════════════════════════════════
-   CASCADE DEMO PAGE v3 — /demo
-   Mobile-first, real data, ~20s cascade
+   CASCADE DEMO PAGE v4 — /demo
+   Spoiler hook + real data + ~20s cascade
    ═══════════════════════════════════════════ */
 
 @import url("https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Space+Grotesk:wght@400;500;700&display=swap");
@@ -27,10 +27,6 @@
   min-height: 100vh;
   min-height: 100dvh;
   background: #0e0c09;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  padding: 28px 16px 80px;
   width: 100%;
   position: relative;
   overflow-x: hidden;
@@ -41,6 +37,10 @@
   text-align: center;
   margin-bottom: 32px;
   width: 100%;
+}
+
+.demo-header--compact {
+  margin-bottom: 20px;
 }
 
 .demo-eyebrow {
@@ -60,7 +60,297 @@
   letter-spacing: 0.03em;
 }
 
-/* ═══ INSTRUCTION ═══ */
+.demo-title--compact {
+  font-size: 14px;
+}
+
+/* ═══════════════════════════════════════════
+   PHASE 0: HOOK SCREEN (spoiler aftermath)
+   ═══════════════════════════════════════════ */
+
+.demo-hook {
+  width: 100%;
+  min-height: 100vh;
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 28px 16px 40px;
+  background: #0e0c09;
+  transition: opacity 300ms ease;
+}
+
+.demo-hook--hidden {
+  opacity: 0;
+  pointer-events: none;
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+}
+
+/* Headline card */
+.demo-hook-headline-card {
+  width: 100%;
+  text-align: center;
+  padding: 20px 16px;
+  margin-bottom: 24px;
+  background: rgba(184, 125, 24, 0.04);
+  border: 1px solid rgba(184, 125, 24, 0.12);
+  border-radius: var(--radius-md);
+}
+
+.demo-hook-headline {
+  font-family: var(--font-serif);
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--text-amber);
+  margin: 0;
+  text-shadow: 0 0 24px rgba(184, 125, 24, 0.20);
+  animation: hookGlow 2.5s ease-in-out infinite;
+}
+
+@keyframes hookGlow {
+  0%, 100% { text-shadow: 0 0 20px rgba(184, 125, 24, 0.12); }
+  50% { text-shadow: 0 0 32px rgba(184, 125, 24, 0.30); }
+}
+
+/* Section label */
+.demo-hook-section {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.16em;
+  color: var(--text-tertiary);
+  text-transform: uppercase;
+  margin-bottom: 12px;
+  text-align: center;
+}
+
+/* Championship odds rows */
+.demo-hook-team-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 11px 16px;
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  margin-bottom: 4px;
+  width: 100%;
+  position: relative;
+  overflow: hidden;
+}
+
+.demo-hook-rank {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-tertiary);
+  width: 18px;
+  text-align: right;
+  flex-shrink: 0;
+}
+
+.demo-hook-logo {
+  width: 28px;
+  height: 28px;
+  object-fit: contain;
+  flex-shrink: 0;
+}
+
+.demo-hook-name {
+  font-family: var(--font-serif);
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--text-primary);
+  flex: 1;
+}
+
+.demo-hook-odds {
+  font-family: var(--font-mono);
+  font-size: 17px;
+  font-weight: 700;
+  color: var(--text-amber);
+  flex-shrink: 0;
+  min-width: 52px;
+  text-align: right;
+  position: relative;
+  overflow: hidden;
+}
+
+/* Shimmer effect on odds */
+.demo-hook-odds::after {
+  content: '';
+  position: absolute;
+  top: 0; left: -100%;
+  width: 60%; height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(184, 125, 24, 0.12), transparent);
+  animation: hookShimmer 3s ease-in-out infinite;
+}
+
+@keyframes hookShimmer {
+  0% { left: -100%; }
+  50%, 100% { left: 120%; }
+}
+
+.demo-hook-delta {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--green-win);
+  flex-shrink: 0;
+  min-width: 52px;
+  text-align: right;
+  animation: hookDeltaPulse 2s ease-in-out infinite;
+}
+
+@keyframes hookDeltaPulse {
+  0%, 100% { opacity: 0.65; }
+  50% { opacity: 1; }
+}
+
+/* Florida eliminated card */
+.demo-hook-eliminated {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 12px 16px;
+  background: rgba(240, 109, 109, 0.05);
+  border: 1px solid rgba(240, 109, 109, 0.12);
+  border-left: 4px solid var(--red-loss);
+  border-radius: var(--radius-sm);
+  margin-top: 12px;
+  margin-bottom: 20px;
+}
+
+.demo-hook-elim-team {
+  font-family: var(--font-serif);
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--red-loss);
+  text-decoration: line-through;
+  text-decoration-color: rgba(240, 109, 109, 0.5);
+}
+
+.demo-hook-elim-by {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--text-tertiary);
+}
+
+/* Bottom text */
+.demo-hook-bottom-text {
+  text-align: center;
+  margin-bottom: 20px;
+}
+
+.demo-hook-bottom-line1 {
+  font-family: var(--font-serif);
+  font-size: 15px;
+  color: var(--text-primary);
+  margin: 0 0 4px;
+}
+
+.demo-hook-bottom-line2 {
+  font-family: var(--font-serif);
+  font-size: 15px;
+  font-style: italic;
+  color: var(--text-amber);
+  margin: 0;
+}
+
+/* CTA button */
+.demo-hook-cta {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 14px 28px;
+  background: transparent;
+  border: 1.5px solid rgba(184, 125, 24, 0.30);
+  border-radius: 100px;
+  font-family: var(--font-mono);
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-amber);
+  cursor: pointer;
+  transition: background 160ms, border-color 160ms;
+  letter-spacing: 0.02em;
+}
+
+.demo-hook-cta:active {
+  background: rgba(184, 125, 24, 0.10);
+  border-color: rgba(184, 125, 24, 0.50);
+}
+
+/* ═══ Crossfade between phases ═══ */
+.demo-phase {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 28px 16px 80px;
+  transition: opacity 300ms ease;
+}
+
+.demo-phase--hidden {
+  opacity: 0;
+  pointer-events: none;
+  height: 0;
+  overflow: hidden;
+  padding: 0;
+}
+
+.demo-phase--visible {
+  opacity: 1;
+}
+
+/* ═══════════════════════════════════════════
+   CASCADE TEXT OVERLAYS
+   ═══════════════════════════════════════════ */
+
+.demo-overlay-text {
+  text-align: center;
+  width: 100%;
+  margin-bottom: 12px;
+  animation: demoTextFade 400ms ease-out;
+}
+
+@keyframes demoTextFade {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.demo-overlay-text-main {
+  font-family: var(--font-serif);
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.demo-overlay-text--red {
+  font-size: 22px;
+  color: var(--red-loss);
+}
+
+.demo-overlay-text--tertiary {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--text-tertiary);
+}
+
+.demo-overlay-text-sub {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--text-tertiary);
+  margin-top: 2px;
+}
+
+/* ═══════════════════════════════════════════
+   INSTRUCTION (pick screen)
+   ═══════════════════════════════════════════ */
+
 .demo-instruction {
   text-align: center;
   margin-bottom: 24px;
@@ -70,7 +360,7 @@
 
 .demo-instruction-main {
   font-family: var(--font-serif);
-  font-size: 22px;
+  font-size: 20px;
   font-weight: 700;
   color: var(--text-primary);
   margin: 0 0 6px;
@@ -78,40 +368,15 @@
 
 .demo-instruction-sub {
   font-family: var(--font-mono);
-  font-size: 13px;
-  color: var(--text-tertiary);
-  margin: 0;
-}
-
-/* ═══ POST-PICK HEADLINE ═══ */
-.demo-eliminated {
-  text-align: center;
-  margin-bottom: 20px;
-  width: 100%;
-  animation: demoFadeUp 400ms cubic-bezier(0.16, 1, 0.3, 1);
-}
-
-.demo-eliminated-main {
-  font-family: var(--font-serif);
-  font-size: 24px;
-  font-weight: 700;
-  color: var(--red-loss);
-  margin: 0 0 4px;
-}
-
-.demo-eliminated-sub {
-  font-family: var(--font-mono);
   font-size: 12px;
   color: var(--text-tertiary);
   margin: 0;
 }
 
-@keyframes demoFadeUp {
-  from { opacity: 0; transform: translateY(10px); }
-  to { opacity: 1; transform: translateY(0); }
-}
+/* ═══════════════════════════════════════════
+   HERO MATCHUP (Florida vs Merrimack)
+   ═══════════════════════════════════════════ */
 
-/* ═══ HERO MATCHUP (Florida vs Merrimack) ═══ */
 .demo-hero-matchup {
   width: 100%;
   background: rgba(255, 255, 255, 0.025);
@@ -228,34 +493,10 @@
   100% { background: transparent; }
 }
 
-/* ═══ REGION LABEL ═══ */
-.demo-region-label {
-  font-family: var(--font-mono);
-  font-size: 10px;
-  letter-spacing: 0.14em;
-  color: var(--text-tertiary);
-  text-transform: uppercase;
-  text-align: center;
-  margin-bottom: 16px;
-}
+/* ═══════════════════════════════════════════
+   ROUND CARDS (R32, S16, E8)
+   ═══════════════════════════════════════════ */
 
-/* ═══ GIVEAWAY TEASER PILL ═══ */
-.demo-teaser {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 6px 16px;
-  background: rgba(184, 125, 24, 0.06);
-  border: 1px solid rgba(184, 125, 24, 0.18);
-  border-radius: 100px;
-  margin: 0 auto 24px;
-  font-family: var(--font-mono);
-  font-size: 10px;
-  color: var(--text-amber);
-  letter-spacing: 0.06em;
-}
-
-/* ═══ ROUND CARDS (R32, S16, E8) ═══ */
 .demo-round-card {
   width: 100%;
   margin-bottom: 16px;
@@ -267,6 +508,11 @@
 
 @keyframes demoCardIn {
   from { opacity: 0; transform: translateY(30px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes demoFadeUp {
+  from { opacity: 0; transform: translateY(10px); }
   to { opacity: 1; transform: translateY(0); }
 }
 
@@ -500,20 +746,6 @@
 .demo-cta-emoji {
   font-size: 28px;
   margin-bottom: 12px;
-}
-
-.demo-cta-badge {
-  display: inline-block;
-  font-family: var(--font-mono);
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0.12em;
-  color: #0e0c09;
-  background: var(--text-amber);
-  border-radius: 100px;
-  padding: 5px 16px;
-  margin-bottom: 16px;
-  text-transform: uppercase;
 }
 
 .demo-cta-headline {

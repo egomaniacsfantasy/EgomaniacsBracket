@@ -41,6 +41,14 @@ function fmtOdds(prob: number): string {
   return formatAmerican(toAmericanOdds(prob));
 }
 
+/** Format delta between two American odds as "+110" style string */
+function fmtDelta(oldAmOdds: number, newAmOdds: number): string {
+  // Delta = how much the American odds shortened (positive = improved)
+  const diff = oldAmOdds - newAmOdds;
+  if (diff <= 0) return "";
+  return `+${Math.abs(Math.round(diff))}`;
+}
+
 function buildRoundTeams(
   before: FuturesRow[],
   after: FuturesRow[],
@@ -68,7 +76,6 @@ function buildRoundTeams(
     });
   }
   result.sort((a, b) => b.oldProb - a.oldProb);
-  // Keep Florida in sorted position
   const florida = result.find((t) => t.isFlorida);
   const others = result.filter((t) => !t.isFlorida).slice(0, maxTeams - (florida ? 1 : 0));
   if (florida) {
@@ -80,44 +87,46 @@ function buildRoundTeams(
 }
 
 /* ═══════════════════════════════════════════
-   PHASES (v3 timing — ~20s cascade):
-   0  = pre-pick
-   1  = picked (Florida X, Merrimack check)
-   2  = R32 card, old odds, Florida present
-   3  = R32 Florida fading
-   4  = R32 odds repricing
-   5  = S16 card, old odds, Florida present
-   6  = S16 Florida fading
-   7  = S16 odds repricing
-   8  = E8 card, old odds, Florida present
-   9  = E8 Florida fading
-   10 = E8 odds repricing
-   11 = Championship card
-   12 = CTA + reset
+   PHASES (v4):
+   "hook"    = spoiler hook (aftermath screen)
+   "pick"    = rewind to pick screen
+   0         = picked (Florida X, Merrimack check)
+   1..12     = cascade phases (same as v3)
    ═══════════════════════════════════════════ */
 
 export function CascadeDemoPage() {
+  const [screen, setScreen] = useState<"hook" | "pick" | "cascade">("hook");
   const [phase, setPhase] = useState(0);
+  const [overlayText, setOverlayText] = useState<{ main: string; sub?: string; style?: string } | null>(null);
   const [displayOdds, setDisplayOdds] = useState<Record<string, string>>({});
   const roundRefs = useRef<Record<string, HTMLDivElement | null>>({});
+  const cascadeStarted = useRef(false);
 
   /* ── simulations ── */
   const { beforeSim, afterSim } = useMemo(() => {
     const b = runSimulation({}, SIM_RUNS);
     const a = runSimulation({ [UPSET_GAME_ID]: MERRIMACK_ID }, SIM_RUNS);
 
-    // Validation: every South team's advancement should improve when #2 seed eliminated
+    // Validation
     const southTeams = teams.filter((t) => t.region === "South" && t.id !== FLORIDA_ID && t.id !== "South-16b");
+    let dataValid = true;
     for (const t of southTeams) {
-      const beforeChamp = getProb(b.futures, t.id, "champProb");
-      const afterChamp = getProb(a.futures, t.id, "champProb");
-      if (afterChamp < beforeChamp - 0.01) {
-        console.warn(
-          `[DemoCascade] WARNING: ${t.name} championship odds got WORSE after Florida eliminated: ` +
-          `${(beforeChamp * 100).toFixed(2)}% -> ${(afterChamp * 100).toFixed(2)}%. ` +
-          `This may indicate Monte Carlo variance; increase SIM_RUNS.`
-        );
+      const beforeR32 = getProb(b.futures, t.id, "sweet16Prob");
+      const afterR32 = getProb(a.futures, t.id, "sweet16Prob");
+      if (afterR32 < beforeR32 - 0.01) {
+        console.error(`DATA BUG: ${t.name}'s R32 odds got WORSE after Florida elimination.`);
+        console.error(`  Pre: ${beforeR32}, Post: ${afterR32}`);
+        dataValid = false;
       }
+    }
+    // Verify Florida eliminated
+    const floridaPostR32 = getProb(a.futures, FLORIDA_ID, "sweet16Prob");
+    if (floridaPostR32 > 0) {
+      console.error("DATA BUG: Florida still has R32 probability after being eliminated in R64.");
+      dataValid = false;
+    }
+    if (!dataValid) {
+      console.error("CRITICAL: Simulation data is incorrect. The demo will show wrong numbers.");
     }
 
     return { beforeSim: b, afterSim: a };
@@ -162,7 +171,7 @@ export function CascadeDemoPage() {
       function tick(now: number) {
         const elapsed = now - startTime;
         const progress = Math.min(elapsed / duration, 1);
-        const eased = 1 - Math.pow(1 - progress, 3); // ease-out cubic
+        const eased = 1 - Math.pow(1 - progress, 3);
         const updates: Record<string, string> = {};
         for (const t of teamList) {
           if (t.isFlorida) continue;
@@ -178,203 +187,296 @@ export function CascadeDemoPage() {
     [],
   );
 
-  /* ── cascade sequence (v3 timing — ~20 seconds total) ── */
-  const handlePick = useCallback(async () => {
-    if (phase > 0) return;
+  /* ── overlay text helper ── */
+  const showOverlay = useCallback(async (main: string, sub?: string, style?: string, durationMs?: number) => {
+    setOverlayText({ main, sub, style });
+    if (durationMs) {
+      await delay(durationMs);
+      setOverlayText(null);
+    }
+  }, []);
 
-    // 0ms: Picked — Florida eliminated, Merrimack wins
+  /* ── hook → pick crossfade ── */
+  const handleRewind = useCallback(() => {
+    setScreen("pick");
+    window.scrollTo({ top: 0 });
+  }, []);
+
+  /* ── cascade sequence (~20 seconds) ── */
+  const handlePick = useCallback(async () => {
+    if (cascadeStarted.current) return;
+    cascadeStarted.current = true;
+    setScreen("cascade");
     setPhase(1);
+
+    // 0ms: "Florida eliminated."
+    showOverlay("Florida eliminated.", undefined, "red");
     await delay(2000);
 
     // 2000ms: R32 appears with old odds, Florida present
     setPhase(2);
     scrollToRef("R32");
+    showOverlay("Watch the Round of 32.", undefined, "tertiary", 2000);
     await delay(2000);
 
-    // 4000ms: R32 Florida fading (1000ms CSS animation)
+    // 4000ms: R32 Florida fading
     setPhase(3);
-    await delay(1600); // 1000ms fade + 600ms hold
+    await delay(1600);
 
-    // 5600ms: R32 reprice (800ms counter animation)
+    // 5600ms: R32 reprice
     setPhase(4);
     animateOdds("R32", r32Teams, 800);
-    await delay(2300); // 800ms animation + 1500ms hold
+    await delay(2200);
 
-    // 7900ms: S16 appears with old odds, Florida present
+    // 7800ms: hold
+    await delay(200);
+
+    // 8000ms: S16 appears
     setPhase(5);
     scrollToRef("S16");
     await delay(1500);
 
-    // 9400ms: S16 Florida fading (800ms CSS animation)
+    // 9500ms: S16 Florida fading
     setPhase(6);
-    await delay(1300); // 800ms fade + 500ms hold
+    await delay(1300);
 
-    // 10700ms: S16 reprice (700ms counter)
+    // 10800ms: S16 reprice
     setPhase(7);
     animateOdds("S16", s16Teams, 700);
-    await delay(1900); // 700ms animation + 1200ms hold
+    await delay(1900);
 
-    // 12600ms: E8 appears with old odds, Florida present
+    // 12700ms: E8 appears
     setPhase(8);
     scrollToRef("E8");
     await delay(1200);
 
-    // 13800ms: E8 Florida fading (600ms CSS animation)
+    // 13900ms: E8 Florida fading
     setPhase(9);
-    await delay(1000); // 600ms fade + 400ms hold
+    await delay(1000);
 
-    // 14800ms: E8 reprice (600ms counter)
+    // 14900ms: E8 reprice
     setPhase(10);
     animateOdds("E8", e8Teams, 600);
-    await delay(1600); // 600ms animation + 1000ms hold
+    await delay(1400);
 
-    // 16400ms: Championship odds card
+    // 16300ms: hold
+    await delay(200);
+
+    // 16500ms: Championship card
     setPhase(11);
     scrollToRef("CHAMP");
+    showOverlay("One upset. The entire South shifted.");
     await delay(3000);
+    setOverlayText(null);
 
-    // 19400ms: CTA
+    // 19500ms: CTA
     setPhase(12);
     scrollToRef("CTA");
-  }, [phase, animateOdds, r32Teams, s16Teams, e8Teams, scrollToRef]);
+  }, [animateOdds, r32Teams, s16Teams, e8Teams, scrollToRef, showOverlay]);
 
   /* ── reset ── */
   const reset = useCallback(() => {
+    setScreen("hook");
     setPhase(0);
     setDisplayOdds({});
+    setOverlayText(null);
+    cascadeStarted.current = false;
     window.scrollTo({ top: 0, behavior: "smooth" });
   }, []);
 
+  /* ═══════════════════════════════════════════
+     RENDER
+     ═══════════════════════════════════════════ */
   return (
     <div className="demo-page">
-      {/* ── Brand header ── */}
-      <div className="demo-header">
-        <div className="demo-eyebrow">O D D S &nbsp; G O D S</div>
-        <div className="demo-title">THE BRACKET LAB</div>
+      {/* ═══ PHASE 0: HOOK SCREEN ═══ */}
+      <div className={`demo-hook ${screen !== "hook" ? "demo-hook--hidden" : ""}`}>
+        {/* Brand */}
+        <div className="demo-header">
+          <div className="demo-eyebrow">O D D S &nbsp; G O D S</div>
+          <div className="demo-title">THE BRACKET LAB</div>
+        </div>
+
+        {/* Headline card */}
+        <div className="demo-hook-headline-card">
+          <p className="demo-hook-headline">{"\u26A1"} ONE PICK JUST DID THIS {"\u26A1"}</p>
+        </div>
+
+        {/* Section label */}
+        <div className="demo-hook-section">SOUTH REGION &middot; CHAMPIONSHIP ODDS</div>
+
+        {/* Top 5 championship odds with deltas */}
+        {champTeams.map((team, i) => {
+          const delta = fmtDelta(team.oldAmOdds, team.newAmOdds);
+          return (
+            <div key={team.id} className="demo-hook-team-row">
+              <span className="demo-hook-rank">{i + 1}.</span>
+              <img src={team.logoUrl} className="demo-hook-logo" alt="" />
+              <span className="demo-hook-name">{team.name}</span>
+              <span className="demo-hook-odds">{fmtOdds(team.newProb)}</span>
+              {delta && <span className="demo-hook-delta">{"\u25B2"} {delta}</span>}
+            </div>
+          );
+        })}
+
+        {/* Florida eliminated card */}
+        <div className="demo-hook-eliminated">
+          <span className="demo-hook-elim-team">{"\u2717"} #2 Florida &mdash; ELIMINATED</span>
+          <span className="demo-hook-elim-by">by #15 Merrimack</span>
+        </div>
+
+        {/* Bottom text */}
+        <div className="demo-hook-bottom-text">
+          <p className="demo-hook-bottom-line1">Every team's odds just changed.</p>
+          <p className="demo-hook-bottom-line2">From one single pick.</p>
+        </div>
+
+        {/* CTA button */}
+        <button className="demo-hook-cta" onClick={handleRewind}>
+          See how it happened &darr;
+        </button>
       </div>
 
-      {/* ── Instruction / eliminated headline ── */}
-      {phase === 0 ? (
+      {/* ═══ PHASE 1: PICK SCREEN ═══ */}
+      <div className={`demo-phase ${screen === "pick" ? "demo-phase--visible" : "demo-phase--hidden"}`}>
+        <div className="demo-header demo-header--compact">
+          <div className="demo-title demo-title--compact">THE BRACKET LAB</div>
+        </div>
+
         <div className="demo-instruction">
           <p className="demo-instruction-main">Pick the upset.</p>
           <p className="demo-instruction-sub">Tap #15 Merrimack.</p>
         </div>
-      ) : (
-        <div className="demo-eliminated">
-          <p className="demo-eliminated-main">Florida eliminated.</p>
-          <p className="demo-eliminated-sub">Watch the South reprice.</p>
-        </div>
-      )}
 
-      {/* ── Hero matchup card ── */}
-      <div className="demo-hero-matchup">
-        {/* Florida row */}
-        <div
-          className={
-            "demo-hero-row" +
-            (phase >= 1 ? " demo-hero-row--eliminated demo-hero-row--flash-red" : "")
-          }
-        >
-          <span className="demo-hero-seed">{florida.seed}</span>
-          <img src={teamLogoUrl(florida)} className="demo-hero-logo" alt="" />
-          <span className="demo-hero-name">{florida.name}</span>
-          <span className="demo-hero-odds">{floridaOdds}</span>
-          {phase >= 1 && <span className="demo-hero-check" style={{ color: "var(--red-loss)" }}>{"\u2715"}</span>}
-        </div>
-        <div className="demo-hero-divider" />
-        {/* Merrimack row */}
-        <div
-          className={
-            "demo-hero-row" +
-            (phase === 0 ? " demo-hero-row--hint demo-hero-row--clickable" : " demo-hero-row--picked")
-          }
-          onClick={handlePick}
-        >
-          <span className="demo-hero-seed">{merrimack.seed}</span>
-          <img src={teamLogoUrl(merrimack)} className="demo-hero-logo" alt="" />
-          <span className="demo-hero-name">{merrimack.name}</span>
-          <span className="demo-hero-odds">{merrimackOdds}</span>
-          {phase >= 1 && <span className="demo-hero-check" style={{ color: "var(--green-win)" }}>{"\u2713"}</span>}
+        {/* Hero matchup card */}
+        <div className="demo-hero-matchup">
+          <div className="demo-hero-row">
+            <span className="demo-hero-seed">{florida.seed}</span>
+            <img src={teamLogoUrl(florida)} className="demo-hero-logo" alt="" />
+            <span className="demo-hero-name">{florida.name}</span>
+            <span className="demo-hero-odds">{floridaOdds}</span>
+          </div>
+          <div className="demo-hero-divider" />
+          <div
+            className="demo-hero-row demo-hero-row--hint demo-hero-row--clickable"
+            onClick={handlePick}
+          >
+            <span className="demo-hero-seed">{merrimack.seed}</span>
+            <img src={teamLogoUrl(merrimack)} className="demo-hero-logo" alt="" />
+            <span className="demo-hero-name">{merrimack.name}</span>
+            <span className="demo-hero-odds">{merrimackOdds}</span>
+          </div>
         </div>
       </div>
 
-      {/* ── Region label ── */}
-      <div className="demo-region-label">SOUTH REGION &middot; 2026 NCAA TOURNAMENT</div>
-
-      {/* ── Giveaway teaser pill ── */}
-      {phase === 0 && (
-        <div className="demo-teaser">Best bracket wins $100. Details &darr;</div>
-      )}
-
-      {/* ── R32 card ── */}
-      {phase >= 2 && (
-        <RoundCard
-          ref={(el) => { roundRefs.current["R32"] = el; }}
-          roundKey="R32"
-          label="ROUND OF 32"
-          teamList={r32Teams}
-          floridaState={phase < 3 ? "present" : phase < 4 ? "fading" : "gone"}
-          fadeClass="demo-team-row--fading-r32"
-          oddsState={phase < 4 ? "old" : "new"}
-          displayOdds={displayOdds}
-          entering={phase === 2}
-        />
-      )}
-
-      {/* ── S16 card ── */}
-      {phase >= 5 && (
-        <RoundCard
-          ref={(el) => { roundRefs.current["S16"] = el; }}
-          roundKey="S16"
-          label="SWEET 16"
-          teamList={s16Teams}
-          floridaState={phase < 6 ? "present" : phase < 7 ? "fading" : "gone"}
-          fadeClass="demo-team-row--fading-s16"
-          oddsState={phase < 7 ? "old" : "new"}
-          displayOdds={displayOdds}
-          entering={phase === 5}
-        />
-      )}
-
-      {/* ── E8 card ── */}
-      {phase >= 8 && (
-        <RoundCard
-          ref={(el) => { roundRefs.current["E8"] = el; }}
-          roundKey="E8"
-          label="ELITE 8"
-          teamList={e8Teams}
-          floridaState={phase < 9 ? "present" : phase < 10 ? "fading" : "gone"}
-          fadeClass="demo-team-row--fading-e8"
-          oddsState={phase < 10 ? "old" : "new"}
-          displayOdds={displayOdds}
-          entering={phase === 8}
-        />
-      )}
-
-      {/* ── Championship odds card ── */}
-      {phase >= 11 && (
-        <ChampCard
-          ref={(el) => { roundRefs.current["CHAMP"] = el; }}
-          teamList={champTeams}
-        />
-      )}
-
-      {/* ── CTA ── */}
-      {phase >= 12 && (
-        <div ref={(el) => { roundRefs.current["CTA"] = el; }} className="demo-cta">
-          <div className="demo-cta-emoji">{"\uD83C\uDFC6"}</div>
-          <div className="demo-cta-badge">$100 BRACKET GIVEAWAY</div>
-          <p className="demo-cta-headline">Best bracket wins $100.</p>
-          <p className="demo-cta-body">Build yours free.</p>
-          <p className="demo-cta-url">bracket.oddsgods.net</p>
-          <p className="demo-cta-brand"><strong>ODDS</strong> GODS</p>
+      {/* ═══ PHASE 2: CASCADE ═══ */}
+      <div className={`demo-phase ${screen === "cascade" ? "demo-phase--visible" : "demo-phase--hidden"}`}>
+        <div className="demo-header demo-header--compact">
+          <div className="demo-title demo-title--compact">THE BRACKET LAB</div>
         </div>
-      )}
 
-      {/* ── Reset button ── */}
-      {phase >= 12 && (
-        <button className="demo-reset" onClick={reset}>{"\u21BA"}</button>
-      )}
+        {/* Hero matchup — post-pick state */}
+        <div className="demo-hero-matchup">
+          <div className="demo-hero-row demo-hero-row--eliminated demo-hero-row--flash-red">
+            <span className="demo-hero-seed">{florida.seed}</span>
+            <img src={teamLogoUrl(florida)} className="demo-hero-logo" alt="" />
+            <span className="demo-hero-name">{florida.name}</span>
+            <span className="demo-hero-odds">{floridaOdds}</span>
+            <span className="demo-hero-check" style={{ color: "var(--red-loss)" }}>{"\u2715"}</span>
+          </div>
+          <div className="demo-hero-divider" />
+          <div className="demo-hero-row demo-hero-row--picked">
+            <span className="demo-hero-seed">{merrimack.seed}</span>
+            <img src={teamLogoUrl(merrimack)} className="demo-hero-logo" alt="" />
+            <span className="demo-hero-name">{merrimack.name}</span>
+            <span className="demo-hero-odds">{merrimackOdds}</span>
+            <span className="demo-hero-check" style={{ color: "var(--green-win)" }}>{"\u2713"}</span>
+          </div>
+        </div>
+
+        {/* Overlay text */}
+        {overlayText && (
+          <div className="demo-overlay-text">
+            <div className={
+              "demo-overlay-text-main" +
+              (overlayText.style === "red" ? " demo-overlay-text--red" : "") +
+              (overlayText.style === "tertiary" ? " demo-overlay-text--tertiary" : "")
+            }>
+              {overlayText.main}
+            </div>
+            {overlayText.sub && <div className="demo-overlay-text-sub">{overlayText.sub}</div>}
+          </div>
+        )}
+
+        {/* R32 card */}
+        {phase >= 2 && (
+          <RoundCard
+            ref={(el) => { roundRefs.current["R32"] = el; }}
+            roundKey="R32"
+            label="ROUND OF 32"
+            teamList={r32Teams}
+            floridaState={phase < 3 ? "present" : phase < 4 ? "fading" : "gone"}
+            fadeClass="demo-team-row--fading-r32"
+            oddsState={phase < 4 ? "old" : "new"}
+            displayOdds={displayOdds}
+            entering={phase === 2}
+          />
+        )}
+
+        {/* S16 card */}
+        {phase >= 5 && (
+          <RoundCard
+            ref={(el) => { roundRefs.current["S16"] = el; }}
+            roundKey="S16"
+            label="SWEET 16"
+            teamList={s16Teams}
+            floridaState={phase < 6 ? "present" : phase < 7 ? "fading" : "gone"}
+            fadeClass="demo-team-row--fading-s16"
+            oddsState={phase < 7 ? "old" : "new"}
+            displayOdds={displayOdds}
+            entering={phase === 5}
+          />
+        )}
+
+        {/* E8 card */}
+        {phase >= 8 && (
+          <RoundCard
+            ref={(el) => { roundRefs.current["E8"] = el; }}
+            roundKey="E8"
+            label="ELITE 8"
+            teamList={e8Teams}
+            floridaState={phase < 9 ? "present" : phase < 10 ? "fading" : "gone"}
+            fadeClass="demo-team-row--fading-e8"
+            oddsState={phase < 10 ? "old" : "new"}
+            displayOdds={displayOdds}
+            entering={phase === 8}
+          />
+        )}
+
+        {/* Championship odds card */}
+        {phase >= 11 && (
+          <ChampCard
+            ref={(el) => { roundRefs.current["CHAMP"] = el; }}
+            teamList={champTeams}
+          />
+        )}
+
+        {/* CTA */}
+        {phase >= 12 && (
+          <div ref={(el) => { roundRefs.current["CTA"] = el; }} className="demo-cta">
+            <div className="demo-cta-emoji">{"\uD83C\uDFC6"}</div>
+            <p className="demo-cta-headline">Best bracket wins $100.</p>
+            <p className="demo-cta-body">Build yours free.</p>
+            <p className="demo-cta-url">bracket.oddsgods.net</p>
+            <p className="demo-cta-brand"><strong>ODDS</strong> GODS</p>
+          </div>
+        )}
+
+        {/* Reset button */}
+        {phase >= 12 && (
+          <button className="demo-reset" onClick={reset}>{"\u21BA"}</button>
+        )}
+      </div>
     </div>
   );
 }
