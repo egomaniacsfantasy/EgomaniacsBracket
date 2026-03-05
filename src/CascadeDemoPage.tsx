@@ -1,425 +1,452 @@
 import { forwardRef, useCallback, useMemo, useRef, useState } from "react";
 import { teams, teamsById } from "./data/teams";
 import { teamLogoUrl } from "./lib/logo";
+import { abbreviationForTeam } from "./lib/abbreviation";
 import { formatAmerican, toAmericanOdds } from "./lib/odds";
 import { runSimulation } from "./lib/simulation";
 import type { FuturesRow } from "./types";
 import "./CascadeDemoPage.css";
 
 /* ── constants ── */
-const UPSET_GAME_ID = "South-R64-7";
 const FLORIDA_ID = "South-2";
 const MERRIMACK_ID = "South-15";
+const UPSET_GAME_ID = "South-R64-7";
 const SIM_RUNS = 5000;
 
 const delay = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
-/* South R64 matchup pairs (from bracket.ts seedMatchups order) */
-const R64_PAIRS: [string, string][] = [
-  ["South-1", "South-16a"],  // 1 vs 16 (FF)
-  ["South-8", "South-9"],    // 8 vs 9
-  ["South-5", "South-12"],   // 5 vs 12
-  ["South-4", "South-13"],   // 4 vs 13
-  ["South-6", "South-11"],   // 6 vs 11
-  ["South-3", "South-14"],   // 3 vs 14
-  ["South-7", "South-10"],   // 7 vs 10
-  ["South-2", "South-15"],   // 2 vs 15
-];
-
-/* All South team IDs to display (exclude UMBC duplicate 16-seed) */
-const SOUTH_IDS = teams
-  .filter((t) => t.region === "South" && t.id !== "South-16b")
-  .map((t) => t.id);
-
-type RoundKey = "R64" | "R32" | "S16" | "E8";
-
-const probField: Record<RoundKey, keyof FuturesRow> = {
-  R64: "round2Prob",
-  R32: "sweet16Prob",
-  S16: "elite8Prob",
-  E8: "final4Prob",
-};
-
-/* ── helpers ── */
-function getProb(futures: FuturesRow[], teamId: string, round: RoundKey): number {
-  const row = futures.find((r) => r.teamId === teamId);
-  return row ? (row[probField[round]] as number) : 0;
-}
-
-function fmtOdds(prob: number): string {
-  if (prob >= 0.999) return "LOCK";
-  if (prob <= 0.001) return "—";
-  return formatAmerican(toAmericanOdds(prob));
-}
-
-interface TeamRow {
+/* ── types ── */
+interface DemoTeam {
   id: string;
   name: string;
+  abbrev: string;
   seed: number;
   logoUrl: string;
-  beforeProb: number;
-  afterProb: number;
-  afterOdds: string;
-  isEliminated: boolean;
+  oldProb: number;
+  newProb: number;
+  oldAmOdds: number;
+  newAmOdds: number;
+  isFlorida: boolean;
   improved: boolean;
   worsened: boolean;
 }
 
-function buildRows(
-  round: RoundKey,
-  before: FuturesRow[],
-  after: FuturesRow[],
-  ids: string[],
-  cap: number,
-): TeamRow[] {
-  const rows: TeamRow[] = [];
-  for (const id of ids) {
-    const t = teamsById.get(id);
-    if (!t) continue;
-    const bp = getProb(before, id, round);
-    const ap = getProb(after, id, round);
-    rows.push({
-      id,
-      name: t.name,
-      seed: t.seed,
-      logoUrl: teamLogoUrl(t),
-      beforeProb: bp,
-      afterProb: ap,
-      afterOdds: fmtOdds(ap),
-      isEliminated: id === FLORIDA_ID,
-      improved: ap > bp + 0.005,
-      worsened: ap < bp - 0.005,
-    });
-  }
-  rows.sort((a, b) => {
-    if (a.isEliminated) return 1;
-    if (b.isEliminated) return -1;
-    return b.afterProb - a.afterProb;
-  });
-  // Keep top (cap-1) + Florida
-  const nonElim = rows.filter((r) => !r.isEliminated).slice(0, cap - 1);
-  const florida = rows.find((r) => r.isEliminated);
-  if (florida) nonElim.push(florida);
-  return nonElim;
+/* ── helpers ── */
+function getProb(futures: FuturesRow[], teamId: string, field: keyof FuturesRow): number {
+  const row = futures.find((r) => r.teamId === teamId);
+  return row ? (row[field] as number) : 0;
 }
 
-/* ═══════════════════════════════════════════ */
-/*  MAIN COMPONENT                             */
-/* ═══════════════════════════════════════════ */
-export function CascadeDemoPage() {
-  const [picked, setPicked] = useState<string | null>(null);
-  const [revealPhase, setRevealPhase] = useState(-1);
-  const [oddsRevealed, setOddsRevealed] = useState<Record<string, number>>({});
-  const refs = useRef<Record<string, HTMLDivElement | null>>({});
+function fmtOdds(prob: number): string {
+  if (prob >= 0.999) return "LOCK";
+  if (prob <= 0.001) return "\u2014";
+  return formatAmerican(toAmericanOdds(prob));
+}
 
-  /* run simulations once */
+function buildRoundTeams(
+  before: FuturesRow[],
+  after: FuturesRow[],
+  probField: keyof FuturesRow,
+  maxTeams: number,
+): DemoTeam[] {
+  const result: DemoTeam[] = [];
+  for (const t of teams) {
+    if (t.region !== "South" || t.id === "South-16b") continue;
+    const oldProb = getProb(before, t.id, probField);
+    const newProb = getProb(after, t.id, probField);
+    if (oldProb < 0.001 && newProb < 0.001) continue;
+    result.push({
+      id: t.id,
+      name: t.name,
+      abbrev: abbreviationForTeam(t.name),
+      seed: t.seed,
+      logoUrl: teamLogoUrl(t),
+      oldProb,
+      newProb,
+      oldAmOdds: oldProb > 0.001 ? toAmericanOdds(oldProb) : 99999,
+      newAmOdds: newProb > 0.001 ? toAmericanOdds(newProb) : 99999,
+      isFlorida: t.id === FLORIDA_ID,
+      improved: newProb > oldProb + 0.005,
+      worsened: newProb < oldProb - 0.005,
+    });
+  }
+  result.sort((a, b) => b.oldProb - a.oldProb);
+  const florida = result.find((t) => t.isFlorida);
+  const others = result.filter((t) => !t.isFlorida).slice(0, maxTeams - (florida ? 1 : 0));
+  if (florida) {
+    const idx = others.findIndex((t) => t.oldProb < florida.oldProb);
+    if (idx === -1) others.push(florida);
+    else others.splice(idx, 0, florida);
+  }
+  return others;
+}
+
+/* ═══════════════════════════════════════════
+   PHASES:
+   0  = pre-pick
+   1  = picked (Florida ✗, Merrimack ✓)
+   2  = R32 card, old odds, Florida present
+   3  = R32 Florida fading
+   4  = R32 odds repricing
+   5  = S16 card, old odds, Florida present
+   6  = S16 Florida fading
+   7  = S16 odds repricing
+   8  = E8 card, old odds, Florida present
+   9  = E8 Florida fading
+   10 = E8 odds repricing
+   11 = Championship card
+   12 = CTA + reset
+   ═══════════════════════════════════════════ */
+
+export function CascadeDemoPage() {
+  const [phase, setPhase] = useState(0);
+  const [displayOdds, setDisplayOdds] = useState<Record<string, string>>({});
+  const roundRefs = useRef<Record<string, HTMLDivElement | null>>({});
+
+  /* ── simulations ── */
   const { beforeSim, afterSim } = useMemo(() => {
-    const before = runSimulation({}, SIM_RUNS);
-    const after = runSimulation({ [UPSET_GAME_ID]: MERRIMACK_ID }, SIM_RUNS);
-    return { beforeSim: before, afterSim: after };
+    const b = runSimulation({}, SIM_RUNS);
+    const a = runSimulation({ [UPSET_GAME_ID]: MERRIMACK_ID }, SIM_RUNS);
+    return { beforeSim: b, afterSim: a };
   }, []);
 
-  /* R64 matchup pair data */
-  const r64Data = useMemo(() => {
-    return R64_PAIRS.map(([aId, bId]) => {
-      const mkRow = (id: string): TeamRow => {
-        const t = teamsById.get(id)!;
-        const bp = getProb(beforeSim.futures, id, "R64");
-        const ap = getProb(afterSim.futures, id, "R64");
-        return {
-          id,
-          name: t.name,
-          seed: t.seed,
-          logoUrl: teamLogoUrl(t),
-          beforeProb: bp,
-          afterProb: ap,
-          afterOdds: fmtOdds(ap),
-          isEliminated: id === FLORIDA_ID,
-          improved: ap > bp + 0.005,
-          worsened: ap < bp - 0.005,
-        };
-      };
-      return [mkRow(aId), mkRow(bId)] as const;
-    });
+  /* ── round data ── */
+  const r32Teams = useMemo(
+    () => buildRoundTeams(beforeSim.futures, afterSim.futures, "sweet16Prob", 10),
+    [beforeSim, afterSim],
+  );
+  const s16Teams = useMemo(
+    () => buildRoundTeams(beforeSim.futures, afterSim.futures, "elite8Prob", 8),
+    [beforeSim, afterSim],
+  );
+  const e8Teams = useMemo(
+    () => buildRoundTeams(beforeSim.futures, afterSim.futures, "final4Prob", 6),
+    [beforeSim, afterSim],
+  );
+  const champTeams = useMemo(() => {
+    const all = buildRoundTeams(beforeSim.futures, afterSim.futures, "champProb", 6);
+    return all.filter((t) => !t.isFlorida);
   }, [beforeSim, afterSim]);
 
-  /* ranked round data */
-  const r32 = useMemo(() => buildRows("R32", beforeSim.futures, afterSim.futures, SOUTH_IDS, 9), [beforeSim, afterSim]);
-  const s16 = useMemo(() => buildRows("S16", beforeSim.futures, afterSim.futures, SOUTH_IDS, 7), [beforeSim, afterSim]);
-  const e8  = useMemo(() => buildRows("E8",  beforeSim.futures, afterSim.futures, SOUTH_IDS, 5), [beforeSim, afterSim]);
-
-  /* matchup card data */
+  /* ── hero matchup data ── */
   const florida = teamsById.get(FLORIDA_ID)!;
   const merrimack = teamsById.get(MERRIMACK_ID)!;
-  const floridaMatchupOdds = fmtOdds(getProb(beforeSim.futures, FLORIDA_ID, "R64"));
-  const merrimackMatchupOdds = fmtOdds(getProb(beforeSim.futures, MERRIMACK_ID, "R64"));
+  const floridaOdds = fmtOdds(getProb(beforeSim.futures, FLORIDA_ID, "round2Prob"));
+  const merrimackOdds = fmtOdds(getProb(beforeSim.futures, MERRIMACK_ID, "round2Prob"));
 
-  /* cascade */
-  const handlePick = useCallback(async (team: string) => {
-    if (picked) return;
-    setPicked(team);
-    await delay(800);
+  /* ── animated counter ── */
+  const animateOdds = useCallback(
+    (roundKey: string, teamList: DemoTeam[], duration: number) => {
+      const startTime = performance.now();
+      function tick(now: number) {
+        const elapsed = now - startTime;
+        const progress = Math.min(elapsed / duration, 1);
+        const eased = 1 - Math.pow(1 - progress, 3);
+        const updates: Record<string, string> = {};
+        for (const t of teamList) {
+          if (t.isFlorida) continue;
+          if (Math.abs(t.oldAmOdds) > 50000 || Math.abs(t.newAmOdds) > 50000) continue;
+          const current = Math.round(t.oldAmOdds + (t.newAmOdds - t.oldAmOdds) * eased);
+          updates[`${roundKey}-${t.id}`] = formatAmerican(current);
+        }
+        setDisplayOdds((prev) => ({ ...prev, ...updates }));
+        if (progress < 1) requestAnimationFrame(tick);
+      }
+      requestAnimationFrame(tick);
+    },
+    [],
+  );
 
-    // R64
-    setRevealPhase(0);
-    await delay(500);
-    for (let i = 0; i < r64Data.length; i++) {
-      setOddsRevealed((p) => ({ ...p, R64: i + 1 }));
-      await delay(150);
-    }
-    await delay(1000);
+  /* ── cascade sequence (v2 timing table) ── */
+  const handlePick = useCallback(async () => {
+    if (phase > 0) return;
 
-    // R32
-    refs.current["R32"]?.scrollIntoView({ behavior: "smooth", block: "center" });
-    await delay(400);
-    setRevealPhase(2);
-    await delay(500);
-    for (let i = 0; i < r32.length; i++) {
-      setOddsRevealed((p) => ({ ...p, R32: i + 1 }));
-      await delay(150);
-    }
-    await delay(1000);
-
-    // S16
-    refs.current["S16"]?.scrollIntoView({ behavior: "smooth", block: "center" });
-    await delay(400);
-    setRevealPhase(4);
-    await delay(500);
-    for (let i = 0; i < s16.length; i++) {
-      setOddsRevealed((p) => ({ ...p, S16: i + 1 }));
-      await delay(150);
-    }
-    await delay(1000);
-
-    // E8
-    refs.current["E8"]?.scrollIntoView({ behavior: "smooth", block: "center" });
-    await delay(400);
-    setRevealPhase(6);
-    await delay(500);
-    for (let i = 0; i < e8.length; i++) {
-      setOddsRevealed((p) => ({ ...p, E8: i + 1 }));
-      await delay(150);
-    }
-    await delay(1000);
-
-    // Caption
-    setRevealPhase(8);
+    // 0ms: Picked
+    setPhase(1);
     await delay(1200);
 
-    // CTA
-    setRevealPhase(9);
-  }, [picked, r64Data.length, r32.length, s16.length, e8.length]);
+    // 1200ms: R32 appears with old odds, Florida present
+    setPhase(2);
+    await delay(100);
+    roundRefs.current["R32"]?.scrollIntoView({ behavior: "smooth", block: "center" });
+    await delay(1400);
 
+    // 2700ms: R32 Florida fading (800ms CSS anim)
+    setPhase(3);
+    await delay(1200);
+
+    // 4300ms: R32 reprice (600ms counter)
+    setPhase(4);
+    animateOdds("R32", r32Teams, 600);
+    await delay(1200);
+
+    // 5500ms: S16 appears with old odds, Florida present
+    setPhase(5);
+    await delay(100);
+    roundRefs.current["S16"]?.scrollIntoView({ behavior: "smooth", block: "center" });
+    await delay(900);
+
+    // 6500ms: S16 Florida fading (600ms CSS anim)
+    setPhase(6);
+    await delay(900);
+
+    // 7400ms: S16 reprice
+    setPhase(7);
+    animateOdds("S16", s16Teams, 600);
+    await delay(800);
+
+    // 8200ms: E8 appears with old odds, Florida present
+    setPhase(8);
+    await delay(100);
+    roundRefs.current["E8"]?.scrollIntoView({ behavior: "smooth", block: "center" });
+    await delay(700);
+
+    // 9000ms: E8 Florida fading (500ms CSS anim)
+    setPhase(9);
+    await delay(700);
+
+    // 9700ms: E8 reprice
+    setPhase(10);
+    animateOdds("E8", e8Teams, 500);
+    await delay(1000);
+
+    // 10700ms: Championship card
+    setPhase(11);
+    await delay(100);
+    roundRefs.current["CHAMP"]?.scrollIntoView({ behavior: "smooth", block: "center" });
+    await delay(1900);
+
+    // 12700ms: CTA
+    setPhase(12);
+    await delay(100);
+    roundRefs.current["CTA"]?.scrollIntoView({ behavior: "smooth", block: "center" });
+  }, [phase, animateOdds, r32Teams, s16Teams, e8Teams]);
+
+  /* ── reset ── */
   const reset = useCallback(() => {
-    setPicked(null);
-    setRevealPhase(-1);
-    setOddsRevealed({});
+    setPhase(0);
+    setDisplayOdds({});
     window.scrollTo({ top: 0, behavior: "smooth" });
   }, []);
-
-  /* prompt text */
-  const title = !picked
-    ? "Pick the upset."
-    : revealPhase >= 8
-      ? "One upset. The entire South, repriced."
-      : "Florida eliminated.";
-  const sub = !picked
-    ? "Tap #15 Merrimack."
-    : revealPhase >= 8
-      ? "This is Bracket Lab."
-      : "Watch the South reprice.";
 
   return (
     <div className="demo-page">
       {/* header */}
       <div className="demo-header">
-        <span className="demo-header-brand">ODDSGODS</span>
-        <span className="demo-header-product">THE BRACKET LAB</span>
+        <div className="demo-brand-eyebrow">ODDS GODS</div>
+        <div className="demo-brand-title">THE BRACKET LAB</div>
       </div>
 
-      {/* prompt */}
-      <div className={`demo-prompt${picked ? " demo-prompt--picked" : ""}`}>
-        <p className="demo-prompt-title">{title}</p>
-        <p className="demo-prompt-sub">{sub}</p>
-      </div>
+      {/* instruction / status */}
+      {phase === 0 ? (
+        <div className="demo-instruction">
+          <p className="demo-instruction-main">Pick the upset.</p>
+          <p className="demo-instruction-sub">Tap #15 Merrimack.</p>
+        </div>
+      ) : (
+        <div className="demo-eliminated-headline">
+          <p className="demo-eliminated-main">Florida eliminated.</p>
+          <p className="demo-eliminated-sub">Watch the South reprice.</p>
+        </div>
+      )}
 
       {/* hero matchup card */}
-      <div className="demo-matchup-card">
+      <div className="demo-matchup">
+        {/* Florida */}
         <div
-          className={`demo-team-row${picked === "florida" ? " demo-team-row--picked" : ""}${picked === "merrimack" ? " demo-team-row--eliminated" : ""}`}
-          onClick={() => handlePick("florida")}
+          className={
+            "demo-team-row" +
+            (phase >= 1 ? " demo-team-row--eliminated demo-team-row--flash-red" : "")
+          }
         >
-          <span className="demo-team-seed">2</span>
+          <span className="demo-team-seed">{florida.seed}</span>
           <img src={teamLogoUrl(florida)} className="demo-team-logo" alt="" />
-          <span className="demo-team-name">Florida</span>
-          <span className="demo-team-odds">{floridaMatchupOdds}</span>
+          <span className="demo-team-name">{abbreviationForTeam(florida.name)}</span>
+          {phase >= 1 ? (
+            <span className="demo-outcome demo-outcome--loss">{"\u2715"}</span>
+          ) : (
+            <span className="demo-team-odds">{floridaOdds}</span>
+          )}
         </div>
-        <div className="demo-matchup-vs">VS</div>
+        <div className="demo-matchup-divider" />
+        {/* Merrimack */}
         <div
-          className={`demo-team-row${picked === "merrimack" ? " demo-team-row--picked" : ""}${picked === "florida" ? " demo-team-row--eliminated" : ""}`}
-          onClick={() => handlePick("merrimack")}
+          className={
+            "demo-team-row" +
+            (phase === 0 ? " demo-team-row--hint" : " demo-team-row--picked")
+          }
+          onClick={handlePick}
+          style={{ cursor: phase === 0 ? "pointer" : "default" }}
         >
-          <span className="demo-team-seed">15</span>
+          <span className="demo-team-seed">{merrimack.seed}</span>
           <img src={teamLogoUrl(merrimack)} className="demo-team-logo" alt="" />
-          <span className="demo-team-name">Merrimack</span>
-          <span className="demo-team-odds">{merrimackMatchupOdds}</span>
+          <span className="demo-team-name">{abbreviationForTeam(merrimack.name)}</span>
+          {phase >= 1 ? (
+            <span className="demo-outcome demo-outcome--win">{"\u2713"}</span>
+          ) : (
+            <span className="demo-team-odds">{merrimackOdds}</span>
+          )}
         </div>
       </div>
 
-      {/* round cards */}
-      {revealPhase >= 0 && (
-        <R64Card
-          ref={(el) => { refs.current["R64"] = el; }}
-          pairs={r64Data}
-          rowsRevealed={oddsRevealed.R64 || 0}
-          entering={revealPhase === 0}
-        />
-      )}
-      {revealPhase >= 2 && (
+      {/* R32 card */}
+      {phase >= 2 && (
         <RoundCard
-          ref={(el) => { refs.current["R32"] = el; }}
+          ref={(el) => { roundRefs.current["R32"] = el; }}
+          roundKey="R32"
           label="ROUND OF 32"
-          rows={r32}
-          rowsRevealed={oddsRevealed.R32 || 0}
-          entering={revealPhase === 2}
-        />
-      )}
-      {revealPhase >= 4 && (
-        <RoundCard
-          ref={(el) => { refs.current["S16"] = el; }}
-          label="SWEET 16"
-          rows={s16}
-          rowsRevealed={oddsRevealed.S16 || 0}
-          entering={revealPhase === 4}
-        />
-      )}
-      {revealPhase >= 6 && (
-        <RoundCard
-          ref={(el) => { refs.current["E8"] = el; }}
-          label="ELITE 8"
-          rows={e8}
-          rowsRevealed={oddsRevealed.E8 || 0}
-          entering={revealPhase === 6}
+          teamList={r32Teams}
+          floridaState={phase < 3 ? "present" : phase < 4 ? "fading" : "gone"}
+          fadeClass="demo-team-row--fading-r32"
+          oddsState={phase < 4 ? "old" : "new"}
+          displayOdds={displayOdds}
+          entering={phase === 2}
         />
       )}
 
-      {revealPhase >= 8 && (
-        <div className="demo-final-caption">
-          <p className="demo-final-title">One upset. The entire South, repriced.</p>
-          <p className="demo-final-sub">This is Bracket Lab.</p>
+      {/* S16 card */}
+      {phase >= 5 && (
+        <RoundCard
+          ref={(el) => { roundRefs.current["S16"] = el; }}
+          roundKey="S16"
+          label="SWEET 16"
+          teamList={s16Teams}
+          floridaState={phase < 6 ? "present" : phase < 7 ? "fading" : "gone"}
+          fadeClass="demo-team-row--fading-s16"
+          oddsState={phase < 7 ? "old" : "new"}
+          displayOdds={displayOdds}
+          entering={phase === 5}
+        />
+      )}
+
+      {/* E8 card */}
+      {phase >= 8 && (
+        <RoundCard
+          ref={(el) => { roundRefs.current["E8"] = el; }}
+          roundKey="E8"
+          label="ELITE 8"
+          teamList={e8Teams}
+          floridaState={phase < 9 ? "present" : phase < 10 ? "fading" : "gone"}
+          fadeClass="demo-team-row--fading-e8"
+          oddsState={phase < 10 ? "old" : "new"}
+          displayOdds={displayOdds}
+          entering={phase === 8}
+        />
+      )}
+
+      {/* Championship odds card */}
+      {phase >= 11 && (
+        <ChampCard
+          ref={(el) => { roundRefs.current["CHAMP"] = el; }}
+          teamList={champTeams}
+        />
+      )}
+
+      {/* CTA */}
+      {phase >= 12 && (
+        <div ref={(el) => { roundRefs.current["CTA"] = el; }} className="demo-cta">
+          <div className="demo-cta-badge">$100 BRACKET GIVEAWAY</div>
+          <p className="demo-cta-headline">Best bracket wins $100.</p>
+          <p className="demo-cta-body">Build yours now.</p>
+          <p className="demo-cta-url">bracket.oddsgods.net</p>
+          <p className="demo-cta-brand"><strong>ODDS</strong> GODS</p>
         </div>
       )}
 
-      {revealPhase >= 9 && (
-        <>
-          <div className="demo-cta-card">
-            <div className="demo-cta-giveaway">
-              <span className="demo-cta-amount">$100</span>
-              <span className="demo-cta-giveaway-text">BRACKET{"\n"}GIVEAWAY</span>
-            </div>
-            <p className="demo-cta-body">
-              Build the best bracket and win $100. Every pick reprices the entire tournament.
-            </p>
-            <a href="https://bracket.oddsgods.net/?ref=demo" className="demo-cta-btn">
-              Build your bracket →
-            </a>
-            <p className="demo-cta-note">Best on laptop · Free to play · No account required</p>
-          </div>
-          <button className="demo-reset-btn" onClick={reset}>
-            ↻ Play again
-          </button>
-        </>
+      {/* Reset button */}
+      {phase >= 12 && (
+        <button className="demo-reset" onClick={reset}>{"\u21BA"}</button>
       )}
     </div>
   );
 }
 
-/* ── R64 card (matchup pairs) ── */
-interface R64CardProps {
-  pairs: readonly (readonly [TeamRow, TeamRow])[];
-  rowsRevealed: number;
-  entering: boolean;
-}
-
-const R64Card = forwardRef<HTMLDivElement, R64CardProps>(
-  ({ pairs, rowsRevealed, entering }, ref) => (
-    <div
-      ref={ref}
-      className={`demo-round-card ${entering ? "demo-round-card--entering" : "demo-round-card--visible"}`}
-    >
-      <div className="demo-round-header">
-        <span className="demo-round-label">ROUND OF 64</span>
-        <span className="demo-round-region">SOUTH</span>
-      </div>
-      <div className="demo-round-teams">
-        {pairs.map(([a, b], mi) => (
-          <div key={a.id} className="demo-matchup-pair">
-            <OddsRow team={a} revealed={mi < rowsRevealed} />
-            <OddsRow team={b} revealed={mi < rowsRevealed} />
-          </div>
-        ))}
-      </div>
-    </div>
-  ),
-);
-R64Card.displayName = "R64Card";
-
-/* ── generic ranked round card ── */
+/* ═══════════════════════════════════════════
+   ROUND CARD — R32, S16, E8
+   ═══════════════════════════════════════════ */
 interface RoundCardProps {
+  roundKey: string;
   label: string;
-  rows: TeamRow[];
-  rowsRevealed: number;
+  teamList: DemoTeam[];
+  floridaState: "present" | "fading" | "gone";
+  fadeClass: string;
+  oddsState: "old" | "new";
+  displayOdds: Record<string, string>;
   entering: boolean;
 }
 
 const RoundCard = forwardRef<HTMLDivElement, RoundCardProps>(
-  ({ label, rows, rowsRevealed, entering }, ref) => (
+  ({ roundKey, label, teamList, floridaState, fadeClass, oddsState, displayOdds, entering }, ref) => (
     <div
       ref={ref}
       className={`demo-round-card ${entering ? "demo-round-card--entering" : "demo-round-card--visible"}`}
     >
       <div className="demo-round-header">
-        <span className="demo-round-label">{label}</span>
-        <span className="demo-round-region">SOUTH</span>
+        <span className="demo-round-name">{label} {"\u00B7"} SOUTH</span>
       </div>
-      <div className="demo-round-teams">
-        {rows.map((team, i) => (
-          <OddsRow key={team.id} team={team} revealed={i < rowsRevealed} />
-        ))}
-      </div>
+      {teamList.map((team) => {
+        if (team.isFlorida && floridaState === "gone") return null;
+        const isFading = team.isFlorida && floridaState === "fading";
+        const rowClass =
+          "demo-team-row" + (isFading ? ` demo-team-row--fading ${fadeClass}` : "");
+
+        let oddsText: string;
+        if (team.isFlorida) {
+          oddsText = fmtOdds(team.oldProb);
+        } else if (oddsState === "old") {
+          oddsText = fmtOdds(team.oldProb);
+        } else {
+          oddsText = displayOdds[`${roundKey}-${team.id}`] ?? fmtOdds(team.newProb);
+        }
+
+        const flashClass =
+          oddsState === "new" && !team.isFlorida
+            ? team.improved
+              ? " demo-team-odds--flash-green"
+              : team.worsened
+                ? " demo-team-odds--flash-red"
+                : ""
+            : "";
+
+        return (
+          <div key={team.id} className="demo-matchup" style={{ marginBottom: 3 }}>
+            <div className={rowClass}>
+              <span className="demo-team-seed">{team.seed}</span>
+              <img src={team.logoUrl} className="demo-team-logo" alt="" />
+              <span className="demo-team-name">{team.abbrev}</span>
+              <span className={`demo-team-odds${flashClass}`}>{oddsText}</span>
+            </div>
+          </div>
+        );
+      })}
     </div>
   ),
 );
 RoundCard.displayName = "RoundCard";
 
-/* ── single team / odds row ── */
-function OddsRow({ team, revealed }: { team: TeamRow; revealed: boolean }) {
-  return (
-    <div
-      className={
-        "demo-round-row" +
-        (revealed ? " demo-round-row--revealed" : "") +
-        (team.isEliminated ? " demo-round-row--eliminated" : "")
-      }
-    >
-      <span className="demo-round-row-seed">{team.seed}</span>
-      <img src={team.logoUrl} className="demo-round-row-logo" alt="" />
-      <span className="demo-round-row-name">{team.name}</span>
-      {team.isEliminated ? (
-        <span className="demo-round-row-elim">ELIMINATED</span>
-      ) : revealed ? (
-        <span
-          className={
-            "demo-round-row-odds" +
-            (team.improved ? " demo-odds--improved" : "") +
-            (team.worsened ? " demo-odds--worsened" : "")
-          }
-        >
-          {team.afterOdds}
-        </span>
-      ) : (
-        <span className="demo-round-row-odds demo-round-row-odds--pending">---</span>
-      )}
-    </div>
-  );
+/* ═══════════════════════════════════════════
+   CHAMPIONSHIP ODDS CARD
+   ═══════════════════════════════════════════ */
+interface ChampCardProps {
+  teamList: DemoTeam[];
 }
+
+const ChampCard = forwardRef<HTMLDivElement, ChampCardProps>(
+  ({ teamList }, ref) => (
+    <div ref={ref} className="demo-champ-card">
+      <div className="demo-champ-header">CHAMPIONSHIP ODDS {"\u00B7"} SOUTH</div>
+      {teamList.map((team, i) => (
+        <div key={team.id} className="demo-champ-row">
+          <span className="demo-champ-rank">{i + 1}.</span>
+          <img src={team.logoUrl} className="demo-champ-logo" alt="" />
+          <span className="demo-champ-name">{team.abbrev}</span>
+          <span className="demo-champ-odds">{fmtOdds(team.newProb)}</span>
+          <span className="demo-champ-delta">
+            {"\u25B2"} was {fmtOdds(team.oldProb)}
+          </span>
+        </div>
+      ))}
+    </div>
+  ),
+);
+ChampCard.displayName = "ChampCard";
