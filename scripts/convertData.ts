@@ -5,6 +5,7 @@
  * Input files (from MM pipeline root):
  *   - conf_team_stats_2026.xlsx
  *   - conf_matchup_probs_2026.xlsx
+ *   - team_stats_2026.xlsx
  *   - team_snapshot_2026.xlsx
  *   - model_rankings_2026.xlsx
  *   - matchup_probs_2026.xlsx
@@ -13,6 +14,7 @@
  * Output files:
  *   - src/conferences/data/confTeams.ts
  *   - src/conferences/data/confMatchupProbs.ts
+ *   - src/data/teamStats2026.ts
  *   - src/rankings/data/d1Rankings.ts
  *   - src/lib/matchupProbData.ts
  *   - src/data/bracketPreds2026.ts
@@ -67,6 +69,72 @@ const CONF_SHORT_NAMES: Record<string, string> = {
   mwc: "MWC",
   sec: "SEC",
   wcc: "WCC",
+};
+
+const TEAM_STAT_KEYS = [
+  "rank_POM",
+  "rank_MAS",
+  "rank_WLK",
+  "rank_MOR",
+  "elo_sos",
+  "elo_last",
+  "avg_net_rtg",
+  "avg_off_rtg",
+  "elo_trend",
+  "avg_def_rtg",
+  "last5_Margin",
+  "rank_BIH",
+  "rank_NET",
+] as const;
+
+type TeamStatKey = (typeof TEAM_STAT_KEYS)[number];
+
+const TEAM_STAT_IMPORTANCE: Record<TeamStatKey, string> = {
+  rank_POM: "21.88%",
+  rank_MAS: "12.47%",
+  rank_WLK: "12.28%",
+  rank_MOR: "11.61%",
+  elo_sos: "8.13%",
+  elo_last: "7.33%",
+  avg_net_rtg: "6.90%",
+  avg_off_rtg: "5.20%",
+  elo_trend: "3.84%",
+  avg_def_rtg: "3.70%",
+  last5_Margin: "2.74%",
+  rank_BIH: "2.67%",
+  rank_NET: "1.27%",
+};
+
+const TEAM_STAT_COLUMNS_DEFAULT: Record<TeamStatKey, string> = {
+  rank_POM: "rank_POM",
+  rank_MAS: "rank_MAS",
+  rank_WLK: "rank_WLK",
+  rank_MOR: "rank_MOR",
+  elo_sos: "elo_sos",
+  elo_last: "elo_last",
+  avg_net_rtg: "avg_net_rtg",
+  avg_off_rtg: "avg_off_rtg",
+  elo_trend: "elo_trend",
+  avg_def_rtg: "avg_def_rtg",
+  last5_Margin: "last5_Margin",
+  rank_BIH: "rank_BIH",
+  rank_NET: "rank_NET",
+};
+
+const TEAM_STAT_COLUMNS_SNAPSHOT: Record<TeamStatKey, string> = {
+  rank_POM: "POM",
+  rank_MAS: "MAS",
+  rank_WLK: "WLK",
+  rank_MOR: "MOR",
+  elo_sos: "elo_sos",
+  elo_last: "elo_last",
+  avg_net_rtg: "avg_net_rtg",
+  avg_off_rtg: "avg_off_rtg",
+  elo_trend: "elo_trend",
+  avg_def_rtg: "avg_def_rtg",
+  last5_Margin: "last5_Margin",
+  rank_BIH: "BIH",
+  rank_NET: "NET",
 };
 
 // ─── 1. Conference Team Stats ───
@@ -210,7 +278,94 @@ export const CONF_MATCHUP_PROBS: Record<string, Record<string, number>> = ${JSON
   }
 }
 
-// ─── 3. D1 Rankings Data ───
+// 3. Matchup Stats Data
+function convertTeamStatsData(): void {
+  const statsByName: Record<string, Record<TeamStatKey, number | null>> = {};
+
+  const upsertStats = (
+    teamNameRaw: unknown,
+    row: Record<string, unknown>,
+    columnMap: Record<TeamStatKey, string>
+  ): void => {
+    const teamName = String(teamNameRaw ?? "").trim();
+    if (!teamName) return;
+
+    const existing = statsByName[teamName] ?? ({} as Record<TeamStatKey, number | null>);
+    for (const key of TEAM_STAT_KEYS) {
+      const sourceColumn = columnMap[key];
+      const rawValue = Number(row[sourceColumn]);
+      existing[key] = Number.isFinite(rawValue) ? roundTeamStatValue(key, rawValue) : null;
+    }
+    statsByName[teamName] = existing;
+  };
+
+  const snapshotWb = XLSX.readFile(path.join(DATA_DIR, "team_snapshot_2026.xlsx"));
+  const snapshotRows = XLSX.utils.sheet_to_json<Record<string, unknown>>(
+    snapshotWb.Sheets[snapshotWb.SheetNames[0]]
+  );
+  for (const row of snapshotRows) {
+    upsertStats(row["TeamName"], row, TEAM_STAT_COLUMNS_SNAPSHOT);
+  }
+
+  const teamStatsWb = XLSX.readFile(path.join(DATA_DIR, "team_stats_2026.xlsx"));
+  const teamStatsRows = XLSX.utils.sheet_to_json<Record<string, unknown>>(teamStatsWb.Sheets[teamStatsWb.SheetNames[0]]);
+  for (const row of teamStatsRows) {
+    upsertStats(row["TeamName"], row, TEAM_STAT_COLUMNS_DEFAULT);
+  }
+
+  const confTeamStatsWb = XLSX.readFile(path.join(DATA_DIR, "conf_team_stats_2026.xlsx"));
+  for (const sheetName of confTeamStatsWb.SheetNames) {
+    const confRows = XLSX.utils.sheet_to_json<Record<string, unknown>>(confTeamStatsWb.Sheets[sheetName]);
+    for (const row of confRows) {
+      upsertStats(row["TeamName"], row, TEAM_STAT_COLUMNS_DEFAULT);
+    }
+  }
+
+  const orderedStats = Object.fromEntries(
+    Object.keys(statsByName)
+      .sort((a, b) => a.localeCompare(b))
+      .map((teamName) => [teamName, statsByName[teamName]])
+  );
+
+  const teamStatUnion = TEAM_STAT_KEYS.map((key) => ` | "${key}"`).join("\n");
+  const teamStatOrderLiteral = TEAM_STAT_KEYS.map((key) => `  "${key}",`).join("\n");
+
+  const output = `// Auto-generated from team_snapshot_2026.xlsx + team_stats_2026.xlsx + conf_team_stats_2026.xlsx
+export type TeamStatKey =
+${teamStatUnion}
+;
+
+export const TEAM_STAT_ORDER: TeamStatKey[] = [
+${teamStatOrderLiteral}
+];
+
+export const TEAM_STAT_IMPORTANCE: Record<TeamStatKey, string> = ${JSON.stringify(TEAM_STAT_IMPORTANCE, null, 2)};
+
+export const TEAM_STATS_2026: Record<string, Record<TeamStatKey, number | null>> = ${JSON.stringify(orderedStats)};
+`;
+
+  const outPath = path.join(ROOT, "src/data/teamStats2026.ts");
+  fs.writeFileSync(outPath, output, "utf-8");
+  console.log(`[ok] Wrote ${outPath} (${Object.keys(orderedStats).length} teams)`);
+}
+
+function roundTeamStatValue(key: TeamStatKey, value: number): number {
+  if (
+    key === "rank_POM" ||
+    key === "rank_MAS" ||
+    key === "rank_WLK" ||
+    key === "rank_MOR" ||
+    key === "rank_BIH" ||
+    key === "rank_NET"
+  ) {
+    return Math.round(value);
+  }
+  if (key === "elo_trend") return round4(value);
+  if (key === "avg_net_rtg" || key === "avg_off_rtg" || key === "avg_def_rtg") return round2(value);
+  if (key === "elo_sos" || key === "elo_last" || key === "last5_Margin") return round1(value);
+  return round2(value);
+}
+
 function convertD1Rankings(): void {
   // Read team_snapshot for detailed stats
   const snapshotWb = XLSX.readFile(path.join(DATA_DIR, "team_snapshot_2026.xlsx"));
@@ -441,7 +596,11 @@ function round6(n: number): number {
 console.log("Converting xlsx data files to TypeScript...\n");
 convertConfTeams();
 convertConfMatchupProbs();
+convertTeamStatsData();
 convertD1Rankings();
 convertNCAAMatchupProbs();
 convertNCAABracketPreds();
 console.log("\nDone!");
+
+
+

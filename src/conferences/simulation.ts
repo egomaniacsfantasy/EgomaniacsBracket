@@ -2,7 +2,7 @@ import type { ConfGameTemplate, ConfFuturesRow, ConfSimulationOutput } from "./t
 import type { ConfDefWithProbMap } from "./conferenceDefs";
 import type { ConfTeam } from "./data/confTeams";
 import type { ConfLockedPicks, ConfCustomProbByGame } from "./confBracket";
-import { getConfMatchupProb } from "./confBracket";
+import { getConfGameWinProb, getConfMatchupProb, possibleConfWinnersByGame, resolveConfGames } from "./confBracket";
 
 const DEFAULT_SIM_SEED = 42;
 
@@ -97,6 +97,64 @@ function simulateConfBracket(
 
   return { winners, lockSuccess };
 }
+
+const normalizeConfGameWinProbs = (
+  confId: string,
+  def: ConfDefWithProbMap,
+  gameTemplates: ConfGameTemplate[],
+  roundOrder: string[],
+  teamsById: Map<number, ConfTeam>,
+  locks: ConfLockedPicks,
+  customProbByGame: ConfCustomProbByGame,
+  gameWinCounts: Map<string, Map<number, number>>,
+  simRuns: number
+): Record<string, Array<{ teamId: number; prob: number }>> => {
+  const { games: resolvedGames } = resolveConfGames(gameTemplates, roundOrder, locks, customProbByGame);
+  const resolvedById = new Map(resolvedGames.map((game) => [game.id, game]));
+  const possibleWinners = possibleConfWinnersByGame(gameTemplates, roundOrder, locks);
+  const gameWinProbs: Record<string, Array<{ teamId: number; prob: number }>> = {};
+
+  for (const game of gameTemplates) {
+    const resolved = resolvedById.get(game.id);
+    if (resolved?.teamAId && resolved.teamBId) {
+      const { teamAId, teamBId } = resolved;
+
+      if (resolved.lockedByUser && resolved.winnerId) {
+        gameWinProbs[game.id] = [
+          { teamId: teamAId, prob: resolved.winnerId === teamAId ? 1 : 0 },
+          { teamId: teamBId, prob: resolved.winnerId === teamBId ? 1 : 0 },
+        ];
+        continue;
+      }
+
+      const pA = getConfGameWinProb(resolved, teamAId, confId, def, teamsById);
+      if (pA !== null) {
+        gameWinProbs[game.id] = [
+          { teamId: teamAId, prob: pA },
+          { teamId: teamBId, prob: 1 - pA },
+        ];
+        continue;
+      }
+    }
+
+    const byTeam = gameWinCounts.get(game.id) ?? new Map<number, number>();
+    const entrants = Array.from(possibleWinners[game.id] ?? new Set<number>());
+    const entries = entrants.map((teamId) => ({
+      teamId,
+      prob: (byTeam.get(teamId) ?? 0) / simRuns,
+    }));
+    entries.sort((a, b) => {
+      if (b.prob !== a.prob) return b.prob - a.prob;
+      const teamASeed = teamsById.get(a.teamId)?.seed ?? Number.MAX_SAFE_INTEGER;
+      const teamBSeed = teamsById.get(b.teamId)?.seed ?? Number.MAX_SAFE_INTEGER;
+      if (teamASeed !== teamBSeed) return teamASeed - teamBSeed;
+      return a.teamId - b.teamId;
+    });
+    gameWinProbs[game.id] = entries;
+  }
+
+  return gameWinProbs;
+};
 
 /**
  * Run conference tournament simulation.
@@ -193,17 +251,17 @@ export function runConfSimulation(
   // Sort by champion probability descending
   futures.sort((a, b) => b.champProb - a.champProb);
 
-  // Build game win probabilities
-  const gameWinProbs: Record<string, Array<{ teamId: number; prob: number }>> = {};
-  for (const game of gameTemplates) {
-    const byTeam = gameWinCounts.get(game.id)!;
-    const entries: Array<{ teamId: number; prob: number }> = [];
-    for (const [teamId, count] of byTeam) {
-      entries.push({ teamId, prob: count / simRuns });
-    }
-    entries.sort((a, b) => b.prob - a.prob);
-    gameWinProbs[game.id] = entries;
-  }
+  const gameWinProbs = normalizeConfGameWinProbs(
+    confId,
+    def,
+    gameTemplates,
+    roundOrder,
+    teamsById,
+    locks,
+    customProbByGame,
+    gameWinCounts,
+    simRuns
+  );
 
   return { futures, gameWinProbs };
 }

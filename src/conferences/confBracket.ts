@@ -125,3 +125,49 @@ export function resolveConfGames(
 
   return { games: resolved, sanitized };
 }
+
+/**
+ * Build the set of all possible winners for each conference game template
+ * under the current locked picks.
+ */
+export function possibleConfWinnersByGame(
+  templates: ConfGameTemplate[],
+  roundOrder: string[],
+  lockedPicks: ConfLockedPicks
+): Record<string, Set<number>> {
+  const roundRank = Object.fromEntries(roundOrder.map((roundId, index) => [roundId, index]));
+  const ordered = [...templates].sort((a, b) => {
+    const rankDiff = (roundRank[a.round] ?? 0) - (roundRank[b.round] ?? 0);
+    if (rankDiff !== 0) return rankDiff;
+    return a.slot - b.slot;
+  });
+
+  const possible: Record<string, Set<number>> = {};
+
+  for (const template of ordered) {
+    const entrants = new Set<number>();
+
+    if (template.initialTeamIds) {
+      template.initialTeamIds.forEach((teamId) => {
+        if (teamId !== null && teamId !== undefined) entrants.add(teamId);
+      });
+    }
+
+    if (template.sourceGameIds) {
+      template.sourceGameIds.forEach((sourceGameId) => {
+        if (!sourceGameId) return;
+        (possible[sourceGameId] ?? new Set<number>()).forEach((teamId) => entrants.add(teamId));
+      });
+    }
+
+    const lock = lockedPicks[template.id];
+    if (lock !== undefined && entrants.has(lock)) {
+      possible[template.id] = new Set([lock]);
+      continue;
+    }
+
+    possible[template.id] = entrants;
+  }
+
+  return possible;
+}

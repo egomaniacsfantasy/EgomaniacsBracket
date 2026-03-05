@@ -11988,6 +11988,7 @@ body.walkthrough-active .odds-value--changed::after {
   border: 1px solid var(--panel-line);
   border-radius: 8px;
   overflow: hidden;
+  position: relative;
   transition: border-color 0.15s;
 }
 
@@ -12029,6 +12030,14 @@ body.walkthrough-active .odds-value--changed::after {
 
 .conf-team-row:disabled {
   cursor: default;
+}
+
+.conf-team-row--placeholder {
+  cursor: default;
+}
+
+.conf-game-card:hover .matchup-stats-icon {
+  color: rgba(240, 230, 208, 0.65);
 }
 
 .conf-team-logo {
