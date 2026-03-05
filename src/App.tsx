@@ -30,6 +30,7 @@ import { fullTeamName } from "./lib/teamNames";
 import { trackEvent } from "./lib/analytics";
 import { ConferenceTournaments } from "./conferences/ConferenceTournaments";
 import { ExpandedRankings } from "./rankings/ExpandedRankings";
+import { MatchupPredictor } from "./MatchupPredictor";
 import { useAuth } from "./AuthContext";
 import { AuthModal } from "./AuthModal";
 import { MyBracketsModal } from "./MyBracketsModal";
@@ -200,7 +201,7 @@ type ProbabilityPopupState = {
   savedProbA: number | null;
 };
 
-type MobileTab = "bracket" | "futures" | "leaderboard" | "conferences" | "rankings";
+type MobileTab = "bracket" | "futures" | "leaderboard" | "conferences" | "rankings" | "predictor";
 type MobileSection = Region | "FF";
 type MobileRegionRound = "FF" | "R64" | "R32" | "S16" | "E8";
 type MobileFfRound = "F4" | "CHAMP" | "WIN";
@@ -494,7 +495,7 @@ function App() {
   const [simRuns] = useState<number>(() => getRecommendedSimRuns());
   const [futuresFieldExpanded, setFuturesFieldExpanded] = useState(false);
   const [futuresEliminatedExpanded, setFuturesEliminatedExpanded] = useState(false);
-  const [mainView, setMainView] = useState<"bracket" | "futures" | "leaderboard" | "conferences" | "rankings">("bracket");
+  const [mainView, setMainView] = useState<"bracket" | "futures" | "leaderboard" | "conferences" | "rankings" | "predictor">("bracket");
   const [isUpdating, setIsUpdating] = useState(false);
   const [lastPickedKey, setLastPickedKey] = useState<string | null>(null);
   const [compactDesktop, setCompactDesktop] = useState(false);
@@ -3105,6 +3106,12 @@ function App() {
           >
             {mainView === "leaderboard" ? "← Bracket" : "🏆 Leaderboard"}
           </button>
+          <button
+            onClick={() => setMainView((prev) => (prev === "predictor" ? "bracket" : "predictor"))}
+            className={`eg-btn toolbar-btn--predictor ${mainView === "predictor" ? "toolbar-btn--active-view" : ""}`}
+          >
+            {mainView === "predictor" ? "← Bracket" : "Predictor"}
+          </button>
         </>
       )}
       <button
@@ -3960,6 +3967,9 @@ function App() {
               )}
               {mainView === "rankings" && (
                 <ExpandedRankings displayMode={displayMode} isMobile={isMobile} />
+              )}
+              {mainView === "predictor" && (
+                <MatchupPredictor displayMode={displayMode} />
               )}
               <div style={{ display: mainView === "futures" ? undefined : "none" }}>{futuresContent}</div>
             </div>

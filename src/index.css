@@ -12430,3 +12430,297 @@ body.walkthrough-active .odds-value--changed::after {
     font-size: 0.6rem;
   }
 }
+
+/* ── Matchup Predictor ──────────────────────────────────────────────────────── */
+
+.mp-page {
+  max-width: 860px;
+  margin: 0 auto;
+  padding: 24px 16px 48px;
+  color: var(--color-text, #f0e4c6);
+}
+
+.mp-title {
+  font-size: 1.6rem;
+  font-weight: 700;
+  margin: 0 0 6px;
+  color: var(--color-gold, #f0c040);
+}
+
+.mp-subtitle {
+  font-size: 0.9rem;
+  opacity: 0.7;
+  margin: 0 0 28px;
+}
+
+.mp-controls {
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+  flex-wrap: wrap;
+  margin-bottom: 32px;
+}
+
+.mp-team-selector {
+  position: relative;
+  flex: 1 1 220px;
+  min-width: 180px;
+}
+
+.mp-team-label {
+  display: block;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  opacity: 0.6;
+  margin-bottom: 6px;
+}
+
+.mp-selector-btn {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(255 255 255 / 0.06);
+  border: 1px solid rgba(255 255 255 / 0.15);
+  border-radius: 8px;
+  padding: 10px 12px;
+  color: inherit;
+  cursor: pointer;
+  text-align: left;
+  font-size: 0.92rem;
+  transition: border-color 0.15s;
+}
+
+.mp-selector-btn:hover,
+.mp-selector-btn--open {
+  border-color: rgba(240 192 64 / 0.5);
+}
+
+.mp-selector-name {
+  flex: 1;
+  font-weight: 600;
+}
+
+.mp-selector-conf {
+  font-size: 0.75rem;
+  opacity: 0.5;
+}
+
+.mp-selector-placeholder {
+  flex: 1;
+  opacity: 0.45;
+  font-style: italic;
+}
+
+.mp-selector-caret {
+  font-size: 0.65rem;
+  opacity: 0.5;
+}
+
+.mp-dropdown {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  z-index: 200;
+  background: #1e1a12;
+  border: 1px solid rgba(255 255 255 / 0.2);
+  border-radius: 8px;
+  box-shadow: 0 8px 24px rgba(0 0 0 / 0.6);
+  overflow: hidden;
+}
+
+.mp-dropdown-search {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 10px 12px;
+  background: rgba(255 255 255 / 0.06);
+  border: none;
+  border-bottom: 1px solid rgba(255 255 255 / 0.1);
+  color: inherit;
+  font-size: 0.9rem;
+  outline: none;
+}
+
+.mp-dropdown-list {
+  max-height: 240px;
+  overflow-y: auto;
+}
+
+.mp-dropdown-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 8px 12px;
+  background: transparent;
+  border: none;
+  color: inherit;
+  cursor: pointer;
+  font-size: 0.88rem;
+  text-align: left;
+  transition: background 0.1s;
+}
+
+.mp-dropdown-item:hover {
+  background: rgba(255 255 255 / 0.08);
+}
+
+.mp-dropdown-item--selected {
+  background: rgba(240 192 64 / 0.15);
+}
+
+.mp-dropdown-item-name {
+  flex: 1;
+}
+
+.mp-dropdown-item-conf {
+  font-size: 0.73rem;
+  opacity: 0.5;
+}
+
+.mp-dropdown-empty {
+  padding: 12px;
+  font-size: 0.85rem;
+  opacity: 0.5;
+  text-align: center;
+}
+
+.mp-location-wrap {
+  flex: 0 0 auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.mp-location-btns {
+  display: flex;
+  gap: 4px;
+}
+
+.mp-loc-btn {
+  padding: 10px 14px;
+  background: rgba(255 255 255 / 0.06);
+  border: 1px solid rgba(255 255 255 / 0.15);
+  border-radius: 6px;
+  color: inherit;
+  cursor: pointer;
+  font-size: 0.82rem;
+  font-weight: 600;
+  transition: background 0.15s, border-color 0.15s;
+  white-space: nowrap;
+}
+
+.mp-loc-btn:hover {
+  background: rgba(255 255 255 / 0.12);
+}
+
+.mp-loc-btn--active {
+  background: rgba(240 192 64 / 0.2);
+  border-color: rgba(240 192 64 / 0.5);
+  color: #f0c040;
+}
+
+/* Probability bar */
+
+.mp-prob-bar-wrap {
+  background: rgba(255 255 255 / 0.04);
+  border: 1px solid rgba(255 255 255 / 0.1);
+  border-radius: 10px;
+  padding: 20px 24px;
+  margin-bottom: 28px;
+}
+
+.mp-prob-names {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 14px;
+  font-size: 1.05rem;
+  font-weight: 600;
+}
+
+.mp-prob-name {
+  flex: 1;
+  text-align: center;
+}
+
+.mp-prob-name--fav {
+  color: #f0c040;
+}
+
+.mp-prob-vs {
+  font-size: 0.8rem;
+  opacity: 0.5;
+  flex: 0 0 auto;
+}
+
+.mp-prob-bar {
+  height: 14px;
+  background: rgba(255 255 255 / 0.08);
+  border-radius: 7px;
+  overflow: hidden;
+  margin-bottom: 10px;
+}
+
+.mp-prob-bar-a {
+  height: 100%;
+  background: linear-gradient(90deg, #f0c040 0%, #c8962c 100%);
+  border-radius: 7px;
+  transition: width 0.4s ease;
+  min-width: 2px;
+}
+
+.mp-prob-values {
+  display: flex;
+  justify-content: space-between;
+  font-size: 1.1rem;
+  font-weight: 700;
+}
+
+.mp-prob-val--right {
+  text-align: right;
+}
+
+.mp-prob-pct {
+  font-size: 0.78rem;
+  font-weight: 400;
+  opacity: 0.6;
+}
+
+/* Stat table */
+
+.mp-stat-table-wrap {
+  overflow-x: auto;
+  margin-bottom: 24px;
+}
+
+.mp-stat-table {
+  min-width: 500px;
+}
+
+/* Misc */
+
+.mp-placeholder {
+  text-align: center;
+  padding: 48px 16px;
+  opacity: 0.4;
+  font-size: 0.95rem;
+  font-style: italic;
+}
+
+.mp-loading,
+.mp-load-error {
+  text-align: center;
+  padding: 64px 16px;
+  opacity: 0.5;
+}
+
+.mp-footnote {
+  font-size: 0.75rem;
+  opacity: 0.4;
+  margin-top: 24px;
+  line-height: 1.5;
+}
