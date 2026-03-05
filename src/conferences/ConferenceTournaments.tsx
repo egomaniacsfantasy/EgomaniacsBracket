@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { TEAM_STAT_IMPORTANCE, TEAM_STAT_ORDER, TEAM_STATS_2026, type TeamStatKey } from "../data/teamStats2026";
 import { formatOddsDisplay } from "../lib/odds";
 import { getMappedEspnLogoPath } from "../lib/logoMap";
@@ -19,6 +19,7 @@ import type { ConfGameTemplate, ConfResolvedGame, ConfSimulationOutput } from ".
 const SIM_RUNS = 2000;
 type ConfTeamRow = (typeof CONF_TEAMS)[string][number];
 type ConfCandidateRow = { teamId: number; prob: number; team: ConfTeamRow };
+type ConfConnectorPath = { key: string; d: string };
 
 const TEAM_STAT_LABELS: Record<TeamStatKey, string> = {
   rank_POM: "KenPom Rank",
@@ -270,6 +271,9 @@ function ConferenceBracketView({
   const roundOrder = useMemo(() => (def ? def.rounds.map((round) => round.id) : []), [def]);
   const [showFutures, setShowFutures] = useState(false);
   const [selectedStatsGame, setSelectedStatsGame] = useState<ConfResolvedGame | null>(null);
+  const bracketGridRef = useRef<HTMLDivElement | null>(null);
+  const [connectorPaths, setConnectorPaths] = useState<ConfConnectorPath[]>([]);
+  const [connectorViewport, setConnectorViewport] = useState({ width: 0, height: 0 });
 
   const { games: resolvedGames, sanitized } = useMemo(
     () => resolveConfGames(gameTemplates, roundOrder, locks, customProbs),
@@ -317,6 +321,93 @@ function ConferenceBracketView({
 
   const [mobileRound, setMobileRound] = useState(roundOrder[0] ?? "");
 
+  const recomputeConnectors = useCallback(() => {
+    const gridEl = bracketGridRef.current;
+    if (!gridEl || isMobile || showFutures) {
+      setConnectorPaths([]);
+      return;
+    }
+
+    const gridRect = gridEl.getBoundingClientRect();
+    const nextViewport = {
+      width: Math.max(0, gridRect.width),
+      height: Math.max(0, gridRect.height),
+    };
+    setConnectorViewport(nextViewport);
+
+    const nodeRects = new Map<string, DOMRect>();
+    const nodes = gridEl.querySelectorAll<HTMLElement>(".conf-game-node[data-game-id]");
+    nodes.forEach((node) => {
+      const gameId = node.dataset.gameId;
+      if (!gameId) return;
+      nodeRects.set(gameId, node.getBoundingClientRect());
+    });
+
+    const paths: ConfConnectorPath[] = [];
+    for (const game of resolvedGames) {
+      if (!game.sourceGameIds) continue;
+      const targetRect = nodeRects.get(game.id);
+      if (!targetRect) continue;
+
+      game.sourceGameIds.forEach((sourceGameId, sideIndex) => {
+        if (!sourceGameId) return;
+        const sourceRect = nodeRects.get(sourceGameId);
+        if (!sourceRect) return;
+
+        const startX = sourceRect.right - gridRect.left;
+        const startY = sourceRect.top + sourceRect.height / 2 - gridRect.top;
+        const endX = targetRect.left - gridRect.left;
+        const endY =
+          targetRect.top -
+          gridRect.top +
+          (sideIndex === 0 ? targetRect.height * 0.35 : targetRect.height * 0.65);
+        const horizontalGap = Math.max(12, (endX - startX) / 2);
+        const midX = startX + horizontalGap;
+        const d = `M ${startX.toFixed(1)} ${startY.toFixed(1)} L ${midX.toFixed(1)} ${startY.toFixed(1)} L ${midX.toFixed(1)} ${endY.toFixed(1)} L ${endX.toFixed(1)} ${endY.toFixed(1)}`;
+        paths.push({ key: `${sourceGameId}->${game.id}-${sideIndex}`, d });
+      });
+    }
+
+    setConnectorPaths(paths);
+  }, [isMobile, resolvedGames, showFutures]);
+
+  useLayoutEffect(() => {
+    if (isMobile || showFutures) {
+      setConnectorPaths([]);
+      return;
+    }
+
+    let rafId: number | null = null;
+    const schedule = () => {
+      if (rafId !== null) {
+        cancelAnimationFrame(rafId);
+      }
+      rafId = requestAnimationFrame(() => {
+        recomputeConnectors();
+        rafId = null;
+      });
+    };
+
+    schedule();
+
+    const resizeObserver =
+      typeof ResizeObserver !== "undefined"
+        ? new ResizeObserver(() => schedule())
+        : null;
+    if (resizeObserver && bracketGridRef.current) {
+      resizeObserver.observe(bracketGridRef.current);
+    }
+
+    const handleResize = () => schedule();
+    window.addEventListener("resize", handleResize);
+
+    return () => {
+      if (rafId !== null) cancelAnimationFrame(rafId);
+      resizeObserver?.disconnect();
+      window.removeEventListener("resize", handleResize);
+    };
+  }, [isMobile, mobileRound, recomputeConnectors, showFutures]);
+
   if (!def) return null;
 
   return (
@@ -358,7 +449,7 @@ function ConferenceBracketView({
             </div>
           ) : null}
 
-          <div className={`conf-bracket-grid ${isMobile ? "conf-bracket-grid--mobile" : ""}`}>
+          <div ref={bracketGridRef} className={`conf-bracket-grid ${isMobile ? "conf-bracket-grid--mobile" : ""}`}>
             {def.rounds.map((roundDef) => {
               if (isMobile && roundDef.id !== mobileRound) return null;
               const roundGames = gamesByRound.get(roundDef.id) ?? [];
@@ -368,7 +459,7 @@ function ConferenceBracketView({
                   <div className="conf-games-lane">
                     {roundGames.map((game) => {
                       return (
-                        <div key={game.id} className="conf-game-node">
+                        <div key={game.id} className="conf-game-node" data-game-id={game.id}>
                           <ConfGameCard
                             game={game}
                             confId={confId}
@@ -388,6 +479,17 @@ function ConferenceBracketView({
                 </div>
               );
             })}
+            {!isMobile && connectorViewport.width > 0 && connectorViewport.height > 0 ? (
+              <svg
+                className="conf-bracket-connectors"
+                viewBox={`0 0 ${connectorViewport.width} ${connectorViewport.height}`}
+                aria-hidden="true"
+              >
+                {connectorPaths.map((path) => (
+                  <path key={path.key} d={path.d} className="conf-connector-path" />
+                ))}
+              </svg>
+            ) : null}
           </div>
         </>
       )}
