@@ -24,8 +24,7 @@ type RankingMetric = {
 };
 
 const RANKING_METRICS: RankingMetric[] = [
-  { key: "mrRank", label: "Model Rank", format: (v) => `#${v}`, ascending: true },
-  { key: "mrScore", label: "Model Score", format: (v) => v.toFixed(2), ascending: false },
+  { key: "mrRank", label: "OddsGods Rank", format: (v) => `#${v}`, ascending: true },
   { key: "elo", label: "Elo Rating", format: (v) => v.toFixed(0), ascending: false },
   { key: "rankNET", label: "NET Ranking", format: (v) => `#${v}`, ascending: true },
   { key: "rankPOM", label: "KenPom", format: (v) => `#${v}`, ascending: true },
@@ -36,7 +35,6 @@ const RANKING_METRICS: RankingMetric[] = [
   { key: "netRtg", label: "Net Rating", format: (v) => v.toFixed(1), ascending: false },
   { key: "offRtg", label: "Off. Rating", format: (v) => v.toFixed(1), ascending: false },
   { key: "defRtg", label: "Def. Rating", format: (v) => v.toFixed(1), ascending: true },
-  { key: "expWinsPct", label: "Exp. Win %", format: (v) => `${v.toFixed(1)}%`, ascending: false },
   { key: "eloSos", label: "SOS (Elo)", format: (v) => v.toFixed(0), ascending: false },
   { key: "eloTrend", label: "Elo Trend", format: (v) => (v >= 0 ? `+${v.toFixed(1)}` : v.toFixed(1)), ascending: false },
   { key: "last5Margin", label: "Last 5 Margin", format: (v) => (v >= 0 ? `+${v.toFixed(1)}` : v.toFixed(1)), ascending: false },
@@ -141,9 +139,6 @@ export function ExpandedRankings({
               >
                 {metric.label} {(sortAsc ?? metric.ascending) ? "↑" : "↓"}
               </th>
-              {!isMobile && (
-                <th className="rank-th rank-th--secondary">Elo</th>
-              )}
             </tr>
           </thead>
           <tbody>
@@ -166,9 +161,6 @@ export function ExpandedRankings({
                   <td className="rank-td rank-td--conf">{CONF_NAME_MAP[team.conf] ?? team.conf}</td>
                 )}
                 <td className="rank-td rank-td--metric">{metric.format(team[metric.key] as number)}</td>
-                {!isMobile && (
-                  <td className="rank-td rank-td--secondary">{team.elo.toFixed(0)}</td>
-                )}
               </tr>
             ))}
           </tbody>
