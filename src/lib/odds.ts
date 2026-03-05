@@ -50,10 +50,6 @@ export const formatOddsDisplay = (
     return { primary: "—", secondary: implied };
   }
 
-  if (mode === "american" && prob >= 0.95) {
-    return { primary: `${(prob * 100).toFixed(1)}%` };
-  }
-
   const americanRaw = toAmericanOdds(prob);
   const american = americanRaw > 50000 ? "+50000+" : formatAmerican(americanRaw);
   const implied = toImpliedLabel(prob);
