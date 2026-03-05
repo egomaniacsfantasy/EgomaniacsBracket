@@ -19,6 +19,8 @@ import type { ConfGameTemplate, ConfResolvedGame, ConfSimulationOutput } from ".
 const SIM_RUNS = 2000;
 type ConfTeamRow = (typeof CONF_TEAMS)[string][number];
 type ConfCandidateRow = { teamId: number; prob: number; team: ConfTeamRow };
+const INFO_ICON_TEXT = "\u24D8";
+const CLOSE_ICON_TEXT = "\u2715";
 
 const TEAM_STAT_LABELS: Record<TeamStatKey, string> = {
   rank_POM: "KenPom Rank",
@@ -399,6 +401,7 @@ function ConferenceBracketView({
                             onPick={handlePick}
                             onOpenMatchupStats={setSelectedStatsGame}
                             isLocked={game.id in locks}
+                            isMobile={isMobile}
                           />
                         </div>
                       );
@@ -433,6 +436,7 @@ function ConfGameCard({
   onPick,
   onOpenMatchupStats,
   isLocked,
+  isMobile,
 }: {
   game: ConfResolvedGame;
   confId: string;
@@ -444,6 +448,7 @@ function ConfGameCard({
   onPick: (game: ConfResolvedGame, teamId: number | null) => void;
   onOpenMatchupStats: (game: ConfResolvedGame) => void;
   isLocked: boolean;
+  isMobile: boolean;
 }) {
   const rows = buildGameRowsForDisplay(game, confId, def, teamsById, gameWinProbs, possibleWinners);
   const knownMatchup = game.teamAId !== null && game.teamBId !== null;
@@ -478,7 +483,7 @@ function ConfGameCard({
       {knownMatchup ? (
         <button
           type="button"
-          className="matchup-stats-icon"
+          className={`matchup-stats-icon ${isMobile ? "matchup-stats-icon--mobile" : ""}`}
           onClick={(event) => {
             event.stopPropagation();
             onOpenMatchupStats(game);
@@ -486,7 +491,7 @@ function ConfGameCard({
           title="View matchup stats"
           aria-label="View matchup stats"
         >
-          i
+          {INFO_ICON_TEXT}
         </button>
       ) : null}
       {rows.length > 0 ? (
@@ -629,7 +634,7 @@ function ConfMatchupStatsModal({
         <div className="matchup-stats-head">
           <h3>Matchup Stats</h3>
           <button className="matchup-stats-close" onClick={onClose} aria-label="Close matchup stats">
-            x
+            {CLOSE_ICON_TEXT}
           </button>
         </div>
         <p className="matchup-stats-sub">
@@ -651,7 +656,7 @@ function ConfMatchupStatsModal({
                     aria-label="About Importance percent"
                     onClick={() => setActiveStatDescription((previous) => (previous === "importance" ? null : "importance"))}
                   >
-                    i
+                    {INFO_ICON_TEXT}
                   </button>
                   {activeStatDescription === "importance" ? (
                     <div className="matchup-stat-help-popover matchup-stat-help-popover--header">
@@ -675,7 +680,7 @@ function ConfMatchupStatsModal({
                         aria-label={`About ${TEAM_STAT_LABELS[key]}`}
                         onClick={() => setActiveStatDescription((previous) => (previous === key ? null : key))}
                       >
-                        i
+                        {INFO_ICON_TEXT}
                       </button>
                       {activeStatDescription === key ? (
                         <div className="matchup-stat-help-popover">{TEAM_STAT_DESCRIPTIONS[key]}</div>
