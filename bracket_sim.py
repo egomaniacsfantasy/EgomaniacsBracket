@@ -2362,11 +2362,15 @@ try:
         if _commit.returncode != 0:
             print(f"  Commit failed: {_commit.stderr.strip()}")
         else:
-            _push = _git("push")
-            if _push.returncode == 0:
-                print(f"  Pushed: {_msg}")
+            _pull = _git("pull", "--rebase")
+            if _pull.returncode != 0:
+                print(f"  Pull failed: {_pull.stderr.strip()}")
             else:
-                print(f"  Push failed: {_push.stderr.strip()}")
+                _push = _git("push")
+                if _push.returncode == 0:
+                    print(f"  Pushed: {_msg}")
+                else:
+                    print(f"  Push failed: {_push.stderr.strip()}")
 except Exception as _e:
     print(f"  Git push skipped: {_e}")
 
