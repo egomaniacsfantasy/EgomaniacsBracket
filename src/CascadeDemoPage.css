@@ -1,12 +1,11 @@
 /* ═══════════════════════════════════════════
-   CASCADE DEMO PAGE v2 — /demo
-   Uses real product design tokens.
-   Self-contained, prefixed with demo-
+   CASCADE DEMO PAGE v3 — /demo
+   Mobile-first, real data, ~20s cascade
    ═══════════════════════════════════════════ */
 
 @import url("https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Space+Grotesk:wght@400;500;700&display=swap");
 
-/* ── design tokens (matching real product) ── */
+/* ── design tokens ── */
 .demo-page {
   --bg-base: #0e0c09;
   --amber: #b87d18;
@@ -23,7 +22,7 @@
   --radius-md: 12px;
 }
 
-/* ── page wrapper ── */
+/* ═══ PAGE WRAPPER ═══ */
 .demo-page {
   min-height: 100vh;
   min-height: 100dvh;
@@ -31,64 +30,65 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  padding: 24px 20px 60px;
-  max-width: 400px;
-  margin: 0 auto;
+  padding: 28px 16px 80px;
+  width: 100%;
   position: relative;
   overflow-x: hidden;
 }
 
-/* ── brand header ── */
+/* ═══ BRAND HEADER ═══ */
 .demo-header {
-  width: 100%;
   text-align: center;
-  margin-bottom: 28px;
+  margin-bottom: 32px;
+  width: 100%;
 }
 
-.demo-brand-eyebrow {
+.demo-eyebrow {
   font-family: var(--font-mono);
   font-size: 9px;
-  letter-spacing: 0.20em;
+  letter-spacing: 0.22em;
   color: var(--text-tertiary);
   text-transform: uppercase;
   margin-bottom: 4px;
 }
 
-.demo-brand-title {
+.demo-title {
   font-family: var(--font-serif);
-  font-size: 18px;
+  font-size: 16px;
   font-weight: 700;
   color: var(--text-primary);
-  letter-spacing: 0.02em;
+  letter-spacing: 0.03em;
 }
 
-/* ── instruction text ── */
+/* ═══ INSTRUCTION ═══ */
 .demo-instruction {
   text-align: center;
-  margin-bottom: 20px;
+  margin-bottom: 24px;
+  width: 100%;
   transition: opacity 300ms ease;
 }
 
 .demo-instruction-main {
   font-family: var(--font-serif);
-  font-size: 20px;
+  font-size: 22px;
   font-weight: 700;
   color: var(--text-primary);
-  margin: 0 0 4px;
+  margin: 0 0 6px;
 }
 
 .demo-instruction-sub {
   font-family: var(--font-mono);
-  font-size: 12px;
+  font-size: 13px;
   color: var(--text-tertiary);
   margin: 0;
 }
 
-/* ── post-pick headline ── */
-.demo-eliminated-headline {
+/* ═══ POST-PICK HEADLINE ═══ */
+.demo-eliminated {
   text-align: center;
   margin-bottom: 20px;
-  animation: demoFadeUp 400ms ease-out;
+  width: 100%;
+  animation: demoFadeUp 400ms cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .demo-eliminated-main {
@@ -107,168 +107,184 @@
 }
 
 @keyframes demoFadeUp {
-  from { opacity: 0; transform: translateY(8px); }
+  from { opacity: 0; transform: translateY(10px); }
   to { opacity: 1; transform: translateY(0); }
 }
 
-/* ═══════════════════════════════════════════
-   MATCHUP CELLS — matches real product
-   ═══════════════════════════════════════════ */
-.demo-matchup {
+/* ═══ HERO MATCHUP (Florida vs Merrimack) ═══ */
+.demo-hero-matchup {
   width: 100%;
-  background: rgba(255, 255, 255, 0.02);
-  border: 1px solid var(--line);
+  background: rgba(255, 255, 255, 0.025);
+  border: 1.5px solid rgba(184, 125, 24, 0.15);
   border-radius: var(--radius-sm);
   overflow: hidden;
-  margin-bottom: 4px;
+  margin-bottom: 16px;
 }
 
-.demo-team-row {
-  display: grid;
-  grid-template-columns: 18px 18px minmax(0, 1fr) minmax(52px, auto);
+.demo-hero-row {
+  display: flex;
   align-items: center;
-  gap: 6px;
-  padding: 8px 10px;
-  transition: background 120ms, opacity 400ms;
-  cursor: default;
+  gap: 10px;
+  padding: 18px 20px;
+  transition: background 150ms, opacity 400ms;
   position: relative;
 }
 
-.demo-team-seed {
+.demo-hero-row--clickable {
+  cursor: pointer;
+}
+
+.demo-hero-row--clickable:active {
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.demo-hero-seed {
   font-family: var(--font-mono);
-  font-size: 10px;
+  font-size: 14px;
   font-weight: 700;
   color: var(--text-tertiary);
-  width: 18px;
+  width: 22px;
   text-align: right;
   flex-shrink: 0;
 }
 
-.demo-team-logo {
-  width: 18px;
-  height: 18px;
+.demo-hero-logo {
+  width: 36px;
+  height: 36px;
   object-fit: contain;
   flex-shrink: 0;
 }
 
-.demo-team-name {
+.demo-hero-name {
   font-family: var(--font-serif);
-  font-size: 12px;
-  font-weight: 600;
+  font-size: 18px;
+  font-weight: 700;
   color: var(--text-primary);
   flex: 1;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
 }
 
-.demo-team-odds {
+.demo-hero-odds {
   font-family: var(--font-mono);
-  font-size: 12px;
+  font-size: 20px;
   font-weight: 700;
   color: var(--text-secondary);
   flex-shrink: 0;
-  min-width: 52px;
-  text-align: right;
-  transition: color 300ms ease;
 }
 
-.demo-matchup-divider {
+.demo-hero-check {
+  font-size: 16px;
+  flex-shrink: 0;
+  width: 20px;
+  text-align: center;
+}
+
+.demo-hero-divider {
   height: 1px;
   background: var(--line);
-  margin: 0 10px;
+  margin: 0 20px;
 }
 
-/* ═══ Pick states ═══ */
-.demo-team-row--picked {
+/* Hero pick states */
+.demo-hero-row--picked {
   background: rgba(184, 125, 24, 0.08);
 }
-.demo-team-row--picked .demo-team-name { color: var(--text-amber); }
-.demo-team-row--picked .demo-team-odds { color: var(--text-amber); }
+.demo-hero-row--picked .demo-hero-name { color: var(--text-amber); }
+.demo-hero-row--picked .demo-hero-odds { color: var(--text-amber); }
 
-.demo-team-row--eliminated {
+.demo-hero-row--eliminated {
   opacity: 0.25;
 }
-.demo-team-row--eliminated .demo-team-name {
+.demo-hero-row--eliminated .demo-hero-name {
+  text-decoration: line-through;
+  text-decoration-color: rgba(240, 109, 109, 0.5);
+}
+.demo-hero-row--eliminated .demo-hero-odds {
   text-decoration: line-through;
   text-decoration-color: rgba(240, 109, 109, 0.5);
 }
 
 /* Merrimack pulse hint */
-.demo-team-row--hint::before {
+.demo-hero-row--hint::before {
   content: '';
   position: absolute;
   left: 0; top: 0; bottom: 0;
-  width: 3px;
+  width: 4px;
   background: var(--text-amber);
-  border-radius: 0 2px 2px 0;
+  border-radius: 0 3px 3px 0;
   animation: demoPulse 2s ease-in-out infinite;
 }
 
 @keyframes demoPulse {
-  0%, 100% { opacity: 0.25; }
-  50% { opacity: 0.85; }
+  0%, 100% { opacity: 0.20; }
+  50% { opacity: 0.80; }
 }
 
-/* Outcome badges */
-.demo-outcome {
-  font-family: var(--font-mono);
-  font-size: 14px;
-  font-weight: 700;
-  min-width: 52px;
-  text-align: right;
-  flex-shrink: 0;
-}
-.demo-outcome--win { color: var(--green-win); }
-.demo-outcome--loss { color: var(--red-loss); }
-
-/* Florida flash red on elimination */
-.demo-team-row--flash-red {
+/* Flash red on elimination */
+.demo-hero-row--flash-red {
   animation: demoFlashRed 250ms ease-out;
 }
-
 @keyframes demoFlashRed {
   0% { background: rgba(240, 109, 109, 0.18); }
   100% { background: transparent; }
 }
 
-/* ═══════════════════════════════════════════
-   ROUND CARDS
-   ═══════════════════════════════════════════ */
+/* ═══ REGION LABEL ═══ */
+.demo-region-label {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  color: var(--text-tertiary);
+  text-transform: uppercase;
+  text-align: center;
+  margin-bottom: 16px;
+}
+
+/* ═══ GIVEAWAY TEASER PILL ═══ */
+.demo-teaser {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 16px;
+  background: rgba(184, 125, 24, 0.06);
+  border: 1px solid rgba(184, 125, 24, 0.18);
+  border-radius: 100px;
+  margin: 0 auto 24px;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--text-amber);
+  letter-spacing: 0.06em;
+}
+
+/* ═══ ROUND CARDS (R32, S16, E8) ═══ */
 .demo-round-card {
   width: 100%;
-  margin-bottom: 20px;
+  margin-bottom: 16px;
 }
 
 .demo-round-card--entering {
-  animation: demoCardSlideIn 450ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  animation: demoCardIn 500ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 
-.demo-round-card--visible {
-  opacity: 1;
-  transform: translateY(0);
-}
-
-@keyframes demoCardSlideIn {
+@keyframes demoCardIn {
   from { opacity: 0; transform: translateY(30px); }
   to { opacity: 1; transform: translateY(0); }
 }
 
-/* Round header */
 .demo-round-header {
   display: flex;
-  align-items: center;
   justify-content: space-between;
+  align-items: center;
   margin-bottom: 8px;
   padding: 0 2px;
 }
 
 .demo-round-name {
   font-family: var(--font-mono);
-  font-size: 10px;
+  font-size: 12px;
   letter-spacing: 0.14em;
   color: var(--text-amber);
   text-transform: uppercase;
+  font-weight: 700;
 }
 
 .demo-round-region {
@@ -279,64 +295,127 @@
   text-transform: uppercase;
 }
 
-/* ═══ Florida fade-out within round cards ═══ */
-.demo-team-row--fading {
+/* ── Team rows within round cards ── */
+.demo-matchup {
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+  margin-bottom: 4px;
+}
+
+.demo-team-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 14px 16px;
+  transition: background 120ms, opacity 500ms, max-height 400ms;
+  overflow: hidden;
+}
+
+.demo-team-seed {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-tertiary);
+  width: 20px;
+  text-align: right;
+  flex-shrink: 0;
+}
+
+.demo-team-logo {
+  width: 28px;
+  height: 28px;
+  object-fit: contain;
+  flex-shrink: 0;
+}
+
+.demo-team-name {
+  font-family: var(--font-serif);
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text-primary);
+  flex: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.demo-team-odds {
+  font-family: var(--font-mono);
+  font-size: 17px;
+  font-weight: 700;
+  color: var(--text-secondary);
+  flex-shrink: 0;
+  min-width: 60px;
+  text-align: right;
+  transition: color 300ms ease;
+}
+
+.demo-matchup-div {
+  height: 1px;
+  background: var(--line);
+  margin: 0 16px;
+}
+
+/* ── Florida fade-out within round cards ── */
+.demo-team-row--florida-fading {
   pointer-events: none;
   overflow: hidden;
 }
+
 .demo-team-row--fading-r32 {
-  animation: demoFloridaFade 800ms ease-in forwards;
+  animation: demoFloridaFade 1000ms ease-in forwards;
 }
 .demo-team-row--fading-s16 {
-  animation: demoFloridaFade 600ms ease-in forwards;
+  animation: demoFloridaFade 800ms ease-in forwards;
 }
 .demo-team-row--fading-e8 {
-  animation: demoFloridaFade 500ms ease-in forwards;
+  animation: demoFloridaFade 600ms ease-in forwards;
 }
 
 @keyframes demoFloridaFade {
-  0%   { opacity: 1; max-height: 40px; background: transparent; }
-  10%  { background: rgba(240, 109, 109, 0.12); }
-  50%  { opacity: 0.1; background: transparent; }
-  80%  { opacity: 0; max-height: 40px; }
-  100% { opacity: 0; max-height: 0; padding-top: 0; padding-bottom: 0; margin: 0; }
+  0%   { opacity: 1; max-height: 56px; background: transparent; }
+  8%   { background: rgba(240, 109, 109, 0.12); }
+  40%  { opacity: 0.1; background: transparent; }
+  70%  { opacity: 0; max-height: 56px; }
+  100% { opacity: 0; max-height: 0; padding-top: 0; padding-bottom: 0; }
 }
 
 .demo-team-row--gone {
   display: none;
 }
 
-/* ═══ Odds flash on reprice ═══ */
+/* ── Odds reprice flash ── */
 .demo-team-odds--flash-green {
-  animation: demoOddsGreen 600ms ease-out;
+  animation: demoGreen 700ms ease-out;
 }
 
 .demo-team-odds--flash-red {
-  animation: demoOddsRed 600ms ease-out;
+  animation: demoRed 700ms ease-out;
 }
 
-@keyframes demoOddsGreen {
-  0%   { color: var(--green-win); transform: scale(1.06); }
+@keyframes demoGreen {
+  0% { color: var(--green-win); transform: scale(1.05); }
   100% { color: var(--text-secondary); transform: scale(1); }
 }
 
-@keyframes demoOddsRed {
-  0%   { color: var(--red-loss); transform: scale(1.06); }
+@keyframes demoRed {
+  0% { color: var(--red-loss); transform: scale(1.05); }
   100% { color: var(--text-secondary); transform: scale(1); }
 }
 
-/* ═══════════════════════════════════════════
-   CHAMPIONSHIP ODDS CARD
-   ═══════════════════════════════════════════ */
+/* ═══ CHAMPIONSHIP ODDS CARD ═══ */
 .demo-champ-card {
   width: 100%;
-  margin-bottom: 20px;
-  animation: demoCardSlideIn 450ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  margin-bottom: 16px;
+  animation: demoCardIn 500ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 
 .demo-champ-header {
   font-family: var(--font-mono);
-  font-size: 10px;
+  font-size: 12px;
+  font-weight: 700;
   letter-spacing: 0.14em;
   color: var(--text-amber);
   text-transform: uppercase;
@@ -346,75 +425,94 @@
 .demo-champ-row {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 9px 10px;
+  gap: 10px;
+  padding: 12px 16px;
   background: rgba(255, 255, 255, 0.02);
   border: 1px solid var(--line);
   border-radius: var(--radius-sm);
-  margin-bottom: 3px;
+  margin-bottom: 4px;
 }
 
 .demo-champ-rank {
   font-family: var(--font-mono);
-  font-size: 10px;
+  font-size: 12px;
   color: var(--text-tertiary);
-  width: 16px;
+  width: 18px;
   text-align: right;
+  flex-shrink: 0;
 }
 
 .demo-champ-logo {
-  width: 18px;
-  height: 18px;
+  width: 28px;
+  height: 28px;
   object-fit: contain;
   flex-shrink: 0;
 }
 
 .demo-champ-name {
   font-family: var(--font-serif);
-  font-size: 13px;
-  font-weight: 600;
+  font-size: 15px;
+  font-weight: 700;
   color: var(--text-primary);
   flex: 1;
 }
 
-.demo-champ-odds {
+.demo-champ-odds-new {
   font-family: var(--font-mono);
-  font-size: 13px;
+  font-size: 17px;
   font-weight: 700;
   color: var(--text-amber);
+  flex-shrink: 0;
 }
 
-.demo-champ-delta {
+.demo-champ-odds-old {
   font-family: var(--font-mono);
-  font-size: 10px;
+  font-size: 11px;
+  color: var(--text-tertiary);
+  flex-shrink: 0;
+}
+
+.demo-champ-arrow {
+  font-family: var(--font-mono);
+  font-size: 11px;
   color: var(--green-win);
   flex-shrink: 0;
 }
 
-/* ═══════════════════════════════════════════
-   CTA CARD
-   ═══════════════════════════════════════════ */
+.demo-champ-arrow-down {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--text-tertiary);
+  flex-shrink: 0;
+}
+
+/* ═══ CTA CARD ═══ */
 .demo-cta {
   width: 100%;
-  padding: 28px 20px;
+  padding: 32px 24px;
   background: linear-gradient(135deg, rgba(184, 125, 24, 0.10) 0%, rgba(184, 125, 24, 0.03) 100%);
   border: 2px solid rgba(184, 125, 24, 0.28);
   border-radius: var(--radius-md);
   text-align: center;
-  animation: demoCardSlideIn 450ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  animation: demoCardIn 500ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.demo-cta-emoji {
+  font-size: 28px;
+  margin-bottom: 12px;
 }
 
 .demo-cta-badge {
   display: inline-block;
   font-family: var(--font-mono);
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 700;
   letter-spacing: 0.12em;
   color: #0e0c09;
   background: var(--text-amber);
   border-radius: 100px;
-  padding: 4px 14px;
-  margin-bottom: 14px;
+  padding: 5px 16px;
+  margin-bottom: 16px;
   text-transform: uppercase;
 }
 
@@ -428,53 +526,53 @@
 
 .demo-cta-body {
   font-family: var(--font-mono);
-  font-size: 12px;
+  font-size: 13px;
   color: var(--text-secondary);
   line-height: 1.6;
-  margin: 0 0 16px;
+  margin: 0 0 20px;
 }
 
 .demo-cta-url {
   font-family: var(--font-mono);
-  font-size: 14px;
+  font-size: 16px;
   font-weight: 700;
   color: var(--text-amber);
-  margin: 0 0 16px;
+  letter-spacing: 0.02em;
+  margin: 0 0 20px;
 }
 
 .demo-cta-brand {
   font-family: var(--font-serif);
   font-size: 11px;
-  letter-spacing: 0.13em;
+  letter-spacing: 0.15em;
   color: var(--text-tertiary);
   text-transform: uppercase;
   margin: 0;
 }
 .demo-cta-brand strong { color: var(--text-amber); }
 
-/* ═══════════════════════════════════════════
-   RESET BUTTON (fixed, top-right circle)
-   ═══════════════════════════════════════════ */
+/* ═══ RESET BUTTON ═══ */
 .demo-reset {
   position: fixed;
   top: 16px;
   right: 16px;
-  width: 36px;
-  height: 36px;
+  width: 38px;
+  height: 38px;
   border-radius: 50%;
-  background: rgba(255, 255, 255, 0.05);
+  background: rgba(255, 255, 255, 0.06);
   border: 1px solid var(--line);
   color: var(--text-secondary);
-  font-size: 16px;
+  font-size: 18px;
   cursor: pointer;
   z-index: 10;
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: background 140ms, border-color 140ms;
+  transition: background 140ms;
   animation: demoFadeUp 300ms ease-out;
 }
-.demo-reset:hover {
-  background: rgba(184, 125, 24, 0.10);
+.demo-reset:hover,
+.demo-reset:active {
+  background: rgba(184, 125, 24, 0.12);
   border-color: rgba(184, 125, 24, 0.30);
 }

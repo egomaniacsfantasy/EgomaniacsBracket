@@ -1,7 +1,6 @@
 import { forwardRef, useCallback, useMemo, useRef, useState } from "react";
 import { teams, teamsById } from "./data/teams";
 import { teamLogoUrl } from "./lib/logo";
-import { abbreviationForTeam } from "./lib/abbreviation";
 import { formatAmerican, toAmericanOdds } from "./lib/odds";
 import { runSimulation } from "./lib/simulation";
 import type { FuturesRow } from "./types";
@@ -11,7 +10,7 @@ import "./CascadeDemoPage.css";
 const FLORIDA_ID = "South-2";
 const MERRIMACK_ID = "South-15";
 const UPSET_GAME_ID = "South-R64-7";
-const SIM_RUNS = 5000;
+const SIM_RUNS = 10_000;
 
 const delay = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
@@ -19,7 +18,6 @@ const delay = (ms: number) => new Promise((r) => setTimeout(r, ms));
 interface DemoTeam {
   id: string;
   name: string;
-  abbrev: string;
   seed: number;
   logoUrl: string;
   oldProb: number;
@@ -58,7 +56,6 @@ function buildRoundTeams(
     result.push({
       id: t.id,
       name: t.name,
-      abbrev: abbreviationForTeam(t.name),
       seed: t.seed,
       logoUrl: teamLogoUrl(t),
       oldProb,
@@ -66,11 +63,12 @@ function buildRoundTeams(
       oldAmOdds: oldProb > 0.001 ? toAmericanOdds(oldProb) : 99999,
       newAmOdds: newProb > 0.001 ? toAmericanOdds(newProb) : 99999,
       isFlorida: t.id === FLORIDA_ID,
-      improved: newProb > oldProb + 0.005,
-      worsened: newProb < oldProb - 0.005,
+      improved: newProb > oldProb + 0.003,
+      worsened: newProb < oldProb - 0.003,
     });
   }
   result.sort((a, b) => b.oldProb - a.oldProb);
+  // Keep Florida in sorted position
   const florida = result.find((t) => t.isFlorida);
   const others = result.filter((t) => !t.isFlorida).slice(0, maxTeams - (florida ? 1 : 0));
   if (florida) {
@@ -82,9 +80,9 @@ function buildRoundTeams(
 }
 
 /* ═══════════════════════════════════════════
-   PHASES:
+   PHASES (v3 timing — ~20s cascade):
    0  = pre-pick
-   1  = picked (Florida ✗, Merrimack ✓)
+   1  = picked (Florida X, Merrimack check)
    2  = R32 card, old odds, Florida present
    3  = R32 Florida fading
    4  = R32 odds repricing
@@ -107,6 +105,21 @@ export function CascadeDemoPage() {
   const { beforeSim, afterSim } = useMemo(() => {
     const b = runSimulation({}, SIM_RUNS);
     const a = runSimulation({ [UPSET_GAME_ID]: MERRIMACK_ID }, SIM_RUNS);
+
+    // Validation: every South team's advancement should improve when #2 seed eliminated
+    const southTeams = teams.filter((t) => t.region === "South" && t.id !== FLORIDA_ID && t.id !== "South-16b");
+    for (const t of southTeams) {
+      const beforeChamp = getProb(b.futures, t.id, "champProb");
+      const afterChamp = getProb(a.futures, t.id, "champProb");
+      if (afterChamp < beforeChamp - 0.01) {
+        console.warn(
+          `[DemoCascade] WARNING: ${t.name} championship odds got WORSE after Florida eliminated: ` +
+          `${(beforeChamp * 100).toFixed(2)}% -> ${(afterChamp * 100).toFixed(2)}%. ` +
+          `This may indicate Monte Carlo variance; increase SIM_RUNS.`
+        );
+      }
+    }
+
     return { beforeSim: b, afterSim: a };
   }, []);
 
@@ -124,8 +137,8 @@ export function CascadeDemoPage() {
     [beforeSim, afterSim],
   );
   const champTeams = useMemo(() => {
-    const all = buildRoundTeams(beforeSim.futures, afterSim.futures, "champProb", 6);
-    return all.filter((t) => !t.isFlorida);
+    const all = buildRoundTeams(beforeSim.futures, afterSim.futures, "champProb", 8);
+    return all.filter((t) => !t.isFlorida).slice(0, 5);
   }, [beforeSim, afterSim]);
 
   /* ── hero matchup data ── */
@@ -134,6 +147,14 @@ export function CascadeDemoPage() {
   const floridaOdds = fmtOdds(getProb(beforeSim.futures, FLORIDA_ID, "round2Prob"));
   const merrimackOdds = fmtOdds(getProb(beforeSim.futures, MERRIMACK_ID, "round2Prob"));
 
+  /* ── scroll helper ── */
+  const scrollToRef = useCallback((key: string) => {
+    requestAnimationFrame(() => {
+      const el = roundRefs.current[key];
+      if (el) el.scrollIntoView({ behavior: "smooth", block: "center" });
+    });
+  }, []);
+
   /* ── animated counter ── */
   const animateOdds = useCallback(
     (roundKey: string, teamList: DemoTeam[], duration: number) => {
@@ -141,7 +162,7 @@ export function CascadeDemoPage() {
       function tick(now: number) {
         const elapsed = now - startTime;
         const progress = Math.min(elapsed / duration, 1);
-        const eased = 1 - Math.pow(1 - progress, 3);
+        const eased = 1 - Math.pow(1 - progress, 3); // ease-out cubic
         const updates: Record<string, string> = {};
         for (const t of teamList) {
           if (t.isFlorida) continue;
@@ -157,70 +178,65 @@ export function CascadeDemoPage() {
     [],
   );
 
-  /* ── cascade sequence (v2 timing table) ── */
+  /* ── cascade sequence (v3 timing — ~20 seconds total) ── */
   const handlePick = useCallback(async () => {
     if (phase > 0) return;
 
-    // 0ms: Picked
+    // 0ms: Picked — Florida eliminated, Merrimack wins
     setPhase(1);
-    await delay(1200);
+    await delay(2000);
 
-    // 1200ms: R32 appears with old odds, Florida present
+    // 2000ms: R32 appears with old odds, Florida present
     setPhase(2);
-    await delay(100);
-    roundRefs.current["R32"]?.scrollIntoView({ behavior: "smooth", block: "center" });
-    await delay(1400);
+    scrollToRef("R32");
+    await delay(2000);
 
-    // 2700ms: R32 Florida fading (800ms CSS anim)
+    // 4000ms: R32 Florida fading (1000ms CSS animation)
     setPhase(3);
-    await delay(1200);
+    await delay(1600); // 1000ms fade + 600ms hold
 
-    // 4300ms: R32 reprice (600ms counter)
+    // 5600ms: R32 reprice (800ms counter animation)
     setPhase(4);
-    animateOdds("R32", r32Teams, 600);
+    animateOdds("R32", r32Teams, 800);
+    await delay(2300); // 800ms animation + 1500ms hold
+
+    // 7900ms: S16 appears with old odds, Florida present
+    setPhase(5);
+    scrollToRef("S16");
+    await delay(1500);
+
+    // 9400ms: S16 Florida fading (800ms CSS animation)
+    setPhase(6);
+    await delay(1300); // 800ms fade + 500ms hold
+
+    // 10700ms: S16 reprice (700ms counter)
+    setPhase(7);
+    animateOdds("S16", s16Teams, 700);
+    await delay(1900); // 700ms animation + 1200ms hold
+
+    // 12600ms: E8 appears with old odds, Florida present
+    setPhase(8);
+    scrollToRef("E8");
     await delay(1200);
 
-    // 5500ms: S16 appears with old odds, Florida present
-    setPhase(5);
-    await delay(100);
-    roundRefs.current["S16"]?.scrollIntoView({ behavior: "smooth", block: "center" });
-    await delay(900);
-
-    // 6500ms: S16 Florida fading (600ms CSS anim)
-    setPhase(6);
-    await delay(900);
-
-    // 7400ms: S16 reprice
-    setPhase(7);
-    animateOdds("S16", s16Teams, 600);
-    await delay(800);
-
-    // 8200ms: E8 appears with old odds, Florida present
-    setPhase(8);
-    await delay(100);
-    roundRefs.current["E8"]?.scrollIntoView({ behavior: "smooth", block: "center" });
-    await delay(700);
-
-    // 9000ms: E8 Florida fading (500ms CSS anim)
+    // 13800ms: E8 Florida fading (600ms CSS animation)
     setPhase(9);
-    await delay(700);
+    await delay(1000); // 600ms fade + 400ms hold
 
-    // 9700ms: E8 reprice
+    // 14800ms: E8 reprice (600ms counter)
     setPhase(10);
-    animateOdds("E8", e8Teams, 500);
-    await delay(1000);
+    animateOdds("E8", e8Teams, 600);
+    await delay(1600); // 600ms animation + 1000ms hold
 
-    // 10700ms: Championship card
+    // 16400ms: Championship odds card
     setPhase(11);
-    await delay(100);
-    roundRefs.current["CHAMP"]?.scrollIntoView({ behavior: "smooth", block: "center" });
-    await delay(1900);
+    scrollToRef("CHAMP");
+    await delay(3000);
 
-    // 12700ms: CTA
+    // 19400ms: CTA
     setPhase(12);
-    await delay(100);
-    roundRefs.current["CTA"]?.scrollIntoView({ behavior: "smooth", block: "center" });
-  }, [phase, animateOdds, r32Teams, s16Teams, e8Teams]);
+    scrollToRef("CTA");
+  }, [phase, animateOdds, r32Teams, s16Teams, e8Teams, scrollToRef]);
 
   /* ── reset ── */
   const reset = useCallback(() => {
@@ -231,65 +247,66 @@ export function CascadeDemoPage() {
 
   return (
     <div className="demo-page">
-      {/* header */}
+      {/* ── Brand header ── */}
       <div className="demo-header">
-        <div className="demo-brand-eyebrow">ODDS GODS</div>
-        <div className="demo-brand-title">THE BRACKET LAB</div>
+        <div className="demo-eyebrow">O D D S &nbsp; G O D S</div>
+        <div className="demo-title">THE BRACKET LAB</div>
       </div>
 
-      {/* instruction / status */}
+      {/* ── Instruction / eliminated headline ── */}
       {phase === 0 ? (
         <div className="demo-instruction">
           <p className="demo-instruction-main">Pick the upset.</p>
           <p className="demo-instruction-sub">Tap #15 Merrimack.</p>
         </div>
       ) : (
-        <div className="demo-eliminated-headline">
+        <div className="demo-eliminated">
           <p className="demo-eliminated-main">Florida eliminated.</p>
           <p className="demo-eliminated-sub">Watch the South reprice.</p>
         </div>
       )}
 
-      {/* hero matchup card */}
-      <div className="demo-matchup">
-        {/* Florida */}
+      {/* ── Hero matchup card ── */}
+      <div className="demo-hero-matchup">
+        {/* Florida row */}
         <div
           className={
-            "demo-team-row" +
-            (phase >= 1 ? " demo-team-row--eliminated demo-team-row--flash-red" : "")
+            "demo-hero-row" +
+            (phase >= 1 ? " demo-hero-row--eliminated demo-hero-row--flash-red" : "")
           }
         >
-          <span className="demo-team-seed">{florida.seed}</span>
-          <img src={teamLogoUrl(florida)} className="demo-team-logo" alt="" />
-          <span className="demo-team-name">{abbreviationForTeam(florida.name)}</span>
-          {phase >= 1 ? (
-            <span className="demo-outcome demo-outcome--loss">{"\u2715"}</span>
-          ) : (
-            <span className="demo-team-odds">{floridaOdds}</span>
-          )}
+          <span className="demo-hero-seed">{florida.seed}</span>
+          <img src={teamLogoUrl(florida)} className="demo-hero-logo" alt="" />
+          <span className="demo-hero-name">{florida.name}</span>
+          <span className="demo-hero-odds">{floridaOdds}</span>
+          {phase >= 1 && <span className="demo-hero-check" style={{ color: "var(--red-loss)" }}>{"\u2715"}</span>}
         </div>
-        <div className="demo-matchup-divider" />
-        {/* Merrimack */}
+        <div className="demo-hero-divider" />
+        {/* Merrimack row */}
         <div
           className={
-            "demo-team-row" +
-            (phase === 0 ? " demo-team-row--hint" : " demo-team-row--picked")
+            "demo-hero-row" +
+            (phase === 0 ? " demo-hero-row--hint demo-hero-row--clickable" : " demo-hero-row--picked")
           }
           onClick={handlePick}
-          style={{ cursor: phase === 0 ? "pointer" : "default" }}
         >
-          <span className="demo-team-seed">{merrimack.seed}</span>
-          <img src={teamLogoUrl(merrimack)} className="demo-team-logo" alt="" />
-          <span className="demo-team-name">{abbreviationForTeam(merrimack.name)}</span>
-          {phase >= 1 ? (
-            <span className="demo-outcome demo-outcome--win">{"\u2713"}</span>
-          ) : (
-            <span className="demo-team-odds">{merrimackOdds}</span>
-          )}
+          <span className="demo-hero-seed">{merrimack.seed}</span>
+          <img src={teamLogoUrl(merrimack)} className="demo-hero-logo" alt="" />
+          <span className="demo-hero-name">{merrimack.name}</span>
+          <span className="demo-hero-odds">{merrimackOdds}</span>
+          {phase >= 1 && <span className="demo-hero-check" style={{ color: "var(--green-win)" }}>{"\u2713"}</span>}
         </div>
       </div>
 
-      {/* R32 card */}
+      {/* ── Region label ── */}
+      <div className="demo-region-label">SOUTH REGION &middot; 2026 NCAA TOURNAMENT</div>
+
+      {/* ── Giveaway teaser pill ── */}
+      {phase === 0 && (
+        <div className="demo-teaser">Best bracket wins $100. Details &darr;</div>
+      )}
+
+      {/* ── R32 card ── */}
       {phase >= 2 && (
         <RoundCard
           ref={(el) => { roundRefs.current["R32"] = el; }}
@@ -304,7 +321,7 @@ export function CascadeDemoPage() {
         />
       )}
 
-      {/* S16 card */}
+      {/* ── S16 card ── */}
       {phase >= 5 && (
         <RoundCard
           ref={(el) => { roundRefs.current["S16"] = el; }}
@@ -319,7 +336,7 @@ export function CascadeDemoPage() {
         />
       )}
 
-      {/* E8 card */}
+      {/* ── E8 card ── */}
       {phase >= 8 && (
         <RoundCard
           ref={(el) => { roundRefs.current["E8"] = el; }}
@@ -334,7 +351,7 @@ export function CascadeDemoPage() {
         />
       )}
 
-      {/* Championship odds card */}
+      {/* ── Championship odds card ── */}
       {phase >= 11 && (
         <ChampCard
           ref={(el) => { roundRefs.current["CHAMP"] = el; }}
@@ -342,18 +359,19 @@ export function CascadeDemoPage() {
         />
       )}
 
-      {/* CTA */}
+      {/* ── CTA ── */}
       {phase >= 12 && (
         <div ref={(el) => { roundRefs.current["CTA"] = el; }} className="demo-cta">
+          <div className="demo-cta-emoji">{"\uD83C\uDFC6"}</div>
           <div className="demo-cta-badge">$100 BRACKET GIVEAWAY</div>
           <p className="demo-cta-headline">Best bracket wins $100.</p>
-          <p className="demo-cta-body">Build yours now.</p>
+          <p className="demo-cta-body">Build yours free.</p>
           <p className="demo-cta-url">bracket.oddsgods.net</p>
           <p className="demo-cta-brand"><strong>ODDS</strong> GODS</p>
         </div>
       )}
 
-      {/* Reset button */}
+      {/* ── Reset button ── */}
       {phase >= 12 && (
         <button className="demo-reset" onClick={reset}>{"\u21BA"}</button>
       )}
@@ -379,16 +397,18 @@ const RoundCard = forwardRef<HTMLDivElement, RoundCardProps>(
   ({ roundKey, label, teamList, floridaState, fadeClass, oddsState, displayOdds, entering }, ref) => (
     <div
       ref={ref}
-      className={`demo-round-card ${entering ? "demo-round-card--entering" : "demo-round-card--visible"}`}
+      className={`demo-round-card ${entering ? "demo-round-card--entering" : ""}`}
     >
       <div className="demo-round-header">
-        <span className="demo-round-name">{label} {"\u00B7"} SOUTH</span>
+        <span className="demo-round-name">{label}</span>
+        <span className="demo-round-region">SOUTH</span>
       </div>
       {teamList.map((team) => {
         if (team.isFlorida && floridaState === "gone") return null;
         const isFading = team.isFlorida && floridaState === "fading";
         const rowClass =
-          "demo-team-row" + (isFading ? ` demo-team-row--fading ${fadeClass}` : "");
+          "demo-team-row" +
+          (isFading ? ` demo-team-row--florida-fading ${fadeClass}` : "");
 
         let oddsText: string;
         if (team.isFlorida) {
@@ -409,11 +429,11 @@ const RoundCard = forwardRef<HTMLDivElement, RoundCardProps>(
             : "";
 
         return (
-          <div key={team.id} className="demo-matchup" style={{ marginBottom: 3 }}>
+          <div key={team.id} className="demo-matchup">
             <div className={rowClass}>
               <span className="demo-team-seed">{team.seed}</span>
               <img src={team.logoUrl} className="demo-team-logo" alt="" />
-              <span className="demo-team-name">{team.abbrev}</span>
+              <span className="demo-team-name">{team.name}</span>
               <span className={`demo-team-odds${flashClass}`}>{oddsText}</span>
             </div>
           </div>
@@ -434,18 +454,22 @@ interface ChampCardProps {
 const ChampCard = forwardRef<HTMLDivElement, ChampCardProps>(
   ({ teamList }, ref) => (
     <div ref={ref} className="demo-champ-card">
-      <div className="demo-champ-header">CHAMPIONSHIP ODDS {"\u00B7"} SOUTH</div>
-      {teamList.map((team, i) => (
-        <div key={team.id} className="demo-champ-row">
-          <span className="demo-champ-rank">{i + 1}.</span>
-          <img src={team.logoUrl} className="demo-champ-logo" alt="" />
-          <span className="demo-champ-name">{team.abbrev}</span>
-          <span className="demo-champ-odds">{fmtOdds(team.newProb)}</span>
-          <span className="demo-champ-delta">
-            {"\u25B2"} was {fmtOdds(team.oldProb)}
-          </span>
-        </div>
-      ))}
+      <div className="demo-champ-header">CHAMPIONSHIP ODDS &middot; SOUTH</div>
+      {teamList.map((team, i) => {
+        const improved = team.newProb > team.oldProb + 0.001;
+        return (
+          <div key={team.id} className="demo-champ-row">
+            <span className="demo-champ-rank">{i + 1}.</span>
+            <img src={team.logoUrl} className="demo-champ-logo" alt="" />
+            <span className="demo-champ-name">{team.name}</span>
+            <span className="demo-champ-odds-new">{fmtOdds(team.newProb)}</span>
+            <span className="demo-champ-odds-old">was {fmtOdds(team.oldProb)}</span>
+            <span className={improved ? "demo-champ-arrow" : "demo-champ-arrow-down"}>
+              {improved ? "\u25B2" : "\u25BC"}
+            </span>
+          </div>
+        );
+      })}
     </div>
   ),
 );
