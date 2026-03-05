@@ -327,7 +327,7 @@ const normalizeGameWinProbs = (
   return out;
 };
 
-const buildPrecomputedBaseline = (simRuns: number): SimulationOutput => {
+export const buildPrecomputedBaseline = (simRuns: number): SimulationOutput => {
   const { games: resolvedGames } = resolveGames({}, {});
   const resolvedById = new Map(resolvedGames.map((game) => [game.id, game]));
   const emptyWinCounts = new Map<string, Map<string, number>>();
@@ -360,11 +360,6 @@ export const runSimulation = (
   customProbByGame: CustomProbByGame = {},
   options?: { trackChaosDistribution?: boolean }
 ): SimulationOutput => {
-  // Short-circuit: use pre-computed Python baseline when no picks have been made
-  if (Object.keys(locks).length === 0 && Object.keys(customProbByGame).length === 0 && !options?.trackChaosDistribution) {
-    return buildPrecomputedBaseline(simRuns);
-  }
-
   const seedInput = hashLocks(locks, simRuns, customProbByGame);
   const rootSeed = fnv1aHash(`${DEFAULT_SIM_SEED}::${seedInput}`);
   const forcedRng = mulberry32(rootSeed ^ 0xa5a5a5a5);
