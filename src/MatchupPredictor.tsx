@@ -344,8 +344,8 @@ export function MatchupPredictor({ displayMode }: { displayMode: OddsDisplayMode
       )}
 
       <p className="mp-footnote">
-        Model: LightGBM + isotonic calibration, 33 features, DayNum 136 (NCAA R64 context).
-        Home advantage (~50 Elo pts) is baked into the model.
+        Model: LightGBM + isotonic calibration, 33 features, DayNum 121 (current regular-season context).
+        Home advantage is baked into the model.
       </p>
     </div>
   );
