@@ -3149,7 +3149,11 @@ function App() {
       ) : null}
       <div
         className="odds-mode-toggle toolbar-btn--odds"
-        style={!isMobile && mainView !== "bracket" && mainView !== "futures" ? { display: "none" } : undefined}
+        style={
+          !isMobile && mainView !== "bracket" && mainView !== "futures" && mainView !== "conferences"
+            ? { display: "none" }
+            : undefined
+        }
       >
         <button
           className={`odds-mode-btn ${displayMode === "american" ? "odds-mode-btn--active" : ""}`}
