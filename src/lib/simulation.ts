@@ -330,10 +330,27 @@ const normalizeGameWinProbs = (
 export const buildPrecomputedBaseline = (simRuns: number): SimulationOutput => {
   const { games: resolvedGames } = resolveGames({}, {});
   const resolvedById = new Map(resolvedGames.map((game) => [game.id, game]));
-  const emptyWinCounts = new Map<string, Map<string, number>>();
+
+  // Run a seeded simulation to populate win counts for S16/E8/F4 (teams unknown without picks).
+  // normalizeGameWinProbs will use these counts for later rounds, but will use the EXACT
+  // matchup probability from matchupProbData.ts for R64/FF games where both teams are fixed.
+  const rootSeed = fnv1aHash(`${DEFAULT_SIM_SEED}::baseline`);
+  const rng = mulberry32(rootSeed);
+  const gameWinCounts = new Map<string, Map<string, number>>();
   for (const game of gameTemplates) {
-    emptyWinCounts.set(game.id, new Map<string, number>());
+    gameWinCounts.set(game.id, new Map<string, number>());
   }
+  for (let i = 0; i < simRuns; i += 1) {
+    const { winners } = simulateBracket({}, false, {}, rng);
+    for (const game of gameTemplates) {
+      const winnerId = winners[game.id];
+      if (winnerId) {
+        const byTeam = gameWinCounts.get(game.id)!;
+        byTeam.set(winnerId, (byTeam.get(winnerId) ?? 0) + 1);
+      }
+    }
+  }
+
   const futures: FuturesRow[] = teams.map((team) => {
     const preds = BRACKET_PREDS_2026[team.name];
     return {
@@ -348,7 +365,7 @@ export const buildPrecomputedBaseline = (simRuns: number): SimulationOutput => {
   });
   return {
     futures: futures.sort((a, b) => b.champProb - a.champProb),
-    gameWinProbs: normalizeGameWinProbs(emptyWinCounts, simRuns, resolvedById),
+    gameWinProbs: normalizeGameWinProbs(gameWinCounts, simRuns, resolvedById),
     likelihoodSimulation: 1,
     likelihoodApprox: 1,
   };
@@ -360,6 +377,13 @@ export const runSimulation = (
   customProbByGame: CustomProbByGame = {},
   options?: { trackChaosDistribution?: boolean }
 ): SimulationOutput => {
+  // Short-circuit: use pre-computed baseline when no picks have been made.
+  // buildPrecomputedBaseline runs its own simulation for S16/E8/F4 win counts,
+  // and uses exact matchup probabilities for R64/FF games.
+  if (Object.keys(locks).length === 0 && Object.keys(customProbByGame).length === 0 && !options?.trackChaosDistribution) {
+    return buildPrecomputedBaseline(simRuns);
+  }
+
   const seedInput = hashLocks(locks, simRuns, customProbByGame);
   const rootSeed = fnv1aHash(`${DEFAULT_SIM_SEED}::${seedInput}`);
   const forcedRng = mulberry32(rootSeed ^ 0xa5a5a5a5);
