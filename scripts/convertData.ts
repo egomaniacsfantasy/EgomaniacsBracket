@@ -105,22 +105,6 @@ const TEAM_STAT_IMPORTANCE: Record<TeamStatKey, string> = {
   rank_NET: "1.27%",
 };
 
-const TEAM_STAT_COLUMNS_DEFAULT: Record<TeamStatKey, string> = {
-  rank_POM: "rank_POM",
-  rank_MAS: "rank_MAS",
-  rank_WLK: "rank_WLK",
-  rank_MOR: "rank_MOR",
-  elo_sos: "elo_sos",
-  elo_last: "elo_last",
-  avg_net_rtg: "avg_net_rtg",
-  avg_off_rtg: "avg_off_rtg",
-  elo_trend: "elo_trend",
-  avg_def_rtg: "avg_def_rtg",
-  last5_Margin: "last5_Margin",
-  rank_BIH: "rank_BIH",
-  rank_NET: "rank_NET",
-};
-
 const TEAM_STAT_COLUMNS_SNAPSHOT: Record<TeamStatKey, string> = {
   rank_POM: "POM",
   rank_MAS: "MAS",
@@ -307,20 +291,6 @@ function convertTeamStatsData(): void {
     upsertStats(row["TeamName"], row, TEAM_STAT_COLUMNS_SNAPSHOT);
   }
 
-  const teamStatsWb = XLSX.readFile(path.join(DATA_DIR, "team_stats_2026.xlsx"));
-  const teamStatsRows = XLSX.utils.sheet_to_json<Record<string, unknown>>(teamStatsWb.Sheets[teamStatsWb.SheetNames[0]]);
-  for (const row of teamStatsRows) {
-    upsertStats(row["TeamName"], row, TEAM_STAT_COLUMNS_DEFAULT);
-  }
-
-  const confTeamStatsWb = XLSX.readFile(path.join(DATA_DIR, "conf_team_stats_2026.xlsx"));
-  for (const sheetName of confTeamStatsWb.SheetNames) {
-    const confRows = XLSX.utils.sheet_to_json<Record<string, unknown>>(confTeamStatsWb.Sheets[sheetName]);
-    for (const row of confRows) {
-      upsertStats(row["TeamName"], row, TEAM_STAT_COLUMNS_DEFAULT);
-    }
-  }
-
   const orderedStats = Object.fromEntries(
     Object.keys(statsByName)
       .sort((a, b) => a.localeCompare(b))
@@ -330,7 +300,7 @@ function convertTeamStatsData(): void {
   const teamStatUnion = TEAM_STAT_KEYS.map((key) => ` | "${key}"`).join("\n");
   const teamStatOrderLiteral = TEAM_STAT_KEYS.map((key) => `  "${key}",`).join("\n");
 
-  const output = `// Auto-generated from team_snapshot_2026.xlsx + team_stats_2026.xlsx + conf_team_stats_2026.xlsx
+  const output = `// Auto-generated from team_snapshot_2026.xlsx
 export type TeamStatKey =
 ${teamStatUnion}
 ;
