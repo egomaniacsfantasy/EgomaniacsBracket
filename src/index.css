@@ -11965,20 +11965,24 @@ body.walkthrough-active .odds-value--changed::after {
 }
 
 .conf-games-lane {
-  position: relative;
-  flex: 1;
-  min-height: 200px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-height: 220px;
+  padding: 4px 0 10px;
 }
 
 .conf-bracket-grid:not(.conf-bracket-grid--mobile) .conf-game-node {
-  position: absolute;
-  left: 4px;
-  right: 4px;
-  transform: translateY(-50%);
+  position: static;
+  margin: 0 4px;
 }
 
 .conf-bracket-grid--mobile .conf-game-node {
-  margin-bottom: 8px;
+  margin-bottom: 0;
+}
+
+.conf-bracket-grid:not(.conf-bracket-grid--mobile) .conf-games-lane {
+  gap: 16px;
 }
 
 /* Conference Game Card */

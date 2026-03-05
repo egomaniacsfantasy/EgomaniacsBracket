@@ -366,14 +366,9 @@ function ConferenceBracketView({
                 <div key={roundDef.id} className="conf-round-col">
                   <p className="conf-round-label">{roundDef.label}</p>
                   <div className="conf-games-lane">
-                    {roundGames.map((game, index) => {
-                      const topPercent = ((index + 0.5) / Math.max(1, roundGames.length)) * 100;
+                    {roundGames.map((game) => {
                       return (
-                        <div
-                          key={game.id}
-                          className="conf-game-node"
-                          style={!isMobile ? { top: `${topPercent}%` } : undefined}
-                        >
+                        <div key={game.id} className="conf-game-node">
                           <ConfGameCard
                             game={game}
                             confId={confId}
