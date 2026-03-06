@@ -2392,6 +2392,13 @@ try:
             _pull = _git("pull", "--rebase", "--autostash")
             if _pull.returncode != 0:
                 print(f"  Pull failed: {_pull.stderr.strip()}")
+                _git("rebase", "--abort")
+                import os as _os
+                _rmerge = BASE / ".git" / "rebase-merge"
+                if _rmerge.exists():
+                    import shutil as _shutil
+                    _shutil.rmtree(str(_rmerge), ignore_errors=True)
+                print("  Rebase aborted and cleaned up. Re-run bracket_sim to retry push.")
             else:
                 _push = _git("push")
                 if _push.returncode == 0:
