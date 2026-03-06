@@ -2284,8 +2284,8 @@ function App() {
 
   const topHalfComplete = isHalfComplete("top");
   const bottomHalfComplete = isHalfComplete("bottom");
-  const topHalfVisuallyCollapsed = topHalfComplete && !topHalfManuallyExpanded;
-  const bottomHalfVisuallyCollapsed = bottomHalfComplete && !bottomHalfManuallyExpanded;
+  const topHalfVisuallyCollapsed = false;
+  const bottomHalfVisuallyCollapsed = false;
 
   const setHalfRoundExpansion = (half: "top" | "bottom", expanded: boolean) => {
     const regions = half === "top" ? BRACKET_HALVES[0].regions : BRACKET_HALVES[1].regions;
@@ -3823,11 +3823,6 @@ function App() {
                   <div className="eg-section-head">
                     <h2>Top Half Bracket</h2>
                     <p>· {regionSections[0][0]} + {regionSections[0][1]}</p>
-                    {topHalfComplete ? (
-                      <button className="half-section-collapse-btn" onClick={() => handleCollapseHalf("top")}>
-                        Collapse ↑
-                      </button>
-                    ) : null}
                   </div>
                   <div className="eg-region-scroll">
                     <div className="eg-region-grid bracket-style">
@@ -3878,11 +3873,6 @@ function App() {
                   <div className="eg-section-head">
                     <h2>Bottom Half Bracket</h2>
                     <p>· {regionSections[1][0]} + {regionSections[1][1]}</p>
-                    {bottomHalfComplete ? (
-                      <button className="half-section-collapse-btn" onClick={() => handleCollapseHalf("bottom")}>
-                        Collapse ↑
-                      </button>
-                    ) : null}
                   </div>
                   <div className="eg-region-scroll">
                     <div className="eg-region-grid bracket-style">
