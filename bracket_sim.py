@@ -1926,8 +1926,8 @@ _MVC_SLOTS = [
     # Championship (DayNum 125)
     ("MVC_Final", "MVC_SF_1", "MVC_SF_2", 125, "Final"),
 ]
-# Actual R1 results (Mar 5): (9) Drake def (8) SIU; (7) Valparaiso def (1) Indiana State*;
-# (6) Northern Iowa def (11) Evansville. *Indiana State seeded as "10" in our bracket (regular-season #1)
+# Actual R1 results (Mar 5): (9) Drake def (8) SIU; (7) Valparaiso def (10) Indiana State;
+# (6) Northern Iowa def (11) Evansville. Belmont holds the 1 seed.
 _MVC_forced = {"MVC_R1_1": "9", "MVC_R1_2": "7", "MVC_R1_3": "6"}
 _conf_results["MissouriValley"], _conf_stats_results["MissouriValley"], _conf_matchup_results["MissouriValley"] = _run_conf("Missouri Valley", _MVC_sm, _MVC_SLOTS, rng_seed=206, forced_winners=_MVC_forced)
 
