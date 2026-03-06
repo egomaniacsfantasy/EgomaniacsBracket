@@ -462,7 +462,63 @@ export const D1_TEAMS: D1Team[] = ${JSON.stringify(teams, null, 2)};
   console.log(`✓ Wrote ${outPath} (${teams.length} teams)`);
 }
 
-// ─── 4. NCAA Tournament Matchup Probabilities ───
+// ─── 4. NCAA Tournament Teams (from ProjectedBrackets.xlsx NCAA sheet) ───
+function convertNCAATeams(): void {
+  const pbPath = path.join(DATA_DIR, "ProjectedBrackets.xlsx");
+  if (!fs.existsSync(pbPath)) {
+    console.warn("ProjectedBrackets.xlsx not found — skipping teams.ts");
+    return;
+  }
+  const wb = XLSX.readFile(pbPath);
+  if (!wb.SheetNames.includes("NCAA")) {
+    console.warn("ProjectedBrackets.xlsx has no NCAA sheet — skipping teams.ts");
+    return;
+  }
+
+  // Load elo ratings from snapshot for fallback rating field
+  const snapWb = XLSX.readFile(path.join(DATA_DIR, "team_snapshot_2026.xlsx"));
+  const snapRows = XLSX.utils.sheet_to_json<Record<string, unknown>>(snapWb.Sheets[snapWb.SheetNames[0]]);
+  const ratingByName = new Map<string, number>();
+  for (const r of snapRows) {
+    const name = String(r["TeamName"] ?? "").trim().toLowerCase();
+    const elo = Number(r["elo_last"]);
+    if (name && Number.isFinite(elo)) ratingByName.set(name, elo);
+  }
+
+  const rows = XLSX.utils.sheet_to_json<Record<string, unknown>>(wb.Sheets["NCAA"]);
+  const teams = rows.map((row) => {
+    const rawSeed = String(row["Seed"] ?? "").trim();
+    const region  = String(row["Region"] ?? "").trim();
+    const name    = String(row["Team"] ?? "").trim();
+
+    const seedNum    = parseInt(rawSeed, 10);
+    const isFirstFour = /[ab]$/i.test(rawSeed);
+    const seedLabel  = isFirstFour ? rawSeed.toLowerCase() : String(seedNum);
+    const id         = `${region}-${seedLabel}`;
+    const rating     = Math.round(ratingByName.get(name.toLowerCase()) ?? 1500);
+
+    return { id, name, seed: seedNum, seedLabel, region, rating, isFirstFour };
+  });
+
+  const output = `import type { Team } from "../types";
+
+export interface Team2026 extends Team {
+  seedLabel: string;
+  isFirstFour?: boolean;
+}
+
+// Auto-generated from ProjectedBrackets.xlsx (NCAA sheet) — do not edit manually
+export const teams: Team2026[] = ${JSON.stringify(teams)};
+
+export const teamsById = new Map(teams.map((team) => [team.id, team]));
+`;
+
+  const outPath = path.join(ROOT, "src/data/teams.ts");
+  fs.writeFileSync(outPath, output, "utf-8");
+  console.log(`✓ Wrote ${outPath} (${teams.length} teams)`);
+}
+
+// ─── 5. NCAA Tournament Matchup Probabilities ───
 function convertNCAAMatchupProbs(): void {
   const wb = XLSX.readFile(path.join(DATA_DIR, "matchup_probs_2026.xlsx"));
   const rows = XLSX.utils.sheet_to_json<Record<string, unknown>>(wb.Sheets[wb.SheetNames[0]]);
@@ -730,6 +786,7 @@ convertConfTeams();
 convertConfMatchupProbs();
 convertTeamStatsData();
 convertD1Rankings();
+convertNCAATeams();
 convertNCAAMatchupProbs();
 convertNCAABracketPreds();
 convertMatchupPredictor();

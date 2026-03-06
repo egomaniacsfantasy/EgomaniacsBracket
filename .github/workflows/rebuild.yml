@@ -35,6 +35,7 @@ jobs:
             src/data/bracketPreds2026.ts \
             src/data/teamStats2026.ts \
             src/data/matchupPredictor.ts \
+            src/data/teams.ts \
             src/conferences/data/confTeams.ts \
             src/conferences/data/confMatchupProbs.ts \
             src/rankings/data/d1Rankings.ts

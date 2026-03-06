@@ -1,4 +1,5 @@
 import type { GameTemplate, Region, Round, Side } from "../types";
+import { teams } from "./teams";
 
 export const regionOrder: Region[] = ["East", "West", "Midwest", "South"];
 export const BRACKET_HALVES: Array<{
@@ -45,19 +46,27 @@ export const roundOrder = rounds;
 const regionToSide = (region: Region): Side =>
   BRACKET_HALVES.find((half) => half.regions.includes(region))?.side ?? "Left";
 
-const firstFourByRegionSeed: Record<string, string> = {
-  "East-11": "East-FF-11",
-  "South-16": "South-FF-16",
-  "Midwest-11": "Midwest-FF-11",
-  "Midwest-16": "Midwest-FF-16",
-};
-
-const firstFourParticipants: Record<string, [string, string]> = {
-  "East-FF-11": ["East-11a", "East-11b"],
-  "South-FF-16": ["South-16a", "South-16b"],
-  "Midwest-FF-11": ["Midwest-11a", "Midwest-11b"],
-  "Midwest-FF-16": ["Midwest-16a", "Midwest-16b"],
-};
+// Derived from teams data — updates automatically when teams.ts is regenerated
+const firstFourByRegionSeed: Record<string, string> = {};
+const firstFourParticipants: Record<string, [string, string]> = {};
+{
+  const ffGroups = new Map<string, string[]>();
+  for (const team of teams.filter((t) => t.isFirstFour)) {
+    const key = `${team.region}-${team.seed}`;
+    if (!ffGroups.has(key)) ffGroups.set(key, []);
+    ffGroups.get(key)!.push(team.id);
+  }
+  for (const [key, ids] of ffGroups) {
+    if (ids.length === 2) {
+      const dashIdx = key.indexOf("-");
+      const region = key.slice(0, dashIdx);
+      const seedStr = key.slice(dashIdx + 1);
+      const ffId = `${region}-FF-${seedStr}`;
+      firstFourByRegionSeed[key] = ffId;
+      firstFourParticipants[ffId] = [ids[0], ids[1]];
+    }
+  }
+}
 
 const r64EntryForSeed = (
   region: Region,

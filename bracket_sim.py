@@ -2362,6 +2362,7 @@ def _git(*args, cwd=str(BASE)):
                           capture_output=True, text=True)
 
 _push_files = [
+    "ProjectedBrackets.xlsx",
     "2026_bracket_preds.xlsx",
     "matchup_probs_2026.xlsx",
     "matchup_predictor_2026.xlsx",
