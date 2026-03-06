@@ -153,6 +153,97 @@ export const CONFERENCE_DEFS: ConfDefWithProbMap[] = [
     ],
     probRoundMap: { QF: "QF", SF: "SF", F: "Final" },
   },
+  {
+    id: "aac",
+    name: "American Athletic Tournament",
+    shortName: "AAC",
+    teamCount: 10,
+    rounds: [
+      { id: "R1", label: "First Round", gameCount: 2 },
+      { id: "R2", label: "Second Round", gameCount: 2 },
+      { id: "QF", label: "Quarterfinals", gameCount: 2 },
+      { id: "SF", label: "Semifinals", gameCount: 2 },
+      { id: "F", label: "Final", gameCount: 1 },
+    ],
+    probRoundMap: { R1: "R1", R2: "R2", QF: "QF", SF: "SF", F: "Final" },
+  },
+  {
+    id: "bigsouth",
+    name: "Big South Tournament",
+    shortName: "Big South",
+    teamCount: 9,
+    rounds: [
+      { id: "R1", label: "First Round", gameCount: 1 },
+      { id: "QF", label: "Quarterfinals", gameCount: 4 },
+      { id: "SF", label: "Semifinals", gameCount: 2 },
+      { id: "F", label: "Final", gameCount: 1 },
+    ],
+    probRoundMap: { R1: "R1", QF: "QF", SF: "SF", F: "Final" },
+  },
+  {
+    id: "caa",
+    name: "CAA Tournament",
+    shortName: "CAA",
+    teamCount: 13,
+    rounds: [
+      { id: "R1", label: "First Round", gameCount: 1 },
+      { id: "R2", label: "Second Round", gameCount: 4 },
+      { id: "QF", label: "Quarterfinals", gameCount: 4 },
+      { id: "SF", label: "Semifinals", gameCount: 2 },
+      { id: "F", label: "Final", gameCount: 1 },
+    ],
+    probRoundMap: { R1: "R1", R2: "R2", QF: "QF", SF: "SF", F: "Final" },
+  },
+  {
+    id: "cusa",
+    name: "Conference USA Tournament",
+    shortName: "C-USA",
+    teamCount: 10,
+    rounds: [
+      { id: "R1", label: "First Round", gameCount: 2 },
+      { id: "QF", label: "Quarterfinals", gameCount: 4 },
+      { id: "SF", label: "Semifinals", gameCount: 2 },
+      { id: "F", label: "Final", gameCount: 1 },
+    ],
+    probRoundMap: { R1: "R1", QF: "QF", SF: "SF", F: "Final" },
+  },
+  {
+    id: "patriot",
+    name: "Patriot League Tournament",
+    shortName: "Patriot",
+    teamCount: 4,
+    rounds: [
+      { id: "SF", label: "Semifinals", gameCount: 2 },
+      { id: "F", label: "Final", gameCount: 1 },
+    ],
+    probRoundMap: { SF: "SF", F: "Final" },
+  },
+  {
+    id: "southern",
+    name: "Southern Conference Tournament",
+    shortName: "SoCon",
+    teamCount: 10,
+    rounds: [
+      { id: "R1", label: "First Round", gameCount: 2 },
+      { id: "QF", label: "Quarterfinals", gameCount: 4 },
+      { id: "SF", label: "Semifinals", gameCount: 2 },
+      { id: "F", label: "Final", gameCount: 1 },
+    ],
+    probRoundMap: { R1: "R1", QF: "QF", SF: "SF", F: "Final" },
+  },
+  {
+    id: "southland",
+    name: "Southland Tournament",
+    shortName: "Southland",
+    teamCount: 8,
+    rounds: [
+      { id: "R1", label: "First Round", gameCount: 2 },
+      { id: "QF", label: "Quarterfinals", gameCount: 2 },
+      { id: "SF", label: "Semifinals", gameCount: 2 },
+      { id: "F", label: "Final", gameCount: 1 },
+    ],
+    probRoundMap: { R1: "R1", QF: "QF", SF: "SF", F: "Final" },
+  },
 ];
 
 export const CONFERENCE_DEFS_BY_ID = Object.fromEntries(
@@ -173,5 +264,9 @@ export const CONF_KNOWN_RESULTS: Record<string, Record<string, number>> = {
     "mvc-R1-0": 1179, // Drake (9) def S Illinois (8)
     "mvc-R1-1": 1434, // Valparaiso (7) def Indiana St (10)
     "mvc-R1-2": 1320, // Northern Iowa (6) def Evansville (11)
+  },
+  bigsouth: {
+    "bigsouth-R1-0": 1367, // SC Upstate (8) def Gardner Webb (9)
+    "bigsouth-QF-0": 1219, // High Point (1) def SC Upstate (8)
   },
 };

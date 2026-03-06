@@ -2023,6 +2023,175 @@ _conf_results["WCC"], _conf_stats_results["WCC"], _conf_matchup_results["WCC"] =
 # %%
 
 # ---------------------------------------------------------------------------
+# CONFERENCE TOURNAMENT: American Athletic (AAC)
+# 10 teams | R1 Mar 11 · R2 Mar 12 · QF Mar 13 · SF Mar 14 · Final Mar 15
+# Linear bracket: 1/4/5/8/9 side vs 2/3/6/7/10 side
+# ---------------------------------------------------------------------------
+_AAC_sm = _conf_seed_map("American")
+_AAC_SLOTS = [
+    # First Round (DayNum 128)
+    ("AAC_R1_1", "8",  "9",         128, "R1"),
+    ("AAC_R1_2", "7",  "10",        128, "R1"),
+    # Second Round (DayNum 129)
+    ("AAC_R2_1", "5",  "AAC_R1_1", 129, "R2"),
+    ("AAC_R2_2", "6",  "AAC_R1_2", 129, "R2"),
+    # Quarterfinals (DayNum 130)
+    ("AAC_QF_1", "4",  "AAC_R2_1", 130, "QF"),
+    ("AAC_QF_2", "3",  "AAC_R2_2", 130, "QF"),
+    # Semifinals (DayNum 131) — seeds 1-2 enter here
+    ("AAC_SF_1", "1",       "AAC_QF_1", 131, "SF"),
+    ("AAC_SF_2", "2",       "AAC_QF_2", 131, "SF"),
+    # Championship (DayNum 132)
+    ("AAC_Final", "AAC_SF_1", "AAC_SF_2", 132, "Final"),
+]
+_conf_results["American"], _conf_stats_results["American"], _conf_matchup_results["American"] = _run_conf("American Athletic", _AAC_sm, _AAC_SLOTS, rng_seed=210)
+
+# %%
+
+# ---------------------------------------------------------------------------
+# CONFERENCE TOURNAMENT: Big South
+# 9 teams | R1 (played) · QF Mar 6 · SF Mar 7 · Final Mar 8
+# R1: (8) SC Upstate def (9) Gardner Webb [LOCKED]
+# QF_1: (1) High Point def (8) SC Upstate [LOCKED — High Point already in SF]
+# Remaining QF Mar 6: 4v5, 2v7, 3v6
+# ---------------------------------------------------------------------------
+_BS_sm = _conf_seed_map("BigSouth")
+_BS_SLOTS = [
+    # First Round (DayNum 122 — already played)
+    ("BS_R1_1",  "8",       "9",        122, "R1"),
+    # Quarterfinals (DayNum 123 — HP's QF already played; others Mar 6)
+    ("BS_QF_1",  "1",       "BS_R1_1", 123, "QF"),
+    ("BS_QF_2",  "4",       "5",        123, "QF"),
+    ("BS_QF_3",  "2",       "7",        123, "QF"),
+    ("BS_QF_4",  "3",       "6",        123, "QF"),
+    # Semifinals (DayNum 124)
+    ("BS_SF_1",  "BS_QF_1", "BS_QF_2", 124, "SF"),
+    ("BS_SF_2",  "BS_QF_3", "BS_QF_4", 124, "SF"),
+    # Championship (DayNum 125)
+    ("BS_Final", "BS_SF_1", "BS_SF_2", 125, "Final"),
+]
+# Locked: SC Upstate def Gardner Webb (R1); High Point def SC Upstate (QF)
+_BS_forced = {"BS_R1_1": "8", "BS_QF_1": "1"}
+_conf_results["BigSouth"], _conf_stats_results["BigSouth"], _conf_matchup_results["BigSouth"] = _run_conf("Big South", _BS_sm, _BS_SLOTS, rng_seed=211, forced_winners=_BS_forced)
+
+# %%
+
+# ---------------------------------------------------------------------------
+# CONFERENCE TOURNAMENT: CAA
+# 13 teams | R1 Mar 6 · R2 Mar 7 · QF Mar 8 · SF Mar 9 · Final Mar 10
+# ---------------------------------------------------------------------------
+_CAA_sm = _conf_seed_map("CAA")
+_CAA_SLOTS = [
+    # First Round (DayNum 123)
+    ("CAA_R1_1",  "12",       "13",        123, "R1"),
+    # Second Round (DayNum 124)
+    ("CAA_R2_1",  "8",        "9",         124, "R2"),
+    ("CAA_R2_2",  "5",        "CAA_R1_1", 124, "R2"),
+    ("CAA_R2_3",  "7",        "10",        124, "R2"),
+    ("CAA_R2_4",  "6",        "11",        124, "R2"),
+    # Quarterfinals (DayNum 125)
+    ("CAA_QF_1",  "1",        "CAA_R2_1", 125, "QF"),
+    ("CAA_QF_2",  "4",        "CAA_R2_2", 125, "QF"),
+    ("CAA_QF_3",  "2",        "CAA_R2_3", 125, "QF"),
+    ("CAA_QF_4",  "3",        "CAA_R2_4", 125, "QF"),
+    # Semifinals (DayNum 126)
+    ("CAA_SF_1",  "CAA_QF_1", "CAA_QF_2", 126, "SF"),
+    ("CAA_SF_2",  "CAA_QF_3", "CAA_QF_4", 126, "SF"),
+    # Championship (DayNum 127)
+    ("CAA_Final", "CAA_SF_1", "CAA_SF_2", 127, "Final"),
+]
+_conf_results["CAA"], _conf_stats_results["CAA"], _conf_matchup_results["CAA"] = _run_conf("CAA", _CAA_sm, _CAA_SLOTS, rng_seed=212)
+
+# %%
+
+# ---------------------------------------------------------------------------
+# CONFERENCE TOURNAMENT: Conference USA (CUSA)
+# 10 teams | R1 Mar 10 · QF Mar 11 · SF Mar 13 · Final Mar 14
+# ---------------------------------------------------------------------------
+_CUSA_sm = _conf_seed_map("CUSA")
+_CUSA_SLOTS = [
+    # First Round (DayNum 127)
+    ("CUSA_R1_1",  "8",         "9",          127, "R1"),
+    ("CUSA_R1_2",  "7",         "10",         127, "R1"),
+    # Quarterfinals (DayNum 128)
+    ("CUSA_QF_1",  "1",         "CUSA_R1_1", 128, "QF"),
+    ("CUSA_QF_2",  "4",         "5",          128, "QF"),
+    ("CUSA_QF_3",  "2",         "CUSA_R1_2", 128, "QF"),
+    ("CUSA_QF_4",  "3",         "6",          128, "QF"),
+    # Semifinals (DayNum 130 — skip Mar 12)
+    ("CUSA_SF_1",  "CUSA_QF_1", "CUSA_QF_2", 130, "SF"),
+    ("CUSA_SF_2",  "CUSA_QF_3", "CUSA_QF_4", 130, "SF"),
+    # Championship (DayNum 131)
+    ("CUSA_Final", "CUSA_SF_1", "CUSA_SF_2", 131, "Final"),
+]
+_conf_results["CUSA"], _conf_stats_results["CUSA"], _conf_matchup_results["CUSA"] = _run_conf("Conference USA", _CUSA_sm, _CUSA_SLOTS, rng_seed=213)
+
+# %%
+
+# ---------------------------------------------------------------------------
+# CONFERENCE TOURNAMENT: Patriot League
+# 4 teams | SF Mar 8 · Final Mar 11
+# ---------------------------------------------------------------------------
+_PAT_sm = _conf_seed_map("Patriot")
+_PAT_SLOTS = [
+    # Semifinals (DayNum 125)
+    ("PAT_SF_1",  "1",       "4",        125, "SF"),
+    ("PAT_SF_2",  "2",       "3",        125, "SF"),
+    # Championship (DayNum 128)
+    ("PAT_Final", "PAT_SF_1", "PAT_SF_2", 128, "Final"),
+]
+_conf_results["Patriot"], _conf_stats_results["Patriot"], _conf_matchup_results["Patriot"] = _run_conf("Patriot", _PAT_sm, _PAT_SLOTS, rng_seed=214)
+
+# %%
+
+# ---------------------------------------------------------------------------
+# CONFERENCE TOURNAMENT: Southern Conference
+# 10 teams | Same format as CUSA | R1 Mar 6 · QF Mar 7 · SF Mar 8 · Final Mar 9
+# ---------------------------------------------------------------------------
+_SOU_sm = _conf_seed_map("Southern")
+_SOU_SLOTS = [
+    # First Round (DayNum 123)
+    ("SOU_R1_1",  "8",        "9",         123, "R1"),
+    ("SOU_R1_2",  "7",        "10",        123, "R1"),
+    # Quarterfinals (DayNum 124)
+    ("SOU_QF_1",  "1",        "SOU_R1_1", 124, "QF"),
+    ("SOU_QF_2",  "4",        "5",         124, "QF"),
+    ("SOU_QF_3",  "2",        "SOU_R1_2", 124, "QF"),
+    ("SOU_QF_4",  "3",        "6",         124, "QF"),
+    # Semifinals (DayNum 125)
+    ("SOU_SF_1",  "SOU_QF_1", "SOU_QF_2", 125, "SF"),
+    ("SOU_SF_2",  "SOU_QF_3", "SOU_QF_4", 125, "SF"),
+    # Championship (DayNum 126)
+    ("SOU_Final", "SOU_SF_1", "SOU_SF_2", 126, "Final"),
+]
+_conf_results["Southern"], _conf_stats_results["Southern"], _conf_matchup_results["Southern"] = _run_conf("Southern", _SOU_sm, _SOU_SLOTS, rng_seed=215)
+
+# %%
+
+# ---------------------------------------------------------------------------
+# CONFERENCE TOURNAMENT: Southland
+# 8 teams | R1 Mar 8 · QF Mar 9 · SF Mar 10 · Final Mar 11
+# Seeds 1-4 get byes; 5/8 and 6/7 play in R1
+# ---------------------------------------------------------------------------
+_STL_sm = _conf_seed_map("Southland")
+_STL_SLOTS = [
+    # First Round (DayNum 125)
+    ("STL_R1_1",  "5",        "8",         125, "R1"),
+    ("STL_R1_2",  "6",        "7",         125, "R1"),
+    # Quarterfinals (DayNum 126)
+    ("STL_QF_1",  "4",        "STL_R1_1", 126, "QF"),
+    ("STL_QF_2",  "3",        "STL_R1_2", 126, "QF"),
+    # Semifinals (DayNum 127)
+    ("STL_SF_1",  "1",        "STL_QF_1", 127, "SF"),
+    ("STL_SF_2",  "2",        "STL_QF_2", 127, "SF"),
+    # Championship (DayNum 128)
+    ("STL_Final", "STL_SF_1", "STL_SF_2", 128, "Final"),
+]
+_conf_results["Southland"], _conf_stats_results["Southland"], _conf_matchup_results["Southland"] = _run_conf("Southland", _STL_sm, _STL_SLOTS, rng_seed=216)
+
+# %%
+
+# ---------------------------------------------------------------------------
 # SAVE ALL CONFERENCE TOURNAMENT RESULTS
 # One sheet per conference in conf_tourney_preds_2026.xlsx
 # ---------------------------------------------------------------------------
@@ -2033,13 +2202,20 @@ print("=" * 60)
 _CONF_SHEET_NAMES = {
     "A10":            "Atlantic 10",
     "ACC":            "ACC",
+    "American":       "American Athletic",
     "Big12":          "Big 12",
     "BigEast":        "Big East",
+    "BigSouth":       "Big South",
     "BigTen":         "Big Ten",
+    "CAA":            "CAA",
+    "CUSA":           "Conference USA",
     "MidAmerican":    "Mid-American",
     "MissouriValley": "Missouri Valley",
     "MountainWest":   "Mountain West",
+    "Patriot":        "Patriot",
     "SEC":            "SEC",
+    "Southern":       "Southern",
+    "Southland":      "Southland",
     "WCC":            "WCC",
 }
 
