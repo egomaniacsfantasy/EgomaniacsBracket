@@ -2310,14 +2310,6 @@ function App() {
     trackEvent("bracket_half_expanded", { half });
   };
 
-  const handleCollapseHalf = (half: "top" | "bottom") => {
-    if (half === "top") {
-      setTopHalfManuallyExpanded(false);
-    } else {
-      setBottomHalfManuallyExpanded(false);
-    }
-    setHalfRoundExpansion(half, false);
-  };
 
   useEffect(() => {
     if (!topHalfComplete && topHalfManuallyExpanded) {
