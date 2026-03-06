@@ -2287,19 +2287,6 @@ function App() {
   const topHalfVisuallyCollapsed = false;
   const bottomHalfVisuallyCollapsed = false;
 
-  const setHalfRoundExpansion = (half: "top" | "bottom", expanded: boolean) => {
-    const regions = half === "top" ? BRACKET_HALVES[0].regions : BRACKET_HALVES[1].regions;
-    setManuallyExpandedRounds((prev) => {
-      const next = { ...prev };
-      for (const region of regions) {
-        (["R64", "R32", "S16"] as const).forEach((round) => {
-          const key = `${region}-${round}` as const;
-          next[key] = expanded;
-        });
-      }
-      return next;
-    });
-  };
 
   const handleExpandHalf = (half: "top" | "bottom") => {
     if (half === "top") {
