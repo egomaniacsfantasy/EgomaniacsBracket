@@ -1447,6 +1447,15 @@ N_SIMS_CONF      = 10_000
 _sp_conf        = pd.read_csv(BASE / "MTeamSpellings.csv")
 _spell2tid_conf = dict(zip(_sp_conf["TeamNameSpelling"].str.lower().str.strip(),
                            _sp_conf["TeamID"]))
+# Augment with all 365 D1 canonical names from snapshot (fallback for any team
+# not covered by MTeamSpellings.csv — does not overwrite existing entries)
+_snap_path_conf = BASE / "team_snapshot_2026.parquet"
+_snap_names_df  = (pd.read_parquet(_snap_path_conf) if _snap_path_conf.exists()
+                   else pd.read_excel(BASE / "team_snapshot_2026.xlsx"))
+for _, _r in _snap_names_df[["TeamID", "TeamName"]].drop_duplicates().iterrows():
+    _key = str(_r["TeamName"]).lower().strip()
+    if _key not in _spell2tid_conf:
+        _spell2tid_conf[_key] = int(_r["TeamID"])
 
 
 def _conf_seed_map(sheet):
@@ -1457,12 +1466,18 @@ def _conf_seed_map(sheet):
     raw["Team"] = raw["Team"].str.strip()
     raw["Seed"] = raw["Seed"].astype(str).str.strip()
     sm = {}
+    unresolved = []
     for _, row in raw.iterrows():
         tid = _spell2tid_conf.get(row["Team"].lower().strip())
         if tid:
             sm[row["Seed"]] = int(tid)
         else:
-            print(f"  WARNING: unresolved {row['Team']!r} in sheet {sheet!r}")
+            unresolved.append(f"  seed {row['Seed']}: {row['Team']!r}")
+    if unresolved:
+        raise ValueError(
+            f"Unresolved teams in ProjectedBrackets.xlsx sheet {sheet!r} - "
+            f"add spellings to MTeamSpellings.csv:\n" + "\n".join(unresolved)
+        )
     return sm
 
 
@@ -1618,13 +1633,16 @@ def _conf_matchups_df(seed_map, slots, win_probs):
     return pd.DataFrame(rows)
 
 
-def _run_conf(conf_name, seed_map, slots, rng_seed):
+def _run_conf(conf_name, seed_map, slots, rng_seed, forced_winners=None):
     """
     Simulate a conference tournament N_SIMS_CONF times.
 
     slots: list of (slot_name, strong_ref, weak_ref, daynum, stage)
       - strong_ref / weak_ref: seed string ("1","12") or a prior slot_name
       - stage: "R1","R2","R3","QF","SF","Final"
+
+    forced_winners: dict of {slot_name: seed_str} for games already played.
+      The specified seed always wins that slot (both teams still count as appeared).
 
     Returns (df_adv, df_stats, df_matchups):
       df_adv      — advancement probabilities per team per round (100% for bye rounds)
@@ -1656,6 +1674,7 @@ def _run_conf(conf_name, seed_map, slots, rng_seed):
     appear    = {stage: {tid: 0 for tid in team_ids} for stage in stages_present}
     won_final = {tid: 0 for tid in team_ids}
 
+    _forced = forced_winners or {}
     rng     = np.random.default_rng(rng_seed)
     randoms = rng.random((N_SIMS_CONF, len(slots)))
 
@@ -1669,10 +1688,13 @@ def _run_conf(conf_name, seed_map, slots, rng_seed):
                 appear[stage][team_a] += 1
                 appear[stage][team_b] += 1
 
-            t1, t2 = (team_a, team_b) if team_a < team_b else (team_b, team_a)
-            p_t1   = win_probs[(t1, t2, daynum)]
-            p_a    = p_t1 if team_a == t1 else 1.0 - p_t1
-            winner = team_a if randoms[sim, j] < p_a else team_b
+            if slot_name in _forced:
+                winner = sw[_forced[slot_name]]
+            else:
+                t1, t2 = (team_a, team_b) if team_a < team_b else (team_b, team_a)
+                p_t1   = win_probs[(t1, t2, daynum)]
+                p_a    = p_t1 if team_a == t1 else 1.0 - p_t1
+                winner = team_a if randoms[sim, j] < p_a else team_b
             sw[slot_name] = winner
 
             if stage == "Final":
@@ -1904,7 +1926,10 @@ _MVC_SLOTS = [
     # Championship (DayNum 125)
     ("MVC_Final", "MVC_SF_1", "MVC_SF_2", 125, "Final"),
 ]
-_conf_results["MissouriValley"], _conf_stats_results["MissouriValley"], _conf_matchup_results["MissouriValley"] = _run_conf("Missouri Valley", _MVC_sm, _MVC_SLOTS, rng_seed=206)
+# Actual R1 results (Mar 5): (9) Drake def (8) SIU; (7) Valparaiso def (1) Indiana State*;
+# (6) Northern Iowa def (11) Evansville. *Indiana State seeded as "10" in our bracket (regular-season #1)
+_MVC_forced = {"MVC_R1_1": "9", "MVC_R1_2": "7", "MVC_R1_3": "6"}
+_conf_results["MissouriValley"], _conf_stats_results["MissouriValley"], _conf_matchup_results["MissouriValley"] = _run_conf("Missouri Valley", _MVC_sm, _MVC_SLOTS, rng_seed=206, forced_winners=_MVC_forced)
 
 # %%
 
@@ -1991,7 +2016,9 @@ _WCC_SLOTS = [
     # Championship (DayNum 127)
     ("WCC_Final", "WCC_SF_1", "WCC_SF_2", 127, "Final"),
 ]
-_conf_results["WCC"], _conf_stats_results["WCC"], _conf_matchup_results["WCC"] = _run_conf("WCC", _WCC_sm, _WCC_SLOTS, rng_seed=209)
+# Actual R1 results (Mar 5): (9) Portland def (12) Pepperdine; (11) San Diego def (10) LMU
+_WCC_forced = {"WCC_R1_1": "9", "WCC_R1_2": "11"}
+_conf_results["WCC"], _conf_stats_results["WCC"], _conf_matchup_results["WCC"] = _run_conf("WCC", _WCC_sm, _WCC_SLOTS, rng_seed=209, forced_winners=_WCC_forced)
 
 # %%
 
@@ -2362,7 +2389,7 @@ try:
         if _commit.returncode != 0:
             print(f"  Commit failed: {_commit.stderr.strip()}")
         else:
-            _pull = _git("pull", "--rebase")
+            _pull = _git("pull", "--rebase", "--autostash")
             if _pull.returncode != 0:
                 print(f"  Pull failed: {_pull.stderr.strip()}")
             else:

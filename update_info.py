@@ -15,9 +15,9 @@
 
 # %%
 """
-update_info.py  — Extend Kaggle CSV files through March 3, 2026
+update_info.py  — Extend Kaggle CSV files through March 5, 2026
 ==============================================================
-Appends DayNum 119-120 (March 2-3, 2026) data to:
+Appends DayNum 121-122 (March 4-5, 2026) data to:
   • MRegularSeasonCompactResults.csv   (game results)
   • MRegularSeasonDetailedResults.csv  (box scores)
   • MMasseyOrdinals.csv                (weekly snapshots — no new snapshot this run)
@@ -63,8 +63,8 @@ except NameError:
 SEASON    = 2026
 DAY_ZERO  = date(2025, 11, 3)      # from MSeasons.csv DayZero 2026
 
-DATE_START = date(2026, 3, 2)      # DayNum 119 (CSV already has through DayNum 118)
-DATE_END   = date(2026, 3, 3)      # DayNum 120 (last day we want)
+DATE_START = date(2026, 3, 4)      # DayNum 121 (CSV already has through DayNum 120)
+DATE_END   = date(2026, 3, 5)      # DayNum 122 (last day we want)
 
 # Massey snapshots loaded from massey_raw/*.txt (see Phase 3).
 # This list is informational only — the actual source of truth is MASSEY_WEEK_FILES in Phase 3.
@@ -74,7 +74,8 @@ MASSEY_TARGETS = [
     (date(2026, 2, 11), 100),      # DayNum 100 — already in CSV
     (date(2026, 2, 18), 107),      # DayNum 107 — already in CSV
     (date(2026, 2, 25), 114),      # DayNum 114 — already in CSV
-    (date(2026, 3, 1),  118),      # DayNum 118 — NEW: March 1 release
+    (date(2026, 3, 1),  118),      # DayNum 118 — already in CSV
+    (date(2026, 3, 4),  121),      # DayNum 121 — NEW: March 4 Wednesday release
 ]
 
 # ── File paths ─────────────────────────────────────────────────────────────
@@ -582,6 +583,7 @@ MASSEY_WEEK_FILES = {
     MASSEY_RAW_DIR / "massey_week_107.txt": 107,
     MASSEY_RAW_DIR / "massey_week_114.txt": 114,
     MASSEY_RAW_DIR / "massey_week_118.txt": 118,
+    MASSEY_RAW_DIR / "massey_week_121.txt": 121,
 }
 
 # Massey-specific overrides — ONLY for names genuinely absent from
