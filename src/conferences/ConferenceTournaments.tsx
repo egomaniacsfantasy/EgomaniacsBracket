@@ -4,7 +4,7 @@ import { formatOddsDisplay } from "../lib/odds";
 import { getMappedEspnLogoPath } from "../lib/logoMap";
 import type { OddsDisplayMode } from "../types";
 import { buildConferenceBracket } from "./bracketBuilder";
-import { CONFERENCE_DEFS, CONFERENCE_DEFS_BY_ID, type ConfDefWithProbMap } from "./conferenceDefs";
+import { CONF_KNOWN_RESULTS, CONFERENCE_DEFS, CONFERENCE_DEFS_BY_ID, type ConfDefWithProbMap } from "./conferenceDefs";
 import {
   getConfGameWinProb,
   possibleConfWinnersByGame,
@@ -273,9 +273,16 @@ function ConferenceBracketView({
   const [showFutures, setShowFutures] = useState(false);
   const [selectedStatsGame, setSelectedStatsGame] = useState<ConfResolvedGame | null>(null);
 
+  // Merge known actual results (immutable) on top of user locks so the
+  // simulation always reflects real outcomes for completed games.
+  const effectiveLocks = useMemo(
+    () => ({ ...locks, ...(CONF_KNOWN_RESULTS[confId] ?? {}) }),
+    [locks, confId]
+  );
+
   const { games: resolvedGames, sanitized } = useMemo(
-    () => resolveConfGames(gameTemplates, roundOrder, locks, customProbs),
-    [gameTemplates, roundOrder, locks, customProbs]
+    () => resolveConfGames(gameTemplates, roundOrder, effectiveLocks, customProbs),
+    [gameTemplates, roundOrder, effectiveLocks, customProbs]
   );
 
   const simOutput = useMemo(

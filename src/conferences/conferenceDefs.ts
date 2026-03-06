@@ -158,3 +158,20 @@ export const CONFERENCE_DEFS: ConfDefWithProbMap[] = [
 export const CONFERENCE_DEFS_BY_ID = Object.fromEntries(
   CONFERENCE_DEFS.map((def) => [def.id, def])
 ) as Record<string, ConfDefWithProbMap>;
+
+/**
+ * Actual game results for completed conference tournament games.
+ * Maps confId → { gameId → winning teamId }.
+ * These are merged into the simulation as permanent locked picks.
+ */
+export const CONF_KNOWN_RESULTS: Record<string, Record<string, number>> = {
+  wcc: {
+    "wcc-R1-0": 1339, // Portland (9) def Pepperdine (12)
+    "wcc-R1-1": 1360, // San Diego (11) def LMU (10)
+  },
+  mvc: {
+    "mvc-R1-0": 1179, // Drake (9) def S Illinois (8)
+    "mvc-R1-1": 1434, // Valparaiso (7) def Indiana St (10)
+    "mvc-R1-2": 1320, // Northern Iowa (6) def Evansville (11)
+  },
+};
