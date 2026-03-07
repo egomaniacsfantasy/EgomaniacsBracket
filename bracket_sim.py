@@ -2536,11 +2536,46 @@ print(_pred_out.head(3).to_string(index=False))
 # Stages and pushes all output files produced by this run.
 # Silently skips if git is unavailable or there are no changes.
 # ---------------------------------------------------------------------------
-import subprocess, datetime
+import subprocess, datetime, tempfile, shutil as _shutil
 
 def _git(*args, cwd=str(BASE)):
     return subprocess.run(["git"] + list(args), cwd=cwd,
                           capture_output=True, text=True)
+
+def _push_via_bridge(commit_sha: str) -> bool:
+    _origin = _git("config", "--get", "remote.origin.url")
+    if _origin.returncode != 0 or not _origin.stdout.strip():
+        print("  Bridge push failed: could not read remote.origin.url")
+        return False
+
+    _origin_url = _origin.stdout.strip()
+    _bridge_dir = tempfile.mkdtemp(prefix="_push_bridge_auto_", dir=str(BASE))
+
+    try:
+        _clone = _git("clone", "--branch", "main", "--single-branch", _origin_url, _bridge_dir, cwd=str(BASE))
+        if _clone.returncode != 0:
+            print(f"  Bridge clone failed: {_clone.stderr.strip()}")
+            return False
+
+        _fetch_local = _git("fetch", str(BASE), "main:refs/remotes/local/main", cwd=_bridge_dir)
+        if _fetch_local.returncode != 0:
+            print(f"  Bridge fetch failed: {_fetch_local.stderr.strip()}")
+            return False
+
+        _cp = _git("cherry-pick", commit_sha, cwd=_bridge_dir)
+        if _cp.returncode != 0:
+            print(f"  Bridge cherry-pick failed: {_cp.stderr.strip()}")
+            _git("cherry-pick", "--abort", cwd=_bridge_dir)
+            return False
+
+        _push = _git("push", "origin", "main", cwd=_bridge_dir)
+        if _push.returncode != 0:
+            print(f"  Bridge push failed: {_push.stderr.strip()}")
+            return False
+
+        return True
+    finally:
+        _shutil.rmtree(_bridge_dir, ignore_errors=True)
 
 _push_files = [
     "ProjectedBrackets.xlsx",
@@ -2559,9 +2594,37 @@ print("AUTO-PUSH: staging output files -> GitHub")
 print("=" * 60)
 
 try:
-    # Only add files that exist
+    # Step 1: Regenerate TypeScript data files
+    print("  Regenerating TypeScript data files...")
+    _ts_gen = subprocess.run(
+        "npx tsx scripts/convertData.ts",
+        cwd=BASE, capture_output=True, text=True, shell=True
+    )
+    if _ts_gen.returncode != 0:
+        print(f"  WARNING: convertData.ts failed: {_ts_gen.stderr[-500:]}")
+    else:
+        print("  TypeScript files regenerated OK")
+
+    # Step 2: Stage xlsx + TS files
     _existing = [f for f in _push_files if (BASE / f).exists()]
-    _git("add", *_existing)
+    if _existing:
+        _git("add", *_existing)
+
+    _ts_files = [
+        "src/data/teams.ts",
+        "src/data/bracketPreds2026.ts",
+        "src/lib/matchupProbData.ts",
+        "src/data/matchupPredictor.ts",
+        "src/data/teamStats2026.ts",
+        "src/conferences/data/confTeams.ts",
+        "src/conferences/data/confMatchupProbs.ts",
+        "src/rankings/data/d1Rankings.ts",
+    ]
+    _ts_existing = [f for f in _ts_files if (BASE / f).exists()]
+    if _ts_existing:
+        _git("add", *_ts_existing)
+
+    # Step 3: Commit if anything changed, then push
     _status = _git("status", "--porcelain")
     if not _status.stdout.strip():
         print("  No changes to commit — GitHub already up to date.")
@@ -2571,20 +2634,22 @@ try:
         if _commit.returncode != 0:
             print(f"  Commit failed: {_commit.stderr.strip()}")
         else:
-            _pull = _git("pull", "--rebase", "--autostash")
-            if _pull.returncode != 0:
-                print(f"  Pull failed: {_pull.stderr.strip()}")
-                _git("rebase", "--abort")
-                import os as _os
-                _rmerge = BASE / ".git" / "rebase-merge"
-                if _rmerge.exists():
-                    import shutil as _shutil
-                    _shutil.rmtree(str(_rmerge), ignore_errors=True)
-                print("  Rebase aborted and cleaned up. Re-run bracket_sim to retry push.")
+            _push = _git("push")
+            if _push.returncode == 0:
+                print(f"  Pushed: {_msg}")
             else:
-                _push = _git("push")
-                if _push.returncode == 0:
-                    print(f"  Pushed: {_msg}")
+                _stderr = (_push.stderr or "").lower()
+                if "non-fast-forward" in _stderr or "fetch first" in _stderr or "rejected" in _stderr:
+                    _head = _git("rev-parse", "HEAD")
+                    _commit_sha = _head.stdout.strip() if _head.returncode == 0 else ""
+                    if _commit_sha:
+                        print("  Push rejected (remote ahead). Retrying via bridge push...")
+                        if _push_via_bridge(_commit_sha):
+                            print(f"  Pushed via bridge: {_msg}")
+                        else:
+                            print("  Bridge push failed. Resolve manually and retry.")
+                    else:
+                        print(f"  Push failed: {_push.stderr.strip()}")
                 else:
                     print(f"  Push failed: {_push.stderr.strip()}")
 except Exception as _e:
