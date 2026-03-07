@@ -2666,5 +2666,3 @@ try:
                     print(f"  Push failed: {_push.stderr.strip()}")
 except Exception as _e:
     print(f"  Git push skipped: {_e}")
-
-# %%
