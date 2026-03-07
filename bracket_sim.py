@@ -2559,23 +2559,93 @@ def _push_via_bridge(commit_sha: str) -> bool:
         print("  Bridge push failed: could not read remote.origin.url")
         return False
 
+    _changed = _git("show", "--pretty=", "--name-status", commit_sha)
+    if _changed.returncode != 0:
+        print(f"  Bridge prep failed: {_changed.stderr.strip()}")
+        return False
+
+    _message_res = _git("log", "-1", "--pretty=%B", commit_sha)
+    _commit_msg = _message_res.stdout.strip() if _message_res.returncode == 0 else ""
+    if not _commit_msg:
+        _commit_msg = f"Update bracket sim outputs ({datetime.date.today()})"
+
+    _entries = []
+    for _line in _changed.stdout.splitlines():
+        _line = _line.strip()
+        if not _line:
+            continue
+        _parts = _line.split("\t")
+        _status = _parts[0]
+        if _status.startswith("R") or _status.startswith("C"):
+            if len(_parts) >= 3:
+                _entries.append(("M", _parts[2]))
+        elif _status.startswith("D"):
+            if len(_parts) >= 2:
+                _entries.append(("D", _parts[1]))
+        else:
+            if len(_parts) >= 2:
+                _entries.append(("M", _parts[1]))
+
+    if not _entries:
+        print("  Bridge push skipped: no changed paths in commit.")
+        return True
+
     _origin_url = _origin.stdout.strip()
     _bridge_dir = tempfile.mkdtemp(prefix="_push_bridge_auto_", dir=str(BASE))
+    _bridge_root = Path(_bridge_dir)
+
     try:
         _clone = _git("clone", "--branch", "main", "--single-branch", _origin_url, _bridge_dir, cwd=str(BASE))
         if _clone.returncode != 0:
             print(f"  Bridge clone failed: {_clone.stderr.strip()}")
             return False
 
-        _fetch_local = _git("fetch", str(BASE), "main:refs/remotes/local/main", cwd=_bridge_dir)
-        if _fetch_local.returncode != 0:
-            print(f"  Bridge fetch failed: {_fetch_local.stderr.strip()}")
+        _paths_to_stage = []
+        for _kind, _rel in _entries:
+            _rel = _rel.strip()
+            if not _rel:
+                continue
+            _src = BASE / _rel
+            _dst = _bridge_root / _rel
+            _paths_to_stage.append(_rel)
+
+            if _kind == "D":
+                if _dst.exists():
+                    if _dst.is_dir():
+                        _shutil.rmtree(_dst, ignore_errors=True)
+                    else:
+                        _dst.unlink()
+                continue
+
+            if _src.exists():
+                _dst.parent.mkdir(parents=True, exist_ok=True)
+                if _src.is_dir():
+                    if _dst.exists():
+                        _shutil.rmtree(_dst, ignore_errors=True)
+                    _shutil.copytree(_src, _dst)
+                else:
+                    _shutil.copy2(_src, _dst)
+            else:
+                if _dst.exists():
+                    if _dst.is_dir():
+                        _shutil.rmtree(_dst, ignore_errors=True)
+                    else:
+                        _dst.unlink()
+
+        _paths_to_stage = sorted(set(_paths_to_stage))
+        _add = _git("add", "-A", *_paths_to_stage, cwd=_bridge_dir)
+        if _add.returncode != 0:
+            print(f"  Bridge add failed: {_add.stderr.strip()}")
             return False
 
-        _cp = _git("cherry-pick", commit_sha, cwd=_bridge_dir)
-        if _cp.returncode != 0:
-            print(f"  Bridge cherry-pick failed: {_cp.stderr.strip()}")
-            _git("cherry-pick", "--abort", cwd=_bridge_dir)
+        _bridge_status = _git("status", "--porcelain", cwd=_bridge_dir)
+        if not _bridge_status.stdout.strip():
+            print("  Bridge had no deltas to commit.")
+            return True
+
+        _bridge_commit = _git("commit", "-m", _commit_msg, cwd=_bridge_dir)
+        if _bridge_commit.returncode != 0:
+            print(f"  Bridge commit failed: {_bridge_commit.stderr.strip()}")
             return False
 
         _push = _git("push", "origin", "main", cwd=_bridge_dir)
@@ -2666,3 +2736,5 @@ try:
                     print(f"  Push failed: {_push.stderr.strip()}")
 except Exception as _e:
     print(f"  Git push skipped: {_e}")
+
+
