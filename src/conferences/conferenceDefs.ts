@@ -259,6 +259,8 @@ export const CONF_KNOWN_RESULTS: Record<string, Record<string, number>> = {
   wcc: {
     "wcc-R1-0": 1339, // Portland (9) def Pepperdine (12)
     "wcc-R1-1": 1360, // San Diego (11) def LMU (10)
+    "wcc-R2-0": 1339, // Portland (9) def Washington St (8)
+    "wcc-R2-1": 1370, // Seattle (7) def San Diego (11)
   },
   mvc: {
     "mvc-R1-0": 1179, // Drake (9) def S Illinois (8)
@@ -266,13 +268,19 @@ export const CONF_KNOWN_RESULTS: Record<string, Record<string, number>> = {
     "mvc-R1-2": 1320, // Northern Iowa (6) def Evansville (11)
     "mvc-QF-0": 1179, // Drake (9) def Belmont (1)
     "mvc-QF-1": 1227, // IL Chicago (5) def Murray St (4)
+    "mvc-QF-2": 1133, // Bradley (2) def Valparaiso (7)
+    "mvc-QF-3": 1320, // Northern Iowa (6) def Illinois St (3)
   },
   bigsouth: {
     "bigsouth-R1-0": 1367, // SC Upstate (8) def Gardner Webb (9)
     "bigsouth-QF-0": 1219, // High Point (1) def SC Upstate (8)
+    "bigsouth-QF-1": 1421, // UNC Asheville (4) def Longwood (5)
+    "bigsouth-QF-2": 1457, // Winthrop (2) def Charleston So (7)
+    "bigsouth-QF-3": 1342, // Presbyterian (6) def Radford (3)
   },
   southern: {
     "southern-R1-0": 1154, // Citadel (9) def Chattanooga (8)
+    "southern-R1-1": 1422, // UNC Greensboro (7) def VMI (10)
   },
   caa: {
     "caa-R1-0": 1318, // Northeastern (13) def NC A&T (12)
