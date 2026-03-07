@@ -264,9 +264,17 @@ export const CONF_KNOWN_RESULTS: Record<string, Record<string, number>> = {
     "mvc-R1-0": 1179, // Drake (9) def S Illinois (8)
     "mvc-R1-1": 1434, // Valparaiso (7) def Indiana St (10)
     "mvc-R1-2": 1320, // Northern Iowa (6) def Evansville (11)
+    "mvc-QF-0": 1179, // Drake (9) def Belmont (1)
+    "mvc-QF-1": 1227, // IL Chicago (5) def Murray St (4)
   },
   bigsouth: {
     "bigsouth-R1-0": 1367, // SC Upstate (8) def Gardner Webb (9)
     "bigsouth-QF-0": 1219, // High Point (1) def SC Upstate (8)
+  },
+  southern: {
+    "southern-R1-0": 1154, // Citadel (9) def Chattanooga (8)
+  },
+  caa: {
+    "caa-R1-0": 1318, // Northeastern (13) def NC A&T (12)
   },
 };

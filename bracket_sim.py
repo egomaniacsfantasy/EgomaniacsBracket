@@ -1926,9 +1926,10 @@ _MVC_SLOTS = [
     # Championship (DayNum 125)
     ("MVC_Final", "MVC_SF_1", "MVC_SF_2", 125, "Final"),
 ]
-# Actual R1 results (Mar 5): (9) Drake def (8) SIU; (7) Valparaiso def (10) Indiana State;
-# (6) Northern Iowa def (11) Evansville. Belmont holds the 1 seed.
-_MVC_forced = {"MVC_R1_1": "9", "MVC_R1_2": "7", "MVC_R1_3": "6"}
+# R1 (Mar 5): (9) Drake def (8) SIU; (7) Valparaiso def (10) Indiana State; (6) Northern Iowa def (11) Evansville.
+# QF: (9) Drake def (1) Belmont; (5) IL Chicago def (4) Murray St.
+_MVC_forced = {"MVC_R1_1": "9", "MVC_R1_2": "7", "MVC_R1_3": "6",
+               "MVC_QF_1": "MVC_R1_1", "MVC_QF_2": "5"}
 _conf_results["MissouriValley"], _conf_stats_results["MissouriValley"], _conf_matchup_results["MissouriValley"] = _run_conf("Missouri Valley", _MVC_sm, _MVC_SLOTS, rng_seed=206, forced_winners=_MVC_forced)
 
 # %%
@@ -2100,7 +2101,9 @@ _CAA_SLOTS = [
     # Championship (DayNum 127)
     ("CAA_Final", "CAA_SF_1", "CAA_SF_2", 127, "Final"),
 ]
-_conf_results["CAA"], _conf_stats_results["CAA"], _conf_matchup_results["CAA"] = _run_conf("CAA", _CAA_sm, _CAA_SLOTS, rng_seed=212)
+# R1: (13) Northeastern def (12) NC A&T
+_CAA_forced = {"CAA_R1_1": "13"}
+_conf_results["CAA"], _conf_stats_results["CAA"], _conf_matchup_results["CAA"] = _run_conf("CAA", _CAA_sm, _CAA_SLOTS, rng_seed=212, forced_winners=_CAA_forced)
 
 # %%
 
@@ -2164,7 +2167,9 @@ _SOU_SLOTS = [
     # Championship (DayNum 126)
     ("SOU_Final", "SOU_SF_1", "SOU_SF_2", 126, "Final"),
 ]
-_conf_results["Southern"], _conf_stats_results["Southern"], _conf_matchup_results["Southern"] = _run_conf("Southern", _SOU_sm, _SOU_SLOTS, rng_seed=215)
+# R1: (9) Citadel def (8) Chattanooga
+_SOU_forced = {"SOU_R1_1": "9"}
+_conf_results["Southern"], _conf_stats_results["Southern"], _conf_matchup_results["Southern"] = _run_conf("Southern", _SOU_sm, _SOU_SLOTS, rng_seed=215, forced_winners=_SOU_forced)
 
 # %%
 
