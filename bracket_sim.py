@@ -2542,6 +2542,17 @@ def _git(*args, cwd=str(BASE)):
     return subprocess.run(["git"] + list(args), cwd=cwd,
                           capture_output=True, text=True)
 
+def _rebase_cleanup():
+    _rmerge = BASE / ".git" / "rebase-merge"
+    _rapply = BASE / ".git" / "rebase-apply"
+    if _rmerge.exists() or _rapply.exists():
+        _git("rebase", "--abort")
+        if _rmerge.exists():
+            _shutil.rmtree(str(_rmerge), ignore_errors=True)
+        if _rapply.exists():
+            _shutil.rmtree(str(_rapply), ignore_errors=True)
+        print("  Cleared stale rebase state.")
+
 def _push_via_bridge(commit_sha: str) -> bool:
     _origin = _git("config", "--get", "remote.origin.url")
     if _origin.returncode != 0 or not _origin.stdout.strip():
@@ -2550,7 +2561,6 @@ def _push_via_bridge(commit_sha: str) -> bool:
 
     _origin_url = _origin.stdout.strip()
     _bridge_dir = tempfile.mkdtemp(prefix="_push_bridge_auto_", dir=str(BASE))
-
     try:
         _clone = _git("clone", "--branch", "main", "--single-branch", _origin_url, _bridge_dir, cwd=str(BASE))
         if _clone.returncode != 0:
@@ -2594,6 +2604,8 @@ print("AUTO-PUSH: staging output files -> GitHub")
 print("=" * 60)
 
 try:
+    _rebase_cleanup()
+
     # Step 1: Regenerate TypeScript data files
     print("  Regenerating TypeScript data files...")
     _ts_gen = subprocess.run(
