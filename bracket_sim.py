@@ -33,6 +33,7 @@
 import warnings
 import itertools
 import re
+import datetime
 import numpy as np
 import pandas as pd
 import lightgbm as lgb
@@ -41,6 +42,14 @@ from pathlib import Path
 from sklearn.preprocessing import LabelEncoder
 from sklearn.metrics import log_loss, accuracy_score
 from sklearn.isotonic import IsotonicRegression
+
+# ---------------------------------------------------------------------------
+# CURRENT DAYNUM (computed from today's date and season Day Zero)
+# DayZero 2026 = Nov 3, 2025.  Clamped to [1, 154].
+# ---------------------------------------------------------------------------
+_SEASON_DAY_ZERO  = datetime.date(2025, 11, 3)
+_CURRENT_DAYNUM   = max(1, min((datetime.date.today() - _SEASON_DAY_ZERO).days, 154))
+print(f"Current DayNum: {_CURRENT_DAYNUM}  (today: {datetime.date.today()})")
 
 warnings.filterwarnings("ignore")
 
@@ -2270,7 +2279,7 @@ print("\n" + "=" * 70)
 print("PHASE G: MODEL POWER RANKINGS (Markov / PageRank)")
 print("=" * 70)
 
-_MR_DAYNUM   = 136          # neutral-site DayNum used for all matchups
+_MR_DAYNUM   = _CURRENT_DAYNUM   # current DayNum of season (auto-computed from today)
 _MR_MAX_ITER = 300          # power-iteration cap
 _MR_TOL      = 1e-10        # convergence threshold (max |π_new - π|)
 
@@ -2398,6 +2407,10 @@ else:
     )
     df_rankings_26.insert(0, "MR_Rank", range(1, len(df_rankings_26) + 1))
 
+    # Simple expected-win-percentage rank (each team vs all 364 others, unweighted)
+    _ewp_order = df_rankings_26["Exp_Wins_pct"].rank(ascending=False, method="min").astype(int)
+    df_rankings_26.insert(1, "EWP_Rank", _ewp_order)
+
     _top10_cols = ["MR_Rank", "TeamName", "Conf", "MR_Score",
                    "Exp_Wins_pct", "Elo", "NET", "POM"]
     print(f"\n  Top 10 teams:")
@@ -2422,7 +2435,7 @@ print("\n" + "=" * 70)
 print("ALL-D1 MATCHUP PREDICTOR")
 print("=" * 70)
 
-DAYNUM_PREDICTOR = 121       # current regular-season context (~Mar 4 2026)
+DAYNUM_PREDICTOR = _CURRENT_DAYNUM   # current DayNum of season (auto-computed from today)
 OUT_PREDICTOR_26 = BASE / "matchup_predictor_2026.xlsx"
 
 # Load all 365 D1 teams from snapshot (parquet preferred, xlsx fallback)
@@ -2738,3 +2751,5 @@ except Exception as _e:
     print(f"  Git push skipped: {_e}")
 
 
+
+# %%
