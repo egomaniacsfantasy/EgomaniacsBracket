@@ -1935,10 +1935,15 @@ _MVC_SLOTS = [
     # Championship (DayNum 125)
     ("MVC_Final", "MVC_SF_1", "MVC_SF_2", 125, "Final"),
 ]
-# R1 (Mar 5): (9) Drake def (8) SIU; (7) Valparaiso def (10) Indiana State; (6) Northern Iowa def (11) Evansville.
-# QF: (9) Drake def (1) Belmont; (5) IL Chicago def (4) Murray St.
-_MVC_forced = {"MVC_R1_1": "9", "MVC_R1_2": "7", "MVC_R1_3": "6",
-               "MVC_QF_1": "MVC_R1_1", "MVC_QF_2": "5"}
+# R1: (9) Drake def (8) SIU; (7) Valparaiso def (10) Indiana St; (6) Northern Iowa def (11) Evansville
+# QF: (9) Drake def (1) Belmont; (5) IL Chicago def (4) Murray St; (2) Bradley def (7) Valparaiso; (6) Northern Iowa def (3) Illinois St
+# SF: (5) IL Chicago def (9) Drake; (6) Northern Iowa def (2) Bradley
+_MVC_forced = {
+    "MVC_R1_1": "9",  "MVC_R1_2": "7",  "MVC_R1_3": "6",
+    "MVC_QF_1": "MVC_R1_1",  "MVC_QF_2": "5",
+    "MVC_QF_3": "2",  "MVC_QF_4": "6",
+    "MVC_SF_1": "5",  "MVC_SF_2": "6",
+}
 _conf_results["MissouriValley"], _conf_stats_results["MissouriValley"], _conf_matchup_results["MissouriValley"] = _run_conf("Missouri Valley", _MVC_sm, _MVC_SLOTS, rng_seed=206, forced_winners=_MVC_forced)
 
 # %%
@@ -2026,8 +2031,14 @@ _WCC_SLOTS = [
     # Championship (DayNum 127)
     ("WCC_Final", "WCC_SF_1", "WCC_SF_2", 127, "Final"),
 ]
-# Actual R1 results (Mar 5): (9) Portland def (12) Pepperdine; (11) San Diego def (10) LMU
-_WCC_forced = {"WCC_R1_1": "9", "WCC_R1_2": "11"}
+# R1: (9) Portland def (12) Pepperdine; (11) San Diego def (10) LMU
+# R2: (9) Portland def (8) Washington St; (7) Seattle def (11) San Diego
+# R3: (5) San Francisco def (9) Portland; (6) Pacific def (7) Seattle
+_WCC_forced = {
+    "WCC_R1_1": "9",  "WCC_R1_2": "11",
+    "WCC_R2_1": "9",  "WCC_R2_2": "7",
+    "WCC_R3_1": "5",  "WCC_R3_2": "6",
+}
 _conf_results["WCC"], _conf_stats_results["WCC"], _conf_matchup_results["WCC"] = _run_conf("WCC", _WCC_sm, _WCC_SLOTS, rng_seed=209, forced_winners=_WCC_forced)
 
 # %%
@@ -2080,8 +2091,16 @@ _BS_SLOTS = [
     # Championship (DayNum 125)
     ("BS_Final", "BS_SF_1", "BS_SF_2", 125, "Final"),
 ]
-# Locked: SC Upstate def Gardner Webb (R1); High Point def SC Upstate (QF)
-_BS_forced = {"BS_R1_1": "8", "BS_QF_1": "1"}
+# R1: (8) SC Upstate def (9) Gardner Webb
+# QF: (1) HP def (8) SC Upstate; (4) UNC Asheville def (5) Longwood; (2) Winthrop def (7) Charleston So; (6) Presbyterian def (3) Radford
+# SF: (1) HP def (4) UNC Asheville; (2) Winthrop def (6) Presbyterian
+# Final: (1) High Point def (2) Winthrop — CHAMPION
+_BS_forced = {
+    "BS_R1_1": "8",
+    "BS_QF_1": "1",  "BS_QF_2": "4",  "BS_QF_3": "2",  "BS_QF_4": "6",
+    "BS_SF_1": "1",  "BS_SF_2": "2",
+    "BS_Final": "1",
+}
 _conf_results["BigSouth"], _conf_stats_results["BigSouth"], _conf_matchup_results["BigSouth"] = _run_conf("Big South", _BS_sm, _BS_SLOTS, rng_seed=211, forced_winners=_BS_forced)
 
 # %%
@@ -2111,7 +2130,13 @@ _CAA_SLOTS = [
     ("CAA_Final", "CAA_SF_1", "CAA_SF_2", 127, "Final"),
 ]
 # R1: (13) Northeastern def (12) NC A&T
-_CAA_forced = {"CAA_R1_1": "13"}
+# R2: (9) Campbell def (8) Stony Brook; (5) Drexel def (13) Northeastern; (7) Towson def (10) Hampton; (6) William & Mary def (11) Elon
+# QF: (9) Campbell def (1) UNC Wilmington; (4) Monmouth def (5) Drexel
+_CAA_forced = {
+    "CAA_R1_1": "13",
+    "CAA_R2_1": "9",   "CAA_R2_2": "5",   "CAA_R2_3": "7",   "CAA_R2_4": "6",
+    "CAA_QF_1": "9",   "CAA_QF_2": "4",
+}
 _conf_results["CAA"], _conf_stats_results["CAA"], _conf_matchup_results["CAA"] = _run_conf("CAA", _CAA_sm, _CAA_SLOTS, rng_seed=212, forced_winners=_CAA_forced)
 
 # %%
@@ -2152,7 +2177,8 @@ _PAT_SLOTS = [
     # Championship (DayNum 128)
     ("PAT_Final", "PAT_SF_1", "PAT_SF_2", 128, "Final"),
 ]
-_conf_results["Patriot"], _conf_stats_results["Patriot"], _conf_matchup_results["Patriot"] = _run_conf("Patriot", _PAT_sm, _PAT_SLOTS, rng_seed=214)
+_PAT_forced = {"PAT_SF_1": "4", "PAT_SF_2": "2"}
+_conf_results["Patriot"], _conf_stats_results["Patriot"], _conf_matchup_results["Patriot"] = _run_conf("Patriot", _PAT_sm, _PAT_SLOTS, rng_seed=214, forced_winners=_PAT_forced)
 
 # %%
 
@@ -2176,8 +2202,14 @@ _SOU_SLOTS = [
     # Championship (DayNum 126)
     ("SOU_Final", "SOU_SF_1", "SOU_SF_2", 126, "Final"),
 ]
-# R1: (9) Citadel def (8) Chattanooga
-_SOU_forced = {"SOU_R1_1": "9"}
+# R1: (9) Citadel def (8) Chattanooga; (7) UNC Greensboro def (10) VMI
+# QF: (1) ETSU def (9) Citadel; (5) W Carolina def (4) Samford; (7) UNC Greensboro def (2) Mercer; (6) Furman def (3) Wofford
+# SF: (1) ETSU def (5) W Carolina
+_SOU_forced = {
+    "SOU_R1_1": "9",   "SOU_R1_2": "7",
+    "SOU_QF_1": "1",   "SOU_QF_2": "5",   "SOU_QF_3": "7",   "SOU_QF_4": "6",
+    "SOU_SF_1": "1",
+}
 _conf_results["Southern"], _conf_stats_results["Southern"], _conf_matchup_results["Southern"] = _run_conf("Southern", _SOU_sm, _SOU_SLOTS, rng_seed=215, forced_winners=_SOU_forced)
 
 # %%
