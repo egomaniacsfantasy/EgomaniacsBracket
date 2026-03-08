@@ -261,6 +261,8 @@ export const CONF_KNOWN_RESULTS: Record<string, Record<string, number>> = {
     "wcc-R1-1": 1360, // San Diego (11) def LMU (10)
     "wcc-R2-0": 1339, // Portland (9) def Washington St (8)
     "wcc-R2-1": 1370, // Seattle (7) def San Diego (11)
+    "wcc-R3-0": 1362, // San Francisco (5) def Portland (9)
+    "wcc-R3-1": 1334, // Pacific (6) def Seattle (7)
   },
   mvc: {
     "mvc-R1-0": 1179, // Drake (9) def S Illinois (8)
@@ -270,6 +272,8 @@ export const CONF_KNOWN_RESULTS: Record<string, Record<string, number>> = {
     "mvc-QF-1": 1227, // IL Chicago (5) def Murray St (4)
     "mvc-QF-2": 1133, // Bradley (2) def Valparaiso (7)
     "mvc-QF-3": 1320, // Northern Iowa (6) def Illinois St (3)
+    "mvc-SF-0": 1227, // IL Chicago (5) def Drake (9)
+    "mvc-SF-1": 1320, // Northern Iowa (6) def Bradley (2)
   },
   bigsouth: {
     "bigsouth-R1-0": 1367, // SC Upstate (8) def Gardner Webb (9)
@@ -277,12 +281,22 @@ export const CONF_KNOWN_RESULTS: Record<string, Record<string, number>> = {
     "bigsouth-QF-1": 1421, // UNC Asheville (4) def Longwood (5)
     "bigsouth-QF-2": 1457, // Winthrop (2) def Charleston So (7)
     "bigsouth-QF-3": 1342, // Presbyterian (6) def Radford (3)
+    "bigsouth-SF-0": 1219, // High Point (1) def UNC Asheville (4)
+    "bigsouth-SF-1": 1457, // Winthrop (2) def Presbyterian (6)
   },
   southern: {
     "southern-R1-0": 1154, // Citadel (9) def Chattanooga (8)
     "southern-R1-1": 1422, // UNC Greensboro (7) def VMI (10)
+    "southern-QF-0": 1190, // ETSU (1) def Citadel (9)
+    "southern-QF-1": 1441, // W Carolina (5) def Samford (4)
+    "southern-QF-2": 1422, // UNC Greensboro (7) def Mercer (2)
+    "southern-QF-3": 1202, // Furman (6) def Wofford (3)
   },
   caa: {
     "caa-R1-0": 1318, // Northeastern (13) def NC A&T (12)
+    "caa-R2-0": 1144, // Campbell (9) def Stony Brook (8)
+    "caa-R2-1": 1180, // Drexel (5) def Northeastern (13)
+    "caa-R2-2": 1406, // Towson (7) def Hampton (10)
+    "caa-R2-3": 1456, // William & Mary (6) def Elon (11)
   },
 };
