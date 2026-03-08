@@ -834,12 +834,24 @@ body {
   display: flex;
   flex-direction: column;
   gap: 10px;
+  position: relative;
 }
 
 .ff-game-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  padding-right: 20px;
+}
+
+.matchup-stats-icon--ff {
+  top: 10px;
+  right: 10px;
+  color: rgba(240, 230, 208, 0.7);
+}
+
+.ff-game-card:hover .matchup-stats-icon--ff {
+  color: rgba(240, 230, 208, 0.95);
 }
 
 .ff-game-label {
@@ -12018,6 +12030,18 @@ body.walkthrough-active .odds-value--changed::after {
 
 .conf-game-card--locked {
   border-color: rgba(171, 138, 69, 0.65);
+}
+
+.conf-game-card--with-info .conf-team-row {
+  padding-left: 24px;
+}
+
+.conf-game-card .matchup-stats-icon--conf {
+  left: 4px !important;
+  right: auto !important;
+  top: 50% !important;
+  transform: translateY(-50%) !important;
+  color: rgba(240, 230, 208, 0.55);
 }
 
 .conf-team-row {

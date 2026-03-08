@@ -283,6 +283,7 @@ export const CONF_KNOWN_RESULTS: Record<string, Record<string, number>> = {
     "bigsouth-QF-3": 1342, // Presbyterian (6) def Radford (3)
     "bigsouth-SF-0": 1219, // High Point (1) def UNC Asheville (4)
     "bigsouth-SF-1": 1457, // Winthrop (2) def Presbyterian (6)
+    "bigsouth-F-0":  1219, // High Point (1) def Winthrop (2)
   },
   southern: {
     "southern-R1-0": 1154, // Citadel (9) def Chattanooga (8)
@@ -291,6 +292,7 @@ export const CONF_KNOWN_RESULTS: Record<string, Record<string, number>> = {
     "southern-QF-1": 1441, // W Carolina (5) def Samford (4)
     "southern-QF-2": 1422, // UNC Greensboro (7) def Mercer (2)
     "southern-QF-3": 1202, // Furman (6) def Wofford (3)
+    "southern-SF-0": 1190, // ETSU (1) def W Carolina (5)
   },
   caa: {
     "caa-R1-0": 1318, // Northeastern (13) def NC A&T (12)
@@ -298,5 +300,11 @@ export const CONF_KNOWN_RESULTS: Record<string, Record<string, number>> = {
     "caa-R2-1": 1180, // Drexel (5) def Northeastern (13)
     "caa-R2-2": 1406, // Towson (7) def Hampton (10)
     "caa-R2-3": 1456, // William & Mary (6) def Elon (11)
+    "caa-QF-0": 1144, // Campbell (9) def UNC Wilmington (1)
+    "caa-QF-1": 1284, // Monmouth (4) def Drexel (5)
+  },
+  patriot: {
+    "patriot-SF-0": 1131, // Boston Univ (4) def Navy (1)
+    "patriot-SF-1": 1250, // Lehigh (2) def Colgate (3)
   },
 };

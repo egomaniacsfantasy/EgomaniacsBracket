@@ -408,7 +408,6 @@ function ConferenceBracketView({
                             onPick={handlePick}
                             onOpenMatchupStats={setSelectedStatsGame}
                             isLocked={game.id in locks}
-                            isMobile={isMobile}
                           />
                         </div>
                       );
@@ -443,7 +442,6 @@ function ConfGameCard({
   onPick,
   onOpenMatchupStats,
   isLocked,
-  isMobile,
 }: {
   game: ConfResolvedGame;
   confId: string;
@@ -455,7 +453,6 @@ function ConfGameCard({
   onPick: (game: ConfResolvedGame, teamId: number | null) => void;
   onOpenMatchupStats: (game: ConfResolvedGame) => void;
   isLocked: boolean;
-  isMobile: boolean;
 }) {
   const rows = buildGameRowsForDisplay(game, confId, def, teamsById, gameWinProbs, possibleWinners);
   const knownMatchup = game.teamAId !== null && game.teamBId !== null;
@@ -486,11 +483,11 @@ function ConfGameCard({
   };
 
   return (
-    <div className={`conf-game-card ${isLocked ? "conf-game-card--locked" : ""}`}>
+    <div className={`conf-game-card ${isLocked ? "conf-game-card--locked" : ""} ${knownMatchup ? "conf-game-card--with-info" : ""}`}>
       {knownMatchup ? (
         <button
           type="button"
-          className={`matchup-stats-icon ${isMobile ? "matchup-stats-icon--mobile" : ""}`}
+          className="matchup-stats-icon matchup-stats-icon--conf"
           onClick={(event) => {
             event.stopPropagation();
             onOpenMatchupStats(game);
