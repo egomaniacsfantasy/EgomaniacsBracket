@@ -246,8 +246,12 @@ def _compute_elo(reg_df, conf_map, initial=1500, scale=400):
     cross-conference boost, home-court, seasonal regression,
     and variable K-factor.
 
-    reg_df must have columns:
+    all_games_df must have columns:
         Season, DayNum, WTeamID, LTeamID, WScore, LScore, WLoc
+
+    Pass reg + conf-tourney + NCAA games so Elo updates round-by-round
+    through the tournament (R64 result feeds R32 Elo, etc.).
+    Secondary tournament games are excluded by the caller.
 
     Returns (game_elo_df, season_elo_df):
       game_elo_df   : (Season, DayNum, TeamID, elo_last, elo_trend)
@@ -255,7 +259,7 @@ def _compute_elo(reg_df, conf_map, initial=1500, scale=400):
                       elo_trend = slope of post-game history through prior games.
       season_elo_df : (Season, TeamID, elo_last, elo_trend)
                       One row per (Season, TeamID); elo_last = season-end Elo.
-                      Used as fallback for tournament/secondary game rows.
+                      Used as fallback for secondary-tourney rows only.
     """
     data = reg_df.sort_values(["Season", "DayNum"]).reset_index(drop=True)
 
@@ -404,9 +408,15 @@ def _join_elo(games_df, game_elo, season_elo, team_col):
     return out
 
 
-game_elo_df, season_elo_df = _compute_elo(reg, team_conf_map)
-print(f"  Game-level Elo rows : {len(game_elo_df):,}  (one per team per reg/conf-tourney game)")
-print(f"  Season-end Elo rows : {len(season_elo_df):,}  (fallback for tournament games)")
+# Include NCAA tournament games so Elo updates round-by-round through the bracket.
+# For R64: Elo = end-of-regular-season (same as before).
+# For R32+: Elo = post-R64 (or later) updated rating.
+# Secondary games are excluded — NIT/CBI teams don't face NCAA teams.
+_elo_cols = ["Season", "DayNum", "WTeamID", "LTeamID", "WScore", "LScore", "WLoc"]
+_reg_ncaa_for_elo = pd.concat([reg[_elo_cols], ncaa[_elo_cols]], ignore_index=True)
+game_elo_df, season_elo_df = _compute_elo(_reg_ncaa_for_elo, team_conf_map)
+print(f"  Game-level Elo rows : {len(game_elo_df):,}  (reg + conf-tourney + NCAA games)")
+print(f"  Season-end Elo rows : {len(season_elo_df):,}  (fallback for secondary-tourney only)")
 print(f"  elo_last range (game-level) : [{game_elo_df['elo_last'].min():.1f}, {game_elo_df['elo_last'].max():.1f}]")
 
 games = _join_elo(games, game_elo_df, season_elo_df, "team1_id")
@@ -1101,11 +1111,115 @@ print("Done.")
 # Stages and pushes the snapshot outputs produced by this run.
 # Silently skips if git is unavailable or there are no changes.
 # ---------------------------------------------------------------------------
-import subprocess, datetime
+import subprocess, datetime, tempfile, shutil as _shutil
 
 def _git(*args, cwd=str(DATA_DIR)):
     return subprocess.run(["git"] + list(args), cwd=cwd,
                           capture_output=True, text=True)
+
+def _push_via_bridge(commit_sha: str, branch: str) -> bool:
+    _origin = _git("config", "--get", "remote.origin.url")
+    if _origin.returncode != 0 or not _origin.stdout.strip():
+        print("  Bridge push failed: could not read remote.origin.url")
+        return False
+
+    _changed = _git("show", "--pretty=", "--name-status", commit_sha)
+    if _changed.returncode != 0:
+        print(f"  Bridge prep failed: {_changed.stderr.strip()}")
+        return False
+
+    _message_res = _git("log", "-1", "--pretty=%B", commit_sha)
+    _commit_msg = _message_res.stdout.strip() if _message_res.returncode == 0 else ""
+    if not _commit_msg:
+        _commit_msg = f"Update team snapshot ({datetime.date.today()})"
+
+    _entries = []
+    for _line in _changed.stdout.splitlines():
+        _line = _line.strip()
+        if not _line:
+            continue
+        _parts = _line.split("\t")
+        _status = _parts[0]
+        if _status.startswith("R") or _status.startswith("C"):
+            if len(_parts) >= 3:
+                _entries.append(("M", _parts[2]))
+        elif _status.startswith("D"):
+            if len(_parts) >= 2:
+                _entries.append(("D", _parts[1]))
+        else:
+            if len(_parts) >= 2:
+                _entries.append(("M", _parts[1]))
+
+    if not _entries:
+        print("  Bridge push skipped: no changed paths in commit.")
+        return True
+
+    _origin_url = _origin.stdout.strip()
+    _bridge_dir = tempfile.mkdtemp(prefix="_push_bridge_auto_", dir=str(DATA_DIR))
+    _bridge_root = Path(_bridge_dir)
+
+    try:
+        _clone = _git("clone", "--branch", branch, "--single-branch", _origin_url, _bridge_dir, cwd=str(DATA_DIR))
+        if _clone.returncode != 0:
+            print(f"  Bridge clone failed: {_clone.stderr.strip()}")
+            return False
+
+        _paths_to_stage = []
+        for _kind, _rel in _entries:
+            _rel = _rel.strip()
+            if not _rel:
+                continue
+            _src = DATA_DIR / _rel
+            _dst = _bridge_root / _rel
+            _paths_to_stage.append(_rel)
+
+            if _kind == "D":
+                if _dst.exists():
+                    if _dst.is_dir():
+                        _shutil.rmtree(_dst, ignore_errors=True)
+                    else:
+                        _dst.unlink()
+                continue
+
+            if _src.exists():
+                _dst.parent.mkdir(parents=True, exist_ok=True)
+                if _src.is_dir():
+                    if _dst.exists():
+                        _shutil.rmtree(_dst, ignore_errors=True)
+                    _shutil.copytree(_src, _dst)
+                else:
+                    _shutil.copy2(_src, _dst)
+            else:
+                if _dst.exists():
+                    if _dst.is_dir():
+                        _shutil.rmtree(_dst, ignore_errors=True)
+                    else:
+                        _dst.unlink()
+
+        _paths_to_stage = sorted(set(_paths_to_stage))
+        _add = _git("add", "-A", *_paths_to_stage, cwd=_bridge_dir)
+        if _add.returncode != 0:
+            print(f"  Bridge add failed: {_add.stderr.strip()}")
+            return False
+
+        _bridge_status = _git("status", "--porcelain", cwd=_bridge_dir)
+        if not _bridge_status.stdout.strip():
+            print("  Bridge had no deltas to commit.")
+            return True
+
+        _bridge_commit = _git("commit", "-m", _commit_msg, cwd=_bridge_dir)
+        if _bridge_commit.returncode != 0:
+            print(f"  Bridge commit failed: {_bridge_commit.stderr.strip()}")
+            return False
+
+        _push = _git("push", "origin", branch, cwd=_bridge_dir)
+        if _push.returncode != 0:
+            print(f"  Bridge push failed: {_push.stderr.strip()}")
+            return False
+
+        return True
+    finally:
+        _shutil.rmtree(_bridge_dir, ignore_errors=True)
 
 _push_files = [
     "team_snapshot_2026.xlsx",
@@ -1117,21 +1231,41 @@ print("AUTO-PUSH: staging snapshot files → GitHub")
 print("=" * 60)
 
 try:
-    _git("add", *_push_files)
-    _status = _git("status", "--porcelain")
-    if not _status.stdout.strip():
-        print("  No changes to commit — GitHub already up to date.")
+    _branch_res = _git("rev-parse", "--abbrev-ref", "HEAD")
+    _branch = _branch_res.stdout.strip() if _branch_res.returncode == 0 else "main"
+
+    _existing = [f for f in _push_files if (DATA_DIR / f).exists()]
+    if not _existing:
+        print("  Snapshot files not found; nothing to push.")
     else:
-        _msg = f"Update team snapshot ({datetime.date.today()})"
-        _commit = _git("commit", "-m", _msg)
-        if _commit.returncode != 0:
-            print(f"  Commit failed: {_commit.stderr.strip()}")
+        _git("add", *_existing)
+        _staged = _git("diff", "--cached", "--name-only", "--", *_existing)
+        if not _staged.stdout.strip():
+            print("  No snapshot file changes to commit - GitHub already up to date.")
         else:
-            _push = _git("push")
-            if _push.returncode == 0:
-                print(f"  Pushed: {_msg}")
+            _msg = f"Update team snapshot ({datetime.date.today()})"
+            _commit = _git("commit", "-m", _msg, "--", *_existing)
+            if _commit.returncode != 0:
+                print(f"  Commit failed: {_commit.stderr.strip()}")
             else:
-                print(f"  Push failed: {_push.stderr.strip()}")
+                _push = _git("push", "origin", _branch)
+                if _push.returncode == 0:
+                    print(f"  Pushed: {_msg}")
+                else:
+                    _stderr = (_push.stderr or "").lower()
+                    if "non-fast-forward" in _stderr or "fetch first" in _stderr or "rejected" in _stderr:
+                        _head = _git("rev-parse", "HEAD")
+                        _commit_sha = _head.stdout.strip() if _head.returncode == 0 else ""
+                        if _commit_sha:
+                            print("  Push rejected (remote ahead). Retrying via bridge push...")
+                            if _push_via_bridge(_commit_sha, _branch):
+                                print(f"  Pushed via bridge: {_msg}")
+                            else:
+                                print("  Bridge push failed. Resolve manually and retry.")
+                        else:
+                            print(f"  Push failed: {_push.stderr.strip()}")
+                    else:
+                        print(f"  Push failed: {_push.stderr.strip()}")
 except Exception as _e:
     print(f"  Git push skipped: {_e}")
 

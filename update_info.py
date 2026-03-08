@@ -15,19 +15,24 @@
 
 # %%
 """
-update_info.py  — Extend Kaggle CSV files through March 5, 2026
-==============================================================
-Appends DayNum 121-122 (March 4-5, 2026) data to:
-  • MRegularSeasonCompactResults.csv   (game results)
-  • MRegularSeasonDetailedResults.csv  (box scores)
-  • MMasseyOrdinals.csv                (weekly snapshots — no new snapshot this run)
+update_info.py  — Extend Kaggle CSV files with all missing games through yesterday
+===================================================================================
+Auto-detects the last DayNum already in the CSVs and scrapes everything since then,
+including regular season, conference tournament, and NCAA tournament games.
+
+Appends to:
+  • MRegularSeasonCompactResults.csv   (regular + conf tourney game results)
+  • MRegularSeasonDetailedResults.csv  (box scores — all game types)
+  • MNCAATourneyCompactResults.csv     (NCAA tournament game results)
+  • MConferenceTourneyGames.csv        (conference tournament game keys)
+  • MMasseyOrdinals.csv                (weekly snapshots — add massey_raw/*.txt manually)
 
 Run in Jupyter cell-by-cell (# %% separators) or as a script:
     python update_info.py
 
-Intermediate scratch files (_new_compact.csv, _new_detailed.csv,
-_new_massey.csv) are written to DATA_DIR and removed after a successful
-append so the script is safe to re-run if interrupted.
+Safe to re-run: auto-detects start date from last game in CSVs,
+ends at yesterday (only fully completed game days).
+Intermediate scratch files are removed after a successful append.
 """
 
 # %%
@@ -63,8 +68,23 @@ except NameError:
 SEASON    = 2026
 DAY_ZERO  = date(2025, 11, 3)      # from MSeasons.csv DayZero 2026
 
-DATE_START = date(2026, 3, 4)      # DayNum 121 (CSV already has through DayNum 120)
-DATE_END   = date(2026, 3, 5)      # DayNum 122 (last day we want)
+# Auto-detect date range: start from day after last game in any CSV,
+# end at yesterday (games from today may not be complete yet).
+def _last_daynum_in_csv(csv_path: Path) -> int:
+    """Return max DayNum for SEASON already in csv_path, or 3 if none."""
+    try:
+        df = pd.read_csv(csv_path)
+        df26 = df[df["Season"] == SEASON]
+        return int(df26["DayNum"].max()) if not df26.empty else 3
+    except Exception:
+        return 3
+
+_last_reg_daynum  = _last_daynum_in_csv(DATA_DIR / "MRegularSeasonCompactResults.csv")
+_last_ncaa_daynum = _last_daynum_in_csv(DATA_DIR / "MNCAATourneyCompactResults.csv")
+_last_daynum      = max(_last_reg_daynum, _last_ncaa_daynum)
+
+DATE_START = DAY_ZERO + timedelta(days=_last_daynum + 1)
+DATE_END   = date.today() - timedelta(days=1)   # yesterday = last fully completed day
 
 # Massey snapshots loaded from massey_raw/*.txt (see Phase 3).
 # This list is informational only — the actual source of truth is MASSEY_WEEK_FILES in Phase 3.
@@ -104,8 +124,9 @@ print("=" * 65)
 print("  update_info.py  —  Phase 0 complete")
 print("=" * 65)
 print(f"  DATA_DIR   : {DATA_DIR}")
+print(f"  Last DayNum in CSVs : reg={_last_reg_daynum}, ncaa={_last_ncaa_daynum} -> start DayNum {_last_daynum + 1}")
 print(f"  DATE range : {DATE_START} (DayNum {daynum(DATE_START)}) "
-      f"→ {DATE_END} (DayNum {daynum(DATE_END)})")
+      f"-> {DATE_END} (DayNum {daynum(DATE_END)})")
 for tgt_date, tgt_daynum in MASSEY_TARGETS:
     print(f"  Massey     : {tgt_date}  →  DayNum {tgt_daynum}")
 
