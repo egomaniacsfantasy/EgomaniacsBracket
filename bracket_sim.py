@@ -2224,11 +2224,11 @@ _SOU_SLOTS = [
 ]
 # R1: (9) Citadel def (8) Chattanooga; (7) UNC Greensboro def (10) VMI
 # QF: (1) ETSU def (9) Citadel; (5) W Carolina def (4) Samford; (7) UNC Greensboro def (2) Mercer; (6) Furman def (3) Wofford
-# SF: (1) ETSU def (5) W Carolina
+# SF: (1) ETSU def (5) W Carolina; (6) Furman def (7) UNC Greensboro
 _SOU_forced = {
     "SOU_R1_1": "9",   "SOU_R1_2": "7",
     "SOU_QF_1": "1",   "SOU_QF_2": "5",   "SOU_QF_3": "7",   "SOU_QF_4": "6",
-    "SOU_SF_1": "1",
+    "SOU_SF_1": "1",   "SOU_SF_2": "6",
 }
 _conf_results["Southern"], _conf_stats_results["Southern"], _conf_matchup_results["Southern"] = _run_conf("Southern", _SOU_sm, _SOU_SLOTS, rng_seed=215, forced_winners=_SOU_forced)
 

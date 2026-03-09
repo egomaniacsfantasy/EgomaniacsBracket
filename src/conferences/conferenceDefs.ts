@@ -474,6 +474,7 @@ export const CONF_KNOWN_RESULTS: Record<string, Record<string, number>> = {
     "southern-QF-2": 1422, // UNC Greensboro (7) def Mercer (2)
     "southern-QF-3": 1202, // Furman (6) def Wofford (3)
     "southern-SF-0": 1190, // ETSU (1) def W Carolina (5)
+    "southern-SF-1": 1202, // Furman (6) def UNC Greensboro (7)
   },
   caa: {
     "caa-R1-0": 1318, // Northeastern (13) def NC A&T (12)
