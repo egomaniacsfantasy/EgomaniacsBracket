@@ -1938,11 +1938,13 @@ _MVC_SLOTS = [
 # R1: (9) Drake def (8) SIU; (7) Valparaiso def (10) Indiana St; (6) Northern Iowa def (11) Evansville
 # QF: (9) Drake def (1) Belmont; (5) IL Chicago def (4) Murray St; (2) Bradley def (7) Valparaiso; (6) Northern Iowa def (3) Illinois St
 # SF: (5) IL Chicago def (9) Drake; (6) Northern Iowa def (2) Bradley
+# Final: (6) Northern Iowa def (5) IL Chicago — CHAMPION
 _MVC_forced = {
     "MVC_R1_1": "9",  "MVC_R1_2": "7",  "MVC_R1_3": "6",
     "MVC_QF_1": "MVC_R1_1",  "MVC_QF_2": "5",
     "MVC_QF_3": "2",  "MVC_QF_4": "6",
     "MVC_SF_1": "5",  "MVC_SF_2": "6",
+    "MVC_Final": "6",
 }
 _conf_results["MissouriValley"], _conf_stats_results["MissouriValley"], _conf_matchup_results["MissouriValley"] = _run_conf("Missouri Valley", _MVC_sm, _MVC_SLOTS, rng_seed=206, forced_winners=_MVC_forced)
 
@@ -2167,17 +2169,33 @@ _conf_results["CUSA"], _conf_stats_results["CUSA"], _conf_matchup_results["CUSA"
 
 # ---------------------------------------------------------------------------
 # CONFERENCE TOURNAMENT: Patriot League
-# 4 teams | SF Mar 8 · Final Mar 11
+# 10 teams | R1 Mar 3 · QF Mar 5 · SF Mar 8 · Final Mar 11
+# Seeds 1-6 get byes to QF; seeds 7-10 play R1 (7v10, 8v9)
 # ---------------------------------------------------------------------------
 _PAT_sm = _conf_seed_map("Patriot")
 _PAT_SLOTS = [
+    # First Round (DayNum 120)
+    ("PAT_R1_1",  "7",        "10",        120, "R1"),
+    ("PAT_R1_2",  "8",        "9",         120, "R1"),
+    # Quarterfinals (DayNum 122)
+    ("PAT_QF_1",  "1",        "PAT_R1_1", 122, "QF"),
+    ("PAT_QF_2",  "4",        "5",         122, "QF"),
+    ("PAT_QF_3",  "3",        "6",         122, "QF"),
+    ("PAT_QF_4",  "2",        "PAT_R1_2", 122, "QF"),
     # Semifinals (DayNum 125)
-    ("PAT_SF_1",  "1",       "4",        125, "SF"),
-    ("PAT_SF_2",  "2",       "3",        125, "SF"),
+    ("PAT_SF_1",  "PAT_QF_1", "PAT_QF_2", 125, "SF"),
+    ("PAT_SF_2",  "PAT_QF_3", "PAT_QF_4", 125, "SF"),
     # Championship (DayNum 128)
     ("PAT_Final", "PAT_SF_1", "PAT_SF_2", 128, "Final"),
 ]
-_PAT_forced = {"PAT_SF_1": "4", "PAT_SF_2": "2"}
+# R1: (10) Holy Cross def (7) Lafayette; (8) Bucknell def (9) Army
+# QF: (1) Navy def (10) Holy Cross; (4) Boston Univ def (5) American; (3) Colgate def (6) Loyola MD; (2) Lehigh def (8) Bucknell
+# SF: (4) Boston Univ def (1) Navy; (2) Lehigh def (3) Colgate
+_PAT_forced = {
+    "PAT_R1_1": "10",  "PAT_R1_2": "8",
+    "PAT_QF_1": "1",   "PAT_QF_2": "4",   "PAT_QF_3": "3",   "PAT_QF_4": "2",
+    "PAT_SF_1": "4",   "PAT_SF_2": "2",
+}
 _conf_results["Patriot"], _conf_stats_results["Patriot"], _conf_matchup_results["Patriot"] = _run_conf("Patriot", _PAT_sm, _PAT_SLOTS, rng_seed=214, forced_winners=_PAT_forced)
 
 # %%
@@ -2238,6 +2256,417 @@ _conf_results["Southland"], _conf_stats_results["Southland"], _conf_matchup_resu
 # %%
 
 # ---------------------------------------------------------------------------
+# CONFERENCE TOURNAMENT: America East
+# 8 teams | QF Mar 7 · SF Mar 10 · Final Mar 14
+# ---------------------------------------------------------------------------
+_AE_sm = _conf_seed_map("AmericaEast")
+_AE_SLOTS = [
+    # Quarterfinals (DayNum 124)
+    ("AE_QF_1",  "1",      "8",        124, "QF"),
+    ("AE_QF_2",  "4",      "5",        124, "QF"),
+    ("AE_QF_3",  "3",      "6",        124, "QF"),
+    ("AE_QF_4",  "2",      "7",        124, "QF"),
+    # Semifinals (DayNum 127)
+    ("AE_SF_1",  "AE_QF_1","AE_QF_2", 127, "SF"),
+    ("AE_SF_2",  "AE_QF_3","AE_QF_4", 127, "SF"),
+    # Championship (DayNum 131)
+    ("AE_Final", "AE_SF_1","AE_SF_2", 131, "Final"),
+]
+# QF: (1) UMBC def (8) New Hampshire; (4) MA Lowell def (5) Albany; (3) NJIT def (6) Maine; (2) Vermont def (7) Bryant
+_AE_forced = {
+    "AE_QF_1": "1",  "AE_QF_2": "4",  "AE_QF_3": "3",  "AE_QF_4": "2",
+}
+_conf_results["AmericaEast"], _conf_stats_results["AmericaEast"], _conf_matchup_results["AmericaEast"] = _run_conf("America East", _AE_sm, _AE_SLOTS, rng_seed=217, forced_winners=_AE_forced)
+
+# %%
+
+# ---------------------------------------------------------------------------
+# CONFERENCE TOURNAMENT: Atlantic Sun (ASUN)
+# 12 teams | R1 Mar 4 · QF Mar 6 · SF Mar 7 · Final Mar 8 — COMPLETE
+# ---------------------------------------------------------------------------
+_SUN_sm = _conf_seed_map("AtlanticSun")
+_SUN_SLOTS = [
+    # First Round (DayNum 121)
+    ("SUN_R1_1", "8",       "9",         121, "R1"),
+    ("SUN_R1_2", "5",       "12",        121, "R1"),
+    ("SUN_R1_3", "7",       "10",        121, "R1"),
+    ("SUN_R1_4", "6",       "11",        121, "R1"),
+    # Quarterfinals (DayNum 123)
+    ("SUN_QF_1", "1",       "SUN_R1_1", 123, "QF"),
+    ("SUN_QF_2", "4",       "SUN_R1_2", 123, "QF"),
+    ("SUN_QF_3", "2",       "SUN_R1_3", 123, "QF"),
+    ("SUN_QF_4", "3",       "SUN_R1_4", 123, "QF"),
+    # Semifinals (DayNum 124)
+    ("SUN_SF_1", "SUN_QF_1","SUN_QF_2", 124, "SF"),
+    ("SUN_SF_2", "SUN_QF_3","SUN_QF_4", 124, "SF"),
+    # Championship (DayNum 125)
+    ("SUN_Final","SUN_SF_1","SUN_SF_2", 125, "Final"),
+]
+# R1: (8) Bellarmine def (9) Jacksonville; (5) FGCU def (12) North Alabama; (7) E Kentucky def (10) Stetson; (6) West Georgia def (11) North Florida
+# QF: (1) Cent Arkansas def (8) Bellarmine; (5) FGCU def (4) Lipscomb; (2) Austin Peay def (7) E Kentucky; (3) Queens def (6) West Georgia
+# SF: (1) Cent Arkansas def (5) FGCU; (3) Queens def (2) Austin Peay
+# Final: (3) Queens def (1) Cent Arkansas — CHAMPION
+_SUN_forced = {
+    "SUN_R1_1": "8",  "SUN_R1_2": "5",  "SUN_R1_3": "7",  "SUN_R1_4": "6",
+    "SUN_QF_1": "1",  "SUN_QF_2": "5",  "SUN_QF_3": "2",  "SUN_QF_4": "3",
+    "SUN_SF_1": "1",  "SUN_SF_2": "3",
+    "SUN_Final": "3",
+}
+_conf_results["AtlanticSun"], _conf_stats_results["AtlanticSun"], _conf_matchup_results["AtlanticSun"] = _run_conf("Atlantic Sun", _SUN_sm, _SUN_SLOTS, rng_seed=218, forced_winners=_SUN_forced)
+
+# %%
+
+# ---------------------------------------------------------------------------
+# CONFERENCE TOURNAMENT: Big Sky
+# 10 teams | R1 Mar 7 · QF Mar 8 · SF Mar 10 · Final Mar 11
+# ---------------------------------------------------------------------------
+_BSK_sm = _conf_seed_map("BigSky")
+_BSK_SLOTS = [
+    # First Round (DayNum 124)
+    ("BSK_R1_1", "9",        "10",        124, "R1"),
+    ("BSK_R1_2", "7",        "8",         124, "R1"),
+    # Quarterfinals (DayNum 125)
+    ("BSK_QF_1", "1",        "BSK_R1_1", 125, "QF"),
+    ("BSK_QF_2", "2",        "BSK_R1_2", 125, "QF"),
+    ("BSK_QF_3", "4",        "5",         125, "QF"),
+    ("BSK_QF_4", "3",        "6",         125, "QF"),
+    # Semifinals (DayNum 127) — 1-side vs 4-side; 2-side vs 3-side
+    ("BSK_SF_1", "BSK_QF_1", "BSK_QF_3", 127, "SF"),
+    ("BSK_SF_2", "BSK_QF_2", "BSK_QF_4", 127, "SF"),
+    # Championship (DayNum 128)
+    ("BSK_Final","BSK_SF_1", "BSK_SF_2", 128, "Final"),
+]
+# R1: (9) Idaho St def (10) Northern Arizona; (7) Idaho def (8) CS Sacramento
+_BSK_forced = {
+    "BSK_R1_1": "9",  "BSK_R1_2": "7",
+}
+_conf_results["BigSky"], _conf_stats_results["BigSky"], _conf_matchup_results["BigSky"] = _run_conf("Big Sky", _BSK_sm, _BSK_SLOTS, rng_seed=219, forced_winners=_BSK_forced)
+
+# %%
+
+# ---------------------------------------------------------------------------
+# CONFERENCE TOURNAMENT: Big West
+# 8 teams | R1 Mar 11 · QF Mar 12 · SF Mar 13 · Final Mar 14
+# Seeds 1-2 bye to SF; seeds 3-4 bye to QF; seeds 5-8 play R1
+# ---------------------------------------------------------------------------
+_BW_sm = _conf_seed_map("BigWest")
+_BW_SLOTS = [
+    # First Round (DayNum 128)
+    ("BW_R1_1",  "5",       "8",        128, "R1"),
+    ("BW_R1_2",  "6",       "7",        128, "R1"),
+    # Quarterfinals (DayNum 129)
+    ("BW_QF_1",  "4",       "BW_R1_1", 129, "QF"),
+    ("BW_QF_2",  "3",       "BW_R1_2", 129, "QF"),
+    # Semifinals (DayNum 130)
+    ("BW_SF_1",  "1",       "BW_QF_1", 130, "SF"),
+    ("BW_SF_2",  "2",       "BW_QF_2", 130, "SF"),
+    # Championship (DayNum 131)
+    ("BW_Final", "BW_SF_1", "BW_SF_2", 131, "Final"),
+]
+# No results yet
+_conf_results["BigWest"], _conf_stats_results["BigWest"], _conf_matchup_results["BigWest"] = _run_conf("Big West", _BW_sm, _BW_SLOTS, rng_seed=220)
+
+# %%
+
+# ---------------------------------------------------------------------------
+# CONFERENCE TOURNAMENT: Horizon League
+# 11 teams | Play-in Mar 2 · R1 Mar 3 · R2 Mar 8 (1 game) · SF Mar 9 · Final Mar 10
+# ---------------------------------------------------------------------------
+_HOR_sm = _conf_seed_map("Horizon")
+_HOR_SLOTS = [
+    # Play-in (DayNum 119)
+    ("HOR_PI_1",  "10",       "11",        119, "R1"),
+    # First Round (DayNum 120)
+    ("HOR_R1_1",  "1",        "HOR_PI_1", 120, "R1"),
+    ("HOR_R1_2",  "2",        "9",         120, "R1"),
+    ("HOR_R1_3",  "3",        "8",         120, "R1"),
+    ("HOR_R1_4",  "4",        "7",         120, "R1"),
+    ("HOR_R1_5",  "5",        "6",         120, "R1"),
+    # Second Round — one game: N Kentucky (7) vs WI Green Bay (5 winner) (DayNum 125)
+    ("HOR_R2_1",  "7",        "HOR_R1_5", 125, "R2"),
+    # Semifinals (DayNum 126)
+    ("HOR_SF_1",  "HOR_R1_1", "HOR_R2_1", 126, "SF"),
+    ("HOR_SF_2",  "HOR_R1_2", "HOR_R1_3", 126, "SF"),
+    # Championship (DayNum 127)
+    ("HOR_Final", "HOR_SF_1", "HOR_SF_2", 127, "Final"),
+]
+# Play-in: (10) Cleveland St def (11) IUPUI
+# R1: (1) Wright St def (10) Cleveland St; (2) Robert Morris def (9) Youngstown St;
+#     (3) Detroit def (8) WI Milwaukee; (4) Oakland def (7) N Kentucky; (5) WI Green Bay def (6) PFW
+# R2: (7) N Kentucky def (5) WI Green Bay
+_HOR_forced = {
+    "HOR_PI_1": "10",
+    "HOR_R1_1": "1",   "HOR_R1_2": "2",   "HOR_R1_3": "3",
+    "HOR_R1_4": "4",   "HOR_R1_5": "5",
+    "HOR_R2_1": "7",
+}
+_conf_results["Horizon"], _conf_stats_results["Horizon"], _conf_matchup_results["Horizon"] = _run_conf("Horizon", _HOR_sm, _HOR_SLOTS, rng_seed=221, forced_winners=_HOR_forced)
+
+# %%
+
+# ---------------------------------------------------------------------------
+# CONFERENCE TOURNAMENT: Ivy League
+# 4 teams | SF Mar 14 · Final Mar 15
+# ---------------------------------------------------------------------------
+_IVY_sm = _conf_seed_map("Ivy")
+_IVY_SLOTS = [
+    # Semifinals (DayNum 131)
+    ("IVY_SF_1",  "1",        "4",        131, "SF"),
+    ("IVY_SF_2",  "2",        "3",        131, "SF"),
+    # Championship (DayNum 132)
+    ("IVY_Final", "IVY_SF_1", "IVY_SF_2", 132, "Final"),
+]
+# No results yet
+_conf_results["Ivy"], _conf_stats_results["Ivy"], _conf_matchup_results["Ivy"] = _run_conf("Ivy", _IVY_sm, _IVY_SLOTS, rng_seed=222)
+
+# %%
+
+# ---------------------------------------------------------------------------
+# CONFERENCE TOURNAMENT: MAAC
+# 10 teams | R1 Mar 5 · QF Mar 6 · SF Mar 8 · Final Mar 9
+# ---------------------------------------------------------------------------
+_MAAC_sm = _conf_seed_map("MAAC")
+_MAAC_SLOTS = [
+    # First Round (DayNum 122)
+    ("MAAC_R1_1", "8",         "9",          122, "R1"),
+    ("MAAC_R1_2", "7",         "10",         122, "R1"),
+    # Quarterfinals (DayNum 123)
+    ("MAAC_QF_1", "1",         "MAAC_R1_1", 123, "QF"),
+    ("MAAC_QF_2", "4",         "5",          123, "QF"),
+    ("MAAC_QF_3", "2",         "MAAC_R1_2", 123, "QF"),
+    ("MAAC_QF_4", "3",         "6",          123, "QF"),
+    # Semifinals (DayNum 125)
+    ("MAAC_SF_1", "MAAC_QF_1", "MAAC_QF_2", 125, "SF"),
+    ("MAAC_SF_2", "MAAC_QF_3", "MAAC_QF_4", 125, "SF"),
+    # Championship (DayNum 126)
+    ("MAAC_Final","MAAC_SF_1", "MAAC_SF_2", 126, "Final"),
+]
+# R1: (9) Sacred Heart def (8) Iona; (7) Fairfield def (10) Manhattan
+# QF: (1) Merrimack def (9) Sacred Heart; (5) Marist def (4) Quinnipiac;
+#     (7) Fairfield def (2) St Peter's; (3) Siena def (6) Mt St Mary's
+# SF: (1) Merrimack def (5) Marist
+_MAAC_forced = {
+    "MAAC_R1_1": "9",   "MAAC_R1_2": "7",
+    "MAAC_QF_1": "1",   "MAAC_QF_2": "5",   "MAAC_QF_3": "7",   "MAAC_QF_4": "3",
+    "MAAC_SF_1": "1",
+}
+_conf_results["MAAC"], _conf_stats_results["MAAC"], _conf_matchup_results["MAAC"] = _run_conf("MAAC", _MAAC_sm, _MAAC_SLOTS, rng_seed=223, forced_winners=_MAAC_forced)
+
+# %%
+
+# ---------------------------------------------------------------------------
+# CONFERENCE TOURNAMENT: MEAC
+# 7 teams | QF Mar 11 · SF Mar 13 · Final Mar 14
+# Seed 1 gets bye to SF; seeds 2-7 play QF
+# ---------------------------------------------------------------------------
+_MEAC_sm = _conf_seed_map("MEAC")
+_MEAC_SLOTS = [
+    # Quarterfinals (DayNum 128)
+    ("MEAC_QF_1", "4",         "5",          128, "QF"),
+    ("MEAC_QF_2", "2",         "7",          128, "QF"),
+    ("MEAC_QF_3", "3",         "6",          128, "QF"),
+    # Semifinals (DayNum 130)
+    ("MEAC_SF_1", "1",         "MEAC_QF_1", 130, "SF"),
+    ("MEAC_SF_2", "MEAC_QF_2", "MEAC_QF_3", 130, "SF"),
+    # Championship (DayNum 131)
+    ("MEAC_Final","MEAC_SF_1", "MEAC_SF_2", 131, "Final"),
+]
+# No results yet
+_conf_results["MEAC"], _conf_stats_results["MEAC"], _conf_matchup_results["MEAC"] = _run_conf("MEAC", _MEAC_sm, _MEAC_SLOTS, rng_seed=224)
+
+# %%
+
+# ---------------------------------------------------------------------------
+# CONFERENCE TOURNAMENT: Northeast Conference
+# 8 teams | QF Mar 4 · SF Mar 7 (reseeded) · Final Mar 10
+# ---------------------------------------------------------------------------
+_NEC_sm = _conf_seed_map("Northeast")
+_NEC_SLOTS = [
+    # Quarterfinals (DayNum 121)
+    ("NEC_QF_1",  "1",        "8",        121, "QF"),
+    ("NEC_QF_2",  "2",        "7",        121, "QF"),
+    ("NEC_QF_3",  "3",        "6",        121, "QF"),
+    ("NEC_QF_4",  "4",        "5",        121, "QF"),
+    # Semifinals — reseeded: (1) vs (2 bracket), (3) vs (4 bracket) (DayNum 124)
+    ("NEC_SF_1",  "NEC_QF_1", "NEC_QF_2", 124, "SF"),
+    ("NEC_SF_2",  "NEC_QF_3", "NEC_QF_4", 124, "SF"),
+    # Championship (DayNum 127)
+    ("NEC_Final", "NEC_SF_1", "NEC_SF_2", 127, "Final"),
+]
+# QF: (1) LIU Brooklyn def (8) Chicago St; (7) Wagner def (2) Central Conn;
+#     (3) Mercyhurst def (6) F Dickinson; (5) Stonehill def (4) Le Moyne
+# SF (reseeded): (1) LIU Brooklyn def (7) Wagner; (3) Mercyhurst def (5) Stonehill
+_NEC_forced = {
+    "NEC_QF_1": "1",  "NEC_QF_2": "7",  "NEC_QF_3": "3",  "NEC_QF_4": "5",
+    "NEC_SF_1": "1",  "NEC_SF_2": "3",
+}
+_conf_results["Northeast"], _conf_stats_results["Northeast"], _conf_matchup_results["Northeast"] = _run_conf("Northeast", _NEC_sm, _NEC_SLOTS, rng_seed=225, forced_winners=_NEC_forced)
+
+# %%
+
+# ---------------------------------------------------------------------------
+# CONFERENCE TOURNAMENT: Ohio Valley
+# 8 teams | R1 Mar 4 · QF Mar 5 · SF Mar 6 · Final Mar 7 — COMPLETE
+# Seeds 1-2 bye to SF; seeds 3-4 bye to QF; seeds 5-8 play R1 (5v8, 6v7)
+# ---------------------------------------------------------------------------
+_OVC_sm = _conf_seed_map("OhioValley")
+_OVC_SLOTS = [
+    # First Round (DayNum 121)
+    ("OVC_R1_1",  "8",        "5",         121, "R1"),
+    ("OVC_R1_2",  "6",        "7",         121, "R1"),
+    # Quarterfinals (DayNum 122)
+    ("OVC_QF_1",  "4",        "OVC_R1_1", 122, "QF"),
+    ("OVC_QF_2",  "3",        "OVC_R1_2", 122, "QF"),
+    # Semifinals (DayNum 123)
+    ("OVC_SF_1",  "1",        "OVC_QF_1", 123, "SF"),
+    ("OVC_SF_2",  "2",        "OVC_QF_2", 123, "SF"),
+    # Championship (DayNum 124)
+    ("OVC_Final", "OVC_SF_1", "OVC_SF_2", 124, "Final"),
+]
+# R1: (8) E Illinois def (5) SIUE; (6) Lindenwood def (7) Ark Little Rock
+# QF: (4) TN Martin def (8) E Illinois; (3) SE Missouri St def (6) Lindenwood
+# SF: (1) Tennessee St def (4) TN Martin; (2) Morehead St def (3) SE Missouri St
+# Final: (1) Tennessee St def (2) Morehead St — CHAMPION
+_OVC_forced = {
+    "OVC_R1_1": "8",  "OVC_R1_2": "6",
+    "OVC_QF_1": "4",  "OVC_QF_2": "3",
+    "OVC_SF_1": "1",  "OVC_SF_2": "2",
+    "OVC_Final": "1",
+}
+_conf_results["OhioValley"], _conf_stats_results["OhioValley"], _conf_matchup_results["OhioValley"] = _run_conf("Ohio Valley", _OVC_sm, _OVC_SLOTS, rng_seed=226, forced_winners=_OVC_forced)
+
+# %%
+
+# ---------------------------------------------------------------------------
+# CONFERENCE TOURNAMENT: SWAC
+# 12 teams | R1 Mar 9 · R2 Mar 10 · QF Mar 11 · SF Mar 13 · Final Mar 14
+# ---------------------------------------------------------------------------
+_SWAC_sm = _conf_seed_map("SWAC")
+_SWAC_SLOTS = [
+    # First Round (DayNum 126)
+    ("SWAC_R1_1",  "10",        "11",         126, "R1"),
+    ("SWAC_R1_2",  "9",         "12",         126, "R1"),
+    # Second Round (DayNum 127)
+    ("SWAC_R2_1",  "8",         "SWAC_R1_1", 127, "R2"),
+    ("SWAC_R2_2",  "7",         "SWAC_R1_2", 127, "R2"),
+    # Quarterfinals (DayNum 128)
+    ("SWAC_QF_1",  "1",         "SWAC_R2_1", 128, "QF"),
+    ("SWAC_QF_2",  "4",         "5",          128, "QF"),
+    ("SWAC_QF_3",  "2",         "SWAC_R2_2", 128, "QF"),
+    ("SWAC_QF_4",  "3",         "6",          128, "QF"),
+    # Semifinals (DayNum 130)
+    ("SWAC_SF_1",  "SWAC_QF_1", "SWAC_QF_2", 130, "SF"),
+    ("SWAC_SF_2",  "SWAC_QF_3", "SWAC_QF_4", 130, "SF"),
+    # Championship (DayNum 131)
+    ("SWAC_Final", "SWAC_SF_1", "SWAC_SF_2", 131, "Final"),
+]
+# No results yet
+_conf_results["SWAC"], _conf_stats_results["SWAC"], _conf_matchup_results["SWAC"] = _run_conf("SWAC", _SWAC_sm, _SWAC_SLOTS, rng_seed=227)
+
+# %%
+
+# ---------------------------------------------------------------------------
+# CONFERENCE TOURNAMENT: Summit League
+# 9 teams | R1 Mar 4 · QF Mar 5 · SF Mar 7 · Final Mar 8
+# ---------------------------------------------------------------------------
+_SML_sm = _conf_seed_map("Summit")
+_SML_SLOTS = [
+    # First Round (DayNum 121)
+    ("SML_R1_1",  "8",        "9",          121, "R1"),
+    # Quarterfinals (DayNum 122)
+    ("SML_QF_1",  "1",        "SML_R1_1",  122, "QF"),
+    ("SML_QF_2",  "4",        "5",          122, "QF"),
+    ("SML_QF_3",  "2",        "7",          122, "QF"),
+    ("SML_QF_4",  "3",        "6",          122, "QF"),
+    # Semifinals (DayNum 124)
+    ("SML_SF_1",  "SML_QF_1", "SML_QF_2",  124, "SF"),
+    ("SML_SF_2",  "SML_QF_3", "SML_QF_4",  124, "SF"),
+    # Championship (DayNum 125)
+    ("SML_Final", "SML_SF_1", "SML_SF_2",  125, "Final"),
+]
+# R1: (8) Oral Roberts def (9) Missouri KC
+# QF: (1) N Dakota St def (8) Oral Roberts; (5) Omaha def (4) South Dakota;
+#     (2) St Thomas MN def (7) S Dakota St; (3) N Dakota def (6) Denver
+# SF: (1) N Dakota St def (5) Omaha; (3) N Dakota def (2) St Thomas MN
+_SML_forced = {
+    "SML_R1_1": "8",
+    "SML_QF_1": "1",  "SML_QF_2": "5",  "SML_QF_3": "2",  "SML_QF_4": "3",
+    "SML_SF_1": "1",  "SML_SF_2": "3",
+}
+_conf_results["Summit"], _conf_stats_results["Summit"], _conf_matchup_results["Summit"] = _run_conf("Summit League", _SML_sm, _SML_SLOTS, rng_seed=228, forced_winners=_SML_forced)
+
+# %%
+
+# ---------------------------------------------------------------------------
+# CONFERENCE TOURNAMENT: Sun Belt
+# 14 teams | R1 Mar 3 · R2 Mar 4 · R3 Mar 5 · R4 Mar 6 · QF Mar 7 · SF Mar 8 · Final Mar 9
+# Seeds 1-2 bye to SF; seeds 3-6 bye to QF; seeds 7-10 bye to R3; 11-14 play R1
+# ---------------------------------------------------------------------------
+_SBL_sm = _conf_seed_map("SunBelt")
+_SBL_SLOTS = [
+    # Round 1 (DayNum 120)
+    ("SBL_R1_1",  "12",        "13",          120, "R1"),
+    ("SBL_R1_2",  "11",        "14",          120, "R1"),
+    # Round 2 (DayNum 121)
+    ("SBL_R2_1",  "9",         "SBL_R1_1",   121, "R2"),
+    ("SBL_R2_2",  "10",        "SBL_R1_2",   121, "R2"),
+    # Round 3 (DayNum 122)
+    ("SBL_R3_1",  "8",         "SBL_R2_1",   122, "R3"),
+    ("SBL_R3_2",  "7",         "SBL_R2_2",   122, "R3"),
+    # Round 4 (DayNum 123)
+    ("SBL_R4_1",  "5",         "SBL_R3_1",   123, "R4"),
+    ("SBL_R4_2",  "6",         "SBL_R3_2",   123, "R4"),
+    # Quarterfinals (DayNum 124)
+    ("SBL_QF_1",  "4",         "SBL_R4_1",   124, "QF"),
+    ("SBL_QF_2",  "3",         "SBL_R4_2",   124, "QF"),
+    # Semifinals (DayNum 125)
+    ("SBL_SF_1",  "1",         "SBL_QF_1",   125, "SF"),
+    ("SBL_SF_2",  "2",         "SBL_QF_2",   125, "SF"),
+    # Championship (DayNum 126)
+    ("SBL_Final", "SBL_SF_1",  "SBL_SF_2",   126, "Final"),
+]
+# R1: (12) Louisiana def (13) Georgia St; (11) Old Dominion def (14) ULM
+# R2: (9) James Madison def (12) Louisiana; (10) Ga Southern def (11) Old Dominion
+# R3: (8) Southern Miss def (9) James Madison; (10) Ga Southern def (7) Arkansas St
+# R4: (8) Southern Miss def (5) Texas St; (10) Ga Southern def (6) South Alabama
+# QF: (8) Southern Miss def (4) Appalachian St; (10) Ga Southern def (3) Coastal Car
+# SF: (1) Troy def (8) Southern Miss
+_SBL_forced = {
+    "SBL_R1_1": "12",  "SBL_R1_2": "11",
+    "SBL_R2_1": "9",   "SBL_R2_2": "10",
+    "SBL_R3_1": "8",   "SBL_R3_2": "10",
+    "SBL_R4_1": "8",   "SBL_R4_2": "10",
+    "SBL_QF_1": "8",   "SBL_QF_2": "10",
+    "SBL_SF_1": "1",
+}
+_conf_results["SunBelt"], _conf_stats_results["SunBelt"], _conf_matchup_results["SunBelt"] = _run_conf("Sun Belt", _SBL_sm, _SBL_SLOTS, rng_seed=229, forced_winners=_SBL_forced)
+
+# %%
+
+# ---------------------------------------------------------------------------
+# CONFERENCE TOURNAMENT: WAC
+# 7 teams | R1 Mar 11 · QF Mar 12 · SF Mar 13 · Final Mar 14
+# Seeds 1-2 bye to SF; seed 3 bye to QF; seeds 4-7 play R1/QF
+# ---------------------------------------------------------------------------
+_WAC_sm = _conf_seed_map("WAC")
+_WAC_SLOTS = [
+    # First Round (DayNum 128)
+    ("WAC_R1_1",  "6",        "7",          128, "R1"),
+    # Quarterfinals (DayNum 129)
+    ("WAC_QF_1",  "4",        "5",          129, "QF"),
+    ("WAC_QF_2",  "3",        "WAC_R1_1",  129, "QF"),
+    # Semifinals (DayNum 130)
+    ("WAC_SF_1",  "1",        "WAC_QF_1",  130, "SF"),
+    ("WAC_SF_2",  "2",        "WAC_QF_2",  130, "SF"),
+    # Championship (DayNum 131)
+    ("WAC_Final", "WAC_SF_1", "WAC_SF_2",  131, "Final"),
+]
+# No results yet
+_conf_results["WAC"], _conf_stats_results["WAC"], _conf_matchup_results["WAC"] = _run_conf("WAC", _WAC_sm, _WAC_SLOTS, rng_seed=230)
+
+# %%
+
+# ---------------------------------------------------------------------------
 # SAVE ALL CONFERENCE TOURNAMENT RESULTS
 # One sheet per conference in conf_tourney_preds_2026.xlsx
 # ---------------------------------------------------------------------------
@@ -2249,19 +2678,33 @@ _CONF_SHEET_NAMES = {
     "A10":            "Atlantic 10",
     "ACC":            "ACC",
     "American":       "American Athletic",
+    "AmericaEast":    "America East",
+    "AtlanticSun":    "Atlantic Sun",
     "Big12":          "Big 12",
     "BigEast":        "Big East",
+    "BigSky":         "Big Sky",
     "BigSouth":       "Big South",
     "BigTen":         "Big Ten",
+    "BigWest":        "Big West",
     "CAA":            "CAA",
     "CUSA":           "Conference USA",
+    "Horizon":        "Horizon",
+    "Ivy":            "Ivy",
+    "MAAC":           "MAAC",
+    "MEAC":           "MEAC",
     "MidAmerican":    "Mid-American",
     "MissouriValley": "Missouri Valley",
     "MountainWest":   "Mountain West",
+    "Northeast":      "Northeast",
+    "OhioValley":     "Ohio Valley",
     "Patriot":        "Patriot",
     "SEC":            "SEC",
     "Southern":       "Southern",
     "Southland":      "Southland",
+    "Summit":         "Summit League",
+    "SunBelt":        "Sun Belt",
+    "SWAC":           "SWAC",
+    "WAC":            "WAC",
     "WCC":            "WCC",
 }
 
