@@ -343,10 +343,6 @@ export function MatchupPredictor({ displayMode }: { displayMode: OddsDisplayMode
         </div>
       )}
 
-      <p className="mp-footnote">
-        Model: LightGBM + isotonic calibration, 33 features, DayNum 121 (current regular-season context).
-        Home advantage is baked into the model.
-      </p>
     </div>
   );
 }

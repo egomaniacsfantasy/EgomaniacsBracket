@@ -2036,10 +2036,12 @@ _WCC_SLOTS = [
 # R1: (9) Portland def (12) Pepperdine; (11) San Diego def (10) LMU
 # R2: (9) Portland def (8) Washington St; (7) Seattle def (11) San Diego
 # R3: (5) San Francisco def (9) Portland; (6) Pacific def (7) Seattle
+# QF: (4) Oregon St def (5) San Francisco; (3) Santa Clara def (6) Pacific
 _WCC_forced = {
     "WCC_R1_1": "9",  "WCC_R1_2": "11",
     "WCC_R2_1": "9",  "WCC_R2_2": "7",
     "WCC_R3_1": "5",  "WCC_R3_2": "6",
+    "WCC_QF_1": "4",  "WCC_QF_2": "3",
 }
 _conf_results["WCC"], _conf_stats_results["WCC"], _conf_matchup_results["WCC"] = _run_conf("WCC", _WCC_sm, _WCC_SLOTS, rng_seed=209, forced_winners=_WCC_forced)
 
@@ -2133,11 +2135,11 @@ _CAA_SLOTS = [
 ]
 # R1: (13) Northeastern def (12) NC A&T
 # R2: (9) Campbell def (8) Stony Brook; (5) Drexel def (13) Northeastern; (7) Towson def (10) Hampton; (6) William & Mary def (11) Elon
-# QF: (9) Campbell def (1) UNC Wilmington; (4) Monmouth def (5) Drexel
+# QF: (9) Campbell def (1) UNC Wilmington; (4) Monmouth def (5) Drexel; (7) Towson def (2) Col Charleston; (3) Hofstra def (6) William & Mary
 _CAA_forced = {
     "CAA_R1_1": "13",
     "CAA_R2_1": "9",   "CAA_R2_2": "5",   "CAA_R2_3": "7",   "CAA_R2_4": "6",
-    "CAA_QF_1": "9",   "CAA_QF_2": "4",
+    "CAA_QF_1": "9",   "CAA_QF_2": "4",   "CAA_QF_3": "7",   "CAA_QF_4": "3",
 }
 _conf_results["CAA"], _conf_stats_results["CAA"], _conf_matchup_results["CAA"] = _run_conf("CAA", _CAA_sm, _CAA_SLOTS, rng_seed=212, forced_winners=_CAA_forced)
 
@@ -2251,7 +2253,9 @@ _STL_SLOTS = [
     # Championship (DayNum 128)
     ("STL_Final", "STL_SF_1", "STL_SF_2", 128, "Final"),
 ]
-_conf_results["Southland"], _conf_stats_results["Southland"], _conf_matchup_results["Southland"] = _run_conf("Southland", _STL_sm, _STL_SLOTS, rng_seed=216)
+# R1: (5) New Orleans def (8) Houston Chr; (6) Nicholls St def (7) Northwestern LA
+_STL_forced = {"STL_R1_1": "5", "STL_R1_2": "6"}
+_conf_results["Southland"], _conf_stats_results["Southland"], _conf_matchup_results["Southland"] = _run_conf("Southland", _STL_sm, _STL_SLOTS, rng_seed=216, forced_winners=_STL_forced)
 
 # %%
 
@@ -2337,8 +2341,10 @@ _BSK_SLOTS = [
     ("BSK_Final","BSK_SF_1", "BSK_SF_2", 128, "Final"),
 ]
 # R1: (9) Idaho St def (10) Northern Arizona; (7) Idaho def (8) CS Sacramento
+# QF: (1) Portland St def (9) Idaho St; (7) Idaho def (2) Montana St
 _BSK_forced = {
     "BSK_R1_1": "9",  "BSK_R1_2": "7",
+    "BSK_QF_1": "1",  "BSK_QF_2": "7",
 }
 _conf_results["BigSky"], _conf_stats_results["BigSky"], _conf_matchup_results["BigSky"] = _run_conf("Big Sky", _BSK_sm, _BSK_SLOTS, rng_seed=219, forced_winners=_BSK_forced)
 
@@ -2444,11 +2450,11 @@ _MAAC_SLOTS = [
 # R1: (9) Sacred Heart def (8) Iona; (7) Fairfield def (10) Manhattan
 # QF: (1) Merrimack def (9) Sacred Heart; (5) Marist def (4) Quinnipiac;
 #     (7) Fairfield def (2) St Peter's; (3) Siena def (6) Mt St Mary's
-# SF: (1) Merrimack def (5) Marist
+# SF: (1) Merrimack def (5) Marist; (3) Siena def (7) Fairfield
 _MAAC_forced = {
     "MAAC_R1_1": "9",   "MAAC_R1_2": "7",
     "MAAC_QF_1": "1",   "MAAC_QF_2": "5",   "MAAC_QF_3": "7",   "MAAC_QF_4": "3",
-    "MAAC_SF_1": "1",
+    "MAAC_SF_1": "1",   "MAAC_SF_2": "3",
 }
 _conf_results["MAAC"], _conf_stats_results["MAAC"], _conf_matchup_results["MAAC"] = _run_conf("MAAC", _MAAC_sm, _MAAC_SLOTS, rng_seed=223, forced_winners=_MAAC_forced)
 
@@ -2588,10 +2594,12 @@ _SML_SLOTS = [
 # QF: (1) N Dakota St def (8) Oral Roberts; (5) Omaha def (4) South Dakota;
 #     (2) St Thomas MN def (7) S Dakota St; (3) N Dakota def (6) Denver
 # SF: (1) N Dakota St def (5) Omaha; (3) N Dakota def (2) St Thomas MN
+# Final: (1) N Dakota St def (3) N Dakota — CHAMPION
 _SML_forced = {
     "SML_R1_1": "8",
     "SML_QF_1": "1",  "SML_QF_2": "5",  "SML_QF_3": "2",  "SML_QF_4": "3",
     "SML_SF_1": "1",  "SML_SF_2": "3",
+    "SML_Final": "1",
 }
 _conf_results["Summit"], _conf_stats_results["Summit"], _conf_matchup_results["Summit"] = _run_conf("Summit League", _SML_sm, _SML_SLOTS, rng_seed=228, forced_winners=_SML_forced)
 
@@ -2630,14 +2638,14 @@ _SBL_SLOTS = [
 # R3: (8) Southern Miss def (9) James Madison; (10) Ga Southern def (7) Arkansas St
 # R4: (8) Southern Miss def (5) Texas St; (10) Ga Southern def (6) South Alabama
 # QF: (8) Southern Miss def (4) Appalachian St; (10) Ga Southern def (3) Coastal Car
-# SF: (1) Troy def (8) Southern Miss
+# SF: (1) Troy def (8) Southern Miss; (10) Ga Southern def (2) Marshall
 _SBL_forced = {
     "SBL_R1_1": "12",  "SBL_R1_2": "11",
     "SBL_R2_1": "9",   "SBL_R2_2": "10",
     "SBL_R3_1": "8",   "SBL_R3_2": "10",
     "SBL_R4_1": "8",   "SBL_R4_2": "10",
     "SBL_QF_1": "8",   "SBL_QF_2": "10",
-    "SBL_SF_1": "1",
+    "SBL_SF_1": "1",   "SBL_SF_2": "10",
 }
 _conf_results["SunBelt"], _conf_stats_results["SunBelt"], _conf_matchup_results["SunBelt"] = _run_conf("Sun Belt", _SBL_sm, _SBL_SLOTS, rng_seed=229, forced_winners=_SBL_forced)
 
