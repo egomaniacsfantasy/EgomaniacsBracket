@@ -5645,29 +5645,9 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "rankNET": 251
     },
     {
-      "id": 1223,
-      "name": "Houston Chr",
-      "seed": 7,
-      "elo": 1276.5,
-      "eloTrend": -0.8273,
-      "eloSos": 1424.2,
-      "offRtg": 103.46,
-      "defRtg": 112.17,
-      "netRtg": -8.71,
-      "orebPct": 0.3045,
-      "tovPct": 0.1803,
-      "last5Margin": -2.4,
-      "rankPOM": 300,
-      "rankMAS": 306,
-      "rankMOR": 304,
-      "rankWLK": 316,
-      "rankBIH": 294,
-      "rankNET": 301
-    },
-    {
       "id": 1322,
       "name": "Northwestern LA",
-      "seed": 8,
+      "seed": 7,
       "elo": 1288.1,
       "eloTrend": -1.681,
       "eloSos": 1441.7,
@@ -5683,6 +5663,26 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "rankWLK": 287,
       "rankBIH": 292,
       "rankNET": 294
+    },
+    {
+      "id": 1223,
+      "name": "Houston Chr",
+      "seed": 8,
+      "elo": 1276.5,
+      "eloTrend": -0.8273,
+      "eloSos": 1424.2,
+      "offRtg": 103.46,
+      "defRtg": 112.17,
+      "netRtg": -8.71,
+      "orebPct": 0.3045,
+      "tovPct": 0.1803,
+      "last5Margin": -2.4,
+      "rankPOM": 300,
+      "rankMAS": 306,
+      "rankMOR": 304,
+      "rankWLK": 316,
+      "rankBIH": 294,
+      "rankNET": 301
     }
   ],
   "summit": [
