@@ -455,6 +455,7 @@ export const CONF_KNOWN_RESULTS: Record<string, Record<string, number>> = {
     "mvc-QF-3": 1320, // Northern Iowa (6) def Illinois St (3)
     "mvc-SF-0": 1227, // IL Chicago (5) def Drake (9)
     "mvc-SF-1": 1320, // Northern Iowa (6) def Bradley (2)
+    "mvc-F-0":  1320, // Northern Iowa (6) def IL Chicago (5) — CHAMPION
   },
   bigsouth: {
     "bigsouth-R1-0": 1367, // SC Upstate (8) def Gardner Webb (9)
