@@ -605,6 +605,7 @@ MASSEY_WEEK_FILES = {
     MASSEY_RAW_DIR / "massey_week_114.txt": 114,
     MASSEY_RAW_DIR / "massey_week_118.txt": 118,
     MASSEY_RAW_DIR / "massey_week_121.txt": 121,
+    MASSEY_RAW_DIR / "massey_week_125.txt": 125,
 }
 
 # Massey-specific overrides — ONLY for names genuinely absent from
