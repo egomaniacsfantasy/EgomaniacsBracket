@@ -107,12 +107,12 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "orebPct": 0.2436,
       "tovPct": 0.1686,
       "last5Margin": -0.4,
-      "rankPOM": 27,
-      "rankMAS": 40,
-      "rankMOR": 25,
-      "rankWLK": 24,
-      "rankBIH": 26,
-      "rankNET": 24
+      "rankPOM": 40,
+      "rankMAS": 46,
+      "rankMOR": 36,
+      "rankWLK": 30,
+      "rankBIH": 28,
+      "rankNET": 27
     },
     {
       "id": 1433,
@@ -128,11 +128,11 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "tovPct": 0.1497,
       "last5Margin": 6.2,
       "rankPOM": 45,
-      "rankMAS": 55,
-      "rankMOR": 49,
-      "rankWLK": 44,
-      "rankBIH": 43,
-      "rankNET": 47
+      "rankMAS": 54,
+      "rankMOR": 48,
+      "rankWLK": 45,
+      "rankBIH": 40,
+      "rankNET": 44
     },
     {
       "id": 1386,
@@ -147,12 +147,12 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "orebPct": 0.2842,
       "tovPct": 0.1621,
       "last5Margin": 10.6,
-      "rankPOM": 132,
-      "rankMAS": 117,
-      "rankMOR": 146,
-      "rankWLK": 132,
-      "rankBIH": 109,
-      "rankNET": 132
+      "rankPOM": 121,
+      "rankMAS": 110,
+      "rankMOR": 140,
+      "rankWLK": 122,
+      "rankBIH": 90,
+      "rankNET": 124
     },
     {
       "id": 1173,
@@ -167,12 +167,12 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "orebPct": 0.2531,
       "tovPct": 0.1686,
       "last5Margin": 5.6,
-      "rankPOM": 75,
-      "rankMAS": 78,
-      "rankMOR": 72,
-      "rankWLK": 76,
-      "rankBIH": 68,
-      "rankNET": 71
+      "rankPOM": 79,
+      "rankMAS": 82,
+      "rankMOR": 79,
+      "rankWLK": 75,
+      "rankBIH": 66,
+      "rankNET": 75
     },
     {
       "id": 1206,
@@ -187,12 +187,12 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "orebPct": 0.2641,
       "tovPct": 0.1547,
       "last5Margin": 0.8,
-      "rankPOM": 107,
-      "rankMAS": 94,
-      "rankMOR": 100,
-      "rankWLK": 97,
-      "rankBIH": 75,
-      "rankNET": 98
+      "rankPOM": 94,
+      "rankMAS": 90,
+      "rankMOR": 83,
+      "rankWLK": 90,
+      "rankBIH": 76,
+      "rankNET": 89
     },
     {
       "id": 1172,
@@ -207,12 +207,12 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "orebPct": 0.2859,
       "tovPct": 0.1553,
       "last5Margin": 3.2,
-      "rankPOM": 106,
+      "rankPOM": 107,
       "rankMAS": 115,
-      "rankMOR": 126,
-      "rankWLK": 108,
-      "rankBIH": 98,
-      "rankNET": 105
+      "rankMOR": 130,
+      "rankWLK": 109,
+      "rankBIH": 108,
+      "rankNET": 106
     },
     {
       "id": 1182,
@@ -227,12 +227,12 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "orebPct": 0.2905,
       "tovPct": 0.1742,
       "last5Margin": -9.6,
-      "rankPOM": 125,
-      "rankMAS": 136,
+      "rankPOM": 133,
+      "rankMAS": 134,
       "rankMOR": 132,
-      "rankWLK": 133,
-      "rankBIH": 127,
-      "rankNET": 131
+      "rankWLK": 140,
+      "rankBIH": 131,
+      "rankNET": 140
     },
     {
       "id": 1200,
@@ -248,11 +248,11 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "tovPct": 0.1649,
       "last5Margin": -0.6,
       "rankPOM": 168,
-      "rankMAS": 188,
-      "rankMOR": 157,
-      "rankWLK": 186,
-      "rankBIH": 191,
-      "rankNET": 181
+      "rankMAS": 189,
+      "rankMOR": 139,
+      "rankWLK": 183,
+      "rankBIH": 200,
+      "rankNET": 174
     },
     {
       "id": 1203,
@@ -267,12 +267,12 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "orebPct": 0.3298,
       "tovPct": 0.1749,
       "last5Margin": 2.8,
-      "rankPOM": 76,
-      "rankMAS": 126,
-      "rankMOR": 75,
-      "rankWLK": 81,
-      "rankBIH": 116,
-      "rankNET": 86
+      "rankPOM": 83,
+      "rankMAS": 128,
+      "rankMOR": 86,
+      "rankWLK": 89,
+      "rankBIH": 119,
+      "rankNET": 90
     },
     {
       "id": 1348,
@@ -287,12 +287,12 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "orebPct": 0.3041,
       "tovPct": 0.181,
       "last5Margin": -7.4,
-      "rankPOM": 137,
+      "rankPOM": 134,
       "rankMAS": 150,
-      "rankMOR": 117,
-      "rankWLK": 134,
-      "rankBIH": 129,
-      "rankNET": 141
+      "rankMOR": 120,
+      "rankWLK": 135,
+      "rankBIH": 147,
+      "rankNET": 144
     },
     {
       "id": 1350,
@@ -307,12 +307,12 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "orebPct": 0.2419,
       "tovPct": 0.1397,
       "last5Margin": -1.4,
-      "rankPOM": 142,
-      "rankMAS": 155,
+      "rankPOM": 143,
+      "rankMAS": 162,
       "rankMOR": 121,
-      "rankWLK": 148,
-      "rankBIH": 157,
-      "rankNET": 147
+      "rankWLK": 155,
+      "rankBIH": 183,
+      "rankNET": 152
     },
     {
       "id": 1247,
@@ -327,12 +327,12 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "orebPct": 0.3303,
       "tovPct": 0.1752,
       "last5Margin": -6,
-      "rankPOM": 229,
-      "rankMAS": 234,
+      "rankPOM": 225,
+      "rankMAS": 226,
       "rankMOR": 205,
-      "rankWLK": 230,
-      "rankBIH": 243,
-      "rankNET": 239
+      "rankWLK": 229,
+      "rankBIH": 241,
+      "rankNET": 235
     },
     {
       "id": 1382,
@@ -347,12 +347,12 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "orebPct": 0.3183,
       "tovPct": 0.1633,
       "last5Margin": -2.8,
-      "rankPOM": 150,
-      "rankMAS": 141,
-      "rankMOR": 147,
-      "rankWLK": 144,
-      "rankBIH": 161,
-      "rankNET": 149
+      "rankPOM": 160,
+      "rankMAS": 153,
+      "rankMOR": 151,
+      "rankWLK": 151,
+      "rankBIH": 168,
+      "rankNET": 158
     },
     {
       "id": 1260,
@@ -367,12 +367,12 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "orebPct": 0.2832,
       "tovPct": 0.1903,
       "last5Margin": -4.4,
-      "rankPOM": 306,
-      "rankMAS": 245,
-      "rankMOR": 273,
-      "rankWLK": 314,
-      "rankBIH": 315,
-      "rankNET": 303
+      "rankPOM": 293,
+      "rankMAS": 232,
+      "rankMOR": 251,
+      "rankWLK": 297,
+      "rankBIH": 285,
+      "rankNET": 289
     }
   ],
   "acc": [
@@ -392,8 +392,8 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "rankPOM": 1,
       "rankMAS": 1,
       "rankMOR": 2,
-      "rankWLK": 3,
-      "rankBIH": 2,
+      "rankWLK": 2,
+      "rankBIH": 1,
       "rankNET": 1
     },
     {
@@ -409,12 +409,12 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "orebPct": 0.3168,
       "tovPct": 0.1532,
       "last5Margin": 3,
-      "rankPOM": 17,
-      "rankMAS": 19,
-      "rankMOR": 15,
-      "rankWLK": 18,
-      "rankBIH": 10,
-      "rankNET": 14
+      "rankPOM": 20,
+      "rankMAS": 20,
+      "rankMOR": 11,
+      "rankWLK": 19,
+      "rankBIH": 9,
+      "rankNET": 13
     },
     {
       "id": 1274,
@@ -429,12 +429,12 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "orebPct": 0.3077,
       "tovPct": 0.1596,
       "last5Margin": 6.8,
-      "rankPOM": 32,
+      "rankPOM": 29,
       "rankMAS": 38,
-      "rankMOR": 26,
-      "rankWLK": 32,
-      "rankBIH": 30,
-      "rankNET": 30
+      "rankMOR": 27,
+      "rankWLK": 31,
+      "rankBIH": 26,
+      "rankNET": 32
     },
     {
       "id": 1314,
@@ -449,12 +449,12 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "orebPct": 0.2653,
       "tovPct": 0.14,
       "last5Margin": 2.4,
-      "rankPOM": 28,
+      "rankPOM": 30,
       "rankMAS": 21,
-      "rankMOR": 21,
-      "rankWLK": 25,
-      "rankBIH": 19,
-      "rankNET": 25
+      "rankMOR": 24,
+      "rankWLK": 24,
+      "rankBIH": 18,
+      "rankNET": 23
     },
     {
       "id": 1155,
@@ -469,12 +469,12 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "orebPct": 0.2488,
       "tovPct": 0.1395,
       "last5Margin": -1.8,
-      "rankPOM": 36,
-      "rankMAS": 33,
-      "rankMOR": 29,
-      "rankWLK": 34,
-      "rankBIH": 37,
-      "rankNET": 35
+      "rankPOM": 38,
+      "rankMAS": 34,
+      "rankMOR": 32,
+      "rankWLK": 35,
+      "rankBIH": 34,
+      "rankNET": 36
     },
     {
       "id": 1257,
@@ -489,12 +489,12 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "orebPct": 0.2897,
       "tovPct": 0.1578,
       "last5Margin": 5.4,
-      "rankPOM": 19,
+      "rankPOM": 16,
       "rankMAS": 27,
-      "rankMOR": 14,
+      "rankMOR": 9,
       "rankWLK": 21,
       "rankBIH": 27,
-      "rankNET": 17
+      "rankNET": 14
     },
     {
       "id": 1301,
@@ -509,12 +509,12 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "orebPct": 0.2829,
       "tovPct": 0.1296,
       "last5Margin": -8.2,
-      "rankPOM": 31,
-      "rankMAS": 41,
-      "rankMOR": 33,
-      "rankWLK": 33,
-      "rankBIH": 34,
-      "rankNET": 29
+      "rankPOM": 36,
+      "rankMAS": 45,
+      "rankMOR": 34,
+      "rankWLK": 38,
+      "rankBIH": 42,
+      "rankNET": 35
     },
     {
       "id": 1199,
@@ -529,12 +529,12 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "orebPct": 0.3133,
       "tovPct": 0.1507,
       "last5Margin": 3.6,
-      "rankPOM": 71,
-      "rankMAS": 80,
-      "rankMOR": 74,
-      "rankWLK": 74,
-      "rankBIH": 81,
-      "rankNET": 77
+      "rankPOM": 65,
+      "rankMAS": 68,
+      "rankMOR": 64,
+      "rankWLK": 67,
+      "rankBIH": 73,
+      "rankNET": 69
     },
     {
       "id": 1143,
@@ -549,12 +549,12 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "orebPct": 0.228,
       "tovPct": 0.143,
       "last5Margin": -0.4,
-      "rankPOM": 73,
-      "rankMAS": 66,
-      "rankMOR": 71,
+      "rankPOM": 71,
+      "rankMAS": 65,
+      "rankMOR": 73,
       "rankWLK": 71,
-      "rankBIH": 45,
-      "rankNET": 64
+      "rankBIH": 48,
+      "rankNET": 65
     },
     {
       "id": 1390,
@@ -569,12 +569,12 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "orebPct": 0.3189,
       "tovPct": 0.1433,
       "last5Margin": 6.2,
-      "rankPOM": 65,
-      "rankMAS": 64,
+      "rankPOM": 59,
+      "rankMAS": 58,
       "rankMOR": 56,
-      "rankWLK": 61,
-      "rankBIH": 64,
-      "rankNET": 65
+      "rankWLK": 58,
+      "rankBIH": 51,
+      "rankNET": 59
     },
     {
       "id": 1374,
@@ -589,12 +589,12 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "orebPct": 0.3064,
       "tovPct": 0.1528,
       "last5Margin": -4.2,
-      "rankPOM": 39,
-      "rankMAS": 45,
-      "rankMOR": 37,
-      "rankWLK": 36,
-      "rankBIH": 38,
-      "rankNET": 36
+      "rankPOM": 43,
+      "rankMAS": 49,
+      "rankMOR": 39,
+      "rankWLK": 39,
+      "rankBIH": 44,
+      "rankNET": 39
     },
     {
       "id": 1439,
@@ -609,12 +609,12 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "orebPct": 0.2975,
       "tovPct": 0.1458,
       "last5Margin": 3.2,
-      "rankPOM": 57,
+      "rankPOM": 56,
       "rankMAS": 56,
-      "rankMOR": 44,
-      "rankWLK": 52,
-      "rankBIH": 50,
-      "rankNET": 54
+      "rankMOR": 45,
+      "rankWLK": 53,
+      "rankBIH": 47,
+      "rankNET": 53
     },
     {
       "id": 1448,
@@ -629,12 +629,12 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "orebPct": 0.2909,
       "tovPct": 0.1488,
       "last5Margin": -2.6,
-      "rankPOM": 78,
-      "rankMAS": 70,
-      "rankMOR": 64,
-      "rankWLK": 75,
-      "rankBIH": 83,
-      "rankNET": 69
+      "rankPOM": 74,
+      "rankMAS": 67,
+      "rankMOR": 59,
+      "rankWLK": 70,
+      "rankBIH": 80,
+      "rankNET": 64
     },
     {
       "id": 1393,
@@ -649,12 +649,12 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "orebPct": 0.2758,
       "tovPct": 0.1525,
       "last5Margin": -14.4,
-      "rankPOM": 77,
-      "rankMAS": 85,
-      "rankMOR": 61,
-      "rankWLK": 80,
-      "rankBIH": 74,
-      "rankNET": 79
+      "rankPOM": 80,
+      "rankMAS": 86,
+      "rankMOR": 63,
+      "rankWLK": 83,
+      "rankBIH": 83,
+      "rankNET": 83
     },
     {
       "id": 1338,
@@ -671,10 +671,10 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "last5Margin": 2.8,
       "rankPOM": 99,
       "rankMAS": 99,
-      "rankMOR": 78,
-      "rankWLK": 104,
-      "rankBIH": 154,
-      "rankNET": 110
+      "rankMOR": 81,
+      "rankWLK": 103,
+      "rankBIH": 128,
+      "rankNET": 109
     }
   ],
   "aac": [
@@ -691,12 +691,12 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "orebPct": 0.3392,
       "tovPct": 0.1453,
       "last5Margin": 19.6,
-      "rankPOM": 52,
-      "rankMAS": 72,
-      "rankMOR": 55,
-      "rankWLK": 51,
-      "rankBIH": 61,
-      "rankNET": 48
+      "rankPOM": 51,
+      "rankMAS": 64,
+      "rankMOR": 51,
+      "rankWLK": 49,
+      "rankBIH": 54,
+      "rankNET": 49
     },
     {
       "id": 1409,
@@ -711,10 +711,10 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "orebPct": 0.2712,
       "tovPct": 0.1456,
       "last5Margin": 18.8,
-      "rankPOM": 56,
-      "rankMAS": 83,
-      "rankMOR": 58,
-      "rankWLK": 56,
+      "rankPOM": 58,
+      "rankMAS": 79,
+      "rankMOR": 60,
+      "rankWLK": 57,
       "rankBIH": 60,
       "rankNET": 50
     },
@@ -731,12 +731,12 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "orebPct": 0.3477,
       "tovPct": 0.1417,
       "last5Margin": 11.2,
-      "rankPOM": 89,
-      "rankMAS": 93,
-      "rankMOR": 93,
-      "rankWLK": 89,
-      "rankBIH": 89,
-      "rankNET": 83
+      "rankPOM": 88,
+      "rankMAS": 91,
+      "rankMOR": 89,
+      "rankWLK": 87,
+      "rankBIH": 85,
+      "rankNET": 80
     },
     {
       "id": 1412,
@@ -751,12 +751,12 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "orebPct": 0.3013,
       "tovPct": 0.1241,
       "last5Margin": 5,
-      "rankPOM": 124,
-      "rankMAS": 108,
-      "rankMOR": 113,
-      "rankWLK": 124,
-      "rankBIH": 99,
-      "rankNET": 114
+      "rankPOM": 122,
+      "rankMAS": 103,
+      "rankMOR": 106,
+      "rankWLK": 119,
+      "rankBIH": 109,
+      "rankNET": 117
     },
     {
       "id": 1317,
@@ -771,12 +771,12 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "orebPct": 0.3367,
       "tovPct": 0.157,
       "last5Margin": 0.4,
-      "rankPOM": 139,
-      "rankMAS": 120,
-      "rankMOR": 145,
-      "rankWLK": 146,
-      "rankBIH": 156,
-      "rankNET": 143
+      "rankPOM": 140,
+      "rankMAS": 121,
+      "rankMOR": 152,
+      "rankWLK": 144,
+      "rankBIH": 136,
+      "rankNET": 145
     },
     {
       "id": 1194,
@@ -791,12 +791,12 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "orebPct": 0.2933,
       "tovPct": 0.169,
       "last5Margin": -1.2,
-      "rankPOM": 121,
-      "rankMAS": 119,
-      "rankMOR": 106,
-      "rankWLK": 120,
-      "rankBIH": 143,
-      "rankNET": 121
+      "rankPOM": 125,
+      "rankMAS": 122,
+      "rankMOR": 114,
+      "rankWLK": 128,
+      "rankBIH": 127,
+      "rankNET": 123
     },
     {
       "id": 1150,
@@ -811,12 +811,12 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "orebPct": 0.298,
       "tovPct": 0.1699,
       "last5Margin": -3.4,
-      "rankPOM": 183,
-      "rankMAS": 162,
-      "rankMOR": 178,
-      "rankWLK": 193,
-      "rankBIH": 169,
-      "rankNET": 169
+      "rankPOM": 191,
+      "rankMAS": 171,
+      "rankMOR": 189,
+      "rankWLK": 201,
+      "rankBIH": 193,
+      "rankNET": 183
     },
     {
       "id": 1272,
@@ -831,12 +831,12 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "orebPct": 0.3397,
       "tovPct": 0.1824,
       "last5Margin": -7.8,
-      "rankPOM": 131,
-      "rankMAS": 111,
-      "rankMOR": 118,
+      "rankPOM": 130,
+      "rankMAS": 112,
+      "rankMOR": 112,
       "rankWLK": 130,
-      "rankBIH": 142,
-      "rankNET": 130
+      "rankBIH": 161,
+      "rankNET": 125
     },
     {
       "id": 1408,
@@ -851,12 +851,12 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "orebPct": 0.2346,
       "tovPct": 0.1519,
       "last5Margin": -17.2,
-      "rankPOM": 196,
-      "rankMAS": 135,
-      "rankMOR": 212,
-      "rankWLK": 205,
-      "rankBIH": 130,
-      "rankNET": 197
+      "rankPOM": 210,
+      "rankMAS": 141,
+      "rankMOR": 211,
+      "rankWLK": 216,
+      "rankBIH": 142,
+      "rankNET": 206
     },
     {
       "id": 1396,
@@ -871,12 +871,12 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "orebPct": 0.2698,
       "tovPct": 0.1289,
       "last5Margin": 1,
-      "rankPOM": 174,
-      "rankMAS": 152,
-      "rankMOR": 166,
-      "rankWLK": 184,
-      "rankBIH": 177,
-      "rankNET": 177
+      "rankPOM": 162,
+      "rankMAS": 144,
+      "rankMOR": 142,
+      "rankWLK": 169,
+      "rankBIH": 194,
+      "rankNET": 164
     }
   ],
   "aec": [
@@ -893,12 +893,12 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "orebPct": 0.2126,
       "tovPct": 0.1361,
       "last5Margin": 18.8,
-      "rankPOM": 221,
-      "rankMAS": 238,
-      "rankMOR": 200,
-      "rankWLK": 206,
-      "rankBIH": 221,
-      "rankNET": 223
+      "rankPOM": 198,
+      "rankMAS": 225,
+      "rankMOR": 191,
+      "rankWLK": 194,
+      "rankBIH": 197,
+      "rankNET": 205
     },
     {
       "id": 1436,
@@ -913,12 +913,12 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "orebPct": 0.2415,
       "tovPct": 0.1398,
       "last5Margin": 5.6,
-      "rankPOM": 245,
-      "rankMAS": 223,
-      "rankMOR": 220,
-      "rankWLK": 227,
-      "rankBIH": 228,
-      "rankNET": 226
+      "rankPOM": 235,
+      "rankMAS": 215,
+      "rankMOR": 199,
+      "rankWLK": 218,
+      "rankBIH": 227,
+      "rankNET": 223
     },
     {
       "id": 1312,
@@ -933,12 +933,12 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "orebPct": 0.25,
       "tovPct": 0.1627,
       "last5Margin": -15.6,
-      "rankPOM": 327,
-      "rankMAS": 311,
-      "rankMOR": 335,
-      "rankWLK": 306,
-      "rankBIH": 264,
-      "rankNET": 317
+      "rankPOM": 332,
+      "rankMAS": 313,
+      "rankMOR": 337,
+      "rankWLK": 319,
+      "rankBIH": 281,
+      "rankNET": 327
     },
     {
       "id": 1262,
@@ -953,12 +953,12 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "orebPct": 0.3097,
       "tovPct": 0.1714,
       "last5Margin": 0.6,
-      "rankPOM": 323,
-      "rankMAS": 310,
-      "rankMOR": 321,
-      "rankWLK": 307,
-      "rankBIH": 313,
-      "rankNET": 322
+      "rankPOM": 319,
+      "rankMAS": 303,
+      "rankMOR": 306,
+      "rankWLK": 301,
+      "rankBIH": 314,
+      "rankNET": 318
     },
     {
       "id": 1107,
@@ -973,12 +973,12 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "orebPct": 0.306,
       "tovPct": 0.1724,
       "last5Margin": -2,
-      "rankPOM": 321,
-      "rankMAS": 326,
-      "rankMOR": 280,
-      "rankWLK": 322,
-      "rankBIH": 333,
-      "rankNET": 326
+      "rankPOM": 325,
+      "rankMAS": 329,
+      "rankMOR": 292,
+      "rankWLK": 323,
+      "rankBIH": 340,
+      "rankNET": 325
     },
     {
       "id": 1263,
@@ -994,11 +994,11 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "tovPct": 0.1868,
       "last5Margin": -1.2,
       "rankPOM": 347,
-      "rankMAS": 342,
-      "rankMOR": 346,
-      "rankWLK": 345,
-      "rankBIH": 351,
-      "rankNET": 338
+      "rankMAS": 347,
+      "rankMOR": 347,
+      "rankWLK": 348,
+      "rankBIH": 352,
+      "rankNET": 339
     },
     {
       "id": 1136,
@@ -1014,11 +1014,11 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "tovPct": 0.1925,
       "last5Margin": -6.4,
       "rankPOM": 355,
-      "rankMAS": 330,
-      "rankMOR": 347,
+      "rankMAS": 334,
+      "rankMOR": 352,
       "rankWLK": 349,
-      "rankBIH": 350,
-      "rankNET": 352
+      "rankBIH": 349,
+      "rankNET": 354
     },
     {
       "id": 1306,
@@ -1033,12 +1033,12 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "orebPct": 0.274,
       "tovPct": 0.1585,
       "last5Margin": -7.6,
-      "rankPOM": 350,
-      "rankMAS": 350,
-      "rankMOR": 324,
-      "rankWLK": 344,
-      "rankBIH": 346,
-      "rankNET": 347
+      "rankPOM": 349,
+      "rankMAS": 349,
+      "rankMOR": 323,
+      "rankWLK": 342,
+      "rankBIH": 348,
+      "rankNET": 346
     }
   ],
   "a_sun": [
@@ -1055,12 +1055,12 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "orebPct": 0.2747,
       "tovPct": 0.1536,
       "last5Margin": 5.6,
-      "rankPOM": 154,
-      "rankMAS": 197,
-      "rankMOR": 140,
-      "rankWLK": 147,
-      "rankBIH": 162,
-      "rankNET": 164
+      "rankPOM": 150,
+      "rankMAS": 193,
+      "rankMOR": 150,
+      "rankWLK": 142,
+      "rankBIH": 155,
+      "rankNET": 166
     },
     {
       "id": 1122,
@@ -1075,12 +1075,12 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "orebPct": 0.2818,
       "tovPct": 0.1469,
       "last5Margin": -2.6,
-      "rankPOM": 165,
-      "rankMAS": 157,
-      "rankMOR": 144,
-      "rankWLK": 143,
-      "rankBIH": 115,
-      "rankNET": 156
+      "rankPOM": 175,
+      "rankMAS": 164,
+      "rankMOR": 153,
+      "rankWLK": 150,
+      "rankBIH": 137,
+      "rankNET": 165
     },
     {
       "id": 1474,
@@ -1095,12 +1095,12 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "orebPct": 0.2859,
       "tovPct": 0.1441,
       "last5Margin": 6.4,
-      "rankPOM": 191,
-      "rankMAS": 203,
-      "rankMOR": 193,
-      "rankWLK": 191,
-      "rankBIH": 192,
-      "rankNET": 201
+      "rankPOM": 183,
+      "rankMAS": 192,
+      "rankMOR": 181,
+      "rankWLK": 177,
+      "rankBIH": 171,
+      "rankNET": 187
     },
     {
       "id": 1252,
@@ -1115,12 +1115,12 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "orebPct": 0.256,
       "tovPct": 0.1515,
       "last5Margin": -0.4,
-      "rankPOM": 179,
-      "rankMAS": 174,
-      "rankMOR": 177,
-      "rankWLK": 164,
-      "rankBIH": 185,
-      "rankNET": 173
+      "rankPOM": 197,
+      "rankMAS": 185,
+      "rankMOR": 197,
+      "rankWLK": 182,
+      "rankBIH": 180,
+      "rankNET": 193
     },
     {
       "id": 1195,
@@ -1135,12 +1135,12 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "orebPct": 0.2898,
       "tovPct": 0.1551,
       "last5Margin": 0.8,
-      "rankPOM": 264,
-      "rankMAS": 263,
-      "rankMOR": 255,
-      "rankWLK": 255,
-      "rankBIH": 255,
-      "rankNET": 262
+      "rankPOM": 243,
+      "rankMAS": 251,
+      "rankMOR": 233,
+      "rankWLK": 241,
+      "rankBIH": 260,
+      "rankNET": 247
     },
     {
       "id": 1480,
@@ -1155,12 +1155,12 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "orebPct": 0.3091,
       "tovPct": 0.1543,
       "last5Margin": 2.2,
-      "rankPOM": 307,
-      "rankMAS": 305,
-      "rankMOR": 250,
-      "rankWLK": 297,
-      "rankBIH": 277,
-      "rankNET": 300
+      "rankPOM": 304,
+      "rankMAS": 301,
+      "rankMOR": 262,
+      "rankWLK": 296,
+      "rankBIH": 270,
+      "rankNET": 298
     },
     {
       "id": 1184,
@@ -1175,12 +1175,12 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "orebPct": 0.3387,
       "tovPct": 0.1587,
       "last5Margin": -6.4,
-      "rankPOM": 285,
-      "rankMAS": 284,
-      "rankMOR": 264,
-      "rankWLK": 282,
-      "rankBIH": 288,
-      "rankNET": 283
+      "rankPOM": 296,
+      "rankMAS": 291,
+      "rankMOR": 276,
+      "rankWLK": 293,
+      "rankBIH": 302,
+      "rankNET": 291
     },
     {
       "id": 1468,
@@ -1195,11 +1195,11 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "orebPct": 0.2294,
       "tovPct": 0.1456,
       "last5Margin": -0.8,
-      "rankPOM": 275,
-      "rankMAS": 290,
-      "rankMOR": 234,
+      "rankPOM": 278,
+      "rankMAS": 287,
+      "rankMOR": 246,
       "rankWLK": 272,
-      "rankBIH": 305,
+      "rankBIH": 286,
       "rankNET": 285
     },
     {
@@ -1216,11 +1216,11 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "tovPct": 0.1657,
       "last5Margin": 3.8,
       "rankPOM": 294,
-      "rankMAS": 294,
-      "rankMOR": 259,
-      "rankWLK": 292,
-      "rankBIH": 312,
-      "rankNET": 296
+      "rankMAS": 293,
+      "rankMOR": 264,
+      "rankWLK": 286,
+      "rankBIH": 297,
+      "rankNET": 297
     },
     {
       "id": 1391,
@@ -1235,12 +1235,12 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "orebPct": 0.2697,
       "tovPct": 0.1777,
       "last5Margin": 4.6,
-      "rankPOM": 317,
-      "rankMAS": 312,
-      "rankMOR": 318,
-      "rankWLK": 318,
-      "rankBIH": 317,
-      "rankNET": 320
+      "rankPOM": 303,
+      "rankMAS": 308,
+      "rankMOR": 316,
+      "rankWLK": 313,
+      "rankBIH": 303,
+      "rankNET": 310
     },
     {
       "id": 1316,
@@ -1255,12 +1255,12 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "orebPct": 0.2587,
       "tovPct": 0.1726,
       "last5Margin": -6.4,
-      "rankPOM": 334,
-      "rankMAS": 337,
-      "rankMOR": 296,
+      "rankPOM": 335,
+      "rankMAS": 340,
+      "rankMOR": 293,
       "rankWLK": 340,
-      "rankBIH": 349,
-      "rankNET": 336
+      "rankBIH": 347,
+      "rankNET": 337
     },
     {
       "id": 1466,
@@ -1276,11 +1276,11 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "tovPct": 0.1686,
       "last5Margin": -9.4,
       "rankPOM": 341,
-      "rankMAS": 314,
-      "rankMOR": 328,
+      "rankMAS": 318,
+      "rankMOR": 331,
       "rankWLK": 347,
-      "rankBIH": 330,
-      "rankNET": 339
+      "rankBIH": 334,
+      "rankNET": 338
     }
   ],
   "big12": [
@@ -1300,8 +1300,8 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "rankPOM": 3,
       "rankMAS": 2,
       "rankMOR": 3,
-      "rankWLK": 2,
-      "rankBIH": 1,
+      "rankWLK": 3,
+      "rankBIH": 2,
       "rankNET": 3
     },
     {
@@ -1319,9 +1319,9 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "last5Margin": 8,
       "rankPOM": 6,
       "rankMAS": 5,
-      "rankMOR": 5,
+      "rankMOR": 7,
       "rankWLK": 5,
-      "rankBIH": 8,
+      "rankBIH": 6,
       "rankNET": 7
     },
     {
@@ -1337,12 +1337,12 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "orebPct": 0.2487,
       "tovPct": 0.1523,
       "last5Margin": -3.4,
-      "rankPOM": 16,
-      "rankMAS": 15,
-      "rankMOR": 19,
-      "rankWLK": 15,
-      "rankBIH": 13,
-      "rankNET": 15
+      "rankPOM": 19,
+      "rankMAS": 18,
+      "rankMOR": 14,
+      "rankWLK": 18,
+      "rankBIH": 16,
+      "rankNET": 19
     },
     {
       "id": 1403,
@@ -1357,12 +1357,12 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "orebPct": 0.2944,
       "tovPct": 0.155,
       "last5Margin": 7,
-      "rankPOM": 13,
-      "rankMAS": 14,
-      "rankMOR": 11,
-      "rankWLK": 11,
-      "rankBIH": 15,
-      "rankNET": 13
+      "rankPOM": 17,
+      "rankMAS": 16,
+      "rankMOR": 19,
+      "rankWLK": 15,
+      "rankBIH": 17,
+      "rankNET": 15
     },
     {
       "id": 1235,
@@ -1379,10 +1379,10 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "last5Margin": 0.4,
       "rankPOM": 7,
       "rankMAS": 10,
-      "rankMOR": 7,
+      "rankMOR": 6,
       "rankWLK": 6,
-      "rankBIH": 6,
-      "rankNET": 10
+      "rankBIH": 11,
+      "rankNET": 8
     },
     {
       "id": 1395,
@@ -1397,12 +1397,12 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "orebPct": 0.3192,
       "tovPct": 0.1507,
       "last5Margin": 9,
-      "rankPOM": 49,
-      "rankMAS": 42,
-      "rankMOR": 46,
-      "rankWLK": 49,
-      "rankBIH": 47,
-      "rankNET": 45
+      "rankPOM": 44,
+      "rankMAS": 35,
+      "rankMOR": 43,
+      "rankWLK": 44,
+      "rankBIH": 35,
+      "rankNET": 40
     },
     {
       "id": 1452,
@@ -1417,11 +1417,11 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "orebPct": 0.2866,
       "tovPct": 0.163,
       "last5Margin": 1.6,
-      "rankPOM": 59,
-      "rankMAS": 53,
-      "rankMOR": 57,
-      "rankWLK": 57,
-      "rankBIH": 72,
+      "rankPOM": 57,
+      "rankMAS": 51,
+      "rankMOR": 54,
+      "rankWLK": 55,
+      "rankBIH": 69,
       "rankNET": 58
     },
     {
@@ -1437,12 +1437,12 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "orebPct": 0.3115,
       "tovPct": 0.1546,
       "last5Margin": -1.6,
-      "rankPOM": 48,
-      "rankMAS": 39,
-      "rankMOR": 48,
-      "rankWLK": 42,
-      "rankBIH": 28,
-      "rankNET": 46
+      "rankPOM": 53,
+      "rankMAS": 42,
+      "rankMOR": 57,
+      "rankWLK": 46,
+      "rankBIH": 37,
+      "rankNET": 51
     },
     {
       "id": 1153,
@@ -1457,12 +1457,12 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "orebPct": 0.2902,
       "tovPct": 0.1653,
       "last5Margin": 7.8,
-      "rankPOM": 44,
-      "rankMAS": 51,
-      "rankMOR": 38,
-      "rankWLK": 47,
-      "rankBIH": 69,
-      "rankNET": 49
+      "rankPOM": 42,
+      "rankMAS": 47,
+      "rankMOR": 42,
+      "rankWLK": 43,
+      "rankBIH": 61,
+      "rankNET": 46
     },
     {
       "id": 1140,
@@ -1477,12 +1477,12 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "orebPct": 0.3034,
       "tovPct": 0.1419,
       "last5Margin": -5.4,
-      "rankPOM": 23,
-      "rankMAS": 24,
+      "rankPOM": 25,
+      "rankMAS": 25,
       "rankMOR": 22,
       "rankWLK": 22,
-      "rankBIH": 21,
-      "rankNET": 23
+      "rankBIH": 25,
+      "rankNET": 24
     },
     {
       "id": 1160,
@@ -1497,12 +1497,12 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "orebPct": 0.2829,
       "tovPct": 0.1411,
       "last5Margin": -2.6,
-      "rankPOM": 72,
-      "rankMAS": 59,
-      "rankMOR": 80,
-      "rankWLK": 67,
+      "rankPOM": 64,
+      "rankMAS": 62,
+      "rankMOR": 69,
+      "rankWLK": 64,
       "rankBIH": 67,
-      "rankNET": 78
+      "rankNET": 71
     },
     {
       "id": 1113,
@@ -1517,12 +1517,12 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "orebPct": 0.2778,
       "tovPct": 0.1602,
       "last5Margin": -3,
-      "rankPOM": 66,
-      "rankMAS": 57,
-      "rankMOR": 66,
-      "rankWLK": 68,
-      "rankBIH": 70,
-      "rankNET": 73
+      "rankPOM": 63,
+      "rankMAS": 59,
+      "rankMOR": 68,
+      "rankWLK": 65,
+      "rankBIH": 63,
+      "rankNET": 67
     },
     {
       "id": 1124,
@@ -1537,12 +1537,12 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "orebPct": 0.3301,
       "tovPct": 0.1604,
       "last5Margin": 2.4,
-      "rankPOM": 51,
-      "rankMAS": 46,
-      "rankMOR": 43,
-      "rankWLK": 55,
-      "rankBIH": 73,
-      "rankNET": 51
+      "rankPOM": 48,
+      "rankMAS": 44,
+      "rankMOR": 40,
+      "rankWLK": 52,
+      "rankBIH": 68,
+      "rankNET": 48
     },
     {
       "id": 1329,
@@ -1557,12 +1557,12 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "orebPct": 0.2792,
       "tovPct": 0.1571,
       "last5Margin": -6,
-      "rankPOM": 74,
-      "rankMAS": 58,
-      "rankMOR": 77,
-      "rankWLK": 64,
-      "rankBIH": 57,
-      "rankNET": 84
+      "rankPOM": 69,
+      "rankMAS": 57,
+      "rankMOR": 70,
+      "rankWLK": 60,
+      "rankBIH": 59,
+      "rankNET": 79
     },
     {
       "id": 1243,
@@ -1577,12 +1577,12 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "orebPct": 0.2892,
       "tovPct": 0.1683,
       "last5Margin": -12.6,
-      "rankPOM": 102,
-      "rankMAS": 92,
+      "rankPOM": 101,
+      "rankMAS": 88,
       "rankMOR": 98,
       "rankWLK": 102,
       "rankBIH": 112,
-      "rankNET": 102
+      "rankNET": 99
     },
     {
       "id": 1428,
@@ -1597,12 +1597,12 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "orebPct": 0.28,
       "tovPct": 0.162,
       "last5Margin": -14.2,
-      "rankPOM": 116,
-      "rankMAS": 103,
-      "rankMOR": 107,
-      "rankWLK": 111,
-      "rankBIH": 131,
-      "rankNET": 123
+      "rankPOM": 127,
+      "rankMAS": 107,
+      "rankMOR": 115,
+      "rankWLK": 126,
+      "rankBIH": 145,
+      "rankNET": 129
     }
   ],
   "bigEast": [
@@ -1620,10 +1620,10 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "tovPct": 0.1418,
       "last5Margin": 7.8,
       "rankPOM": 21,
-      "rankMAS": 17,
-      "rankMOR": 10,
+      "rankMAS": 15,
+      "rankMOR": 17,
       "rankWLK": 17,
-      "rankBIH": 22,
+      "rankBIH": 20,
       "rankNET": 22
     },
     {
@@ -1639,12 +1639,12 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "orebPct": 0.2937,
       "tovPct": 0.1558,
       "last5Margin": 6.6,
-      "rankPOM": 10,
-      "rankMAS": 4,
-      "rankMOR": 16,
-      "rankWLK": 9,
+      "rankPOM": 11,
+      "rankMAS": 7,
+      "rankMOR": 21,
+      "rankWLK": 10,
       "rankBIH": 4,
-      "rankNET": 8
+      "rankNET": 9
     },
     {
       "id": 1437,
@@ -1659,11 +1659,11 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "orebPct": 0.3111,
       "tovPct": 0.1421,
       "last5Margin": -0.2,
-      "rankPOM": 34,
+      "rankPOM": 32,
       "rankMAS": 26,
-      "rankMOR": 41,
-      "rankWLK": 30,
-      "rankBIH": 25,
+      "rankMOR": 35,
+      "rankWLK": 26,
+      "rankBIH": 23,
       "rankNET": 33
     },
     {
@@ -1679,11 +1679,11 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "orebPct": 0.3233,
       "tovPct": 0.1586,
       "last5Margin": -2,
-      "rankPOM": 53,
-      "rankMAS": 54,
-      "rankMOR": 53,
+      "rankPOM": 52,
+      "rankMAS": 52,
+      "rankMOR": 50,
       "rankWLK": 50,
-      "rankBIH": 55,
+      "rankBIH": 58,
       "rankNET": 56
     },
     {
@@ -1699,12 +1699,12 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "orebPct": 0.2481,
       "tovPct": 0.1544,
       "last5Margin": -1.8,
-      "rankPOM": 82,
-      "rankMAS": 60,
-      "rankMOR": 81,
-      "rankWLK": 88,
+      "rankPOM": 75,
+      "rankMAS": 61,
+      "rankMOR": 71,
+      "rankWLK": 79,
       "rankBIH": 84,
-      "rankNET": 87
+      "rankNET": 81
     },
     {
       "id": 1177,
@@ -1719,12 +1719,12 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "orebPct": 0.3029,
       "tovPct": 0.1707,
       "last5Margin": -4,
-      "rankPOM": 95,
-      "rankMAS": 86,
-      "rankMOR": 85,
-      "rankWLK": 92,
-      "rankBIH": 92,
-      "rankNET": 97
+      "rankPOM": 102,
+      "rankMAS": 92,
+      "rankMOR": 97,
+      "rankWLK": 97,
+      "rankBIH": 91,
+      "rankNET": 101
     },
     {
       "id": 1266,
@@ -1739,12 +1739,12 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "orebPct": 0.2957,
       "tovPct": 0.1591,
       "last5Margin": 5.4,
-      "rankPOM": 100,
-      "rankMAS": 90,
-      "rankMOR": 96,
-      "rankWLK": 106,
-      "rankBIH": 150,
-      "rankNET": 109
+      "rankPOM": 86,
+      "rankMAS": 83,
+      "rankMOR": 78,
+      "rankWLK": 93,
+      "rankBIH": 129,
+      "rankNET": 91
     },
     {
       "id": 1139,
@@ -1759,12 +1759,12 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "orebPct": 0.308,
       "tovPct": 0.1547,
       "last5Margin": -1.4,
-      "rankPOM": 83,
-      "rankMAS": 73,
-      "rankMOR": 69,
-      "rankWLK": 79,
-      "rankBIH": 85,
-      "rankNET": 80
+      "rankPOM": 82,
+      "rankMAS": 71,
+      "rankMOR": 67,
+      "rankWLK": 81,
+      "rankBIH": 86,
+      "rankNET": 82
     },
     {
       "id": 1344,
@@ -1779,12 +1779,12 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "orebPct": 0.266,
       "tovPct": 0.1661,
       "last5Margin": -1.4,
-      "rankPOM": 63,
-      "rankMAS": 76,
-      "rankMOR": 60,
-      "rankWLK": 69,
-      "rankBIH": 93,
-      "rankNET": 74
+      "rankPOM": 73,
+      "rankMAS": 84,
+      "rankMOR": 75,
+      "rankWLK": 78,
+      "rankBIH": 94,
+      "rankNET": 84
     },
     {
       "id": 1462,
@@ -1799,12 +1799,12 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "orebPct": 0.2684,
       "tovPct": 0.1355,
       "last5Margin": -6,
-      "rankPOM": 93,
-      "rankMAS": 75,
-      "rankMOR": 94,
-      "rankWLK": 91,
-      "rankBIH": 97,
-      "rankNET": 95
+      "rankPOM": 97,
+      "rankMAS": 81,
+      "rankMOR": 101,
+      "rankWLK": 95,
+      "rankBIH": 99,
+      "rankNET": 97
     },
     {
       "id": 1207,
@@ -1819,12 +1819,12 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "orebPct": 0.3014,
       "tovPct": 0.1488,
       "last5Margin": -5.8,
-      "rankPOM": 90,
+      "rankPOM": 87,
       "rankMAS": 95,
-      "rankMOR": 89,
-      "rankWLK": 95,
-      "rankBIH": 101,
-      "rankNET": 99
+      "rankMOR": 82,
+      "rankWLK": 92,
+      "rankBIH": 111,
+      "rankNET": 95
     }
   ],
   "big_sky": [
@@ -1841,12 +1841,12 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "orebPct": 0.2576,
       "tovPct": 0.1661,
       "last5Margin": -0.4,
-      "rankPOM": 159,
-      "rankMAS": 158,
-      "rankMOR": 174,
-      "rankWLK": 167,
-      "rankBIH": 124,
-      "rankNET": 151
+      "rankPOM": 141,
+      "rankMAS": 148,
+      "rankMOR": 160,
+      "rankWLK": 157,
+      "rankBIH": 139,
+      "rankNET": 136
     },
     {
       "id": 1286,
@@ -1861,12 +1861,12 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "orebPct": 0.2564,
       "tovPct": 0.141,
       "last5Margin": 5.6,
-      "rankPOM": 135,
+      "rankPOM": 132,
       "rankMAS": 163,
-      "rankMOR": 148,
-      "rankWLK": 151,
-      "rankBIH": 188,
-      "rankNET": 134
+      "rankMOR": 167,
+      "rankWLK": 152,
+      "rankBIH": 164,
+      "rankNET": 127
     },
     {
       "id": 1186,
@@ -1881,12 +1881,12 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "orebPct": 0.2923,
       "tovPct": 0.1707,
       "last5Margin": 11.4,
-      "rankPOM": 158,
-      "rankMAS": 189,
-      "rankMOR": 194,
+      "rankPOM": 166,
+      "rankMAS": 203,
+      "rankMOR": 210,
       "rankWLK": 204,
-      "rankBIH": 231,
-      "rankNET": 192
+      "rankBIH": 228,
+      "rankNET": 201
     },
     {
       "id": 1285,
@@ -1901,12 +1901,12 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "orebPct": 0.1835,
       "tovPct": 0.1926,
       "last5Margin": -7.6,
-      "rankPOM": 175,
-      "rankMAS": 192,
-      "rankMOR": 238,
-      "rankWLK": 218,
-      "rankBIH": 206,
-      "rankNET": 188
+      "rankPOM": 187,
+      "rankMAS": 200,
+      "rankMOR": 263,
+      "rankWLK": 227,
+      "rankBIH": 199,
+      "rankNET": 199
     },
     {
       "id": 1294,
@@ -1921,12 +1921,12 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "orebPct": 0.22,
       "tovPct": 0.1533,
       "last5Margin": 8,
-      "rankPOM": 151,
-      "rankMAS": 154,
-      "rankMOR": 181,
-      "rankWLK": 162,
-      "rankBIH": 158,
-      "rankNET": 148
+      "rankPOM": 136,
+      "rankMAS": 147,
+      "rankMOR": 170,
+      "rankWLK": 153,
+      "rankBIH": 149,
+      "rankNET": 139
     },
     {
       "id": 1451,
@@ -1941,12 +1941,12 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "orebPct": 0.3076,
       "tovPct": 0.1552,
       "last5Margin": -1.8,
-      "rankPOM": 186,
-      "rankMAS": 196,
-      "rankMOR": 188,
-      "rankWLK": 203,
-      "rankBIH": 219,
-      "rankNET": 187
+      "rankPOM": 193,
+      "rankMAS": 205,
+      "rankMOR": 212,
+      "rankWLK": 208,
+      "rankBIH": 220,
+      "rankNET": 197
     },
     {
       "id": 1225,
@@ -1961,12 +1961,12 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "orebPct": 0.2754,
       "tovPct": 0.1463,
       "last5Margin": 8.4,
-      "rankPOM": 173,
-      "rankMAS": 200,
-      "rankMOR": 195,
-      "rankWLK": 198,
-      "rankBIH": 203,
-      "rankNET": 172
+      "rankPOM": 165,
+      "rankMAS": 184,
+      "rankMOR": 179,
+      "rankWLK": 180,
+      "rankBIH": 184,
+      "rankNET": 161
     },
     {
       "id": 1170,
@@ -1981,12 +1981,12 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "orebPct": 0.2751,
       "tovPct": 0.1389,
       "last5Margin": -8,
-      "rankPOM": 268,
-      "rankMAS": 295,
-      "rankMOR": 306,
+      "rankPOM": 265,
+      "rankMAS": 286,
+      "rankMOR": 305,
       "rankWLK": 303,
-      "rankBIH": 280,
-      "rankNET": 274
+      "rankBIH": 292,
+      "rankNET": 269
     },
     {
       "id": 1226,
@@ -2001,12 +2001,12 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "orebPct": 0.3184,
       "tovPct": 0.1667,
       "last5Margin": -2.4,
-      "rankPOM": 238,
-      "rankMAS": 253,
-      "rankMOR": 288,
-      "rankWLK": 265,
-      "rankBIH": 251,
-      "rankNET": 229
+      "rankPOM": 249,
+      "rankMAS": 255,
+      "rankMOR": 285,
+      "rankWLK": 270,
+      "rankBIH": 267,
+      "rankNET": 236
     },
     {
       "id": 1319,
@@ -2021,12 +2021,12 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "orebPct": 0.2555,
       "tovPct": 0.1548,
       "last5Margin": -14.2,
-      "rankPOM": 319,
-      "rankMAS": 296,
-      "rankMOR": 302,
-      "rankWLK": 326,
-      "rankBIH": 299,
-      "rankNET": 311
+      "rankPOM": 320,
+      "rankMAS": 298,
+      "rankMOR": 300,
+      "rankWLK": 327,
+      "rankBIH": 321,
+      "rankNET": 314
     }
   ],
   "bigsouth": [
@@ -2043,11 +2043,11 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "orebPct": 0.3061,
       "tovPct": 0.1276,
       "last5Margin": 9.8,
-      "rankPOM": 91,
-      "rankMAS": 96,
-      "rankMOR": 92,
-      "rankWLK": 83,
-      "rankBIH": 76,
+      "rankPOM": 93,
+      "rankMAS": 93,
+      "rankMOR": 95,
+      "rankWLK": 84,
+      "rankBIH": 78,
       "rankNET": 76
     },
     {
@@ -2063,12 +2063,12 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "orebPct": 0.3163,
       "tovPct": 0.1424,
       "last5Margin": -1.2,
-      "rankPOM": 141,
-      "rankMAS": 147,
-      "rankMOR": 221,
-      "rankWLK": 129,
-      "rankBIH": 117,
-      "rankNET": 129
+      "rankPOM": 151,
+      "rankMAS": 151,
+      "rankMOR": 226,
+      "rankWLK": 133,
+      "rankBIH": 125,
+      "rankNET": 130
     },
     {
       "id": 1347,
@@ -2083,12 +2083,12 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "orebPct": 0.276,
       "tovPct": 0.1671,
       "last5Margin": 0.2,
-      "rankPOM": 255,
-      "rankMAS": 251,
-      "rankMOR": 281,
-      "rankWLK": 252,
-      "rankBIH": 258,
-      "rankNET": 250
+      "rankPOM": 258,
+      "rankMAS": 257,
+      "rankMOR": 277,
+      "rankWLK": 258,
+      "rankBIH": 263,
+      "rankNET": 251
     },
     {
       "id": 1421,
@@ -2103,12 +2103,12 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "orebPct": 0.2855,
       "tovPct": 0.1613,
       "last5Margin": -2.2,
-      "rankPOM": 253,
-      "rankMAS": 252,
-      "rankMOR": 298,
-      "rankWLK": 253,
-      "rankBIH": 244,
-      "rankNET": 242
+      "rankPOM": 244,
+      "rankMAS": 247,
+      "rankMOR": 287,
+      "rankWLK": 251,
+      "rankBIH": 246,
+      "rankNET": 238
     },
     {
       "id": 1255,
@@ -2123,12 +2123,12 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "orebPct": 0.3237,
       "tovPct": 0.1864,
       "last5Margin": 4.8,
-      "rankPOM": 272,
-      "rankMAS": 266,
-      "rankMOR": 283,
-      "rankWLK": 262,
-      "rankBIH": 279,
-      "rankNET": 264
+      "rankPOM": 271,
+      "rankMAS": 265,
+      "rankMOR": 289,
+      "rankWLK": 266,
+      "rankBIH": 275,
+      "rankNET": 267
     },
     {
       "id": 1342,
@@ -2143,12 +2143,12 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "orebPct": 0.3059,
       "tovPct": 0.1843,
       "last5Margin": -1.6,
-      "rankPOM": 278,
-      "rankMAS": 274,
-      "rankMOR": 310,
-      "rankWLK": 273,
+      "rankPOM": 269,
+      "rankMAS": 268,
+      "rankMOR": 302,
+      "rankWLK": 268,
       "rankBIH": 273,
-      "rankNET": 266
+      "rankNET": 262
     },
     {
       "id": 1149,
@@ -2163,12 +2163,12 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "orebPct": 0.2613,
       "tovPct": 0.1772,
       "last5Margin": 2.4,
-      "rankPOM": 244,
-      "rankMAS": 282,
-      "rankMOR": 243,
-      "rankWLK": 257,
-      "rankBIH": 304,
-      "rankNET": 241
+      "rankPOM": 242,
+      "rankMAS": 283,
+      "rankMOR": 254,
+      "rankWLK": 256,
+      "rankBIH": 274,
+      "rankNET": 243
     },
     {
       "id": 1367,
@@ -2183,12 +2183,12 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "orebPct": 0.2885,
       "tovPct": 0.174,
       "last5Margin": -1,
-      "rankPOM": 296,
-      "rankMAS": 297,
-      "rankMOR": 295,
-      "rankWLK": 283,
-      "rankBIH": 291,
-      "rankNET": 292
+      "rankPOM": 302,
+      "rankMAS": 302,
+      "rankMOR": 298,
+      "rankWLK": 288,
+      "rankBIH": 300,
+      "rankNET": 303
     },
     {
       "id": 1205,
@@ -2204,10 +2204,10 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "tovPct": 0.193,
       "last5Margin": -9.8,
       "rankPOM": 361,
-      "rankMAS": 362,
-      "rankMOR": 362,
+      "rankMAS": 360,
+      "rankMOR": 361,
       "rankWLK": 364,
-      "rankBIH": 362,
+      "rankBIH": 360,
       "rankNET": 361
     }
   ],
@@ -2245,11 +2245,11 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "orebPct": 0.2379,
       "tovPct": 0.1402,
       "last5Margin": 8,
-      "rankPOM": 11,
+      "rankPOM": 12,
       "rankMAS": 13,
-      "rankMOR": 12,
-      "rankWLK": 12,
-      "rankBIH": 9,
+      "rankMOR": 16,
+      "rankWLK": 13,
+      "rankBIH": 10,
       "rankNET": 12
     },
     {
@@ -2266,10 +2266,10 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "tovPct": 0.1615,
       "last5Margin": 3,
       "rankPOM": 9,
-      "rankMAS": 9,
-      "rankMOR": 8,
-      "rankWLK": 10,
-      "rankBIH": 14,
+      "rankMAS": 11,
+      "rankMOR": 10,
+      "rankWLK": 9,
+      "rankBIH": 7,
       "rankNET": 11
     },
     {
@@ -2286,11 +2286,11 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "tovPct": 0.1295,
       "last5Margin": 10.6,
       "rankPOM": 5,
-      "rankMAS": 11,
-      "rankMOR": 6,
+      "rankMAS": 9,
+      "rankMOR": 5,
       "rankWLK": 7,
       "rankBIH": 12,
-      "rankNET": 5
+      "rankNET": 6
     },
     {
       "id": 1458,
@@ -2305,12 +2305,12 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "orebPct": 0.276,
       "tovPct": 0.1244,
       "last5Margin": 10.6,
-      "rankPOM": 30,
-      "rankMAS": 25,
-      "rankMOR": 28,
-      "rankWLK": 28,
-      "rankBIH": 32,
-      "rankNET": 32
+      "rankPOM": 23,
+      "rankMAS": 22,
+      "rankMOR": 23,
+      "rankWLK": 25,
+      "rankBIH": 29,
+      "rankNET": 26
     },
     {
       "id": 1417,
@@ -2325,12 +2325,12 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "orebPct": 0.2985,
       "tovPct": 0.1288,
       "last5Margin": 11.2,
-      "rankPOM": 41,
-      "rankMAS": 36,
-      "rankMOR": 39,
-      "rankWLK": 40,
-      "rankBIH": 35,
-      "rankNET": 39
+      "rankPOM": 28,
+      "rankMAS": 29,
+      "rankMOR": 31,
+      "rankWLK": 34,
+      "rankBIH": 33,
+      "rankNET": 34
     },
     {
       "id": 1345,
@@ -2347,10 +2347,10 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "last5Margin": 3.8,
       "rankPOM": 8,
       "rankMAS": 12,
-      "rankMOR": 9,
+      "rankMOR": 8,
       "rankWLK": 8,
-      "rankBIH": 7,
-      "rankNET": 9
+      "rankBIH": 13,
+      "rankNET": 10
     },
     {
       "id": 1326,
@@ -2365,12 +2365,12 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "orebPct": 0.2524,
       "tovPct": 0.1503,
       "last5Margin": 6,
-      "rankPOM": 35,
-      "rankMAS": 35,
-      "rankMOR": 35,
-      "rankWLK": 35,
-      "rankBIH": 48,
-      "rankNET": 34
+      "rankPOM": 26,
+      "rankMAS": 32,
+      "rankMOR": 29,
+      "rankWLK": 29,
+      "rankBIH": 38,
+      "rankNET": 30
     },
     {
       "id": 1234,
@@ -2386,11 +2386,11 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "tovPct": 0.1446,
       "last5Margin": -2,
       "rankPOM": 24,
-      "rankMAS": 28,
-      "rankMOR": 32,
-      "rankWLK": 29,
-      "rankBIH": 31,
-      "rankNET": 28
+      "rankMAS": 33,
+      "rankMOR": 30,
+      "rankWLK": 28,
+      "rankBIH": 39,
+      "rankNET": 25
     },
     {
       "id": 1231,
@@ -2405,12 +2405,12 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "orebPct": 0.2347,
       "tovPct": 0.1428,
       "last5Margin": -5.8,
-      "rankPOM": 43,
-      "rankMAS": 44,
-      "rankMOR": 40,
-      "rankWLK": 43,
-      "rankBIH": 53,
-      "rankNET": 41
+      "rankPOM": 41,
+      "rankMAS": 40,
+      "rankMOR": 41,
+      "rankWLK": 41,
+      "rankBIH": 56,
+      "rankNET": 37
     },
     {
       "id": 1278,
@@ -2425,12 +2425,12 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "orebPct": 0.2481,
       "tovPct": 0.1582,
       "last5Margin": -3,
-      "rankPOM": 64,
-      "rankMAS": 74,
-      "rankMOR": 63,
-      "rankWLK": 77,
-      "rankBIH": 96,
-      "rankNET": 68
+      "rankPOM": 72,
+      "rankMAS": 72,
+      "rankMOR": 74,
+      "rankWLK": 80,
+      "rankBIH": 87,
+      "rankNET": 74
     },
     {
       "id": 1449,
@@ -2446,10 +2446,10 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "tovPct": 0.1497,
       "last5Margin": -0.2,
       "rankPOM": 54,
-      "rankMAS": 65,
-      "rankMOR": 59,
-      "rankWLK": 58,
-      "rankBIH": 79,
+      "rankMAS": 63,
+      "rankMOR": 58,
+      "rankWLK": 59,
+      "rankBIH": 81,
       "rankNET": 61
     },
     {
@@ -2465,12 +2465,12 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "orebPct": 0.2937,
       "tovPct": 0.1679,
       "last5Margin": -15,
-      "rankPOM": 67,
-      "rankMAS": 50,
-      "rankMOR": 82,
-      "rankWLK": 60,
-      "rankBIH": 52,
-      "rankNET": 63
+      "rankPOM": 77,
+      "rankMAS": 55,
+      "rankMOR": 90,
+      "rankWLK": 73,
+      "rankBIH": 64,
+      "rankNET": 78
     },
     {
       "id": 1353,
@@ -2485,12 +2485,12 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "orebPct": 0.318,
       "tovPct": 0.1454,
       "last5Margin": -2.8,
-      "rankPOM": 144,
-      "rankMAS": 98,
-      "rankMOR": 115,
-      "rankWLK": 137,
-      "rankBIH": 146,
-      "rankNET": 158
+      "rankPOM": 129,
+      "rankMAS": 97,
+      "rankMOR": 104,
+      "rankWLK": 124,
+      "rankBIH": 120,
+      "rankNET": 143
     },
     {
       "id": 1321,
@@ -2505,12 +2505,12 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "orebPct": 0.28,
       "tovPct": 0.1277,
       "last5Margin": 0.8,
-      "rankPOM": 68,
-      "rankMAS": 67,
+      "rankPOM": 66,
+      "rankMAS": 70,
       "rankMOR": 65,
-      "rankWLK": 72,
-      "rankBIH": 95,
-      "rankNET": 72
+      "rankWLK": 74,
+      "rankBIH": 93,
+      "rankNET": 70
     },
     {
       "id": 1332,
@@ -2525,12 +2525,12 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "orebPct": 0.3115,
       "tovPct": 0.1704,
       "last5Margin": -1.2,
-      "rankPOM": 98,
-      "rankMAS": 81,
-      "rankMOR": 88,
-      "rankWLK": 99,
-      "rankBIH": 110,
-      "rankNET": 107
+      "rankPOM": 96,
+      "rankMAS": 78,
+      "rankMOR": 85,
+      "rankWLK": 96,
+      "rankBIH": 115,
+      "rankNET": 102
     },
     {
       "id": 1268,
@@ -2545,12 +2545,12 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "orebPct": 0.3204,
       "tovPct": 0.1754,
       "last5Margin": -10.4,
-      "rankPOM": 130,
-      "rankMAS": 84,
-      "rankMOR": 114,
+      "rankPOM": 128,
+      "rankMAS": 85,
+      "rankMOR": 110,
       "rankWLK": 121,
-      "rankBIH": 113,
-      "rankNET": 146
+      "rankBIH": 123,
+      "rankNET": 151
     },
     {
       "id": 1336,
@@ -2565,12 +2565,12 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "orebPct": 0.2614,
       "tovPct": 0.1489,
       "last5Margin": -15.6,
-      "rankPOM": 128,
-      "rankMAS": 101,
-      "rankMOR": 103,
-      "rankWLK": 114,
-      "rankBIH": 148,
-      "rankNET": 125
+      "rankPOM": 138,
+      "rankMAS": 105,
+      "rankMOR": 116,
+      "rankWLK": 129,
+      "rankBIH": 132,
+      "rankNET": 131
     }
   ],
   "big_west": [
@@ -2587,12 +2587,12 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "orebPct": 0.2658,
       "tovPct": 0.1712,
       "last5Margin": 7,
-      "rankPOM": 109,
-      "rankMAS": 122,
-      "rankMOR": 110,
-      "rankWLK": 115,
-      "rankBIH": 121,
-      "rankNET": 119
+      "rankPOM": 106,
+      "rankMAS": 120,
+      "rankMOR": 105,
+      "rankWLK": 110,
+      "rankBIH": 107,
+      "rankNET": 118
     },
     {
       "id": 1218,
@@ -2607,12 +2607,12 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "orebPct": 0.2524,
       "tovPct": 0.1813,
       "last5Margin": 3.8,
-      "rankPOM": 108,
-      "rankMAS": 124,
-      "rankMOR": 136,
-      "rankWLK": 113,
-      "rankBIH": 100,
-      "rankNET": 103
+      "rankPOM": 115,
+      "rankMAS": 127,
+      "rankMOR": 148,
+      "rankWLK": 117,
+      "rankBIH": 101,
+      "rankNET": 112
     },
     {
       "id": 1168,
@@ -2627,12 +2627,12 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "orebPct": 0.256,
       "tovPct": 0.1447,
       "last5Margin": 4.8,
-      "rankPOM": 171,
-      "rankMAS": 213,
-      "rankMOR": 233,
-      "rankWLK": 202,
-      "rankBIH": 180,
-      "rankNET": 193
+      "rankPOM": 169,
+      "rankMAS": 195,
+      "rankMOR": 200,
+      "rankWLK": 190,
+      "rankBIH": 169,
+      "rankNET": 180
     },
     {
       "id": 1169,
@@ -2647,12 +2647,12 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "orebPct": 0.277,
       "tovPct": 0.172,
       "last5Margin": -4.2,
-      "rankPOM": 164,
-      "rankMAS": 165,
-      "rankMOR": 225,
-      "rankWLK": 178,
-      "rankBIH": 122,
-      "rankNET": 184
+      "rankPOM": 176,
+      "rankMAS": 174,
+      "rankMOR": 230,
+      "rankWLK": 192,
+      "rankBIH": 150,
+      "rankNET": 190
     },
     {
       "id": 1471,
@@ -2668,10 +2668,10 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "tovPct": 0.1569,
       "last5Margin": 5.4,
       "rankPOM": 113,
-      "rankMAS": 123,
-      "rankMOR": 150,
-      "rankWLK": 122,
-      "rankBIH": 107,
+      "rankMAS": 124,
+      "rankMOR": 161,
+      "rankWLK": 120,
+      "rankBIH": 110,
       "rankNET": 120
     },
     {
@@ -2688,11 +2688,11 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "tovPct": 0.1753,
       "last5Margin": -0.8,
       "rankPOM": 155,
-      "rankMAS": 167,
-      "rankMOR": 203,
-      "rankWLK": 175,
-      "rankBIH": 147,
-      "rankNET": 174
+      "rankMAS": 166,
+      "rankMOR": 202,
+      "rankWLK": 176,
+      "rankBIH": 159,
+      "rankNET": 176
     },
     {
       "id": 1364,
@@ -2707,12 +2707,12 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "orebPct": 0.2751,
       "tovPct": 0.1833,
       "last5Margin": 0.2,
-      "rankPOM": 129,
-      "rankMAS": 156,
-      "rankMOR": 168,
-      "rankWLK": 152,
-      "rankBIH": 149,
-      "rankNET": 136
+      "rankPOM": 126,
+      "rankMAS": 161,
+      "rankMOR": 174,
+      "rankWLK": 158,
+      "rankBIH": 160,
+      "rankNET": 137
     },
     {
       "id": 1142,
@@ -2727,12 +2727,12 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "orebPct": 0.2804,
       "tovPct": 0.1916,
       "last5Margin": 3,
-      "rankPOM": 214,
-      "rankMAS": 233,
-      "rankMOR": 272,
-      "rankWLK": 247,
-      "rankBIH": 226,
-      "rankNET": 232
+      "rankPOM": 211,
+      "rankMAS": 230,
+      "rankMOR": 243,
+      "rankWLK": 244,
+      "rankBIH": 231,
+      "rankNET": 228
     }
   ],
   "caa": [
@@ -2749,12 +2749,12 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "orebPct": 0.313,
       "tovPct": 0.1394,
       "last5Margin": 5.8,
-      "rankPOM": 104,
-      "rankMAS": 110,
-      "rankMOR": 127,
-      "rankWLK": 96,
-      "rankBIH": 65,
-      "rankNET": 93
+      "rankPOM": 110,
+      "rankMAS": 114,
+      "rankMOR": 133,
+      "rankWLK": 99,
+      "rankBIH": 79,
+      "rankNET": 96
     },
     {
       "id": 1158,
@@ -2769,12 +2769,12 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "orebPct": 0.2607,
       "tovPct": 0.154,
       "last5Margin": 3.2,
-      "rankPOM": 147,
-      "rankMAS": 131,
-      "rankMOR": 161,
-      "rankWLK": 141,
+      "rankPOM": 173,
+      "rankMAS": 133,
+      "rankMOR": 183,
+      "rankWLK": 159,
       "rankBIH": 114,
-      "rankNET": 145
+      "rankNET": 163
     },
     {
       "id": 1220,
@@ -2789,12 +2789,12 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "orebPct": 0.3039,
       "tovPct": 0.1512,
       "last5Margin": 20.2,
-      "rankPOM": 92,
-      "rankMAS": 127,
-      "rankMOR": 95,
-      "rankWLK": 94,
-      "rankBIH": 104,
-      "rankNET": 92
+      "rankPOM": 84,
+      "rankMAS": 125,
+      "rankMOR": 84,
+      "rankWLK": 88,
+      "rankBIH": 92,
+      "rankNET": 88
     },
     {
       "id": 1284,
@@ -2809,12 +2809,12 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "orebPct": 0.3065,
       "tovPct": 0.1656,
       "last5Margin": 6.4,
-      "rankPOM": 190,
-      "rankMAS": 205,
-      "rankMOR": 160,
-      "rankWLK": 183,
-      "rankBIH": 208,
-      "rankNET": 179
+      "rankPOM": 181,
+      "rankMAS": 196,
+      "rankMOR": 159,
+      "rankWLK": 174,
+      "rankBIH": 175,
+      "rankNET": 169
     },
     {
       "id": 1180,
@@ -2829,12 +2829,12 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "orebPct": 0.291,
       "tovPct": 0.1824,
       "last5Margin": -0.2,
-      "rankPOM": 220,
-      "rankMAS": 220,
-      "rankMOR": 183,
-      "rankWLK": 212,
-      "rankBIH": 222,
-      "rankNET": 211
+      "rankPOM": 221,
+      "rankMAS": 219,
+      "rankMOR": 194,
+      "rankWLK": 210,
+      "rankBIH": 221,
+      "rankNET": 210
     },
     {
       "id": 1456,
@@ -2849,12 +2849,12 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "orebPct": 0.2372,
       "tovPct": 0.163,
       "last5Margin": -0.4,
-      "rankPOM": 133,
-      "rankMAS": 169,
-      "rankMOR": 112,
-      "rankWLK": 125,
-      "rankBIH": 145,
-      "rankNET": 124
+      "rankPOM": 145,
+      "rankMAS": 173,
+      "rankMOR": 128,
+      "rankWLK": 132,
+      "rankBIH": 133,
+      "rankNET": 128
     },
     {
       "id": 1406,
@@ -2869,12 +2869,12 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "orebPct": 0.3357,
       "tovPct": 0.1517,
       "last5Margin": 9.8,
-      "rankPOM": 177,
-      "rankMAS": 182,
-      "rankMOR": 141,
-      "rankWLK": 171,
-      "rankBIH": 190,
-      "rankNET": 180
+      "rankPOM": 157,
+      "rankMAS": 165,
+      "rankMOR": 126,
+      "rankWLK": 154,
+      "rankBIH": 152,
+      "rankNET": 160
     },
     {
       "id": 1392,
@@ -2889,12 +2889,12 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "orebPct": 0.2683,
       "tovPct": 0.1568,
       "last5Margin": -6.8,
-      "rankPOM": 222,
-      "rankMAS": 225,
-      "rankMOR": 180,
-      "rankWLK": 220,
-      "rankBIH": 166,
-      "rankNET": 219
+      "rankPOM": 229,
+      "rankMAS": 241,
+      "rankMOR": 188,
+      "rankWLK": 233,
+      "rankBIH": 208,
+      "rankNET": 232
     },
     {
       "id": 1144,
@@ -2909,12 +2909,12 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "orebPct": 0.3406,
       "tovPct": 0.1599,
       "last5Margin": 6.2,
-      "rankPOM": 192,
-      "rankMAS": 217,
-      "rankMOR": 164,
-      "rankWLK": 200,
-      "rankBIH": 199,
-      "rankNET": 208
+      "rankPOM": 177,
+      "rankMAS": 199,
+      "rankMOR": 136,
+      "rankWLK": 179,
+      "rankBIH": 189,
+      "rankNET": 192
     },
     {
       "id": 1214,
@@ -2929,12 +2929,12 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "orebPct": 0.3246,
       "tovPct": 0.1569,
       "last5Margin": -5,
-      "rankPOM": 273,
-      "rankMAS": 276,
-      "rankMOR": 239,
-      "rankWLK": 259,
-      "rankBIH": 263,
-      "rankNET": 268
+      "rankPOM": 272,
+      "rankMAS": 282,
+      "rankMOR": 238,
+      "rankWLK": 260,
+      "rankBIH": 266,
+      "rankNET": 270
     },
     {
       "id": 1189,
@@ -2949,12 +2949,12 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "orebPct": 0.3239,
       "tovPct": 0.1564,
       "last5Margin": -13.4,
-      "rankPOM": 219,
-      "rankMAS": 243,
-      "rankMOR": 222,
-      "rankWLK": 224,
-      "rankBIH": 218,
-      "rankNET": 210
+      "rankPOM": 231,
+      "rankMAS": 252,
+      "rankMOR": 218,
+      "rankWLK": 234,
+      "rankBIH": 236,
+      "rankNET": 222
     },
     {
       "id": 1299,
@@ -2969,12 +2969,12 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "orebPct": 0.2733,
       "tovPct": 0.1743,
       "last5Margin": -8,
-      "rankPOM": 274,
-      "rankMAS": 298,
-      "rankMOR": 271,
-      "rankWLK": 278,
-      "rankBIH": 267,
-      "rankNET": 267
+      "rankPOM": 288,
+      "rankMAS": 306,
+      "rankMOR": 283,
+      "rankWLK": 290,
+      "rankBIH": 284,
+      "rankNET": 276
     },
     {
       "id": 1318,
@@ -2989,12 +2989,12 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "orebPct": 0.2853,
       "tovPct": 0.1564,
       "last5Margin": -3,
-      "rankPOM": 288,
-      "rankMAS": 309,
-      "rankMOR": 266,
-      "rankWLK": 300,
-      "rankBIH": 310,
-      "rankNET": 288
+      "rankPOM": 283,
+      "rankMAS": 310,
+      "rankMOR": 257,
+      "rankWLK": 298,
+      "rankBIH": 322,
+      "rankNET": 283
     }
   ],
   "cusa": [
@@ -3011,12 +3011,12 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "orebPct": 0.1699,
       "tovPct": 0.1316,
       "last5Margin": -5,
-      "rankPOM": 111,
-      "rankMAS": 87,
-      "rankMOR": 111,
-      "rankWLK": 103,
-      "rankBIH": 59,
-      "rankNET": 94
+      "rankPOM": 116,
+      "rankMAS": 94,
+      "rankMOR": 107,
+      "rankWLK": 107,
+      "rankBIH": 72,
+      "rankNET": 100
     },
     {
       "id": 1358,
@@ -3031,12 +3031,12 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "orebPct": 0.3092,
       "tovPct": 0.1597,
       "last5Margin": 6.4,
-      "rankPOM": 103,
-      "rankMAS": 106,
-      "rankMOR": 101,
-      "rankWLK": 101,
-      "rankBIH": 90,
-      "rankNET": 96
+      "rankPOM": 109,
+      "rankMAS": 117,
+      "rankMOR": 109,
+      "rankWLK": 111,
+      "rankBIH": 97,
+      "rankNET": 104
     },
     {
       "id": 1443,
@@ -3051,12 +3051,12 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "orebPct": 0.3081,
       "tovPct": 0.1373,
       "last5Margin": 7.6,
-      "rankPOM": 138,
-      "rankMAS": 132,
-      "rankMOR": 119,
-      "rankWLK": 135,
-      "rankBIH": 136,
-      "rankNET": 133
+      "rankPOM": 167,
+      "rankMAS": 139,
+      "rankMOR": 158,
+      "rankWLK": 165,
+      "rankBIH": 140,
+      "rankNET": 156
     },
     {
       "id": 1292,
@@ -3071,12 +3071,12 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "orebPct": 0.2792,
       "tovPct": 0.158,
       "last5Margin": 8.2,
-      "rankPOM": 180,
-      "rankMAS": 159,
-      "rankMOR": 142,
-      "rankWLK": 189,
-      "rankBIH": 196,
-      "rankNET": 161
+      "rankPOM": 171,
+      "rankMAS": 143,
+      "rankMOR": 135,
+      "rankWLK": 178,
+      "rankBIH": 165,
+      "rankNET": 154
     },
     {
       "id": 1244,
@@ -3091,12 +3091,12 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "orebPct": 0.3343,
       "tovPct": 0.1639,
       "last5Margin": 2,
-      "rankPOM": 170,
-      "rankMAS": 146,
-      "rankMOR": 134,
-      "rankWLK": 169,
-      "rankBIH": 174,
-      "rankNET": 160
+      "rankPOM": 178,
+      "rankMAS": 159,
+      "rankMOR": 149,
+      "rankWLK": 184,
+      "rankBIH": 170,
+      "rankNET": 170
     },
     {
       "id": 1256,
@@ -3111,12 +3111,12 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "orebPct": 0.3278,
       "tovPct": 0.176,
       "last5Margin": 7.8,
-      "rankPOM": 246,
-      "rankMAS": 179,
-      "rankMOR": 198,
-      "rankWLK": 243,
-      "rankBIH": 212,
-      "rankNET": 248
+      "rankPOM": 208,
+      "rankMAS": 158,
+      "rankMOR": 165,
+      "rankWLK": 212,
+      "rankBIH": 205,
+      "rankNET": 213
     },
     {
       "id": 1240,
@@ -3131,12 +3131,12 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "orebPct": 0.2799,
       "tovPct": 0.16,
       "last5Margin": 0.8,
-      "rankPOM": 205,
-      "rankMAS": 193,
-      "rankMOR": 179,
-      "rankWLK": 226,
+      "rankPOM": 204,
+      "rankMAS": 191,
+      "rankMOR": 177,
+      "rankWLK": 228,
       "rankBIH": 233,
-      "rankNET": 214
+      "rankNET": 211
     },
     {
       "id": 1283,
@@ -3151,12 +3151,12 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "orebPct": 0.3194,
       "tovPct": 0.1608,
       "last5Margin": -1.8,
-      "rankPOM": 212,
-      "rankMAS": 201,
-      "rankMOR": 209,
-      "rankWLK": 244,
-      "rankBIH": 235,
-      "rankNET": 218
+      "rankPOM": 215,
+      "rankMAS": 204,
+      "rankMOR": 201,
+      "rankWLK": 239,
+      "rankBIH": 239,
+      "rankNET": 214
     },
     {
       "id": 1198,
@@ -3171,12 +3171,12 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "orebPct": 0.3239,
       "tovPct": 0.1733,
       "last5Margin": -0.6,
-      "rankPOM": 198,
-      "rankMAS": 208,
-      "rankMOR": 175,
-      "rankWLK": 216,
-      "rankBIH": 227,
-      "rankNET": 200
+      "rankPOM": 190,
+      "rankMAS": 210,
+      "rankMOR": 164,
+      "rankWLK": 205,
+      "rankBIH": 225,
+      "rankNET": 191
     },
     {
       "id": 1308,
@@ -3191,11 +3191,11 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "orebPct": 0.3089,
       "tovPct": 0.1419,
       "last5Margin": -3,
-      "rankPOM": 181,
-      "rankMAS": 184,
-      "rankMOR": 182,
-      "rankWLK": 217,
-      "rankBIH": 216,
+      "rankPOM": 185,
+      "rankMAS": 178,
+      "rankMOR": 176,
+      "rankWLK": 209,
+      "rankBIH": 226,
       "rankNET": 186
     }
   ],
@@ -3213,12 +3213,12 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "orebPct": 0.2992,
       "tovPct": 0.158,
       "last5Margin": 6.6,
-      "rankPOM": 153,
-      "rankMAS": 148,
-      "rankMOR": 135,
-      "rankWLK": 142,
-      "rankBIH": 152,
-      "rankNET": 140
+      "rankPOM": 144,
+      "rankMAS": 145,
+      "rankMOR": 125,
+      "rankWLK": 136,
+      "rankBIH": 138,
+      "rankNET": 133
     },
     {
       "id": 1352,
@@ -3233,12 +3233,12 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "orebPct": 0.3338,
       "tovPct": 0.1748,
       "last5Margin": 16.4,
-      "rankPOM": 146,
-      "rankMAS": 151,
-      "rankMOR": 149,
-      "rankWLK": 154,
-      "rankBIH": 144,
-      "rankNET": 144
+      "rankPOM": 139,
+      "rankMAS": 146,
+      "rankMOR": 143,
+      "rankWLK": 145,
+      "rankBIH": 126,
+      "rankNET": 135
     },
     {
       "id": 1178,
@@ -3253,12 +3253,12 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "orebPct": 0.3117,
       "tovPct": 0.1566,
       "last5Margin": 5,
-      "rankPOM": 232,
-      "rankMAS": 236,
-      "rankMOR": 245,
-      "rankWLK": 232,
-      "rankBIH": 232,
-      "rankNET": 237
+      "rankPOM": 222,
+      "rankMAS": 227,
+      "rankMOR": 221,
+      "rankWLK": 225,
+      "rankBIH": 213,
+      "rankNET": 229
     },
     {
       "id": 1324,
@@ -3273,12 +3273,12 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "orebPct": 0.2938,
       "tovPct": 0.1401,
       "last5Margin": 2.2,
-      "rankPOM": 161,
-      "rankMAS": 166,
-      "rankMOR": 153,
-      "rankWLK": 153,
-      "rankBIH": 159,
-      "rankNET": 167
+      "rankPOM": 170,
+      "rankMAS": 176,
+      "rankMOR": 155,
+      "rankWLK": 161,
+      "rankBIH": 182,
+      "rankNET": 177
     },
     {
       "id": 1453,
@@ -3293,12 +3293,12 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "orebPct": 0.2297,
       "tovPct": 0.1429,
       "last5Margin": 2.2,
-      "rankPOM": 195,
-      "rankMAS": 214,
-      "rankMOR": 197,
-      "rankWLK": 201,
-      "rankBIH": 197,
-      "rankNET": 209
+      "rankPOM": 209,
+      "rankMAS": 216,
+      "rankMOR": 217,
+      "rankWLK": 203,
+      "rankBIH": 176,
+      "rankNET": 216
     },
     {
       "id": 1236,
@@ -3313,12 +3313,12 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "orebPct": 0.2529,
       "tovPct": 0.1391,
       "last5Margin": -3.2,
-      "rankPOM": 257,
-      "rankMAS": 202,
-      "rankMOR": 218,
+      "rankPOM": 261,
+      "rankMAS": 214,
+      "rankMOR": 224,
       "rankWLK": 242,
-      "rankBIH": 211,
-      "rankNET": 252
+      "rankBIH": 218,
+      "rankNET": 253
     },
     {
       "id": 1297,
@@ -3333,12 +3333,12 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "orebPct": 0.3154,
       "tovPct": 0.1594,
       "last5Margin": 5,
-      "rankPOM": 178,
-      "rankMAS": 194,
-      "rankMOR": 186,
-      "rankWLK": 173,
-      "rankBIH": 200,
-      "rankNET": 189
+      "rankPOM": 172,
+      "rankMAS": 183,
+      "rankMOR": 173,
+      "rankWLK": 166,
+      "rankBIH": 187,
+      "rankNET": 178
     },
     {
       "id": 1454,
@@ -3353,12 +3353,12 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "orebPct": 0.3265,
       "tovPct": 0.1474,
       "last5Margin": -4.2,
-      "rankPOM": 262,
-      "rankMAS": 249,
-      "rankMOR": 215,
-      "rankWLK": 254,
+      "rankPOM": 268,
+      "rankMAS": 253,
+      "rankMOR": 239,
+      "rankWLK": 262,
       "rankBIH": 259,
-      "rankNET": 247
+      "rankNET": 252
     },
     {
       "id": 1464,
@@ -3373,12 +3373,12 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "orebPct": 0.3002,
       "tovPct": 0.1811,
       "last5Margin": -4,
-      "rankPOM": 208,
-      "rankMAS": 232,
-      "rankMOR": 228,
-      "rankWLK": 215,
-      "rankBIH": 239,
-      "rankNET": 215
+      "rankPOM": 214,
+      "rankMAS": 236,
+      "rankMOR": 220,
+      "rankWLK": 213,
+      "rankBIH": 244,
+      "rankNET": 220
     },
     {
       "id": 1156,
@@ -3393,12 +3393,12 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "orebPct": 0.2662,
       "tovPct": 0.1681,
       "last5Margin": -11.4,
-      "rankPOM": 320,
-      "rankMAS": 289,
-      "rankMOR": 308,
-      "rankWLK": 329,
-      "rankBIH": 311,
-      "rankNET": 316
+      "rankPOM": 322,
+      "rankMAS": 288,
+      "rankMOR": 314,
+      "rankWLK": 328,
+      "rankBIH": 307,
+      "rankNET": 319
     },
     {
       "id": 1237,
@@ -3413,12 +3413,12 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "orebPct": 0.3286,
       "tovPct": 0.1538,
       "last5Margin": -8.6,
-      "rankPOM": 312,
-      "rankMAS": 341,
-      "rankMOR": 314,
-      "rankWLK": 328,
-      "rankBIH": 338,
-      "rankNET": 315
+      "rankPOM": 318,
+      "rankMAS": 342,
+      "rankMOR": 318,
+      "rankWLK": 330,
+      "rankBIH": 342,
+      "rankNET": 322
     }
   ],
   "ivy": [
@@ -3435,11 +3435,11 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "orebPct": 0.2847,
       "tovPct": 0.1362,
       "last5Margin": 6.6,
-      "rankPOM": 81,
+      "rankPOM": 78,
       "rankMAS": 89,
-      "rankMOR": 105,
-      "rankWLK": 73,
-      "rankBIH": 54,
+      "rankMOR": 96,
+      "rankWLK": 72,
+      "rankBIH": 62,
       "rankNET": 66
     },
     {
@@ -3455,12 +3455,12 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "orebPct": 0.2416,
       "tovPct": 0.1637,
       "last5Margin": 5.4,
-      "rankPOM": 157,
-      "rankMAS": 177,
-      "rankMOR": 152,
-      "rankWLK": 156,
-      "rankBIH": 165,
-      "rankNET": 154
+      "rankPOM": 149,
+      "rankMAS": 174,
+      "rankMOR": 138,
+      "rankWLK": 149,
+      "rankBIH": 163,
+      "rankNET": 150
     },
     {
       "id": 1335,
@@ -3475,12 +3475,12 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "orebPct": 0.312,
       "tovPct": 0.1496,
       "last5Margin": 7,
-      "rankPOM": 169,
-      "rankMAS": 175,
-      "rankMOR": 156,
-      "rankWLK": 160,
-      "rankBIH": 160,
-      "rankNET": 159
+      "rankPOM": 163,
+      "rankMAS": 167,
+      "rankMOR": 147,
+      "rankWLK": 147,
+      "rankBIH": 141,
+      "rankNET": 148
     },
     {
       "id": 1165,
@@ -3495,12 +3495,12 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "orebPct": 0.2786,
       "tovPct": 0.158,
       "last5Margin": 1,
-      "rankPOM": 167,
-      "rankMAS": 176,
-      "rankMOR": 158,
-      "rankWLK": 159,
-      "rankBIH": 215,
-      "rankNET": 152
+      "rankPOM": 158,
+      "rankMAS": 168,
+      "rankMOR": 146,
+      "rankWLK": 143,
+      "rankBIH": 181,
+      "rankNET": 141
     }
   ],
   "maac": [
@@ -3517,12 +3517,12 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "orebPct": 0.2687,
       "tovPct": 0.1436,
       "last5Margin": 5.4,
-      "rankPOM": 172,
-      "rankMAS": 172,
-      "rankMOR": 192,
-      "rankWLK": 158,
-      "rankBIH": 119,
-      "rankNET": 185
+      "rankPOM": 174,
+      "rankMAS": 169,
+      "rankMOR": 185,
+      "rankWLK": 148,
+      "rankBIH": 118,
+      "rankNET": 173
     },
     {
       "id": 1389,
@@ -3537,12 +3537,12 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "orebPct": 0.3766,
       "tovPct": 0.1648,
       "last5Margin": -3.8,
-      "rankPOM": 239,
-      "rankMAS": 230,
-      "rankMOR": 232,
-      "rankWLK": 210,
-      "rankBIH": 207,
-      "rankNET": 225
+      "rankPOM": 257,
+      "rankMAS": 243,
+      "rankMOR": 255,
+      "rankWLK": 226,
+      "rankBIH": 198,
+      "rankNET": 233
     },
     {
       "id": 1373,
@@ -3557,12 +3557,12 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "orebPct": 0.2799,
       "tovPct": 0.1532,
       "last5Margin": 6,
-      "rankPOM": 206,
-      "rankMAS": 221,
-      "rankMOR": 184,
-      "rankWLK": 179,
-      "rankBIH": 170,
-      "rankNET": 194
+      "rankPOM": 195,
+      "rankMAS": 212,
+      "rankMOR": 180,
+      "rankWLK": 172,
+      "rankBIH": 177,
+      "rankNET": 188
     },
     {
       "id": 1346,
@@ -3578,10 +3578,10 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "tovPct": 0.152,
       "last5Margin": -2.6,
       "rankPOM": 218,
-      "rankMAS": 216,
-      "rankMOR": 189,
-      "rankWLK": 187,
-      "rankBIH": 172,
+      "rankMAS": 222,
+      "rankMOR": 196,
+      "rankWLK": 191,
+      "rankBIH": 179,
       "rankNET": 212
     },
     {
@@ -3597,11 +3597,11 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "orebPct": 0.2704,
       "tovPct": 0.1654,
       "last5Margin": 2,
-      "rankPOM": 201,
-      "rankMAS": 231,
-      "rankMOR": 172,
-      "rankWLK": 177,
-      "rankBIH": 181,
+      "rankPOM": 203,
+      "rankMAS": 229,
+      "rankMOR": 175,
+      "rankWLK": 181,
+      "rankBIH": 203,
       "rankNET": 182
     },
     {
@@ -3617,11 +3617,11 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "orebPct": 0.2809,
       "tovPct": 0.217,
       "last5Margin": 8.6,
-      "rankPOM": 277,
-      "rankMAS": 272,
-      "rankMOR": 286,
-      "rankWLK": 261,
-      "rankBIH": 257,
+      "rankPOM": 279,
+      "rankMAS": 275,
+      "rankMOR": 290,
+      "rankWLK": 263,
+      "rankBIH": 249,
       "rankNET": 279
     },
     {
@@ -3637,12 +3637,12 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "orebPct": 0.3479,
       "tovPct": 0.1524,
       "last5Margin": 1.4,
-      "rankPOM": 270,
-      "rankMAS": 258,
-      "rankMOR": 253,
-      "rankWLK": 237,
-      "rankBIH": 205,
-      "rankNET": 245
+      "rankPOM": 264,
+      "rankMAS": 254,
+      "rankMOR": 235,
+      "rankWLK": 231,
+      "rankBIH": 212,
+      "rankNET": 242
     },
     {
       "id": 1233,
@@ -3657,12 +3657,12 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "orebPct": 0.2525,
       "tovPct": 0.1611,
       "last5Margin": 4.2,
-      "rankPOM": 247,
-      "rankMAS": 227,
-      "rankMOR": 237,
-      "rankWLK": 211,
-      "rankBIH": 220,
-      "rankNET": 231
+      "rankPOM": 259,
+      "rankMAS": 237,
+      "rankMOR": 248,
+      "rankWLK": 222,
+      "rankBIH": 217,
+      "rankNET": 239
     },
     {
       "id": 1357,
@@ -3677,12 +3677,12 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "orebPct": 0.2767,
       "tovPct": 0.1706,
       "last5Margin": -3,
-      "rankPOM": 293,
-      "rankMAS": 303,
-      "rankMOR": 274,
-      "rankWLK": 280,
-      "rankBIH": 284,
-      "rankNET": 293
+      "rankPOM": 295,
+      "rankMAS": 299,
+      "rankMOR": 280,
+      "rankWLK": 278,
+      "rankBIH": 277,
+      "rankNET": 292
     },
     {
       "id": 1264,
@@ -3697,11 +3697,11 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "orebPct": 0.307,
       "tovPct": 0.1512,
       "last5Margin": -7,
-      "rankPOM": 330,
-      "rankMAS": 323,
-      "rankMOR": 307,
-      "rankWLK": 327,
-      "rankBIH": 296,
+      "rankPOM": 329,
+      "rankMAS": 322,
+      "rankMOR": 310,
+      "rankWLK": 329,
+      "rankBIH": 308,
       "rankNET": 329
     }
   ],
@@ -3719,11 +3719,11 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "orebPct": 0.3126,
       "tovPct": 0.1855,
       "last5Margin": 23.6,
-      "rankPOM": 199,
-      "rankMAS": 260,
-      "rankMOR": 277,
-      "rankWLK": 196,
-      "rankBIH": 237,
+      "rankPOM": 202,
+      "rankMAS": 250,
+      "rankMOR": 270,
+      "rankWLK": 198,
+      "rankBIH": 232,
       "rankNET": 202
     },
     {
@@ -3739,12 +3739,12 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "orebPct": 0.2945,
       "tovPct": 0.1709,
       "last5Margin": 1.2,
-      "rankPOM": 353,
-      "rankMAS": 348,
+      "rankPOM": 352,
+      "rankMAS": 341,
       "rankMOR": 358,
-      "rankWLK": 346,
+      "rankWLK": 344,
       "rankBIH": 326,
-      "rankNET": 353
+      "rankNET": 351
     },
     {
       "id": 1300,
@@ -3759,12 +3759,12 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "orebPct": 0.3056,
       "tovPct": 0.1777,
       "last5Margin": -8.8,
-      "rankPOM": 349,
-      "rankMAS": 343,
-      "rankMOR": 355,
-      "rankWLK": 335,
-      "rankBIH": 340,
-      "rankNET": 340
+      "rankPOM": 353,
+      "rankMAS": 344,
+      "rankMOR": 357,
+      "rankWLK": 341,
+      "rankBIH": 338,
+      "rankNET": 347
     },
     {
       "id": 1313,
@@ -3779,12 +3779,12 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "orebPct": 0.3057,
       "tovPct": 0.1775,
       "last5Margin": 3,
-      "rankPOM": 313,
-      "rankMAS": 299,
-      "rankMOR": 336,
-      "rankWLK": 298,
-      "rankBIH": 314,
-      "rankNET": 308
+      "rankPOM": 321,
+      "rankMAS": 309,
+      "rankMOR": 340,
+      "rankWLK": 310,
+      "rankBIH": 323,
+      "rankNET": 313
     },
     {
       "id": 1354,
@@ -3799,12 +3799,12 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "orebPct": 0.3399,
       "tovPct": 0.1984,
       "last5Margin": -4,
-      "rankPOM": 358,
-      "rankMAS": 359,
-      "rankMOR": 364,
-      "rankWLK": 359,
-      "rankBIH": 356,
-      "rankNET": 359
+      "rankPOM": 356,
+      "rankMAS": 352,
+      "rankMOR": 363,
+      "rankWLK": 357,
+      "rankBIH": 353,
+      "rankNET": 357
     },
     {
       "id": 1271,
@@ -3819,12 +3819,12 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "orebPct": 0.3071,
       "tovPct": 0.2245,
       "last5Margin": -0.6,
-      "rankPOM": 342,
-      "rankMAS": 351,
-      "rankMOR": 340,
-      "rankWLK": 333,
-      "rankBIH": 352,
-      "rankNET": 346
+      "rankPOM": 348,
+      "rankMAS": 353,
+      "rankMOR": 345,
+      "rankWLK": 337,
+      "rankBIH": 351,
+      "rankNET": 350
     },
     {
       "id": 1175,
@@ -3842,8 +3842,8 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "rankPOM": 362,
       "rankMAS": 364,
       "rankMOR": 365,
-      "rankWLK": 363,
-      "rankBIH": 359,
+      "rankWLK": 362,
+      "rankBIH": 362,
       "rankNET": 362
     }
   ],
@@ -3861,12 +3861,12 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "orebPct": 0.2107,
       "tovPct": 0.1402,
       "last5Margin": 6,
-      "rankPOM": 87,
-      "rankMAS": 52,
-      "rankMOR": 83,
-      "rankWLK": 59,
-      "rankBIH": 17,
-      "rankNET": 52
+      "rankPOM": 91,
+      "rankMAS": 48,
+      "rankMOR": 87,
+      "rankWLK": 62,
+      "rankBIH": 15,
+      "rankNET": 55
     },
     {
       "id": 1103,
@@ -3882,11 +3882,11 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "tovPct": 0.152,
       "last5Margin": 20.2,
       "rankPOM": 61,
-      "rankMAS": 82,
-      "rankMOR": 54,
+      "rankMAS": 77,
+      "rankMOR": 49,
       "rankWLK": 54,
-      "rankBIH": 62,
-      "rankNET": 57
+      "rankBIH": 53,
+      "rankNET": 52
     },
     {
       "id": 1245,
@@ -3901,12 +3901,12 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "orebPct": 0.3198,
       "tovPct": 0.1818,
       "last5Margin": 4.2,
-      "rankPOM": 160,
-      "rankMAS": 125,
-      "rankMOR": 159,
-      "rankWLK": 131,
-      "rankBIH": 87,
-      "rankNET": 150
+      "rankPOM": 154,
+      "rankMAS": 123,
+      "rankMOR": 145,
+      "rankWLK": 125,
+      "rankBIH": 89,
+      "rankNET": 147
     },
     {
       "id": 1405,
@@ -3921,12 +3921,12 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "orebPct": 0.2982,
       "tovPct": 0.1389,
       "last5Margin": 11.8,
-      "rankPOM": 145,
-      "rankMAS": 160,
-      "rankMOR": 167,
-      "rankWLK": 145,
-      "rankBIH": 171,
-      "rankNET": 153
+      "rankPOM": 135,
+      "rankMAS": 156,
+      "rankMOR": 154,
+      "rankWLK": 134,
+      "rankBIH": 162,
+      "rankNET": 146
     },
     {
       "id": 1132,
@@ -3941,12 +3941,12 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "orebPct": 0.2733,
       "tovPct": 0.1584,
       "last5Margin": -0.6,
-      "rankPOM": 149,
-      "rankMAS": 186,
-      "rankMOR": 120,
-      "rankWLK": 149,
-      "rankBIH": 198,
-      "rankNET": 157
+      "rankPOM": 146,
+      "rankMAS": 182,
+      "rankMOR": 124,
+      "rankWLK": 141,
+      "rankBIH": 174,
+      "rankNET": 155
     },
     {
       "id": 1325,
@@ -3962,11 +3962,11 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "tovPct": 0.1442,
       "last5Margin": -1.2,
       "rankPOM": 227,
-      "rankMAS": 190,
-      "rankMOR": 241,
-      "rankWLK": 213,
-      "rankBIH": 186,
-      "rankNET": 222
+      "rankMAS": 209,
+      "rankMOR": 228,
+      "rankWLK": 215,
+      "rankBIH": 211,
+      "rankNET": 227
     },
     {
       "id": 1138,
@@ -3981,12 +3981,12 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "orebPct": 0.2767,
       "tovPct": 0.158,
       "last5Margin": -6,
-      "rankPOM": 194,
+      "rankPOM": 207,
       "rankMAS": 224,
-      "rankMOR": 226,
-      "rankWLK": 194,
-      "rankBIH": 178,
-      "rankNET": 190
+      "rankMOR": 229,
+      "rankWLK": 200,
+      "rankBIH": 195,
+      "rankNET": 198
     },
     {
       "id": 1269,
@@ -4001,12 +4001,12 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "orebPct": 0.2938,
       "tovPct": 0.1727,
       "last5Margin": -4.2,
-      "rankPOM": 203,
-      "rankMAS": 204,
-      "rankMOR": 206,
-      "rankWLK": 190,
-      "rankBIH": 204,
-      "rankNET": 204
+      "rankPOM": 201,
+      "rankMAS": 202,
+      "rankMOR": 192,
+      "rankWLK": 187,
+      "rankBIH": 210,
+      "rankNET": 203
     }
   ],
   "mvc": [
@@ -4023,12 +4023,12 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "orebPct": 0.2328,
       "tovPct": 0.1733,
       "last5Margin": 8,
-      "rankPOM": 55,
-      "rankMAS": 61,
-      "rankMOR": 67,
-      "rankWLK": 53,
-      "rankBIH": 42,
-      "rankNET": 55
+      "rankPOM": 67,
+      "rankMAS": 69,
+      "rankMOR": 80,
+      "rankWLK": 61,
+      "rankBIH": 49,
+      "rankNET": 63
     },
     {
       "id": 1133,
@@ -4044,11 +4044,11 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "tovPct": 0.1366,
       "last5Margin": 3.6,
       "rankPOM": 123,
-      "rankMAS": 107,
-      "rankMOR": 109,
-      "rankWLK": 109,
-      "rankBIH": 108,
-      "rankNET": 112
+      "rankMAS": 109,
+      "rankMOR": 111,
+      "rankWLK": 108,
+      "rankBIH": 105,
+      "rankNET": 114
     },
     {
       "id": 1229,
@@ -4063,12 +4063,12 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "orebPct": 0.2579,
       "tovPct": 0.1639,
       "last5Margin": -2,
-      "rankPOM": 97,
-      "rankMAS": 109,
-      "rankMOR": 86,
-      "rankWLK": 93,
-      "rankBIH": 103,
-      "rankNET": 90
+      "rankPOM": 103,
+      "rankMAS": 113,
+      "rankMOR": 100,
+      "rankWLK": 98,
+      "rankBIH": 102,
+      "rankNET": 94
     },
     {
       "id": 1293,
@@ -4083,12 +4083,12 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "orebPct": 0.3089,
       "tovPct": 0.1611,
       "last5Margin": -8.6,
-      "rankPOM": 117,
-      "rankMAS": 113,
-      "rankMOR": 116,
-      "rankWLK": 107,
-      "rankBIH": 88,
-      "rankNET": 101
+      "rankPOM": 120,
+      "rankMAS": 119,
+      "rankMOR": 117,
+      "rankWLK": 113,
+      "rankBIH": 100,
+      "rankNET": 108
     },
     {
       "id": 1227,
@@ -4103,12 +4103,12 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "orebPct": 0.3406,
       "tovPct": 0.1647,
       "last5Margin": 2,
-      "rankPOM": 110,
-      "rankMAS": 139,
-      "rankMOR": 129,
-      "rankWLK": 117,
-      "rankBIH": 133,
-      "rankNET": 116
+      "rankPOM": 105,
+      "rankMAS": 132,
+      "rankMOR": 119,
+      "rankWLK": 112,
+      "rankBIH": 144,
+      "rankNET": 113
     },
     {
       "id": 1320,
@@ -4123,12 +4123,12 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "orebPct": 0.225,
       "tovPct": 0.1354,
       "last5Margin": 14.4,
-      "rankPOM": 80,
-      "rankMAS": 104,
-      "rankMOR": 76,
-      "rankWLK": 86,
-      "rankBIH": 106,
-      "rankNET": 81
+      "rankPOM": 70,
+      "rankMAS": 100,
+      "rankMOR": 72,
+      "rankWLK": 76,
+      "rankBIH": 95,
+      "rankNET": 72
     },
     {
       "id": 1434,
@@ -4143,12 +4143,12 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "orebPct": 0.3091,
       "tovPct": 0.1496,
       "last5Margin": 0.2,
-      "rankPOM": 152,
-      "rankMAS": 140,
-      "rankMOR": 154,
-      "rankWLK": 157,
-      "rankBIH": 139,
-      "rankNET": 155
+      "rankPOM": 159,
+      "rankMAS": 138,
+      "rankMOR": 157,
+      "rankWLK": 162,
+      "rankBIH": 151,
+      "rankNET": 157
     },
     {
       "id": 1356,
@@ -4163,12 +4163,12 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "orebPct": 0.2771,
       "tovPct": 0.1671,
       "last5Margin": 5.6,
-      "rankPOM": 114,
-      "rankMAS": 128,
-      "rankMOR": 104,
-      "rankWLK": 118,
-      "rankBIH": 153,
-      "rankNET": 113
+      "rankPOM": 117,
+      "rankMAS": 131,
+      "rankMOR": 108,
+      "rankWLK": 127,
+      "rankBIH": 158,
+      "rankNET": 121
     },
     {
       "id": 1179,
@@ -4183,12 +4183,12 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "orebPct": 0.2753,
       "tovPct": 0.1457,
       "last5Margin": -4.2,
-      "rankPOM": 213,
-      "rankMAS": 171,
-      "rankMOR": 176,
-      "rankWLK": 223,
-      "rankBIH": 234,
-      "rankNET": 206
+      "rankPOM": 194,
+      "rankMAS": 160,
+      "rankMOR": 171,
+      "rankWLK": 206,
+      "rankBIH": 230,
+      "rankNET": 195
     },
     {
       "id": 1232,
@@ -4203,12 +4203,12 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "orebPct": 0.2378,
       "tovPct": 0.1878,
       "last5Margin": -6.8,
-      "rankPOM": 202,
-      "rankMAS": 206,
-      "rankMOR": 170,
-      "rankWLK": 221,
-      "rankBIH": 272,
-      "rankNET": 216
+      "rankPOM": 200,
+      "rankMAS": 213,
+      "rankMOR": 182,
+      "rankWLK": 220,
+      "rankBIH": 254,
+      "rankNET": 215
     },
     {
       "id": 1191,
@@ -4223,12 +4223,12 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "orebPct": 0.2369,
       "tovPct": 0.1852,
       "last5Margin": -13.8,
-      "rankPOM": 310,
-      "rankMAS": 277,
-      "rankMOR": 251,
-      "rankWLK": 309,
-      "rankBIH": 319,
-      "rankNET": 304
+      "rankPOM": 307,
+      "rankMAS": 278,
+      "rankMOR": 247,
+      "rankWLK": 308,
+      "rankBIH": 305,
+      "rankNET": 305
     }
   ],
   "mwc": [
@@ -4245,12 +4245,12 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "orebPct": 0.3065,
       "tovPct": 0.1487,
       "last5Margin": -7.6,
-      "rankPOM": 26,
-      "rankMAS": 32,
-      "rankMOR": 31,
-      "rankWLK": 26,
-      "rankBIH": 29,
-      "rankNET": 26
+      "rankPOM": 35,
+      "rankMAS": 36,
+      "rankMOR": 37,
+      "rankWLK": 33,
+      "rankBIH": 30,
+      "rankNET": 29
     },
     {
       "id": 1361,
@@ -4265,12 +4265,12 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "orebPct": 0.2605,
       "tovPct": 0.1642,
       "last5Margin": -0.6,
-      "rankPOM": 42,
-      "rankMAS": 48,
+      "rankPOM": 47,
+      "rankMAS": 50,
       "rankMOR": 52,
-      "rankWLK": 45,
-      "rankBIH": 46,
-      "rankNET": 44
+      "rankWLK": 47,
+      "rankBIH": 52,
+      "rankNET": 47
     },
     {
       "id": 1307,
@@ -4285,12 +4285,12 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "orebPct": 0.2768,
       "tovPct": 0.1435,
       "last5Margin": -2.4,
-      "rankPOM": 46,
-      "rankMAS": 47,
-      "rankMOR": 50,
-      "rankWLK": 46,
-      "rankBIH": 44,
-      "rankNET": 42
+      "rankPOM": 49,
+      "rankMAS": 53,
+      "rankMOR": 55,
+      "rankWLK": 48,
+      "rankBIH": 45,
+      "rankNET": 45
     },
     {
       "id": 1213,
@@ -4305,12 +4305,12 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "orebPct": 0.275,
       "tovPct": 0.1725,
       "last5Margin": 10.8,
-      "rankPOM": 62,
-      "rankMAS": 79,
-      "rankMOR": 73,
-      "rankWLK": 66,
-      "rankBIH": 71,
-      "rankNET": 75
+      "rankPOM": 60,
+      "rankMAS": 75,
+      "rankMOR": 61,
+      "rankWLK": 63,
+      "rankBIH": 75,
+      "rankNET": 68
     },
     {
       "id": 1305,
@@ -4325,12 +4325,12 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "orebPct": 0.3038,
       "tovPct": 0.1419,
       "last5Margin": 2.6,
-      "rankPOM": 70,
-      "rankMAS": 68,
-      "rankMOR": 84,
-      "rankWLK": 70,
-      "rankBIH": 56,
-      "rankNET": 67
+      "rankPOM": 76,
+      "rankMAS": 73,
+      "rankMOR": 88,
+      "rankWLK": 77,
+      "rankBIH": 70,
+      "rankNET": 73
     },
     {
       "id": 1129,
@@ -4345,12 +4345,12 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "orebPct": 0.2847,
       "tovPct": 0.1604,
       "last5Margin": 12.2,
-      "rankPOM": 60,
-      "rankMAS": 63,
-      "rankMOR": 79,
-      "rankWLK": 78,
-      "rankBIH": 63,
-      "rankNET": 59
+      "rankPOM": 55,
+      "rankMAS": 60,
+      "rankMOR": 76,
+      "rankWLK": 69,
+      "rankBIH": 55,
+      "rankNET": 57
     },
     {
       "id": 1161,
@@ -4365,12 +4365,12 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "orebPct": 0.2593,
       "tovPct": 0.1744,
       "last5Margin": 4.4,
-      "rankPOM": 86,
-      "rankMAS": 77,
-      "rankMOR": 97,
-      "rankWLK": 84,
-      "rankBIH": 78,
-      "rankNET": 88
+      "rankPOM": 85,
+      "rankMAS": 76,
+      "rankMOR": 99,
+      "rankWLK": 85,
+      "rankBIH": 74,
+      "rankNET": 87
     },
     {
       "id": 1424,
@@ -4385,12 +4385,12 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "orebPct": 0.294,
       "tovPct": 0.1598,
       "last5Margin": 7.6,
-      "rankPOM": 120,
-      "rankMAS": 112,
-      "rankMOR": 131,
-      "rankWLK": 119,
-      "rankBIH": 125,
-      "rankNET": 126
+      "rankPOM": 104,
+      "rankMAS": 104,
+      "rankMOR": 118,
+      "rankWLK": 106,
+      "rankBIH": 106,
+      "rankNET": 111
     },
     {
       "id": 1461,
@@ -4405,12 +4405,12 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "orebPct": 0.3231,
       "tovPct": 0.159,
       "last5Margin": 3.8,
-      "rankPOM": 101,
-      "rankMAS": 118,
-      "rankMOR": 108,
-      "rankWLK": 105,
-      "rankBIH": 102,
-      "rankNET": 100
+      "rankPOM": 98,
+      "rankMAS": 108,
+      "rankMOR": 102,
+      "rankWLK": 101,
+      "rankBIH": 96,
+      "rankNET": 98
     },
     {
       "id": 1201,
@@ -4425,12 +4425,12 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "orebPct": 0.2609,
       "tovPct": 0.17,
       "last5Margin": -6.6,
-      "rankPOM": 126,
-      "rankMAS": 153,
-      "rankMOR": 138,
-      "rankWLK": 150,
-      "rankBIH": 167,
-      "rankNET": 139
+      "rankPOM": 131,
+      "rankMAS": 152,
+      "rankMOR": 144,
+      "rankWLK": 156,
+      "rankBIH": 173,
+      "rankNET": 149
     },
     {
       "id": 1363,
@@ -4445,11 +4445,11 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "orebPct": 0.3383,
       "tovPct": 0.1413,
       "last5Margin": -9,
-      "rankPOM": 234,
-      "rankMAS": 211,
-      "rankMOR": 229,
-      "rankWLK": 246,
-      "rankBIH": 245,
+      "rankPOM": 237,
+      "rankMAS": 221,
+      "rankMOR": 223,
+      "rankWLK": 252,
+      "rankBIH": 253,
       "rankNET": 256
     },
     {
@@ -4465,11 +4465,11 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "orebPct": 0.2222,
       "tovPct": 0.2048,
       "last5Margin": -15.2,
-      "rankPOM": 346,
-      "rankMAS": 334,
-      "rankMOR": 342,
-      "rankWLK": 353,
-      "rankBIH": 344,
+      "rankPOM": 344,
+      "rankMAS": 336,
+      "rankMOR": 341,
+      "rankWLK": 351,
+      "rankBIH": 346,
       "rankNET": 349
     }
   ],
@@ -4487,12 +4487,12 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "orebPct": 0.3167,
       "tovPct": 0.1861,
       "last5Margin": 7,
-      "rankPOM": 210,
+      "rankPOM": 217,
       "rankMAS": 228,
-      "rankMOR": 211,
-      "rankWLK": 180,
-      "rankBIH": 173,
-      "rankNET": 195
+      "rankMOR": 213,
+      "rankWLK": 188,
+      "rankBIH": 166,
+      "rankNET": 200
     },
     {
       "id": 1148,
@@ -4507,12 +4507,12 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "orebPct": 0.2456,
       "tovPct": 0.1555,
       "last5Margin": -4.2,
-      "rankPOM": 299,
-      "rankMAS": 279,
-      "rankMOR": 262,
-      "rankWLK": 270,
-      "rankBIH": 253,
-      "rankNET": 282
+      "rankPOM": 305,
+      "rankMAS": 289,
+      "rankMOR": 274,
+      "rankWLK": 275,
+      "rankBIH": 251,
+      "rankNET": 288
     },
     {
       "id": 1479,
@@ -4527,12 +4527,12 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "orebPct": 0.2604,
       "tovPct": 0.1364,
       "last5Margin": 4.6,
-      "rankPOM": 286,
-      "rankMAS": 317,
-      "rankMOR": 275,
-      "rankWLK": 268,
-      "rankBIH": 303,
-      "rankNET": 278
+      "rankPOM": 284,
+      "rankMAS": 311,
+      "rankMOR": 267,
+      "rankWLK": 265,
+      "rankBIH": 295,
+      "rankNET": 275
     },
     {
       "id": 1478,
@@ -4547,12 +4547,12 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "orebPct": 0.2208,
       "tovPct": 0.182,
       "last5Margin": -2,
-      "rankPOM": 289,
-      "rankMAS": 320,
-      "rankMOR": 297,
-      "rankWLK": 276,
-      "rankBIH": 287,
-      "rankNET": 287
+      "rankPOM": 297,
+      "rankMAS": 324,
+      "rankMOR": 295,
+      "rankWLK": 281,
+      "rankBIH": 301,
+      "rankNET": 290
     },
     {
       "id": 1476,
@@ -4567,12 +4567,12 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "orebPct": 0.2536,
       "tovPct": 0.1851,
       "last5Margin": 7.4,
-      "rankPOM": 337,
-      "rankMAS": 349,
-      "rankMOR": 326,
-      "rankWLK": 332,
-      "rankBIH": 342,
-      "rankNET": 335
+      "rankPOM": 334,
+      "rankMAS": 346,
+      "rankMOR": 324,
+      "rankWLK": 326,
+      "rankBIH": 341,
+      "rankNET": 332
     },
     {
       "id": 1192,
@@ -4587,12 +4587,12 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "orebPct": 0.313,
       "tovPct": 0.1732,
       "last5Margin": -9.2,
-      "rankPOM": 333,
-      "rankMAS": 347,
+      "rankPOM": 336,
+      "rankMAS": 348,
       "rankMOR": 339,
-      "rankWLK": 331,
-      "rankBIH": 339,
-      "rankNET": 333
+      "rankWLK": 333,
+      "rankBIH": 345,
+      "rankNET": 334
     },
     {
       "id": 1447,
@@ -4607,12 +4607,12 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "orebPct": 0.3087,
       "tovPct": 0.1806,
       "last5Margin": 6.6,
-      "rankPOM": 316,
-      "rankMAS": 329,
-      "rankMOR": 325,
-      "rankWLK": 315,
-      "rankBIH": 328,
-      "rankNET": 309
+      "rankPOM": 306,
+      "rankMAS": 326,
+      "rankMOR": 328,
+      "rankWLK": 307,
+      "rankBIH": 316,
+      "rankNET": 304
     },
     {
       "id": 1152,
@@ -4627,12 +4627,12 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "orebPct": 0.2909,
       "tovPct": 0.1437,
       "last5Margin": -4.4,
-      "rankPOM": 348,
-      "rankMAS": 353,
-      "rankMOR": 348,
-      "rankWLK": 348,
-      "rankBIH": 348,
-      "rankNET": 344
+      "rankPOM": 345,
+      "rankMAS": 354,
+      "rankMOR": 346,
+      "rankWLK": 345,
+      "rankBIH": 350,
+      "rankNET": 340
     }
   ],
   "ovc": [
@@ -4649,12 +4649,12 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "orebPct": 0.328,
       "tovPct": 0.1589,
       "last5Margin": 19.8,
-      "rankPOM": 207,
-      "rankMAS": 199,
-      "rankMOR": 196,
-      "rankWLK": 182,
-      "rankBIH": 184,
-      "rankNET": 191
+      "rankPOM": 186,
+      "rankMAS": 190,
+      "rankMOR": 187,
+      "rankWLK": 168,
+      "rankBIH": 153,
+      "rankNET": 172
     },
     {
       "id": 1287,
@@ -4670,11 +4670,11 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "tovPct": 0.1751,
       "last5Margin": 1.6,
       "rankPOM": 282,
-      "rankMAS": 247,
-      "rankMOR": 294,
-      "rankWLK": 264,
-      "rankBIH": 229,
-      "rankNET": 261
+      "rankMAS": 248,
+      "rankMOR": 299,
+      "rankWLK": 269,
+      "rankBIH": 223,
+      "rankNET": 265
     },
     {
       "id": 1369,
@@ -4689,12 +4689,12 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "orebPct": 0.2896,
       "tovPct": 0.1628,
       "last5Margin": 2,
-      "rankPOM": 226,
-      "rankMAS": 235,
-      "rankMOR": 248,
-      "rankWLK": 214,
-      "rankBIH": 209,
-      "rankNET": 220
+      "rankPOM": 233,
+      "rankMAS": 242,
+      "rankMOR": 260,
+      "rankWLK": 219,
+      "rankBIH": 222,
+      "rankNET": 225
     },
     {
       "id": 1404,
@@ -4709,12 +4709,12 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "orebPct": 0.3304,
       "tovPct": 0.2028,
       "last5Margin": -4.4,
-      "rankPOM": 217,
-      "rankMAS": 226,
-      "rankMOR": 224,
-      "rankWLK": 199,
-      "rankBIH": 187,
-      "rankNET": 199
+      "rankPOM": 223,
+      "rankMAS": 231,
+      "rankMOR": 222,
+      "rankWLK": 202,
+      "rankBIH": 191,
+      "rankNET": 204
     },
     {
       "id": 1188,
@@ -4729,12 +4729,12 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "orebPct": 0.272,
       "tovPct": 0.1679,
       "last5Margin": 0.8,
-      "rankPOM": 250,
-      "rankMAS": 250,
-      "rankMOR": 257,
-      "rankWLK": 239,
-      "rankBIH": 249,
-      "rankNET": 255
+      "rankPOM": 256,
+      "rankMAS": 259,
+      "rankMOR": 273,
+      "rankWLK": 246,
+      "rankBIH": 248,
+      "rankNET": 261
     },
     {
       "id": 1473,
@@ -4749,11 +4749,11 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "orebPct": 0.3171,
       "tovPct": 0.1803,
       "last5Margin": 2.2,
-      "rankPOM": 269,
-      "rankMAS": 286,
-      "rankMOR": 254,
-      "rankWLK": 248,
-      "rankBIH": 241,
+      "rankPOM": 267,
+      "rankMAS": 284,
+      "rankMOR": 261,
+      "rankWLK": 247,
+      "rankBIH": 250,
       "rankNET": 263
     },
     {
@@ -4769,12 +4769,12 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "orebPct": 0.3247,
       "tovPct": 0.1768,
       "last5Margin": 0,
-      "rankPOM": 305,
-      "rankMAS": 304,
-      "rankMOR": 312,
-      "rankWLK": 304,
-      "rankBIH": 309,
-      "rankNET": 306
+      "rankPOM": 309,
+      "rankMAS": 307,
+      "rankMOR": 322,
+      "rankWLK": 311,
+      "rankBIH": 311,
+      "rankNET": 309
     },
     {
       "id": 1183,
@@ -4789,12 +4789,12 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "orebPct": 0.2893,
       "tovPct": 0.1718,
       "last5Margin": -4.4,
-      "rankPOM": 328,
-      "rankMAS": 324,
-      "rankMOR": 338,
-      "rankWLK": 319,
-      "rankBIH": 324,
-      "rankNET": 325
+      "rankPOM": 324,
+      "rankMAS": 317,
+      "rankMOR": 329,
+      "rankWLK": 317,
+      "rankBIH": 313,
+      "rankNET": 323
     }
   ],
   "patriot": [
@@ -4811,12 +4811,12 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "orebPct": 0.2769,
       "tovPct": 0.1624,
       "last5Margin": 13,
-      "rankPOM": 136,
-      "rankMAS": 164,
-      "rankMOR": 143,
-      "rankWLK": 123,
-      "rankBIH": 118,
-      "rankNET": 127
+      "rankPOM": 142,
+      "rankMAS": 177,
+      "rankMOR": 166,
+      "rankWLK": 131,
+      "rankBIH": 122,
+      "rankNET": 138
     },
     {
       "id": 1250,
@@ -4831,12 +4831,12 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "orebPct": 0.214,
       "tovPct": 0.1729,
       "last5Margin": 5.6,
-      "rankPOM": 295,
-      "rankMAS": 301,
-      "rankMOR": 290,
-      "rankWLK": 289,
-      "rankBIH": 278,
-      "rankNET": 290
+      "rankPOM": 290,
+      "rankMAS": 295,
+      "rankMOR": 279,
+      "rankWLK": 282,
+      "rankBIH": 268,
+      "rankNET": 282
     },
     {
       "id": 1159,
@@ -4851,12 +4851,12 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "orebPct": 0.2486,
       "tovPct": 0.1425,
       "last5Margin": -1.6,
-      "rankPOM": 254,
-      "rankMAS": 248,
-      "rankMOR": 247,
-      "rankWLK": 222,
-      "rankBIH": 236,
-      "rankNET": 228
+      "rankPOM": 250,
+      "rankMAS": 249,
+      "rankMOR": 241,
+      "rankWLK": 224,
+      "rankBIH": 240,
+      "rankNET": 230
     },
     {
       "id": 1131,
@@ -4871,12 +4871,12 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "orebPct": 0.2355,
       "tovPct": 0.1697,
       "last5Margin": 3.6,
-      "rankPOM": 259,
-      "rankMAS": 288,
-      "rankMOR": 242,
-      "rankWLK": 256,
-      "rankBIH": 281,
-      "rankNET": 265
+      "rankPOM": 254,
+      "rankMAS": 276,
+      "rankMOR": 231,
+      "rankWLK": 248,
+      "rankBIH": 264,
+      "rankNET": 257
     },
     {
       "id": 1110,
@@ -4891,11 +4891,11 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "orebPct": 0.2866,
       "tovPct": 0.1497,
       "last5Margin": 4.4,
-      "rankPOM": 241,
-      "rankMAS": 275,
-      "rankMOR": 207,
-      "rankWLK": 235,
-      "rankBIH": 254,
+      "rankPOM": 240,
+      "rankMAS": 277,
+      "rankMOR": 204,
+      "rankWLK": 236,
+      "rankBIH": 258,
       "rankNET": 259
     },
     {
@@ -4911,11 +4911,11 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "orebPct": 0.2856,
       "tovPct": 0.1472,
       "last5Margin": -7.8,
-      "rankPOM": 322,
-      "rankMAS": 331,
-      "rankMOR": 293,
-      "rankWLK": 321,
-      "rankBIH": 335,
+      "rankPOM": 323,
+      "rankMAS": 332,
+      "rankMOR": 297,
+      "rankWLK": 322,
+      "rankBIH": 332,
       "rankNET": 328
     },
     {
@@ -4931,12 +4931,12 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "orebPct": 0.2537,
       "tovPct": 0.1433,
       "last5Margin": -1.8,
-      "rankPOM": 325,
-      "rankMAS": 325,
-      "rankMOR": 301,
+      "rankPOM": 326,
+      "rankMAS": 328,
+      "rankMOR": 312,
       "rankWLK": 325,
-      "rankBIH": 327,
-      "rankNET": 321
+      "rankBIH": 331,
+      "rankNET": 324
     },
     {
       "id": 1137,
@@ -4951,12 +4951,12 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "orebPct": 0.2731,
       "tovPct": 0.1812,
       "last5Margin": -2.4,
-      "rankPOM": 335,
-      "rankMAS": 328,
-      "rankMOR": 333,
-      "rankWLK": 336,
-      "rankBIH": 331,
-      "rankNET": 337
+      "rankPOM": 331,
+      "rankMAS": 325,
+      "rankMOR": 325,
+      "rankWLK": 334,
+      "rankBIH": 329,
+      "rankNET": 333
     },
     {
       "id": 1119,
@@ -4971,12 +4971,12 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "orebPct": 0.3109,
       "tovPct": 0.1654,
       "last5Margin": -5.2,
-      "rankPOM": 336,
-      "rankMAS": 338,
-      "rankMOR": 327,
-      "rankWLK": 337,
-      "rankBIH": 332,
-      "rankNET": 334
+      "rankPOM": 337,
+      "rankMAS": 339,
+      "rankMOR": 334,
+      "rankWLK": 338,
+      "rankBIH": 339,
+      "rankNET": 335
     },
     {
       "id": 1221,
@@ -4991,12 +4991,12 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "orebPct": 0.2195,
       "tovPct": 0.1479,
       "last5Margin": -3.6,
-      "rankPOM": 332,
-      "rankMAS": 340,
-      "rankMOR": 341,
-      "rankWLK": 334,
-      "rankBIH": 334,
-      "rankNET": 332
+      "rankPOM": 330,
+      "rankMAS": 337,
+      "rankMOR": 338,
+      "rankWLK": 332,
+      "rankBIH": 335,
+      "rankNET": 331
     }
   ],
   "sec": [
@@ -5014,10 +5014,10 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "tovPct": 0.1552,
       "last5Margin": 21.4,
       "rankPOM": 4,
-      "rankMAS": 6,
+      "rankMAS": 4,
       "rankMOR": 4,
       "rankWLK": 4,
-      "rankBIH": 11,
+      "rankBIH": 8,
       "rankNET": 4
     },
     {
@@ -5035,10 +5035,10 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "last5Margin": 7.2,
       "rankPOM": 15,
       "rankMAS": 8,
-      "rankMOR": 13,
-      "rankWLK": 14,
-      "rankBIH": 16,
-      "rankNET": 16
+      "rankMOR": 12,
+      "rankWLK": 12,
+      "rankBIH": 14,
+      "rankNET": 17
     },
     {
       "id": 1116,
@@ -5053,12 +5053,12 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "orebPct": 0.3009,
       "tovPct": 0.1205,
       "last5Margin": 2.6,
-      "rankPOM": 20,
-      "rankMAS": 18,
-      "rankMOR": 24,
-      "rankWLK": 19,
-      "rankBIH": 20,
-      "rankNET": 19
+      "rankPOM": 18,
+      "rankMAS": 14,
+      "rankMOR": 20,
+      "rankWLK": 16,
+      "rankBIH": 21,
+      "rankNET": 18
     },
     {
       "id": 1435,
@@ -5073,12 +5073,12 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "orebPct": 0.2802,
       "tovPct": 0.1278,
       "last5Margin": -0.6,
-      "rankPOM": 14,
-      "rankMAS": 20,
-      "rankMOR": 18,
-      "rankWLK": 16,
-      "rankBIH": 18,
-      "rankNET": 18
+      "rankPOM": 13,
+      "rankMAS": 19,
+      "rankMOR": 13,
+      "rankWLK": 14,
+      "rankBIH": 22,
+      "rankNET": 16
     },
     {
       "id": 1397,
@@ -5093,12 +5093,12 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "orebPct": 0.3583,
       "tovPct": 0.1671,
       "last5Margin": 2.6,
-      "rankPOM": 18,
-      "rankMAS": 16,
-      "rankMOR": 20,
+      "rankPOM": 14,
+      "rankMAS": 17,
+      "rankMOR": 18,
       "rankWLK": 20,
       "rankBIH": 24,
-      "rankNET": 20
+      "rankNET": 21
     },
     {
       "id": 1401,
@@ -5113,10 +5113,10 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "orebPct": 0.3067,
       "tovPct": 0.1399,
       "last5Margin": -0.6,
-      "rankPOM": 38,
-      "rankMAS": 34,
-      "rankMOR": 36,
-      "rankWLK": 39,
+      "rankPOM": 34,
+      "rankMAS": 30,
+      "rankMOR": 33,
+      "rankWLK": 37,
       "rankBIH": 41,
       "rankNET": 43
     },
@@ -5133,11 +5133,11 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "orebPct": 0.3227,
       "tovPct": 0.1388,
       "last5Margin": 7.6,
-      "rankPOM": 33,
-      "rankMAS": 31,
-      "rankMOR": 30,
-      "rankWLK": 31,
-      "rankBIH": 39,
+      "rankPOM": 31,
+      "rankMAS": 28,
+      "rankMOR": 28,
+      "rankWLK": 27,
+      "rankBIH": 32,
       "rankNET": 31
     },
     {
@@ -5153,12 +5153,12 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "orebPct": 0.3014,
       "tovPct": 0.1701,
       "last5Margin": 0,
-      "rankPOM": 47,
-      "rankMAS": 37,
-      "rankMOR": 47,
-      "rankWLK": 48,
-      "rankBIH": 40,
-      "rankNET": 53
+      "rankPOM": 50,
+      "rankMAS": 39,
+      "rankMOR": 53,
+      "rankWLK": 51,
+      "rankBIH": 43,
+      "rankNET": 60
     },
     {
       "id": 1246,
@@ -5173,12 +5173,12 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "orebPct": 0.3117,
       "tovPct": 0.1455,
       "last5Margin": 0.8,
-      "rankPOM": 25,
-      "rankMAS": 22,
-      "rankMOR": 23,
-      "rankWLK": 27,
-      "rankBIH": 33,
-      "rankNET": 27
+      "rankPOM": 27,
+      "rankMAS": 24,
+      "rankMOR": 26,
+      "rankWLK": 32,
+      "rankBIH": 31,
+      "rankNET": 28
     },
     {
       "id": 1400,
@@ -5193,12 +5193,12 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "orebPct": 0.3098,
       "tovPct": 0.1494,
       "last5Margin": -8.2,
-      "rankPOM": 29,
-      "rankMAS": 30,
-      "rankMOR": 34,
-      "rankWLK": 38,
-      "rankBIH": 51,
-      "rankNET": 37
+      "rankPOM": 33,
+      "rankMAS": 37,
+      "rankMOR": 38,
+      "rankWLK": 42,
+      "rankBIH": 46,
+      "rankNET": 41
     },
     {
       "id": 1328,
@@ -5213,12 +5213,12 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "orebPct": 0.3111,
       "tovPct": 0.1412,
       "last5Margin": 8.6,
-      "rankPOM": 50,
-      "rankMAS": 49,
-      "rankMOR": 51,
-      "rankWLK": 62,
-      "rankBIH": 82,
-      "rankNET": 62
+      "rankPOM": 46,
+      "rankMAS": 43,
+      "rankMOR": 47,
+      "rankWLK": 56,
+      "rankBIH": 71,
+      "rankNET": 54
     },
     {
       "id": 1120,
@@ -5233,11 +5233,11 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "orebPct": 0.3497,
       "tovPct": 0.1459,
       "last5Margin": -3,
-      "rankPOM": 40,
-      "rankMAS": 29,
-      "rankMOR": 42,
-      "rankWLK": 41,
-      "rankBIH": 49,
+      "rankPOM": 39,
+      "rankMAS": 31,
+      "rankMOR": 44,
+      "rankWLK": 40,
+      "rankBIH": 50,
       "rankNET": 38
     },
     {
@@ -5253,12 +5253,12 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "orebPct": 0.2773,
       "tovPct": 0.1559,
       "last5Margin": -19.4,
-      "rankPOM": 96,
-      "rankMAS": 69,
+      "rankPOM": 100,
+      "rankMAS": 74,
       "rankMOR": 91,
-      "rankWLK": 100,
-      "rankBIH": 91,
-      "rankNET": 104
+      "rankWLK": 104,
+      "rankBIH": 103,
+      "rankNET": 110
     },
     {
       "id": 1376,
@@ -5273,12 +5273,12 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "orebPct": 0.2616,
       "tovPct": 0.1372,
       "last5Margin": -7.2,
-      "rankPOM": 94,
-      "rankMAS": 97,
-      "rankMOR": 99,
-      "rankWLK": 98,
-      "rankBIH": 135,
-      "rankNET": 108
+      "rankPOM": 95,
+      "rankMAS": 96,
+      "rankMOR": 94,
+      "rankWLK": 100,
+      "rankBIH": 130,
+      "rankNET": 107
     },
     {
       "id": 1279,
@@ -5293,12 +5293,12 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "orebPct": 0.2818,
       "tovPct": 0.1343,
       "last5Margin": -5.2,
-      "rankPOM": 79,
-      "rankMAS": 71,
-      "rankMOR": 70,
-      "rankWLK": 90,
-      "rankBIH": 120,
-      "rankNET": 91
+      "rankPOM": 81,
+      "rankMAS": 80,
+      "rankMOR": 77,
+      "rankWLK": 94,
+      "rankBIH": 116,
+      "rankNET": 92
     },
     {
       "id": 1261,
@@ -5313,12 +5313,12 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "orebPct": 0.2976,
       "tovPct": 0.1541,
       "last5Margin": -6.6,
-      "rankPOM": 58,
-      "rankMAS": 62,
-      "rankMOR": 68,
-      "rankWLK": 63,
-      "rankBIH": 80,
-      "rankNET": 70
+      "rankPOM": 62,
+      "rankMAS": 66,
+      "rankMOR": 66,
+      "rankWLK": 68,
+      "rankBIH": 88,
+      "rankNET": 77
     }
   ],
   "southern": [
@@ -5335,12 +5335,12 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "orebPct": 0.268,
       "tovPct": 0.1456,
       "last5Margin": 2.4,
-      "rankPOM": 140,
+      "rankPOM": 147,
       "rankMAS": 149,
       "rankMOR": 162,
-      "rankWLK": 136,
-      "rankBIH": 151,
-      "rankNET": 128
+      "rankWLK": 138,
+      "rankBIH": 154,
+      "rankNET": 126
     },
     {
       "id": 1273,
@@ -5355,12 +5355,12 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "orebPct": 0.3138,
       "tovPct": 0.152,
       "last5Margin": -0.6,
-      "rankPOM": 182,
-      "rankMAS": 173,
-      "rankMOR": 171,
-      "rankWLK": 166,
-      "rankBIH": 194,
-      "rankNET": 171
+      "rankPOM": 188,
+      "rankMAS": 181,
+      "rankMOR": 184,
+      "rankWLK": 175,
+      "rankBIH": 188,
+      "rankNET": 181
     },
     {
       "id": 1459,
@@ -5375,12 +5375,12 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "orebPct": 0.2903,
       "tovPct": 0.1301,
       "last5Margin": -1.2,
-      "rankPOM": 248,
-      "rankMAS": 191,
-      "rankMOR": 289,
-      "rankWLK": 229,
-      "rankBIH": 193,
-      "rankNET": 240
+      "rankPOM": 253,
+      "rankMAS": 206,
+      "rankMOR": 282,
+      "rankWLK": 235,
+      "rankBIH": 219,
+      "rankNET": 245
     },
     {
       "id": 1359,
@@ -5395,12 +5395,12 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "orebPct": 0.2391,
       "tovPct": 0.1241,
       "last5Margin": 4.6,
-      "rankPOM": 209,
-      "rankMAS": 181,
-      "rankMOR": 240,
-      "rankWLK": 197,
-      "rankBIH": 213,
-      "rankNET": 213
+      "rankPOM": 213,
+      "rankMAS": 187,
+      "rankMOR": 245,
+      "rankWLK": 199,
+      "rankBIH": 215,
+      "rankNET": 217
     },
     {
       "id": 1441,
@@ -5415,12 +5415,12 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "orebPct": 0.3286,
       "tovPct": 0.1523,
       "last5Margin": 8.8,
-      "rankPOM": 236,
-      "rankMAS": 242,
-      "rankMOR": 202,
-      "rankWLK": 238,
-      "rankBIH": 248,
-      "rankNET": 235
+      "rankPOM": 228,
+      "rankMAS": 238,
+      "rankMOR": 209,
+      "rankWLK": 232,
+      "rankBIH": 237,
+      "rankNET": 226
     },
     {
       "id": 1202,
@@ -5435,12 +5435,12 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "orebPct": 0.2563,
       "tovPct": 0.1715,
       "last5Margin": 4.4,
-      "rankPOM": 200,
-      "rankMAS": 178,
-      "rankMOR": 201,
-      "rankWLK": 192,
-      "rankBIH": 189,
-      "rankNET": 198
+      "rankPOM": 199,
+      "rankMAS": 170,
+      "rankMOR": 193,
+      "rankWLK": 189,
+      "rankBIH": 192,
+      "rankNET": 194
     },
     {
       "id": 1422,
@@ -5455,12 +5455,12 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "orebPct": 0.2707,
       "tovPct": 0.1419,
       "last5Margin": 1.4,
-      "rankPOM": 304,
-      "rankMAS": 270,
-      "rankMOR": 319,
-      "rankWLK": 302,
-      "rankBIH": 282,
-      "rankNET": 298
+      "rankPOM": 299,
+      "rankMAS": 260,
+      "rankMOR": 308,
+      "rankWLK": 299,
+      "rankBIH": 278,
+      "rankNET": 293
     },
     {
       "id": 1151,
@@ -5475,12 +5475,12 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "orebPct": 0.2079,
       "tovPct": 0.1402,
       "last5Margin": 4.8,
-      "rankPOM": 298,
-      "rankMAS": 254,
-      "rankMOR": 282,
-      "rankWLK": 290,
-      "rankBIH": 293,
-      "rankNET": 286
+      "rankPOM": 300,
+      "rankMAS": 261,
+      "rankMOR": 288,
+      "rankWLK": 295,
+      "rankBIH": 304,
+      "rankNET": 287
     },
     {
       "id": 1154,
@@ -5495,12 +5495,12 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "orebPct": 0.2969,
       "tovPct": 0.1551,
       "last5Margin": -8.6,
-      "rankPOM": 351,
-      "rankMAS": 333,
-      "rankMOR": 352,
-      "rankWLK": 352,
-      "rankBIH": 345,
-      "rankNET": 350
+      "rankPOM": 346,
+      "rankMAS": 327,
+      "rankMOR": 349,
+      "rankWLK": 346,
+      "rankBIH": 336,
+      "rankNET": 345
     },
     {
       "id": 1440,
@@ -5516,11 +5516,11 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "tovPct": 0.1433,
       "last5Margin": -13,
       "rankPOM": 360,
-      "rankMAS": 355,
-      "rankMOR": 350,
-      "rankWLK": 357,
+      "rankMAS": 356,
+      "rankMOR": 353,
+      "rankWLK": 359,
       "rankBIH": 358,
-      "rankNET": 358
+      "rankNET": 359
     }
   ],
   "southland": [
@@ -5537,12 +5537,12 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "orebPct": 0.311,
       "tovPct": 0.1336,
       "last5Margin": 7.6,
-      "rankPOM": 88,
+      "rankPOM": 89,
       "rankMAS": 102,
-      "rankMOR": 102,
-      "rankWLK": 85,
-      "rankBIH": 66,
-      "rankNET": 85
+      "rankMOR": 103,
+      "rankWLK": 86,
+      "rankBIH": 65,
+      "rankNET": 86
     },
     {
       "id": 1270,
@@ -5557,12 +5557,12 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "orebPct": 0.3477,
       "tovPct": 0.1376,
       "last5Margin": 9.4,
-      "rankPOM": 69,
-      "rankMAS": 88,
+      "rankPOM": 68,
+      "rankMAS": 87,
       "rankMOR": 62,
-      "rankWLK": 65,
-      "rankBIH": 58,
-      "rankNET": 60
+      "rankWLK": 66,
+      "rankBIH": 57,
+      "rankNET": 62
     },
     {
       "id": 1410,
@@ -5577,12 +5577,12 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "orebPct": 0.2419,
       "tovPct": 0.17,
       "last5Margin": 7.8,
-      "rankPOM": 127,
-      "rankMAS": 185,
-      "rankMOR": 128,
-      "rankWLK": 138,
-      "rankBIH": 168,
-      "rankNET": 137
+      "rankPOM": 124,
+      "rankMAS": 186,
+      "rankMOR": 127,
+      "rankWLK": 139,
+      "rankBIH": 167,
+      "rankNET": 134
     },
     {
       "id": 1394,
@@ -5597,11 +5597,11 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "orebPct": 0.2912,
       "tovPct": 0.1805,
       "last5Margin": 0.8,
-      "rankPOM": 187,
-      "rankMAS": 198,
-      "rankMOR": 187,
-      "rankWLK": 195,
-      "rankBIH": 210,
+      "rankPOM": 180,
+      "rankMAS": 197,
+      "rankMOR": 190,
+      "rankWLK": 197,
+      "rankBIH": 207,
       "rankNET": 196
     },
     {
@@ -5617,12 +5617,12 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "orebPct": 0.2927,
       "tovPct": 0.1967,
       "last5Margin": 3.2,
-      "rankPOM": 176,
-      "rankMAS": 218,
-      "rankMOR": 217,
-      "rankWLK": 188,
-      "rankBIH": 183,
-      "rankNET": 203
+      "rankPOM": 182,
+      "rankMAS": 223,
+      "rankMOR": 207,
+      "rankWLK": 195,
+      "rankBIH": 209,
+      "rankNET": 208
     },
     {
       "id": 1311,
@@ -5637,12 +5637,12 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "orebPct": 0.322,
       "tovPct": 0.168,
       "last5Margin": 2,
-      "rankPOM": 240,
-      "rankMAS": 237,
-      "rankMOR": 246,
-      "rankWLK": 249,
-      "rankBIH": 238,
-      "rankNET": 251
+      "rankPOM": 232,
+      "rankMAS": 233,
+      "rankMOR": 227,
+      "rankWLK": 245,
+      "rankBIH": 235,
+      "rankNET": 246
     },
     {
       "id": 1322,
@@ -5657,12 +5657,12 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "orebPct": 0.2687,
       "tovPct": 0.1738,
       "last5Margin": -3,
-      "rankPOM": 276,
-      "rankMAS": 293,
+      "rankPOM": 280,
+      "rankMAS": 297,
       "rankMOR": 278,
-      "rankWLK": 287,
-      "rankBIH": 292,
-      "rankNET": 294
+      "rankWLK": 294,
+      "rankBIH": 306,
+      "rankNET": 300
     },
     {
       "id": 1223,
@@ -5677,12 +5677,12 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "orebPct": 0.2972,
       "tovPct": 0.1797,
       "last5Margin": -5.8,
-      "rankPOM": 300,
-      "rankMAS": 306,
-      "rankMOR": 304,
-      "rankWLK": 316,
-      "rankBIH": 294,
-      "rankNET": 301
+      "rankPOM": 289,
+      "rankMAS": 300,
+      "rankMOR": 296,
+      "rankWLK": 309,
+      "rankBIH": 293,
+      "rankNET": 294
     }
   ],
   "summit": [
@@ -5699,12 +5699,12 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "orebPct": 0.3104,
       "tovPct": 0.1506,
       "last5Margin": 10.8,
-      "rankPOM": 118,
-      "rankMAS": 121,
-      "rankMOR": 155,
-      "rankWLK": 128,
-      "rankBIH": 94,
-      "rankNET": 117
+      "rankPOM": 114,
+      "rankMAS": 116,
+      "rankMOR": 163,
+      "rankWLK": 115,
+      "rankBIH": 98,
+      "rankNET": 115
     },
     {
       "id": 1472,
@@ -5719,12 +5719,12 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "orebPct": 0.1739,
       "tovPct": 0.1328,
       "last5Margin": 9.4,
-      "rankPOM": 105,
+      "rankPOM": 108,
       "rankMAS": 129,
-      "rankMOR": 190,
-      "rankWLK": 112,
-      "rankBIH": 123,
-      "rankNET": 106
+      "rankMOR": 198,
+      "rankWLK": 114,
+      "rankBIH": 117,
+      "rankNET": 105
     },
     {
       "id": 1315,
@@ -5739,12 +5739,12 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "orebPct": 0.3048,
       "tovPct": 0.1348,
       "last5Margin": -6.4,
-      "rankPOM": 290,
-      "rankMAS": 256,
-      "rankMOR": 330,
-      "rankWLK": 293,
-      "rankBIH": 242,
-      "rankNET": 284
+      "rankPOM": 276,
+      "rankMAS": 245,
+      "rankMOR": 319,
+      "rankWLK": 276,
+      "rankBIH": 238,
+      "rankNET": 272
     },
     {
       "id": 1377,
@@ -5760,11 +5760,11 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "tovPct": 0.1585,
       "last5Margin": -3.4,
       "rankPOM": 281,
-      "rankMAS": 262,
-      "rankMOR": 322,
-      "rankWLK": 288,
-      "rankBIH": 261,
-      "rankNET": 281
+      "rankMAS": 263,
+      "rankMOR": 336,
+      "rankWLK": 291,
+      "rankBIH": 252,
+      "rankNET": 284
     },
     {
       "id": 1303,
@@ -5779,11 +5779,11 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "orebPct": 0.2349,
       "tovPct": 0.1545,
       "last5Margin": -6.6,
-      "rankPOM": 261,
-      "rankMAS": 246,
-      "rankMOR": 334,
-      "rankWLK": 279,
-      "rankBIH": 246,
+      "rankPOM": 262,
+      "rankMAS": 244,
+      "rankMOR": 335,
+      "rankWLK": 277,
+      "rankBIH": 245,
       "rankNET": 258
     },
     {
@@ -5799,12 +5799,12 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "orebPct": 0.2957,
       "tovPct": 0.1368,
       "last5Margin": -4.6,
-      "rankPOM": 224,
-      "rankMAS": 239,
-      "rankMOR": 299,
-      "rankWLK": 241,
-      "rankBIH": 225,
-      "rankNET": 234
+      "rankPOM": 236,
+      "rankMAS": 246,
+      "rankMOR": 304,
+      "rankWLK": 249,
+      "rankBIH": 243,
+      "rankNET": 241
     },
     {
       "id": 1355,
@@ -5819,12 +5819,12 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "orebPct": 0.281,
       "tovPct": 0.1578,
       "last5Margin": -0.8,
-      "rankPOM": 216,
-      "rankMAS": 219,
-      "rankMOR": 249,
-      "rankWLK": 236,
+      "rankPOM": 219,
+      "rankMAS": 220,
+      "rankMOR": 252,
+      "rankWLK": 237,
       "rankBIH": 256,
-      "rankNET": 205
+      "rankNET": 209
     },
     {
       "id": 1331,
@@ -5839,12 +5839,12 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "orebPct": 0.2828,
       "tovPct": 0.1795,
       "last5Margin": 12.4,
-      "rankPOM": 315,
-      "rankMAS": 307,
-      "rankMOR": 315,
-      "rankWLK": 330,
-      "rankBIH": 341,
-      "rankNET": 318
+      "rankPOM": 311,
+      "rankMAS": 305,
+      "rankMOR": 317,
+      "rankWLK": 324,
+      "rankBIH": 327,
+      "rankNET": 311
     },
     {
       "id": 1282,
@@ -5859,12 +5859,12 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "orebPct": 0.2977,
       "tovPct": 0.175,
       "last5Margin": -22.2,
-      "rankPOM": 356,
-      "rankMAS": 354,
-      "rankMOR": 361,
-      "rankWLK": 360,
-      "rankBIH": 360,
-      "rankNET": 357
+      "rankPOM": 358,
+      "rankMAS": 355,
+      "rankMOR": 362,
+      "rankWLK": 361,
+      "rankBIH": 363,
+      "rankNET": 358
     }
   ],
   "sun_belt": [
@@ -5881,12 +5881,12 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "orebPct": 0.3163,
       "tovPct": 0.1636,
       "last5Margin": 6.4,
-      "rankPOM": 156,
-      "rankMAS": 133,
-      "rankMOR": 139,
-      "rankWLK": 139,
-      "rankBIH": 128,
-      "rankNET": 138
+      "rankPOM": 153,
+      "rankMAS": 130,
+      "rankMOR": 137,
+      "rankWLK": 137,
+      "rankBIH": 124,
+      "rankNET": 132
     },
     {
       "id": 1267,
@@ -5901,12 +5901,12 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "orebPct": 0.2973,
       "tovPct": 0.158,
       "last5Margin": -3,
-      "rankPOM": 197,
-      "rankMAS": 161,
-      "rankMOR": 210,
-      "rankWLK": 174,
-      "rankBIH": 138,
-      "rankNET": 162
+      "rankPOM": 205,
+      "rankMAS": 172,
+      "rankMOR": 203,
+      "rankWLK": 186,
+      "rankBIH": 157,
+      "rankNET": 168
     },
     {
       "id": 1157,
@@ -5921,12 +5921,12 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "orebPct": 0.2493,
       "tovPct": 0.1393,
       "last5Margin": -3.2,
-      "rankPOM": 231,
-      "rankMAS": 187,
-      "rankMOR": 213,
-      "rankWLK": 207,
-      "rankBIH": 179,
-      "rankNET": 217
+      "rankPOM": 247,
+      "rankMAS": 201,
+      "rankMOR": 236,
+      "rankWLK": 221,
+      "rankBIH": 178,
+      "rankNET": 231
     },
     {
       "id": 1111,
@@ -5941,12 +5941,12 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "orebPct": 0.293,
       "tovPct": 0.1401,
       "last5Margin": -2.6,
-      "rankPOM": 185,
-      "rankMAS": 170,
-      "rankMOR": 185,
-      "rankWLK": 176,
-      "rankBIH": 163,
-      "rankNET": 183
+      "rankPOM": 192,
+      "rankMAS": 179,
+      "rankMOR": 195,
+      "rankWLK": 193,
+      "rankBIH": 172,
+      "rankNET": 189
     },
     {
       "id": 1402,
@@ -5961,12 +5961,12 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "orebPct": 0.2999,
       "tovPct": 0.1781,
       "last5Margin": 1,
-      "rankPOM": 242,
-      "rankMAS": 194,
-      "rankMOR": 214,
-      "rankWLK": 234,
-      "rankBIH": 202,
-      "rankNET": 236
+      "rankPOM": 245,
+      "rankMAS": 208,
+      "rankMOR": 219,
+      "rankWLK": 240,
+      "rankBIH": 196,
+      "rankNET": 237
     },
     {
       "id": 1375,
@@ -5981,12 +5981,12 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "orebPct": 0.2137,
       "tovPct": 0.1286,
       "last5Margin": 3.2,
-      "rankPOM": 193,
-      "rankMAS": 144,
-      "rankMOR": 216,
-      "rankWLK": 185,
-      "rankBIH": 134,
-      "rankNET": 176
+      "rankPOM": 206,
+      "rankMAS": 157,
+      "rankMOR": 215,
+      "rankWLK": 196,
+      "rankBIH": 156,
+      "rankNET": 185
     },
     {
       "id": 1117,
@@ -6001,12 +6001,12 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "orebPct": 0.321,
       "tovPct": 0.1911,
       "last5Margin": 10,
-      "rankPOM": 143,
-      "rankMAS": 137,
-      "rankMOR": 151,
-      "rankWLK": 140,
-      "rankBIH": 140,
-      "rankNET": 142
+      "rankPOM": 148,
+      "rankMAS": 142,
+      "rankMOR": 172,
+      "rankWLK": 146,
+      "rankBIH": 143,
+      "rankNET": 153
     },
     {
       "id": 1379,
@@ -6021,12 +6021,12 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "orebPct": 0.3037,
       "tovPct": 0.1757,
       "last5Margin": 5.6,
-      "rankPOM": 225,
-      "rankMAS": 215,
-      "rankMOR": 223,
-      "rankWLK": 228,
-      "rankBIH": 230,
-      "rankNET": 224
+      "rankPOM": 220,
+      "rankMAS": 198,
+      "rankMOR": 216,
+      "rankWLK": 211,
+      "rankBIH": 214,
+      "rankNET": 218
     },
     {
       "id": 1241,
@@ -6041,11 +6041,11 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "orebPct": 0.27,
       "tovPct": 0.1618,
       "last5Margin": 7.8,
-      "rankPOM": 215,
-      "rankMAS": 183,
-      "rankMOR": 219,
-      "rankWLK": 209,
-      "rankBIH": 176,
+      "rankPOM": 212,
+      "rankMAS": 188,
+      "rankMOR": 214,
+      "rankWLK": 207,
+      "rankBIH": 190,
       "rankNET": 207
     },
     {
@@ -6061,12 +6061,12 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "orebPct": 0.3152,
       "tovPct": 0.1479,
       "last5Margin": 8.8,
-      "rankPOM": 265,
-      "rankMAS": 240,
-      "rankMOR": 265,
-      "rankWLK": 263,
-      "rankBIH": 247,
-      "rankNET": 254
+      "rankPOM": 230,
+      "rankMAS": 207,
+      "rankMOR": 234,
+      "rankWLK": 230,
+      "rankBIH": 224,
+      "rankNET": 219
     },
     {
       "id": 1330,
@@ -6081,12 +6081,12 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "orebPct": 0.2507,
       "tovPct": 0.1472,
       "last5Margin": -0.6,
-      "rankPOM": 243,
-      "rankMAS": 255,
-      "rankMOR": 235,
-      "rankWLK": 250,
-      "rankBIH": 270,
-      "rankNET": 253
+      "rankPOM": 248,
+      "rankMAS": 258,
+      "rankMOR": 237,
+      "rankWLK": 255,
+      "rankBIH": 261,
+      "rankNET": 254
     },
     {
       "id": 1418,
@@ -6101,12 +6101,12 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "orebPct": 0.3047,
       "tovPct": 0.1552,
       "last5Margin": -7,
-      "rankPOM": 311,
+      "rankPOM": 313,
       "rankMAS": 281,
-      "rankMOR": 317,
-      "rankWLK": 323,
-      "rankBIH": 290,
-      "rankNET": 314
+      "rankMOR": 311,
+      "rankWLK": 321,
+      "rankBIH": 291,
+      "rankNET": 312
     },
     {
       "id": 1209,
@@ -6121,12 +6121,12 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "orebPct": 0.2812,
       "tovPct": 0.1492,
       "last5Margin": -7,
-      "rankPOM": 301,
-      "rankMAS": 285,
-      "rankMOR": 305,
-      "rankWLK": 310,
-      "rankBIH": 300,
-      "rankNET": 299
+      "rankPOM": 310,
+      "rankMAS": 292,
+      "rankMOR": 307,
+      "rankWLK": 316,
+      "rankBIH": 319,
+      "rankNET": 306
     },
     {
       "id": 1419,
@@ -6141,9 +6141,9 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "orebPct": 0.2762,
       "tovPct": 0.1609,
       "last5Margin": -13.2,
-      "rankPOM": 352,
-      "rankMAS": 357,
-      "rankMOR": 353,
+      "rankPOM": 350,
+      "rankMAS": 359,
+      "rankMOR": 350,
       "rankWLK": 355,
       "rankBIH": 361,
       "rankNET": 355
@@ -6163,12 +6163,12 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "orebPct": 0.2778,
       "tovPct": 0.1862,
       "last5Margin": 4.8,
-      "rankPOM": 233,
-      "rankMAS": 267,
-      "rankMOR": 256,
-      "rankWLK": 208,
-      "rankBIH": 224,
-      "rankNET": 246
+      "rankPOM": 238,
+      "rankMAS": 271,
+      "rankMOR": 268,
+      "rankWLK": 214,
+      "rankBIH": 216,
+      "rankNET": 255
     },
     {
       "id": 1197,
@@ -6183,12 +6183,12 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "orebPct": 0.2982,
       "tovPct": 0.2043,
       "last5Margin": 6.6,
-      "rankPOM": 314,
-      "rankMAS": 321,
-      "rankMOR": 332,
+      "rankPOM": 315,
+      "rankMAS": 315,
+      "rankMOR": 330,
       "rankWLK": 320,
-      "rankBIH": 316,
-      "rankNET": 319
+      "rankBIH": 288,
+      "rankNET": 315
     },
     {
       "id": 1380,
@@ -6203,12 +6203,12 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "orebPct": 0.3235,
       "tovPct": 0.1584,
       "last5Margin": 2,
-      "rankPOM": 284,
-      "rankMAS": 292,
-      "rankMOR": 258,
-      "rankWLK": 269,
-      "rankBIH": 268,
-      "rankNET": 291
+      "rankPOM": 275,
+      "rankMAS": 280,
+      "rankMOR": 256,
+      "rankWLK": 259,
+      "rankBIH": 272,
+      "rankNET": 277
     },
     {
       "id": 1411,
@@ -6223,12 +6223,12 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "orebPct": 0.2722,
       "tovPct": 0.1743,
       "last5Margin": 7.4,
-      "rankPOM": 297,
-      "rankMAS": 318,
-      "rankMOR": 303,
-      "rankWLK": 291,
-      "rankBIH": 318,
-      "rankNET": 312
+      "rankPOM": 308,
+      "rankMAS": 323,
+      "rankMOR": 320,
+      "rankWLK": 305,
+      "rankBIH": 309,
+      "rankNET": 320
     },
     {
       "id": 1105,
@@ -6243,12 +6243,12 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "orebPct": 0.2571,
       "tovPct": 0.1595,
       "last5Margin": 0.6,
-      "rankPOM": 303,
-      "rankMAS": 322,
-      "rankMOR": 331,
-      "rankWLK": 294,
-      "rankBIH": 260,
-      "rankNET": 310
+      "rankPOM": 301,
+      "rankMAS": 319,
+      "rankMOR": 326,
+      "rankWLK": 287,
+      "rankBIH": 265,
+      "rankNET": 308
     },
     {
       "id": 1115,
@@ -6263,12 +6263,12 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "orebPct": 0.2838,
       "tovPct": 0.1827,
       "last5Margin": 2.8,
-      "rankPOM": 324,
-      "rankMAS": 339,
-      "rankMOR": 345,
-      "rankWLK": 317,
-      "rankBIH": 276,
-      "rankNET": 324
+      "rankPOM": 316,
+      "rankMAS": 335,
+      "rankMOR": 333,
+      "rankWLK": 312,
+      "rankBIH": 299,
+      "rankNET": 317
     },
     {
       "id": 1238,
@@ -6283,12 +6283,12 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "orebPct": 0.3036,
       "tovPct": 0.1825,
       "last5Margin": -8.2,
-      "rankPOM": 345,
-      "rankMAS": 332,
-      "rankMOR": 357,
-      "rankWLK": 339,
-      "rankBIH": 308,
-      "rankNET": 351
+      "rankPOM": 342,
+      "rankMAS": 331,
+      "rankMOR": 355,
+      "rankWLK": 335,
+      "rankBIH": 315,
+      "rankNET": 348
     },
     {
       "id": 1341,
@@ -6303,12 +6303,12 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "orebPct": 0.2766,
       "tovPct": 0.1553,
       "last5Margin": 9.8,
-      "rankPOM": 318,
-      "rankMAS": 335,
-      "rankMOR": 309,
-      "rankWLK": 311,
-      "rankBIH": 337,
-      "rankNET": 323
+      "rankPOM": 312,
+      "rankMAS": 330,
+      "rankMOR": 303,
+      "rankWLK": 306,
+      "rankBIH": 325,
+      "rankNET": 316
     },
     {
       "id": 1212,
@@ -6323,12 +6323,12 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "orebPct": 0.2971,
       "tovPct": 0.2051,
       "last5Margin": -0.6,
-      "rankPOM": 292,
-      "rankMAS": 315,
-      "rankMOR": 316,
-      "rankWLK": 285,
-      "rankBIH": 297,
-      "rankNET": 295
+      "rankPOM": 298,
+      "rankMAS": 314,
+      "rankMOR": 309,
+      "rankWLK": 283,
+      "rankBIH": 317,
+      "rankNET": 301
     },
     {
       "id": 1106,
@@ -6343,12 +6343,12 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "orebPct": 0.3236,
       "tovPct": 0.1794,
       "last5Margin": -6.4,
-      "rankPOM": 308,
-      "rankMAS": 327,
-      "rankMOR": 311,
-      "rankWLK": 301,
-      "rankBIH": 329,
-      "rankNET": 313
+      "rankPOM": 317,
+      "rankMAS": 333,
+      "rankMOR": 315,
+      "rankWLK": 314,
+      "rankBIH": 328,
+      "rankNET": 321
     },
     {
       "id": 1108,
@@ -6363,12 +6363,12 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "orebPct": 0.3027,
       "tovPct": 0.1888,
       "last5Margin": -8,
-      "rankPOM": 343,
-      "rankMAS": 344,
-      "rankMOR": 351,
-      "rankWLK": 343,
-      "rankBIH": 325,
-      "rankNET": 348
+      "rankPOM": 351,
+      "rankMAS": 350,
+      "rankMOR": 356,
+      "rankWLK": 350,
+      "rankBIH": 337,
+      "rankNET": 352
     },
     {
       "id": 1290,
@@ -6385,7 +6385,7 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "last5Margin": -6,
       "rankPOM": 365,
       "rankMAS": 365,
-      "rankMOR": 363,
+      "rankMOR": 364,
       "rankWLK": 365,
       "rankBIH": 365,
       "rankNET": 365
@@ -6405,12 +6405,12 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "orebPct": 0.3056,
       "tovPct": 0.1962,
       "last5Margin": 6.6,
-      "rankPOM": 85,
-      "rankMAS": 100,
-      "rankMOR": 87,
+      "rankPOM": 90,
+      "rankMAS": 98,
+      "rankMOR": 93,
       "rankWLK": 82,
       "rankBIH": 77,
-      "rankNET": 82
+      "rankNET": 85
     },
     {
       "id": 1465,
@@ -6425,12 +6425,12 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "orebPct": 0.3297,
       "tovPct": 0.1719,
       "last5Margin": 10.8,
-      "rankPOM": 119,
-      "rankMAS": 116,
-      "rankMOR": 130,
-      "rankWLK": 110,
-      "rankBIH": 86,
-      "rankNET": 111
+      "rankPOM": 112,
+      "rankMAS": 111,
+      "rankMOR": 122,
+      "rankWLK": 105,
+      "rankBIH": 82,
+      "rankNET": 103
     },
     {
       "id": 1469,
@@ -6445,12 +6445,12 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "orebPct": 0.27,
       "tovPct": 0.1665,
       "last5Margin": -3.6,
-      "rankPOM": 188,
+      "rankPOM": 184,
       "rankMAS": 180,
-      "rankMOR": 191,
-      "rankWLK": 181,
-      "rankBIH": 137,
-      "rankNET": 170
+      "rankMOR": 186,
+      "rankWLK": 185,
+      "rankBIH": 146,
+      "rankNET": 175
     },
     {
       "id": 1426,
@@ -6465,12 +6465,12 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "orebPct": 0.3095,
       "tovPct": 0.2079,
       "last5Margin": 0.2,
-      "rankPOM": 163,
-      "rankMAS": 168,
-      "rankMOR": 165,
-      "rankWLK": 170,
-      "rankBIH": 155,
-      "rankNET": 165
+      "rankPOM": 156,
+      "rankMAS": 155,
+      "rankMOR": 156,
+      "rankWLK": 163,
+      "rankBIH": 148,
+      "rankNET": 162
     },
     {
       "id": 1381,
@@ -6485,12 +6485,12 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "orebPct": 0.2768,
       "tovPct": 0.1972,
       "last5Margin": -1,
-      "rankPOM": 256,
+      "rankPOM": 252,
       "rankMAS": 264,
-      "rankMOR": 267,
+      "rankMOR": 265,
       "rankWLK": 267,
-      "rankBIH": 274,
-      "rankNET": 272
+      "rankBIH": 262,
+      "rankNET": 271
     },
     {
       "id": 1101,
@@ -6505,12 +6505,12 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "orebPct": 0.3302,
       "tovPct": 0.1986,
       "last5Margin": -10.6,
-      "rankPOM": 228,
-      "rankMAS": 222,
-      "rankMOR": 230,
-      "rankWLK": 233,
-      "rankBIH": 223,
-      "rankNET": 230
+      "rankPOM": 246,
+      "rankMAS": 235,
+      "rankMOR": 244,
+      "rankWLK": 250,
+      "rankBIH": 234,
+      "rankNET": 248
     },
     {
       "id": 1470,
@@ -6525,12 +6525,12 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "orebPct": 0.3225,
       "tovPct": 0.1921,
       "last5Margin": -6.2,
-      "rankPOM": 211,
-      "rankMAS": 210,
-      "rankMOR": 263,
-      "rankWLK": 219,
-      "rankBIH": 217,
-      "rankNET": 221
+      "rankPOM": 216,
+      "rankMAS": 218,
+      "rankMOR": 258,
+      "rankWLK": 223,
+      "rankBIH": 229,
+      "rankNET": 224
     }
   ],
   "wcc": [
@@ -6547,12 +6547,12 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "orebPct": 0.2992,
       "tovPct": 0.1329,
       "last5Margin": 13.6,
-      "rankPOM": 12,
-      "rankMAS": 7,
-      "rankMOR": 17,
-      "rankWLK": 13,
+      "rankPOM": 10,
+      "rankMAS": 6,
+      "rankMOR": 15,
+      "rankWLK": 11,
       "rankBIH": 5,
-      "rankNET": 6
+      "rankNET": 5
     },
     {
       "id": 1388,
@@ -6569,10 +6569,10 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "last5Margin": 11.8,
       "rankPOM": 22,
       "rankMAS": 23,
-      "rankMOR": 27,
+      "rankMOR": 25,
       "rankWLK": 23,
-      "rankBIH": 23,
-      "rankNET": 21
+      "rankBIH": 19,
+      "rankNET": 20
     },
     {
       "id": 1365,
@@ -6588,11 +6588,11 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "tovPct": 0.1494,
       "last5Margin": 4.6,
       "rankPOM": 37,
-      "rankMAS": 43,
-      "rankMOR": 45,
-      "rankWLK": 37,
+      "rankMAS": 41,
+      "rankMOR": 46,
+      "rankWLK": 36,
       "rankBIH": 36,
-      "rankNET": 40
+      "rankNET": 42
     },
     {
       "id": 1333,
@@ -6607,12 +6607,12 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "orebPct": 0.2465,
       "tovPct": 0.1704,
       "last5Margin": -2,
-      "rankPOM": 184,
-      "rankMAS": 130,
-      "rankMOR": 173,
-      "rankWLK": 172,
-      "rankBIH": 141,
-      "rankNET": 175
+      "rankPOM": 179,
+      "rankMAS": 126,
+      "rankMOR": 168,
+      "rankWLK": 171,
+      "rankBIH": 134,
+      "rankNET": 171
     },
     {
       "id": 1362,
@@ -6627,12 +6627,12 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "orebPct": 0.2789,
       "tovPct": 0.1547,
       "last5Margin": -3,
-      "rankPOM": 122,
-      "rankMAS": 105,
-      "rankMOR": 122,
-      "rankWLK": 127,
-      "rankBIH": 132,
-      "rankNET": 122
+      "rankPOM": 119,
+      "rankMAS": 106,
+      "rankMOR": 131,
+      "rankWLK": 123,
+      "rankBIH": 121,
+      "rankNET": 119
     },
     {
       "id": 1334,
@@ -6647,12 +6647,12 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "orebPct": 0.2808,
       "tovPct": 0.1875,
       "last5Margin": -8.4,
-      "rankPOM": 112,
-      "rankMAS": 142,
-      "rankMOR": 133,
-      "rankWLK": 126,
-      "rankBIH": 126,
-      "rankNET": 115
+      "rankPOM": 111,
+      "rankMAS": 137,
+      "rankMOR": 129,
+      "rankWLK": 118,
+      "rankBIH": 135,
+      "rankNET": 116
     },
     {
       "id": 1370,
@@ -6667,12 +6667,12 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "orebPct": 0.2559,
       "tovPct": 0.1686,
       "last5Margin": 4.6,
-      "rankPOM": 115,
-      "rankMAS": 114,
-      "rankMOR": 123,
+      "rankPOM": 118,
+      "rankMAS": 118,
+      "rankMOR": 134,
       "rankWLK": 116,
-      "rankBIH": 111,
-      "rankNET": 118
+      "rankBIH": 113,
+      "rankNET": 122
     },
     {
       "id": 1450,
@@ -6687,12 +6687,12 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "orebPct": 0.259,
       "tovPct": 0.1813,
       "last5Margin": -3,
-      "rankPOM": 134,
-      "rankMAS": 134,
-      "rankMOR": 163,
-      "rankWLK": 155,
-      "rankBIH": 175,
-      "rankNET": 135
+      "rankPOM": 137,
+      "rankMAS": 135,
+      "rankMOR": 169,
+      "rankWLK": 164,
+      "rankBIH": 202,
+      "rankNET": 142
     },
     {
       "id": 1339,
@@ -6707,12 +6707,12 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "orebPct": 0.2652,
       "tovPct": 0.1895,
       "last5Margin": -6,
-      "rankPOM": 204,
-      "rankMAS": 207,
-      "rankMOR": 244,
-      "rankWLK": 225,
-      "rankBIH": 214,
-      "rankNET": 227
+      "rankPOM": 196,
+      "rankMAS": 194,
+      "rankMOR": 250,
+      "rankWLK": 217,
+      "rankBIH": 204,
+      "rankNET": 221
     },
     {
       "id": 1258,
@@ -6727,12 +6727,12 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "orebPct": 0.2548,
       "tovPct": 0.1644,
       "last5Margin": 0.6,
-      "rankPOM": 148,
-      "rankMAS": 143,
-      "rankMOR": 137,
-      "rankWLK": 165,
-      "rankBIH": 164,
-      "rankNET": 166
+      "rankPOM": 161,
+      "rankMAS": 154,
+      "rankMOR": 141,
+      "rankWLK": 173,
+      "rankBIH": 186,
+      "rankNET": 179
     },
     {
       "id": 1360,
@@ -6747,12 +6747,12 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "orebPct": 0.3035,
       "tovPct": 0.1702,
       "last5Margin": -6.6,
-      "rankPOM": 235,
-      "rankMAS": 244,
-      "rankMOR": 269,
-      "rankWLK": 260,
-      "rankBIH": 250,
-      "rankNET": 244
+      "rankPOM": 224,
+      "rankMAS": 234,
+      "rankMOR": 253,
+      "rankWLK": 254,
+      "rankBIH": 247,
+      "rankNET": 234
     },
     {
       "id": 1337,
@@ -6767,12 +6767,12 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "orebPct": 0.2898,
       "tovPct": 0.1727,
       "last5Margin": -1.8,
-      "rankPOM": 260,
-      "rankMAS": 259,
-      "rankMOR": 260,
-      "rankWLK": 286,
-      "rankBIH": 295,
-      "rankNET": 270
+      "rankPOM": 263,
+      "rankMAS": 262,
+      "rankMOR": 272,
+      "rankWLK": 284,
+      "rankBIH": 289,
+      "rankNET": 273
     }
   ]
 };
