@@ -1570,7 +1570,7 @@ def _conf_win_probs(team_feats, daynums):
     return {k: float(p) for k, p in zip(keys, p_cal)}
 
 
-_STAGE_ORDER = ["R1", "R2", "R3", "QF", "SF", "Final"]
+_STAGE_ORDER = ["R1", "R2", "R3", "R4", "QF", "SF", "Final"]
 
 
 def _conf_stats_df(seed_map, team_feats):
