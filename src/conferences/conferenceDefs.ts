@@ -244,6 +244,185 @@ export const CONFERENCE_DEFS: ConfDefWithProbMap[] = [
     ],
     probRoundMap: { R1: "R1", QF: "QF", SF: "SF", F: "Final" },
   },
+  {
+    id: "aec",
+    name: "America East Tournament",
+    shortName: "AEC",
+    teamCount: 8,
+    rounds: [
+      { id: "QF", label: "Quarterfinals", gameCount: 4 },
+      { id: "SF", label: "Semifinals", gameCount: 2 },
+      { id: "F", label: "Final", gameCount: 1 },
+    ],
+    probRoundMap: { QF: "QF", SF: "SF", F: "Final" },
+  },
+  {
+    id: "a_sun",
+    name: "Atlantic Sun Tournament",
+    shortName: "ASUN",
+    teamCount: 12,
+    rounds: [
+      { id: "R1", label: "First Round", gameCount: 4 },
+      { id: "QF", label: "Quarterfinals", gameCount: 4 },
+      { id: "SF", label: "Semifinals", gameCount: 2 },
+      { id: "F", label: "Final", gameCount: 1 },
+    ],
+    probRoundMap: { R1: "R1", QF: "QF", SF: "SF", F: "Final" },
+  },
+  {
+    id: "big_sky",
+    name: "Big Sky Tournament",
+    shortName: "Big Sky",
+    teamCount: 10,
+    rounds: [
+      { id: "R1", label: "First Round", gameCount: 2 },
+      { id: "QF", label: "Quarterfinals", gameCount: 4 },
+      { id: "SF", label: "Semifinals", gameCount: 2 },
+      { id: "F", label: "Final", gameCount: 1 },
+    ],
+    probRoundMap: { R1: "R1", QF: "QF", SF: "SF", F: "Final" },
+  },
+  {
+    id: "big_west",
+    name: "Big West Tournament",
+    shortName: "Big West",
+    teamCount: 8,
+    rounds: [
+      { id: "R1", label: "First Round", gameCount: 2 },
+      { id: "QF", label: "Quarterfinals", gameCount: 2 },
+      { id: "SF", label: "Semifinals", gameCount: 2 },
+      { id: "F", label: "Final", gameCount: 1 },
+    ],
+    probRoundMap: { R1: "R1", QF: "QF", SF: "SF", F: "Final" },
+  },
+  {
+    id: "horizon",
+    name: "Horizon League Tournament",
+    shortName: "Horizon",
+    teamCount: 11,
+    rounds: [
+      { id: "SF", label: "Semifinals", gameCount: 2 },
+      { id: "F", label: "Final", gameCount: 1 },
+    ],
+    probRoundMap: { SF: "SF", F: "Final" },
+  },
+  {
+    id: "ivy",
+    name: "Ivy League Tournament",
+    shortName: "Ivy",
+    teamCount: 4,
+    rounds: [
+      { id: "SF", label: "Semifinals", gameCount: 2 },
+      { id: "F", label: "Final", gameCount: 1 },
+    ],
+    probRoundMap: { SF: "SF", F: "Final" },
+  },
+  {
+    id: "maac",
+    name: "MAAC Tournament",
+    shortName: "MAAC",
+    teamCount: 10,
+    rounds: [
+      { id: "R1", label: "First Round", gameCount: 2 },
+      { id: "QF", label: "Quarterfinals", gameCount: 4 },
+      { id: "SF", label: "Semifinals", gameCount: 2 },
+      { id: "F", label: "Final", gameCount: 1 },
+    ],
+    probRoundMap: { R1: "R1", QF: "QF", SF: "SF", F: "Final" },
+  },
+  {
+    id: "meac",
+    name: "MEAC Tournament",
+    shortName: "MEAC",
+    teamCount: 7,
+    rounds: [
+      { id: "QF", label: "Quarterfinals", gameCount: 3 },
+      { id: "SF", label: "Semifinals", gameCount: 2 },
+      { id: "F", label: "Final", gameCount: 1 },
+    ],
+    probRoundMap: { QF: "QF", SF: "SF", F: "Final" },
+  },
+  {
+    id: "nec",
+    name: "Northeast Conference Tournament",
+    shortName: "NEC",
+    teamCount: 8,
+    rounds: [
+      { id: "QF", label: "Quarterfinals", gameCount: 4 },
+      { id: "SF", label: "Semifinals", gameCount: 2 },
+      { id: "F", label: "Final", gameCount: 1 },
+    ],
+    probRoundMap: { QF: "QF", SF: "SF", F: "Final" },
+  },
+  {
+    id: "ovc",
+    name: "Ohio Valley Tournament",
+    shortName: "OVC",
+    teamCount: 8,
+    rounds: [
+      { id: "R1", label: "First Round", gameCount: 2 },
+      { id: "QF", label: "Quarterfinals", gameCount: 2 },
+      { id: "SF", label: "Semifinals", gameCount: 2 },
+      { id: "F", label: "Final", gameCount: 1 },
+    ],
+    probRoundMap: { R1: "R1", QF: "QF", SF: "SF", F: "Final" },
+  },
+  {
+    id: "swac",
+    name: "SWAC Tournament",
+    shortName: "SWAC",
+    teamCount: 12,
+    rounds: [
+      { id: "R1", label: "First Round", gameCount: 2 },
+      { id: "R2", label: "Second Round", gameCount: 2 },
+      { id: "QF", label: "Quarterfinals", gameCount: 4 },
+      { id: "SF", label: "Semifinals", gameCount: 2 },
+      { id: "F", label: "Final", gameCount: 1 },
+    ],
+    probRoundMap: { R1: "R1", R2: "R2", QF: "QF", SF: "SF", F: "Final" },
+  },
+  {
+    id: "summit",
+    name: "Summit League Tournament",
+    shortName: "Summit",
+    teamCount: 9,
+    rounds: [
+      { id: "R1", label: "First Round", gameCount: 1 },
+      { id: "QF", label: "Quarterfinals", gameCount: 4 },
+      { id: "SF", label: "Semifinals", gameCount: 2 },
+      { id: "F", label: "Final", gameCount: 1 },
+    ],
+    probRoundMap: { R1: "R1", QF: "QF", SF: "SF", F: "Final" },
+  },
+  {
+    id: "sun_belt",
+    name: "Sun Belt Tournament",
+    shortName: "Sun Belt",
+    teamCount: 14,
+    rounds: [
+      { id: "R1", label: "First Round", gameCount: 2 },
+      { id: "R2", label: "Second Round", gameCount: 2 },
+      { id: "R3", label: "Third Round", gameCount: 2 },
+      { id: "R4", label: "Fourth Round", gameCount: 2 },
+      { id: "QF", label: "Quarterfinals", gameCount: 2 },
+      { id: "SF", label: "Semifinals", gameCount: 2 },
+      { id: "F", label: "Final", gameCount: 1 },
+    ],
+    probRoundMap: { R1: "R1", R2: "R2", R3: "R3", R4: "R4", QF: "QF", SF: "SF", F: "Final" },
+  },
+  {
+    id: "wac",
+    name: "WAC Tournament",
+    shortName: "WAC",
+    teamCount: 7,
+    rounds: [
+      { id: "R1", label: "First Round", gameCount: 1 },
+      { id: "QF", label: "Quarterfinals", gameCount: 2 },
+      { id: "SF", label: "Semifinals", gameCount: 2 },
+      { id: "F", label: "Final", gameCount: 1 },
+    ],
+    probRoundMap: { R1: "R1", QF: "QF", SF: "SF", F: "Final" },
+  },
 ];
 
 export const CONFERENCE_DEFS_BY_ID = Object.fromEntries(
@@ -306,5 +485,76 @@ export const CONF_KNOWN_RESULTS: Record<string, Record<string, number>> = {
   patriot: {
     "patriot-SF-0": 1131, // Boston Univ (4) def Navy (1)
     "patriot-SF-1": 1250, // Lehigh (2) def Colgate (3)
+  },
+  aec: {
+    "aec-QF-0": 1420, // UMBC (1) def New Hampshire (8)
+    "aec-QF-1": 1262, // MA Lowell (4) def Albany (5)
+    "aec-QF-2": 1312, // NJIT (3) def Maine (6)
+    "aec-QF-3": 1436, // Vermont (2) def Bryant (7)
+  },
+  a_sun: {
+    "a_sun-R1-0": 1468, // Bellarmine (8) def Jacksonville (9)
+    "a_sun-R1-1": 1195, // FGCU (5) def North Alabama (12)
+    "a_sun-R1-2": 1184, // E Kentucky (7) def Stetson (10)
+    "a_sun-R1-3": 1480, // West Georgia (6) def North Florida (11)
+    "a_sun-QF-0": 1146, // Cent Arkansas (1) def Bellarmine (8)
+    "a_sun-QF-1": 1195, // FGCU (5) def Lipscomb (4)
+    "a_sun-QF-2": 1122, // Austin Peay (2) def E Kentucky (7)
+    "a_sun-QF-3": 1474, // Queens (3) def West Georgia (6)
+    "a_sun-SF-0": 1146, // Cent Arkansas (1) def FGCU (5)
+    "a_sun-SF-1": 1474, // Queens (3) def Austin Peay (2)
+    "a_sun-F-0":  1474, // Queens (3) def Cent Arkansas (1) — CHAMPION
+  },
+  big_sky: {
+    "big_sky-R1-0": 1226, // Idaho St (9) def Northern Arizona (10)
+    "big_sky-R1-1": 1225, // Idaho (7) def CS Sacramento (8)
+  },
+  maac: {
+    "maac-R1-0": 1357, // Sacred Heart (9) def Iona (8)
+    "maac-R1-1": 1193, // Fairfield (7) def Manhattan (10)
+    "maac-QF-0": 1467, // Merrimack (1) def Sacred Heart (9)
+    "maac-QF-1": 1265, // Marist (5) def Quinnipiac (4)
+    "maac-QF-2": 1193, // Fairfield (7) def St Peter's (2)
+    "maac-QF-3": 1373, // Siena (3) def Mt St Mary's (6)
+    "maac-SF-0": 1467, // Merrimack (1) def Marist (5)
+  },
+  nec: {
+    "nec-QF-0": 1254, // LIU Brooklyn (1) def Chicago St (8)
+    "nec-QF-1": 1447, // Wagner (7) def Central Conn (2)
+    "nec-QF-2": 1479, // Mercyhurst (3) def F Dickinson (6)
+    "nec-QF-3": 1476, // Stonehill (5) def Le Moyne (4)
+    "nec-SF-0": 1254, // LIU Brooklyn (1) def Wagner (7)
+    "nec-SF-1": 1479, // Mercyhurst (3) def Stonehill (5)
+  },
+  ovc: {
+    "ovc-R1-0": 1183, // E Illinois (8) def SIUE (5)
+    "ovc-R1-1": 1473, // Lindenwood (6) def Ark Little Rock (7)
+    "ovc-QF-0": 1404, // TN Martin (4) def E Illinois (8)
+    "ovc-QF-1": 1369, // SE Missouri St (3) def Lindenwood (6)
+    "ovc-SF-0": 1398, // Tennessee St (1) def TN Martin (4)
+    "ovc-SF-1": 1287, // Morehead St (2) def SE Missouri St (3)
+    "ovc-F-0":  1398, // Tennessee St (1) def Morehead St (2) — CHAMPION
+  },
+  summit: {
+    "summit-R1-0": 1331, // Oral Roberts (8) def Missouri KC (9)
+    "summit-QF-0": 1295, // N Dakota St (1) def Oral Roberts (8)
+    "summit-QF-1": 1303, // Omaha (5) def South Dakota (4)
+    "summit-QF-2": 1472, // St Thomas MN (2) def S Dakota St (7)
+    "summit-QF-3": 1315, // N Dakota (3) def Denver (6)
+    "summit-SF-0": 1295, // N Dakota St (1) def Omaha (5)
+    "summit-SF-1": 1315, // N Dakota (3) def St Thomas MN (2)
+  },
+  sun_belt: {
+    "sun_belt-R1-0": 1418, // Louisiana (12) def Georgia St (13)
+    "sun_belt-R1-1": 1330, // Old Dominion (11) def ULM (14)
+    "sun_belt-R2-0": 1241, // James Madison (9) def Louisiana (12)
+    "sun_belt-R2-1": 1204, // Ga Southern (10) def Old Dominion (11)
+    "sun_belt-R3-0": 1379, // Southern Miss (8) def James Madison (9)
+    "sun_belt-R3-1": 1204, // Ga Southern (10) def Arkansas St (7)
+    "sun_belt-R4-0": 1379, // Southern Miss (8) def Texas St (5)
+    "sun_belt-R4-1": 1204, // Ga Southern (10) def South Alabama (6)
+    "sun_belt-QF-0": 1379, // Southern Miss (8) def Appalachian St (4)
+    "sun_belt-QF-1": 1204, // Ga Southern (10) def Coastal Car (3)
+    "sun_belt-SF-0": 1407, // Troy (1) def Southern Miss (8)
   },
 };
