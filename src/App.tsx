@@ -3012,7 +3012,7 @@ function App() {
                 : `Submit Bracket ${isAuthenticated ? `(${submittedBracketCount}/25)` : ""}`}
         </button>
       ) : null}
-      {playInGames.length > 0 && pickCount >= 3 ? (
+      {true ? (
         <button
           onClick={() => setShowFirstFourModal(true)}
           className="eg-btn toolbar-btn--firstfour"
