@@ -272,12 +272,13 @@ function ConferenceBracketView({
   const roundOrder = useMemo(() => (def ? def.rounds.map((round) => round.id) : []), [def]);
   const [showFutures, setShowFutures] = useState(false);
   const [selectedStatsGame, setSelectedStatsGame] = useState<ConfResolvedGame | null>(null);
+  const knownLocks = useMemo(() => CONF_KNOWN_RESULTS[confId] ?? {}, [confId]);
 
   // Merge known actual results (immutable) on top of user locks so the
   // simulation always reflects real outcomes for completed games.
   const effectiveLocks = useMemo(
-    () => ({ ...locks, ...(CONF_KNOWN_RESULTS[confId] ?? {}) }),
-    [locks, confId]
+    () => ({ ...locks, ...knownLocks }),
+    [locks, knownLocks]
   );
 
   const { games: resolvedGames, sanitized } = useMemo(
@@ -308,7 +309,8 @@ function ConferenceBracketView({
 
   const laneHeightPx = useMemo(() => {
     const maxGamesInRound = Math.max(1, ...def.rounds.map((round) => (gamesByRound.get(round.id) ?? []).length));
-    return 520 + maxGamesInRound * 40;
+    // Keep conference cards from stacking/overlapping when rounds have many candidate rows.
+    return 760 + maxGamesInRound * 180;
   }, [def.rounds, gamesByRound]);
 
   const bracketGridStyle = useMemo<CSSProperties | undefined>(() => {
@@ -323,6 +325,7 @@ function ConferenceBracketView({
 
   const handlePick = useCallback(
     (game: ConfResolvedGame, teamId: number | null) => {
+      if (game.id in knownLocks) return;
       const nextLocks = { ...locks };
       if (teamId === null || locks[game.id] === teamId) {
         delete nextLocks[game.id];
@@ -331,7 +334,7 @@ function ConferenceBracketView({
       }
       onLocksChange(nextLocks);
     },
-    [locks, onLocksChange]
+    [knownLocks, locks, onLocksChange]
   );
 
   const [mobileRound, setMobileRound] = useState(roundOrder[0] ?? "");
@@ -407,7 +410,8 @@ function ConferenceBracketView({
                             possibleWinners={possibleWinners}
                             onPick={handlePick}
                             onOpenMatchupStats={setSelectedStatsGame}
-                            isLocked={game.id in locks}
+                            isLocked={game.id in sanitized}
+                            isHardLocked={game.id in knownLocks}
                           />
                         </div>
                       );
@@ -442,6 +446,7 @@ function ConfGameCard({
   onPick,
   onOpenMatchupStats,
   isLocked,
+  isHardLocked,
 }: {
   game: ConfResolvedGame;
   confId: string;
@@ -453,15 +458,16 @@ function ConfGameCard({
   onPick: (game: ConfResolvedGame, teamId: number | null) => void;
   onOpenMatchupStats: (game: ConfResolvedGame) => void;
   isLocked: boolean;
+  isHardLocked: boolean;
 }) {
   const rows = buildGameRowsForDisplay(game, confId, def, teamsById, gameWinProbs, possibleWinners);
   const knownMatchup = game.teamAId !== null && game.teamBId !== null;
 
   const renderRow = (candidate: ConfCandidateRow, index: number) => {
     const { team } = candidate;
-    const canPick = knownMatchup && (team.id === game.teamAId || team.id === game.teamBId);
+    const canPick = !isHardLocked && knownMatchup && (team.id === game.teamAId || team.id === game.teamBId);
     const isWinner = game.winnerId === team.id;
-    const isLoser = canPick && game.winnerId !== null && game.winnerId !== team.id;
+    const isLoser = game.winnerId !== null && game.winnerId !== team.id;
     const odds = formatOddsDisplay(candidate.prob, displayMode);
 
     return (
