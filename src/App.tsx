@@ -4318,7 +4318,7 @@ function FirstFourGameCard({
           title="View matchup stats"
           aria-label="View matchup stats"
         >
-          {"\u24D8"}
+          {"i"}
         </button>
       </div>
 
@@ -5366,7 +5366,7 @@ function MobileMatchupCard({
         title="View matchup stats"
         aria-label="View matchup stats"
       >
-        ⓘ
+        {"i"}
       </button>
       <button
         className={`m-team ${game.winnerId === teamA.id ? "m-team--winner" : ""} ${
@@ -6279,7 +6279,7 @@ function GameCard({
           title="View matchup stats"
           aria-label="View matchup stats"
         >
-          ⓘ
+          {"i"}
         </button>
       ) : null}
       <div className="eg-game-list">
@@ -6290,6 +6290,7 @@ function GameCard({
             displayMode={displayMode}
             lastPickedKey={lastPickedKey}
             onPick={(teamId) => onPick(game, teamId)}
+            onOpenMatchupStats={onOpenMatchupStats}
           />
         ) : rows.length > 0 ? (
           game.round === "R64" ? (
@@ -6615,7 +6616,7 @@ function ShowdownCard({
           title="View matchup stats"
           aria-label="View matchup stats"
         >
-          ⓘ
+          {"i"}
         </button>
       ) : null}
       <div className="eg-showdown-matchup">
