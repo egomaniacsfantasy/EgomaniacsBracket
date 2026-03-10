@@ -2037,11 +2037,13 @@ _WCC_SLOTS = [
 # R2: (9) Portland def (8) Washington St; (7) Seattle def (11) San Diego
 # R3: (5) San Francisco def (9) Portland; (6) Pacific def (7) Seattle
 # QF: (4) Oregon St def (5) San Francisco; (3) Santa Clara def (6) Pacific
+# SF: (1) Gonzaga def (4) Oregon St; (3) Santa Clara def (2) St Mary's CA
 _WCC_forced = {
     "WCC_R1_1": "9",  "WCC_R1_2": "11",
     "WCC_R2_1": "9",  "WCC_R2_2": "7",
     "WCC_R3_1": "5",  "WCC_R3_2": "6",
     "WCC_QF_1": "4",  "WCC_QF_2": "3",
+    "WCC_SF_1": "1",  "WCC_SF_2": "3",
 }
 _conf_results["WCC"], _conf_stats_results["WCC"], _conf_matchup_results["WCC"] = _run_conf("WCC", _WCC_sm, _WCC_SLOTS, rng_seed=209, forced_winners=_WCC_forced)
 
@@ -2136,10 +2138,12 @@ _CAA_SLOTS = [
 # R1: (13) Northeastern def (12) NC A&T
 # R2: (9) Campbell def (8) Stony Brook; (5) Drexel def (13) Northeastern; (7) Towson def (10) Hampton; (6) William & Mary def (11) Elon
 # QF: (9) Campbell def (1) UNC Wilmington; (4) Monmouth def (5) Drexel; (7) Towson def (2) Col Charleston; (3) Hofstra def (6) William & Mary
+# SF: (4) Monmouth def (9) Campbell; (3) Hofstra def (7) Towson
 _CAA_forced = {
     "CAA_R1_1": "13",
     "CAA_R2_1": "9",   "CAA_R2_2": "5",   "CAA_R2_3": "7",   "CAA_R2_4": "6",
     "CAA_QF_1": "9",   "CAA_QF_2": "4",   "CAA_QF_3": "7",   "CAA_QF_4": "3",
+    "CAA_SF_1": "4",   "CAA_SF_2": "3",
 }
 _conf_results["CAA"], _conf_stats_results["CAA"], _conf_matchup_results["CAA"] = _run_conf("CAA", _CAA_sm, _CAA_SLOTS, rng_seed=212, forced_winners=_CAA_forced)
 
@@ -2225,10 +2229,12 @@ _SOU_SLOTS = [
 # R1: (9) Citadel def (8) Chattanooga; (7) UNC Greensboro def (10) VMI
 # QF: (1) ETSU def (9) Citadel; (5) W Carolina def (4) Samford; (7) UNC Greensboro def (2) Mercer; (6) Furman def (3) Wofford
 # SF: (1) ETSU def (5) W Carolina; (6) Furman def (7) UNC Greensboro
+# Final: (6) Furman def (1) ETSU
 _SOU_forced = {
     "SOU_R1_1": "9",   "SOU_R1_2": "7",
     "SOU_QF_1": "1",   "SOU_QF_2": "5",   "SOU_QF_3": "7",   "SOU_QF_4": "6",
     "SOU_SF_1": "1",   "SOU_SF_2": "6",
+    "SOU_Final": "6",
 }
 _conf_results["Southern"], _conf_stats_results["Southern"], _conf_matchup_results["Southern"] = _run_conf("Southern", _SOU_sm, _SOU_SLOTS, rng_seed=215, forced_winners=_SOU_forced)
 
@@ -2254,7 +2260,11 @@ _STL_SLOTS = [
     ("STL_Final", "STL_SF_1", "STL_SF_2", 128, "Final"),
 ]
 # R1: (5) New Orleans def (8) Houston Chr; (6) Nicholls St def (7) Northwestern LA
-_STL_forced = {"STL_R1_1": "5", "STL_R1_2": "6"}
+# QF: (4) TAM C. Christi def (5) New Orleans; (3) UTRGV def (6) Nicholls St
+_STL_forced = {
+    "STL_R1_1": "5",  "STL_R1_2": "6",
+    "STL_QF_1": "4",  "STL_QF_2": "3",
+}
 _conf_results["Southland"], _conf_stats_results["Southland"], _conf_matchup_results["Southland"] = _run_conf("Southland", _STL_sm, _STL_SLOTS, rng_seed=216, forced_winners=_STL_forced)
 
 # %%
@@ -2341,10 +2351,12 @@ _BSK_SLOTS = [
     ("BSK_Final","BSK_SF_1", "BSK_SF_2", 128, "Final"),
 ]
 # R1: (9) Idaho St def (10) Northern Arizona; (7) Idaho def (8) CS Sacramento
-# QF: (1) Portland St def (9) Idaho St; (7) Idaho def (2) Montana St
+# QF: (1) Portland St def (9) Idaho St; (7) Idaho def (2) Montana St;
+#     (4) Montana def (5) N Colorado; (3) E Washington def (6) Weber St
 _BSK_forced = {
     "BSK_R1_1": "9",  "BSK_R1_2": "7",
     "BSK_QF_1": "1",  "BSK_QF_2": "7",
+    "BSK_QF_3": "4",  "BSK_QF_4": "3",
 }
 _conf_results["BigSky"], _conf_stats_results["BigSky"], _conf_matchup_results["BigSky"] = _run_conf("Big Sky", _BSK_sm, _BSK_SLOTS, rng_seed=219, forced_winners=_BSK_forced)
 
@@ -2400,11 +2412,13 @@ _HOR_SLOTS = [
 # R1: (1) Wright St def (10) Cleveland St; (2) Robert Morris def (9) Youngstown St;
 #     (3) Detroit def (8) WI Milwaukee; (4) Oakland def (7) N Kentucky; (5) WI Green Bay def (6) PFW
 # R2: (7) N Kentucky def (5) WI Green Bay
+# SF: (1) Wright St def (7) N Kentucky; (3) Detroit def (2) Robert Morris
 _HOR_forced = {
     "HOR_PI_1": "10",
     "HOR_R1_1": "1",   "HOR_R1_2": "2",   "HOR_R1_3": "3",
     "HOR_R1_4": "4",   "HOR_R1_5": "5",
     "HOR_R2_1": "7",
+    "HOR_SF_1": "1",   "HOR_SF_2": "3",
 }
 _conf_results["Horizon"], _conf_stats_results["Horizon"], _conf_matchup_results["Horizon"] = _run_conf("Horizon", _HOR_sm, _HOR_SLOTS, rng_seed=221, forced_winners=_HOR_forced)
 
@@ -2566,8 +2580,12 @@ _SWAC_SLOTS = [
     # Championship (DayNum 131)
     ("SWAC_Final", "SWAC_SF_1", "SWAC_SF_2", 131, "Final"),
 ]
-# No results yet
-_conf_results["SWAC"], _conf_stats_results["SWAC"], _conf_matchup_results["SWAC"] = _run_conf("SWAC", _SWAC_sm, _SWAC_SLOTS, rng_seed=227)
+# R1: (11) Alcorn St def (10) Alabama St; (9) Grambling def (12) MS Valley St
+_SWAC_forced = {
+    "SWAC_R1_1": "11",
+    "SWAC_R1_2": "9",
+}
+_conf_results["SWAC"], _conf_stats_results["SWAC"], _conf_matchup_results["SWAC"] = _run_conf("SWAC", _SWAC_sm, _SWAC_SLOTS, rng_seed=227, forced_winners=_SWAC_forced)
 
 # %%
 
@@ -2639,6 +2657,7 @@ _SBL_SLOTS = [
 # R4: (8) Southern Miss def (5) Texas St; (10) Ga Southern def (6) South Alabama
 # QF: (8) Southern Miss def (4) Appalachian St; (10) Ga Southern def (3) Coastal Car
 # SF: (1) Troy def (8) Southern Miss; (10) Ga Southern def (2) Marshall
+# Final: (1) Troy def (10) Ga Southern
 _SBL_forced = {
     "SBL_R1_1": "12",  "SBL_R1_2": "11",
     "SBL_R2_1": "9",   "SBL_R2_2": "10",
@@ -2646,6 +2665,7 @@ _SBL_forced = {
     "SBL_R4_1": "8",   "SBL_R4_2": "10",
     "SBL_QF_1": "8",   "SBL_QF_2": "10",
     "SBL_SF_1": "1",   "SBL_SF_2": "10",
+    "SBL_Final": "1",
 }
 _conf_results["SunBelt"], _conf_stats_results["SunBelt"], _conf_matchup_results["SunBelt"] = _run_conf("Sun Belt", _SBL_sm, _SBL_SLOTS, rng_seed=229, forced_winners=_SBL_forced)
 
@@ -2906,6 +2926,220 @@ else:
         _fb = OUT_RANKINGS_26.with_name("model_rankings_2026_new.xlsx")
         df_rankings_26.to_excel(_fb, index=False)
         print(f"Saved (fallback — close Excel): {_fb}")
+
+# %%
+# ---------------------------------------------------------------------------
+# PHASE H: WEEKLY MODEL RANKINGS (Historical snapshots, 2026 season)
+#
+# For each target date, extract each team's stats from their most recent game
+# row at or before that DayNum in the master_dataset.  Then compute all
+# C(n,2) neutral-site matchup probabilities at that DayNum, run Markov power
+# iteration, and record MR_Rank, MR_Score, and Exp_Wins_pct.
+#
+# Output: model_rankings_weekly_2026.csv
+#   rows  = all 365 D1 teams
+#   cols  = TeamID, TeamName, then per-week MR_Rank / MR_Score / Exp_Wins_pct
+#
+# Teams with no games before a target date are listed with NaN for that week.
+# First viable week is typically DayNum 34 (Dec 7) when ~330+ teams have data.
+# ---------------------------------------------------------------------------
+print("\n" + "=" * 70)
+print("PHASE H: WEEKLY MODEL RANKINGS (Historical 2026 snapshots)")
+print("=" * 70)
+
+# Target dates: (label, month, day)
+_WR_SPECS = [
+    ("11-02", 11,  2), ("11-09", 11,  9), ("11-16", 11, 16),
+    ("11-23", 11, 23), ("11-30", 11, 30), ("12-07", 12,  7),
+    ("12-14", 12, 14), ("12-21", 12, 21), ("12-28", 12, 28),
+    ("01-04",  1,  4), ("01-11",  1, 11), ("01-18",  1, 18),
+    ("01-25",  1, 25), ("02-01",  2,  1), ("02-08",  2,  8),
+    ("02-15",  2, 15), ("02-22",  2, 22), ("03-01",  3,  1),
+    ("03-08",  3,  8),
+]
+
+_WR_DAY_ZERO = datetime.date(2025, 11, 3)
+_WR_TARGETS = {}   # label → DayNum
+for _lbl, _mo, _dy in _WR_SPECS:
+    _yr  = 2025 if _mo >= 11 else 2026
+    _dn  = (datetime.date(_yr, _mo, _dy) - _WR_DAY_ZERO).days
+    _WR_TARGETS[_lbl] = _dn
+
+# Load 2026 rows from master dataset
+_md_path_h = BASE / "master_dataset.parquet"
+_md26_h    = pd.read_parquet(_md_path_h) if _md_path_h.exists() else pd.read_excel(BASE / "master_dataset.xlsx")
+_md26_h    = _md26_h[_md26_h["Season"] == 2026].copy()
+
+# Column map: master dataset team1_* → feature key
+_WR_T1_MAP = {
+    "team1_id":           "TeamID",
+    "team1_elo_last":     "elo_last",
+    "team1_elo_trend":    "elo_trend",
+    "team1_elo_sos":      "elo_sos",
+    "team1_avg_off_rtg":  "avg_off_rtg",
+    "team1_avg_def_rtg":  "avg_def_rtg",
+    "team1_avg_net_rtg":  "avg_net_rtg",
+    "team1_avg_oreb_pct": "avg_oreb_pct",
+    "team1_avg_tov_pct":  "avg_tov_pct",
+    "team1_last5_Margin": "last5_Margin",
+    "team1_POM": "POM", "team1_MAS": "MAS", "team1_MOR": "MOR",
+    "team1_WLK": "WLK", "team1_BIH": "BIH", "team1_NET": "NET",
+}
+_WR_T2_MAP = {k.replace("team1_", "team2_"): v for k, v in _WR_T1_MAP.items()}
+
+def _wr_snap_at(md26, daynum):
+    """Return {TeamID(int): {feat: val}} for most-recent game per team <= daynum."""
+    sub = md26[md26["DayNum"] <= daynum]
+    if sub.empty:
+        return {}
+    t1_cols = ["DayNum"] + [c for c in _WR_T1_MAP if c in sub.columns]
+    t2_cols = ["DayNum"] + [c for c in _WR_T2_MAP if c in sub.columns]
+    t1 = sub[t1_cols].rename(columns=_WR_T1_MAP)
+    t2 = sub[t2_cols].rename(columns=_WR_T2_MAP)
+    combined = pd.concat([t1, t2], ignore_index=True)
+    combined = combined.dropna(subset=["TeamID", "elo_last"])
+    combined["TeamID"] = combined["TeamID"].astype(int)
+    latest = combined.sort_values("DayNum").groupby("TeamID").last()
+    return latest.to_dict("index")
+
+def _wr_markov(snap_dict, daynum):
+    """Compute MR_Score and Exp_Wins_pct for teams in snap_dict at daynum."""
+    tids = sorted(snap_dict.keys())
+    n    = len(tids)
+    if n < 2:
+        return {}
+
+    # Build matchup feature matrix
+    rows, keys = [], []
+    for ai in range(n):
+        fa = snap_dict[tids[ai]]
+        for bi in range(ai + 1, n):
+            fb = snap_dict[tids[bi]]
+            rows.append({
+                "team1_elo_last":     fa.get("elo_last",   1500),
+                "team2_elo_last":     fb.get("elo_last",   1500),
+                "elo_diff":           fa.get("elo_last",   1500) - fb.get("elo_last",   1500),
+                "team1_elo_trend":    fa.get("elo_trend",  0),
+                "team2_elo_trend":    fb.get("elo_trend",  0),
+                "elo_trend_diff":     fa.get("elo_trend",  0)   - fb.get("elo_trend",  0),
+                "rankdiff_POM":       fa.get("POM",  182) - fb.get("POM",  182),
+                "rankdiff_MAS":       fa.get("MAS",  182) - fb.get("MAS",  182),
+                "rankdiff_MOR":       fa.get("MOR",  182) - fb.get("MOR",  182),
+                "rankdiff_WLK":       fa.get("WLK",  182) - fb.get("WLK",  182),
+                "rankdiff_BIH":       fa.get("BIH",  182) - fb.get("BIH",  182),
+                "rankdiff_NET":       fa.get("NET",  182) - fb.get("NET",  182),
+                "team1_avg_off_rtg":  fa.get("avg_off_rtg",  0),
+                "team2_avg_off_rtg":  fb.get("avg_off_rtg",  0),
+                "off_rtg_diff":       fa.get("avg_off_rtg",  0) - fb.get("avg_off_rtg",  0),
+                "team1_avg_def_rtg":  fa.get("avg_def_rtg",  0),
+                "team2_avg_def_rtg":  fb.get("avg_def_rtg",  0),
+                "def_rtg_diff":       fa.get("avg_def_rtg",  0) - fb.get("avg_def_rtg",  0),
+                "team1_avg_net_rtg":  fa.get("avg_net_rtg",  0),
+                "team2_avg_net_rtg":  fb.get("avg_net_rtg",  0),
+                "net_rtg_diff":       fa.get("avg_net_rtg",  0) - fb.get("avg_net_rtg",  0),
+                "team1_avg_oreb_pct": fa.get("avg_oreb_pct", 0),
+                "team2_avg_oreb_pct": fb.get("avg_oreb_pct", 0),
+                "oreb_pct_diff":      fa.get("avg_oreb_pct", 0) - fb.get("avg_oreb_pct", 0),
+                "team1_avg_tov_pct":  fa.get("avg_tov_pct",  0),
+                "team2_avg_tov_pct":  fb.get("avg_tov_pct",  0),
+                "tov_pct_diff":       fa.get("avg_tov_pct",  0) - fb.get("avg_tov_pct",  0),
+                "team1_last5_Margin": fa.get("last5_Margin",  0),
+                "team2_last5_Margin": fb.get("last5_Margin",  0),
+                "last5_Margin_diff":  fa.get("last5_Margin",  0) - fb.get("last5_Margin",  0),
+                "elo_sos_diff":       fa.get("elo_sos",       0) - fb.get("elo_sos",       0),
+                "location":           LOC_NEUTRAL,
+                "DayNum":             daynum,
+            })
+            keys.append((ai, bi))
+
+    X   = pd.DataFrame(rows)[FEATURE_COLS]
+    p_r = (final_model.predict_proba(X, num_iteration=n_trees)[:, 1]
+           if n_trees else final_model.predict_proba(X)[:, 1])
+    p_c = iso.predict(p_r).clip(1e-7, 1 - 1e-7)
+
+    # Probability matrix
+    P = np.zeros((n, n))
+    for (ai, bi), p in zip(keys, p_c):
+        P[ai, bi] = float(p)
+        P[bi, ai] = 1.0 - float(p)
+
+    # Markov / PageRank
+    col_sums = P.sum(axis=0)
+    col_sums[col_sums == 0] = 1.0
+    M  = P / col_sums[np.newaxis, :]
+    pi = np.full(n, 1.0 / n)
+    for _ in range(300):
+        pi_new = M @ pi
+        pi_new /= pi_new.sum()
+        if np.max(np.abs(pi_new - pi)) < 1e-10:
+            break
+        pi = pi_new
+    pi = pi_new
+
+    exp_wins = P.sum(axis=1) / (n - 1)
+    return {tids[i]: {"MR_Score": round(float(pi[i]) * n, 4),
+                      "Exp_Wins_pct": round(float(exp_wins[i]) * 100, 2)}
+            for i in range(n)}
+
+# Run weekly rankings
+_WR_MIN_TEAMS  = 50          # skip week if fewer teams have data
+_wr_week_data  = {}          # label → {tid: {MR_Score, Exp_Wins_pct}}
+_wr_computed   = []
+
+for _lbl, _dn in sorted(_WR_TARGETS.items(), key=lambda x: x[1]):
+    if _dn < 0:
+        print(f"  {_lbl} (DayNum {_dn:>4}): before season — skipped")
+        continue
+    _snap_w = _wr_snap_at(_md26_h, _dn)
+    _n_w    = len(_snap_w)
+    if _n_w < _WR_MIN_TEAMS:
+        print(f"  {_lbl} (DayNum {_dn:>4}): {_n_w} teams with data — skipped (< {_WR_MIN_TEAMS})")
+        continue
+    print(f"  {_lbl} (DayNum {_dn:>4}): {_n_w} teams — computing ...", end=" ", flush=True)
+    _wr_week_data[_lbl] = _wr_markov(_snap_w, _dn)
+    _wr_computed.append(_lbl)
+    print("done")
+
+print(f"\n  Computed {len(_wr_computed)} weeks: {_wr_computed[0]} → {_wr_computed[-1]}")
+
+# Build output DataFrame: teams as rows, weeks as columns
+_wr_all_tids = sorted(_mr_tids)   # all 365 D1 teams (from Phase G)
+_wr_rows = []
+for _tid in _wr_all_tids:
+    row = {"TeamID": _tid, "TeamName": _tid2name.get(_tid, str(_tid))}
+    for _lbl in _wr_computed:
+        week = _wr_week_data[_lbl].get(_tid, {})
+        row[f"MR_Score_{_lbl}"]    = week.get("MR_Score",    None)
+        row[f"Exp_Wins_{_lbl}"]    = week.get("Exp_Wins_pct", None)
+    _wr_rows.append(row)
+
+_df_wr = pd.DataFrame(_wr_rows)
+
+# Add integer rank columns (1 = best; NaN → last)
+for _lbl in _wr_computed:
+    sc_col = f"MR_Score_{_lbl}"
+    rk_col = f"MR_Rank_{_lbl}"
+    _df_wr[rk_col] = (
+        _df_wr[sc_col]
+        .rank(ascending=False, method="min", na_option="bottom")
+        .astype("Int64")
+    )
+
+# Reorder columns: TeamID, TeamName, then per-week triplets
+_base_cols = ["TeamID", "TeamName"]
+_week_cols = []
+for _lbl in _wr_computed:
+    _week_cols += [f"MR_Rank_{_lbl}", f"MR_Score_{_lbl}", f"Exp_Wins_{_lbl}"]
+_df_wr = _df_wr[_base_cols + _week_cols]
+
+# Sort by most-recent week's MR_Score descending
+_last_score = f"MR_Score_{_wr_computed[-1]}"
+_df_wr = _df_wr.sort_values(_last_score, ascending=False, na_position="last").reset_index(drop=True)
+
+_OUT_WR = BASE / "model_rankings_weekly_2026.csv"
+_df_wr.to_csv(_OUT_WR, index=False)
+print(f"Saved -> {_OUT_WR}  ({len(_df_wr)} teams × {len(_wr_computed)} weeks)")
+print(f"  First week: {_wr_computed[0]}  |  Last week: {_wr_computed[-1]}")
 
 # %%
 # ---------------------------------------------------------------------------
@@ -3232,7 +3466,5 @@ try:
                     print(f"  Push failed: {_push.stderr.strip()}")
 except Exception as _e:
     print(f"  Git push skipped: {_e}")
-
-
 
 # %%
