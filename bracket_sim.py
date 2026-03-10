@@ -2987,6 +2987,39 @@ _WR_T1_MAP = {
 }
 _WR_T2_MAP = {k.replace("team1_", "team2_"): v for k, v in _WR_T1_MAP.items()}
 
+# Load Massey ordinals for ranking override (same fix as STEP 12 in build_mm_dataset)
+# For each target date, override POM/MAS/etc with the latest available Massey snapshot
+# so ALL teams get current rankings regardless of when they last played.
+_WR_RANK_SYSTEMS = ["POM", "MAS", "MOR", "WLK", "BIH", "NET"]
+_wr_massey_csv = BASE / "MMasseyOrdinals.csv"
+_wr_massey_raw = pd.read_csv(_wr_massey_csv) if _wr_massey_csv.exists() else pd.DataFrame()
+if not _wr_massey_raw.empty:
+    _wr_massey_26 = _wr_massey_raw[
+        (_wr_massey_raw["Season"] == 2026) &
+        (_wr_massey_raw["SystemName"].isin(_WR_RANK_SYSTEMS))
+    ].copy()
+else:
+    _wr_massey_26 = pd.DataFrame()
+
+def _wr_apply_massey(snap_dict, daynum):
+    """Override POM/MAS/etc in snap_dict with the latest Massey snapshot <= daynum."""
+    if _wr_massey_26.empty:
+        return snap_dict
+    avail = _wr_massey_26[_wr_massey_26["RankingDayNum"] <= daynum]
+    if avail.empty:
+        return snap_dict
+    latest_dn = int(avail["RankingDayNum"].max())
+    latest    = avail[avail["RankingDayNum"] == latest_dn]
+    rank_pivot = latest.pivot(index="TeamID", columns="SystemName", values="OrdinalRank")
+    for tid, feats in snap_dict.items():
+        if tid in rank_pivot.index:
+            for sys in _WR_RANK_SYSTEMS:
+                if sys in rank_pivot.columns:
+                    val = rank_pivot.at[tid, sys]
+                    if not pd.isna(val):
+                        feats[sys] = int(val)
+    return snap_dict
+
 def _wr_snap_at(md26, daynum):
     """Return {TeamID(int): {feat: val}} for most-recent game per team <= daynum."""
     sub = md26[md26["DayNum"] <= daynum]
@@ -3091,6 +3124,7 @@ for _lbl, _dn in sorted(_WR_TARGETS.items(), key=lambda x: x[1]):
         print(f"  {_lbl} (DayNum {_dn:>4}): before season — skipped")
         continue
     _snap_w = _wr_snap_at(_md26_h, _dn)
+    _snap_w = _wr_apply_massey(_snap_w, _dn)   # override rankings for all teams
     _n_w    = len(_snap_w)
     if _n_w < _WR_MIN_TEAMS:
         print(f"  {_lbl} (DayNum {_dn:>4}): {_n_w} teams with data — skipped (< {_WR_MIN_TEAMS})")
