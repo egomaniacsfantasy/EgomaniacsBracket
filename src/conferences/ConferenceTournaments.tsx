@@ -28,10 +28,10 @@ const TEAM_STAT_LABELS: Record<TeamStatKey, string> = {
   rank_WLK: "Whitlock Rank",
   rank_MOR: "Moore Rank",
   elo_sos: "Odds Gods Elo SOS",
-  elo_last: "OddsGods Elo",
+  elo_last: "Odds Gods Elo",
   avg_net_rtg: "Net Rating",
   avg_off_rtg: "Offensive Rating",
-  elo_trend: "OddsGods Elo Trend",
+  elo_trend: "Odds Gods Elo Trend",
   avg_def_rtg: "Defensive Rating",
   last5_Margin: "Last 5 Margin",
   rank_BIH: "Bihl Rank",
@@ -47,13 +47,13 @@ const TEAM_STAT_DESCRIPTIONS: Record<TeamStatKey, string> = {
   rank_MOR:
     "Moore rankings. A rating algorithm that evaluates teams using statistical game data to estimate relative performance.",
   elo_sos:
-    "Mean of opponents' pre-game Elo across all games this season. OddsGods created SOS metric that prioritizes opponent strength at the time of each game.",
+    "Mean of opponents' pre-game Elo across all games this season. Odds Gods created SOS metric that prioritizes opponent strength at the time of each game.",
   elo_last:
-    "OddsGods custom built Elo system. Continuous rating that carries across seasons and updates after every game based on opponent quality, season phase, and conference context.",
+    "Odds Gods custom built Elo system. Continuous rating that carries across seasons and updates after every game based on opponent quality, season phase, and conference context.",
   avg_net_rtg: "Offensive rating minus defensive rating. Overall efficiency margin per 100 possessions.",
   avg_off_rtg: "Offensive rating. 100 * points / possessions.",
   elo_trend:
-    "OddsGods Elo trend. Slope of a linear regression line fit to a team's season Elo history, representing average Elo points gained or lost per game.",
+    "Odds Gods Elo trend. Slope of a linear regression line fit to a team's season Elo history, representing average Elo points gained or lost per game.",
   avg_def_rtg: "Defensive rating. 100 * opponent points / opponent possessions.",
   last5_Margin: "Rolling 5-game mean of scoring margin.",
   rank_BIH: "Bihl rankings. Rating system producing strength scores based on game outcomes and strength of schedule.",

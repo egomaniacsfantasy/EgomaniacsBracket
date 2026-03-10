@@ -17,6 +17,13 @@ if (path === "/demo") {
       <CascadeDemoPage />
     </StrictMode>
   );
+} else if (path === "/rankings") {
+  const { RankingsPage } = await import("./RankingsPage");
+  createRoot(document.getElementById("root")!).render(
+    <StrictMode>
+      <RankingsPage />
+    </StrictMode>
+  );
 } else {
   const [{ default: App }, { AdminPage }, { AuthProvider }] = await Promise.all([
     import("./App"),

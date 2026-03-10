@@ -12389,10 +12389,62 @@ body.walkthrough-active .odds-value--changed::after {
   font-style: italic;
 }
 
-/* Conference & Rankings toolbar button styles */
-.toolbar-btn--conferences,
-.toolbar-btn--rankings {
+/* Conference toolbar button styles */
+.toolbar-btn--conferences {
   font-size: 0.82rem;
+}
+
+/* Active nav link highlight */
+.og-top-nav-link--active {
+  color: var(--text) !important;
+  text-decoration: underline;
+  text-decoration-color: rgba(171, 138, 69, 0.5);
+  text-underline-offset: 4px;
+}
+
+/* Rankings standalone page footer */
+.rankings-footer {
+  max-width: 960px;
+  margin: 48px auto 0;
+  padding: 24px 32px;
+  border-top: 1px solid rgba(171, 138, 69, 0.15);
+  text-align: center;
+  font-size: 0.78rem;
+  color: var(--text-soft);
+}
+
+.rankings-footer .footer-wordmark {
+  font-family: "Instrument Serif", serif;
+  font-size: 0.85rem;
+  letter-spacing: 0.13em;
+  text-transform: uppercase;
+  color: rgba(240, 230, 208, 0.6);
+  text-decoration: none;
+}
+
+.rankings-footer .footer-wordmark strong {
+  color: rgba(240, 230, 208, 0.8);
+}
+
+.rankings-footer p {
+  margin: 6px 0 8px;
+  color: var(--text-soft);
+}
+
+.rankings-footer .footer-links {
+  display: flex;
+  gap: 16px;
+  justify-content: center;
+}
+
+.rankings-footer .footer-links a {
+  color: var(--text-dim);
+  text-decoration: none;
+  font-size: 0.75rem;
+}
+
+.rankings-footer .footer-links a:hover {
+  color: var(--text);
 }
 
 /* Mobile responsive adjustments */
