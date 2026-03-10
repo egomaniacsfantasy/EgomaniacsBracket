@@ -6155,7 +6155,7 @@ function GameCard({
       onMouseEnter={() => setShowChaosTooltip(true)}
       onMouseLeave={() => setShowChaosTooltip(false)}
     >
-      {game.teamAId && game.teamBId ? (
+      {game.teamAId && game.teamBId && !useShowdownCard ? (
         <button
           type="button"
           className="matchup-stats-icon"
