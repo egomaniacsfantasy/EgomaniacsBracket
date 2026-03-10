@@ -6242,6 +6242,15 @@ body {
   transition: opacity 160ms ease, transform 160ms ease;
 }
 
+.og-top-nav-dropdown-menu::before {
+  content: "";
+  position: absolute;
+  bottom: 100%;
+  left: 0;
+  right: 0;
+  height: 16px;
+}
+
 .og-top-nav-dropdown:hover .og-top-nav-dropdown-menu,
 .og-top-nav-dropdown:focus-within .og-top-nav-dropdown-menu {
   opacity: 1;
@@ -9090,12 +9099,17 @@ body.walkthrough-active .eg-title-choice:hover {
 
 .tool-page-header h1 {
   margin: 0;
+  font-family: var(--font-serif);
   font-size: clamp(2.2rem, 4vw, 3.4rem);
+  font-weight: 400;
+  letter-spacing: -0.01em;
 }
 
 .tool-page-subtitle {
   margin: 0;
   max-width: 640px;
+  font-family: var(--font-mono);
+  font-size: 0.95rem;
   color: var(--text-secondary);
   line-height: 1.55;
 }
@@ -9134,6 +9148,8 @@ body.walkthrough-active .eg-title-choice:hover {
   display: flex;
   flex-direction: column;
   gap: 26px;
+  max-width: 860px;
+  margin: 0 auto;
 }
 
 .mp-controls {
@@ -9200,8 +9216,9 @@ body.walkthrough-active .eg-title-choice:hover {
 }
 
 .mp-selector-name {
-  font-size: 1rem;
-  font-weight: 700;
+  font-family: var(--font-serif);
+  font-size: 1.05rem;
+  font-weight: 400;
   color: var(--text-primary);
 }
 
@@ -9284,7 +9301,9 @@ body.walkthrough-active .eg-title-choice:hover {
 }
 
 .mp-dropdown-item-name {
-  font-weight: 700;
+  font-family: var(--font-serif);
+  font-weight: 400;
+  font-size: 0.95rem;
   color: var(--text-primary);
 }
 
@@ -9315,7 +9334,7 @@ body.walkthrough-active .eg-title-choice:hover {
 
 .mp-loc-btn {
   min-height: 44px;
-  padding: 0 14px;
+  padding: 6px 14px;
   border: 1px solid transparent;
   border-radius: 12px;
   background: transparent;
@@ -9326,6 +9345,20 @@ body.walkthrough-active .eg-title-choice:hover {
   cursor: pointer;
   transition: background 140ms ease, border-color 140ms ease, color 140ms ease;
   white-space: nowrap;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+}
+
+.mp-loc-icon {
+  font-size: 16px;
+  line-height: 1;
+}
+
+.mp-loc-text {
+  font-size: 10px;
+  letter-spacing: 0.06em;
 }
 
 .mp-loc-btn:hover {
@@ -9371,6 +9404,18 @@ body.walkthrough-active .eg-title-choice:hover {
   padding: 14px 10px;
   background: rgba(255, 255, 255, 0.03);
   border-color: rgba(255, 255, 255, 0.04);
+}
+
+.mp-showdown-card .eg-showdown-name {
+  font-family: var(--font-serif);
+  font-weight: 400;
+  font-size: 1.15rem;
+}
+
+.mp-showdown-card .eg-showdown-odds {
+  font-family: var(--font-mono);
+  font-size: 1.3rem;
+  letter-spacing: -0.02em;
 }
 
 .mp-showdown-card .eg-showdown-team:hover {
@@ -9450,7 +9495,9 @@ body.walkthrough-active .eg-title-choice:hover {
 
 .mp-stat-card-head h3 {
   margin: 0;
-  font-size: 1.1rem;
+  font-family: var(--font-serif);
+  font-size: 1.2rem;
+  font-weight: 400;
 }
 
 .mp-stat-card-head p {
@@ -9537,8 +9584,11 @@ body.walkthrough-active .eg-title-choice:hover {
 
   .mp-loc-btn {
     min-width: 0;
-    padding: 0 10px;
-    font-size: 11px;
+    padding: 6px 10px;
+  }
+
+  .mp-loc-text {
+    font-size: 9px;
   }
 
   .mp-showdown-head,

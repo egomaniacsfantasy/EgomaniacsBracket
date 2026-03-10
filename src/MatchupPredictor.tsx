@@ -351,13 +351,16 @@ export function MatchupPredictor({ displayMode: _displayMode }: { displayMode?: 
           <label className="mp-team-label">Game Site</label>
           <div className="mp-location-btns">
             <button className={`mp-loc-btn ${loc === "H" ? "mp-loc-btn--active" : ""}`} onClick={() => setLoc("H")} type="button">
-              {teamA?.name ?? "Team A"} Home
+              <span className="mp-loc-icon" aria-hidden="true">&#x1F3E0;</span>
+              <span className="mp-loc-text">{teamA?.name ?? "Team A"}</span>
             </button>
             <button className={`mp-loc-btn ${loc === "N" ? "mp-loc-btn--active" : ""}`} onClick={() => setLoc("N")} type="button">
-              Neutral
+              <span className="mp-loc-icon" aria-hidden="true">&#x2696;</span>
+              <span className="mp-loc-text">Neutral</span>
             </button>
             <button className={`mp-loc-btn ${loc === "A" ? "mp-loc-btn--active" : ""}`} onClick={() => setLoc("A")} type="button">
-              {teamB?.name ?? "Team B"} Home
+              <span className="mp-loc-icon" aria-hidden="true">&#x1F3E0;</span>
+              <span className="mp-loc-text">{teamB?.name ?? "Team B"}</span>
             </button>
           </div>
         </div>
