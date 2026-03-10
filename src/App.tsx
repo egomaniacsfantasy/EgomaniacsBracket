@@ -210,7 +210,7 @@ const MAJOR_SHIFT_NUDGE_COOLDOWN = 3;
 type WalkthroughStepId = "hook" | "upset-pick" | "bracket-ripple" | "futures-panel" | "ready";
 type WalkthroughStepAdvance = "pick-detected" | "button-click";
 type TooltipPlacement = "above" | "below" | "left" | "right" | "bottom-sheet";
-type HintKey = "undo" | "sim" | "toggle" | "r32";
+type HintKey = "undo" | "sim" | "toggle" | "r32" | "walkthrough-undo";
 type HintsShown = Record<HintKey, boolean>;
 type ActiveHint = {
   key: HintKey;
@@ -345,11 +345,51 @@ const DEFAULT_HINTS_SHOWN: HintsShown = {
   sim: false,
   toggle: false,
   r32: false,
+  "walkthrough-undo": false,
 };
 
 const ONBOARDING_UPSET_REGION: Region = "South";
-const ONBOARDING_UPSET_WINNER = "Merrimack";
-const ONBOARDING_UPSET_LOSER = "Florida";
+const ONBOARDING_UPSET_WINNER_SEED = "15";
+const ONBOARDING_UPSET_LOSER_SEED = "2";
+
+type OnboardingUpsetTeams = {
+  region: Region;
+  winnerName: string;
+  loserName: string;
+  winnerSeed: string;
+  loserSeed: string;
+};
+
+const resolveOnboardingUpsetTeams = (games: ResolvedGame[]): OnboardingUpsetTeams => {
+  const fallback: OnboardingUpsetTeams = {
+    region: ONBOARDING_UPSET_REGION,
+    winnerName: "#15 seed",
+    loserName: "#2 seed",
+    winnerSeed: ONBOARDING_UPSET_WINNER_SEED,
+    loserSeed: ONBOARDING_UPSET_LOSER_SEED,
+  };
+  const game = games.find((g) => {
+    if (g.round !== "R64" || g.region !== ONBOARDING_UPSET_REGION || !g.teamAId || !g.teamBId) return false;
+    const teamA = teamsById.get(g.teamAId);
+    const teamB = teamsById.get(g.teamBId);
+    if (!teamA || !teamB) return false;
+    const seeds = new Set([teamA.seedLabel, teamB.seedLabel]);
+    return seeds.has(ONBOARDING_UPSET_WINNER_SEED) && seeds.has(ONBOARDING_UPSET_LOSER_SEED);
+  });
+  if (!game) return fallback;
+  const teamA = teamsById.get(game.teamAId!);
+  const teamB = teamsById.get(game.teamBId!);
+  if (!teamA || !teamB) return fallback;
+  const winner = teamA.seedLabel === ONBOARDING_UPSET_WINNER_SEED ? teamA : teamB;
+  const loser = teamA.seedLabel === ONBOARDING_UPSET_LOSER_SEED ? teamA : teamB;
+  return {
+    region: ONBOARDING_UPSET_REGION,
+    winnerName: winner.name,
+    loserName: loser.name,
+    winnerSeed: winner.seedLabel,
+    loserSeed: loser.seedLabel,
+  };
+};
 
 const WALKTHROUGH_STEPS: WalkthroughStepConfig[] = [
   {
@@ -364,7 +404,7 @@ const WALKTHROUGH_STEPS: WalkthroughStepConfig[] = [
   {
     id: "upset-pick",
     heading: "Pick the upset.",
-    body: "Tap #15 Merrimack to knock off #2 Florida. Then watch what happens to every team in the South.",
+    body: "Tap the underdog to pull off the upset. Then watch what happens to every team in the region.",
     ctaText: "Pick a team",
     advanceOn: "button-click",
     allowSkip: true,
@@ -433,22 +473,13 @@ const formatDelta = (delta: number, displayMode: OddsDisplayMode): string => {
 };
 
 const findOnboardingUpsetMatchupId = (games: ResolvedGame[]): string => {
-  const byNames = games.find((game) => {
-    if (game.round !== "R64" || game.region !== ONBOARDING_UPSET_REGION || !game.teamAId || !game.teamBId) return false;
-    const teamA = teamsById.get(game.teamAId);
-    const teamB = teamsById.get(game.teamBId);
-    if (!teamA || !teamB) return false;
-    const names = new Set([teamA.name, teamB.name]);
-    return names.has(ONBOARDING_UPSET_WINNER) && names.has(ONBOARDING_UPSET_LOSER);
-  });
-  if (byNames) return byNames.id;
   const bySeed = games.find((game) => {
     if (game.round !== "R64" || game.region !== ONBOARDING_UPSET_REGION || !game.teamAId || !game.teamBId) return false;
     const teamA = teamsById.get(game.teamAId);
     const teamB = teamsById.get(game.teamBId);
     if (!teamA || !teamB) return false;
     const seeds = new Set([teamA.seedLabel, teamB.seedLabel]);
-    return seeds.has("15") && seeds.has("2");
+    return seeds.has(ONBOARDING_UPSET_WINNER_SEED) && seeds.has(ONBOARDING_UPSET_LOSER_SEED);
   });
   return bySeed?.id ?? "South-R64-2";
 };
@@ -885,7 +916,7 @@ function App() {
   const completeWalkthrough = () => {
     trackEvent("onboarding_completed");
     closeWalkthrough();
-    maybeShowPromoCTA();
+    showContextualHint("walkthrough-undo", "Changed your mind? Undo any pick anytime.", ".toolbar-btn--undo", 4000);
   };
 
   const skipWalkthrough = () => {
@@ -893,7 +924,6 @@ function App() {
       skipped_at_step: walkthroughStep + 1,
     });
     closeWalkthrough();
-    maybeShowPromoCTA();
   };
 
   const startWalkthrough = (opts?: { replay?: boolean }) => {
@@ -1424,6 +1454,8 @@ function App() {
     return Math.min(URL_EXPECTED_GAME_COUNT, count);
   }, [games]);
 
+  const onboardingUpsetTeams = useMemo(() => resolveOnboardingUpsetTeams(games), [games]);
+
   const chaosScore = useMemo(() => computeChaosScoreFromGames(games), [games]);
   const submittedBracketCount = useMemo(
     () => userBrackets.filter((bracket) => Boolean(bracket.submitted_at)).length,
@@ -1580,8 +1612,8 @@ function App() {
         game.id === walkthroughMatchupId &&
         Boolean(
           pickedTeam &&
-            (pickedTeam.name === ONBOARDING_UPSET_WINNER ||
-              (pickedTeam.seedLabel === "15" && pickedTeam.region === ONBOARDING_UPSET_REGION))
+            (pickedTeam.name === onboardingUpsetTeams.winnerName ||
+              (pickedTeam.seedLabel === ONBOARDING_UPSET_WINNER_SEED && pickedTeam.region === ONBOARDING_UPSET_REGION))
         );
       if (!isForcedUpsetPick) return;
       setWalkthroughCascadePathByRound(getOnboardingPathByRound(game.id));
@@ -2305,9 +2337,15 @@ function App() {
 
   useEffect(() => {
     if (!onboardingFlowReady || allPlayInDecided || firstFourAutoShownRef.current) return;
+    if (pickCount < 3) return;
     setShowFirstFourModal(true);
     firstFourAutoShownRef.current = true;
-  }, [allPlayInDecided, onboardingFlowReady]);
+  }, [allPlayInDecided, onboardingFlowReady, pickCount]);
+
+  useEffect(() => {
+    if (pickCount < 8) return;
+    maybeShowPromoCTA();
+  }, [pickCount]);
 
   useEffect(() => {
     if (mobileSection === "FF") return;
@@ -2331,7 +2369,7 @@ function App() {
       return {
         ...currentWalkthroughStep,
         heading: "Pick the upset.",
-        body: "Tap #15 Merrimack to knock off #2 Florida. Then watch what happens to every team in the South.",
+        body: `Tap #${onboardingUpsetTeams.winnerSeed} ${onboardingUpsetTeams.winnerName} to knock off #${onboardingUpsetTeams.loserSeed} ${onboardingUpsetTeams.loserName}. Then watch what happens to every team in the ${onboardingUpsetTeams.region}.`,
         ctaText: "Pick a team",
       };
     }
@@ -2347,12 +2385,12 @@ function App() {
     if (currentWalkthroughStep.id === "futures-panel") {
       return {
         ...currentWalkthroughStep,
-        body: "Notice how Merrimack appears and Florida drops. Red/green deltas show exactly how much your upset shifted each team. Scroll to see the pre-tournament baseline.",
+        body: `Notice how ${onboardingUpsetTeams.winnerName} appears and ${onboardingUpsetTeams.loserName} drops. Red/green deltas show exactly how much your upset shifted each team. Scroll to see the pre-tournament baseline.`,
       };
     }
 
     return currentWalkthroughStep;
-  }, [currentWalkthroughStep, walkthroughCascadePhase]);
+  }, [currentWalkthroughStep, walkthroughCascadePhase, onboardingUpsetTeams]);
   const walkthroughCtaLabel =
     currentWalkthroughStep?.id === "upset-pick"
       ? "Pick a team"
@@ -2421,7 +2459,7 @@ function App() {
       };
       window.requestAnimationFrame(tick);
     };
-    const loserName = ONBOARDING_UPSET_LOSER;
+    const loserName = onboardingUpsetTeams.loserName;
     const steps: Array<{
       round: "R32" | "S16" | "E8";
       spotlightAt: number;
@@ -2437,8 +2475,8 @@ function App() {
         fadeAt: 1600,
         fadeMs: 1200,
         oddsAt: 3300,
-        preCaption: "Florida was projected here. Now they're gone.",
-        postCaption: "The remaining teams just absorbed Florida's odds.",
+        preCaption: `${loserName} was projected here. Now they're gone.`,
+        postCaption: `The remaining teams just absorbed ${loserName}'s odds.`,
       },
       {
         round: "S16",
@@ -2447,7 +2485,7 @@ function App() {
         fadeMs: 1000,
         oddsAt: 7500,
         preCaption: "Now watch the Sweet 16.",
-        postCaption: "Connecticut and Purdue just got a much easier path.",
+        postCaption: "The other contenders just got a much easier path.",
       },
       {
         round: "E8",
@@ -2603,12 +2641,12 @@ function App() {
         if (currentWalkthroughStep.id === "futures-panel") {
           setMainView("futures");
           window.setTimeout(() => {
-            const merrimackRow = document.querySelector<HTMLElement>(`.ft-card[data-team-name="${ONBOARDING_UPSET_WINNER}"]`);
-            const floridaRow = document.querySelector<HTMLElement>(`.ft-card[data-team-name="${ONBOARDING_UPSET_LOSER}"]`);
-            const target = merrimackRow ?? floridaRow;
+            const winnerRow = document.querySelector<HTMLElement>(`.ft-card[data-team-name="${onboardingUpsetTeams.winnerName}"]`);
+            const loserRow = document.querySelector<HTMLElement>(`.ft-card[data-team-name="${onboardingUpsetTeams.loserName}"]`);
+            const target = winnerRow ?? loserRow;
             target?.scrollIntoView({ behavior: "smooth", block: "center" });
-            merrimackRow?.classList.add("futures-row--onboarding-highlight");
-            floridaRow?.classList.add("futures-row--onboarding-highlight");
+            winnerRow?.classList.add("futures-row--onboarding-highlight");
+            loserRow?.classList.add("futures-row--onboarding-highlight");
           }, 350);
         }
         if (currentWalkthroughStep.id === "ready") {
@@ -2934,49 +2972,55 @@ function App() {
           {pickCount > 0 ? <span className="futures-btn-badge">{pickCount}</span> : null}
         </button>
       ) : null}
-      <button
-        onClick={onModelSim}
-        className="eg-btn toolbar-btn--instant"
-        style={!isMobile && mainView !== "bracket" && mainView !== "futures" ? { display: "none" } : undefined}
-      >
-        Instant Sim
-      </button>
-      <button
-        onClick={onModelSimStaggered}
-        className="eg-btn toolbar-btn--staggered"
-        disabled={staggeredSimRunning}
-        style={!isMobile && mainView !== "bracket" && mainView !== "futures" ? { display: "none" } : undefined}
-      >
-        {staggeredSimRunning ? "Staggered Sim Running..." : "Staggered Sim"}
-      </button>
-      <button
-        onClick={onSaveBracket}
-        className="eg-btn toolbar-btn--save toolbar-btn--save-action"
-        disabled={saveStatus === "saving" || (isAuthenticated && !canSubmitBrackets)}
-        title={
-          !isAuthenticated
-            ? "Sign in to submit your bracket"
-            : submissionsLocked
-              ? "Submissions locked at tip-off"
-              : submissionLimitReached
-                ? "Submission limit reached (25/25)"
-                : `Submitted: ${submittedBracketCount}/25`
-        }
-        style={!isMobile && mainView !== "bracket" && mainView !== "futures" ? { display: "none" } : undefined}
-      >
-        {saveStatus === "saving"
-          ? "Submitting..."
-          : saveStatus === "saved"
-            ? "✓ Submitted"
-            : saveStatus === "error"
-              ? (saveErrorText?.includes("25")
+      {pickCount >= 5 ? (
+        <button
+          onClick={onModelSim}
+          className="eg-btn toolbar-btn--instant"
+          style={!isMobile && mainView !== "bracket" && mainView !== "futures" ? { display: "none" } : undefined}
+        >
+          Instant Sim
+        </button>
+      ) : null}
+      {pickCount >= 5 ? (
+        <button
+          onClick={onModelSimStaggered}
+          className="eg-btn toolbar-btn--staggered"
+          disabled={staggeredSimRunning}
+          style={!isMobile && mainView !== "bracket" && mainView !== "futures" ? { display: "none" } : undefined}
+        >
+          {staggeredSimRunning ? "Staggered Sim Running..." : "Staggered Sim"}
+        </button>
+      ) : null}
+      {pickCount >= 10 ? (
+        <button
+          onClick={onSaveBracket}
+          className="eg-btn toolbar-btn--save toolbar-btn--save-action"
+          disabled={saveStatus === "saving" || (isAuthenticated && !canSubmitBrackets)}
+          title={
+            !isAuthenticated
+              ? "Sign in to submit your bracket"
+              : submissionsLocked
+                ? "Submissions locked at tip-off"
+                : submissionLimitReached
                   ? "Submission limit reached (25/25)"
-                  : saveErrorText?.toLowerCase().includes("locked")
-                    ? "Submissions locked"
-                    : "Error — try again")
-              : `Submit Bracket ${isAuthenticated ? `(${submittedBracketCount}/25)` : ""}`}
-      </button>
-      {playInGames.length > 0 ? (
+                  : `Submitted: ${submittedBracketCount}/25`
+          }
+          style={!isMobile && mainView !== "bracket" && mainView !== "futures" ? { display: "none" } : undefined}
+        >
+          {saveStatus === "saving"
+            ? "Submitting..."
+            : saveStatus === "saved"
+              ? "✓ Submitted"
+              : saveStatus === "error"
+                ? (saveErrorText?.includes("25")
+                    ? "Submission limit reached (25/25)"
+                    : saveErrorText?.toLowerCase().includes("locked")
+                      ? "Submissions locked"
+                      : "Error — try again")
+                : `Submit Bracket ${isAuthenticated ? `(${submittedBracketCount}/25)` : ""}`}
+        </button>
+      ) : null}
+      {playInGames.length > 0 && pickCount >= 3 ? (
         <button
           onClick={() => setShowFirstFourModal(true)}
           className="eg-btn toolbar-btn--firstfour"
@@ -3029,15 +3073,26 @@ function App() {
           </button>
         </>
       )}
-      <button
-        onClick={onCopyShareLink}
-        className="eg-btn copy-link-btn toolbar-btn--copy"
-        data-copied={linkCopied ? "true" : "false"}
-        aria-label="Copy shareable bracket link"
-        style={!isMobile && mainView !== "bracket" && mainView !== "futures" ? { display: "none" } : undefined}
-      >
-        {linkCopied ? "✓ Copied!" : "Copy Link"}
-      </button>
+      {!walkthroughActive && !welcomeGateOpen ? (
+        <button
+          onClick={() => startWalkthrough({ replay: true })}
+          className="eg-btn toolbar-btn--tour"
+          title="Replay guided tour"
+        >
+          Replay Tour
+        </button>
+      ) : null}
+      {pickCount >= 3 ? (
+        <button
+          onClick={onCopyShareLink}
+          className="eg-btn copy-link-btn toolbar-btn--copy"
+          data-copied={linkCopied ? "true" : "false"}
+          aria-label="Copy shareable bracket link"
+          style={!isMobile && mainView !== "bracket" && mainView !== "futures" ? { display: "none" } : undefined}
+        >
+          {linkCopied ? "✓ Copied!" : "Copy Link"}
+        </button>
+      ) : null}
       {staggeredSimRunning ? (
         <button
           onClick={onToggleStaggeredPause}
@@ -3116,7 +3171,7 @@ function App() {
           %
         </button>
       </div>
-      {!isMobile && chaosScore !== null ? (
+      {!isMobile && chaosScore !== null && pickCount >= 5 ? (
         <div
           className={`chaos-score-wrap ${chaosScoreChanged ? "chaos-score-pill--changed" : ""}`}
         >
@@ -3167,7 +3222,7 @@ function App() {
     ) : null;
 
   const mobileChaosBadge =
-    chaosScore !== null ? (
+    chaosScore !== null && pickCount >= 5 ? (
       <button
         type="button"
         className={`chaos-pill chaos-pill--mobile ${chaosScoreChanged ? "chaos-score-pill--changed" : ""}`}
@@ -3326,7 +3381,16 @@ function App() {
         <section className="ft-section">
           <div className="ft-picks-empty-compact">
             <span className="ft-picks-empty-label">YOUR PICKS</span>
-            <span className="ft-picks-empty-text">Champion and Final Four will appear here as you pick.</span>
+            <span className="ft-picks-empty-text">Start picking games on the bracket to see your champion and Final Four projected here.</span>
+            {isMobile ? (
+              <button className="ft-picks-empty-cta" onClick={() => setMobileTab("bracket")}>
+                Go to Bracket
+              </button>
+            ) : (
+              <button className="ft-picks-empty-cta" onClick={() => setMainView("bracket")}>
+                Go to Bracket
+              </button>
+            )}
           </div>
         </section>
       ) : (
@@ -3633,7 +3697,7 @@ function App() {
         <header className={`eg-header ${isMobile ? "mobile-hidden" : ""}`}>
           <h1>The Bracket Lab</h1>
           <p className="eg-subtitle">
-            March Madness what-if odds. Click picks to update futures in real time based on your picks.
+            Pick any game. Watch every championship odd change instantly.
           </p>
         </header>
         {isMobile ? (
@@ -3643,6 +3707,9 @@ function App() {
             {mobileTab === "bracket" ? (
               <>
                 <MobileRegionTabs activeSection={mobileSection} onChange={setMobileSection} />
+                {pickCount === 0 && !walkthroughActive ? (
+                  <p className="mobile-bracket-hint">Tap any matchup to start building your bracket.</p>
+                ) : null}
                 <div className="mobile-bracket-scroll">
                   {mobileSection === "FF" ? (
                     <MobileFinalFourView
@@ -7435,7 +7502,7 @@ function SpotlightWalkthrough({
               checked={dontShowAgain}
               onChange={(event) => onDontShowAgainChange(event.target.checked)}
             />
-            <span>Don&apos;t show this again</span>
+            <span>Skip this next time</span>
           </label>
         ) : null}
         <div className="walkthrough-dots" aria-hidden="true">

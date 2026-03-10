@@ -13142,3 +13142,40 @@ body.walkthrough-active .odds-value--changed::after {
     font-size: 0.6rem;
   }
 }
+
+/* ── Mobile bracket hint ── */
+.mobile-bracket-hint {
+  text-align: center;
+  color: var(--text-secondary, #a89e8c);
+  font-size: 0.85rem;
+  padding: 0.75rem 1rem;
+  opacity: 0.85;
+}
+
+/* ── Futures empty-state CTA ── */
+.ft-picks-empty-cta {
+  display: inline-block;
+  margin-top: 0.5rem;
+  padding: 0.4rem 1rem;
+  font-size: 0.8rem;
+  border: 1px solid var(--amber, #b87d18);
+  color: var(--amber, #b87d18);
+  background: transparent;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+.ft-picks-empty-cta:hover {
+  background: var(--amber, #b87d18);
+  color: #1a1a1a;
+}
+
+/* ── Replay tour button ── */
+.toolbar-btn--tour {
+  font-size: 0.75rem;
+  opacity: 0.6;
+  transition: opacity 0.15s;
+}
+.toolbar-btn--tour:hover {
+  opacity: 1;
+}
