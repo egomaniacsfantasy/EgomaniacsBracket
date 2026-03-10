@@ -375,7 +375,15 @@ export function MatchupPredictor({ displayMode: _displayMode }: { displayMode?: 
         </div>
       ) : (
         <div className="mp-placeholder">
-          {teamAId && teamBId ? "Computing matchup..." : "Select two teams above to reveal the matchup."}
+          {teamAId && teamBId ? (
+            "Computing matchup..."
+          ) : (
+            <>
+              <span className="mp-placeholder-icon">🏀</span>
+              <span className="mp-placeholder-title">Head-to-head matchup simulator</span>
+              <span className="mp-placeholder-body">Pick any two D1 teams to see win probabilities, stat comparisons, and key matchup factors — all powered by our model.</span>
+            </>
+          )}
         </div>
       )}
     </div>

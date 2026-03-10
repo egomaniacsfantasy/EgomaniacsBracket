@@ -38,6 +38,7 @@ import { LeaderboardFullWidth } from "./Leaderboard";
 import { deserializePicks, getUserBrackets, saveBracket, serializePicks, type SavedBracket } from "./bracketStorage";
 import { TEAM_STAT_IMPORTANCE, TEAM_STAT_ORDER, TEAM_STATS_2026, type TeamStatKey } from "./data/teamStats2026";
 import type { OddsDisplayMode, Region, ResolvedGame, SimulationOutput } from "./types";
+import { ToolNav } from "./SiteChrome";
 
 const DEFAULT_SIM_RUNS = 10000;
 const CHAOS_DISTRIBUTION_SIM_RUNS = 10000;
@@ -50,7 +51,6 @@ const ODDS_FORMAT_STORAGE_KEY = "bracketlab-odds-format";
 const STAGGERED_SIM_DELAY_MS = 2000;
 const MIN_STAGGERED_SIM_DELAY_MS = 1000;
 const MAX_STAGGERED_SIM_DELAY_MS = 5000;
-const LANDING_URL = "https://oddsgods.net";
 
 const regionSections: Region[][] = BRACKET_HALVES.map((half) => [...half.regions]);
 const mobileRegionOrder: Region[] = ["East", "West", "Midwest", "South"];
@@ -2385,7 +2385,7 @@ function App() {
     if (currentWalkthroughStep.id === "futures-panel") {
       return {
         ...currentWalkthroughStep,
-        body: `Notice how ${onboardingUpsetTeams.winnerName} appears and ${onboardingUpsetTeams.loserName} drops. Red/green deltas show exactly how much your upset shifted each team. Scroll to see the pre-tournament baseline.`,
+        body: "This tracks every team's championship path — round by round, updated live as you pick. Red and green deltas show exactly how each pick reshapes the field.",
       };
     }
 
@@ -2641,12 +2641,8 @@ function App() {
         if (currentWalkthroughStep.id === "futures-panel") {
           setMainView("futures");
           window.setTimeout(() => {
-            const winnerRow = document.querySelector<HTMLElement>(`.ft-card[data-team-name="${onboardingUpsetTeams.winnerName}"]`);
-            const loserRow = document.querySelector<HTMLElement>(`.ft-card[data-team-name="${onboardingUpsetTeams.loserName}"]`);
-            const target = winnerRow ?? loserRow;
-            target?.scrollIntoView({ behavior: "smooth", block: "center" });
-            winnerRow?.classList.add("futures-row--onboarding-highlight");
-            loserRow?.classList.add("futures-row--onboarding-highlight");
+            const futuresPanel = document.querySelector<HTMLElement>(".futures-full");
+            futuresPanel?.scrollIntoView({ behavior: "smooth", block: "start" });
           }, 350);
         }
         if (currentWalkthroughStep.id === "ready") {
@@ -3054,22 +3050,10 @@ function App() {
             {mainView === "conferences" ? "← Bracket" : "Conf. Tourneys"}
           </button>
           <button
-            onClick={() => setMainView((prev) => (prev === "rankings" ? "bracket" : "rankings"))}
-            className={`eg-btn toolbar-btn--rankings ${mainView === "rankings" ? "toolbar-btn--active-view" : ""}`}
-          >
-            {mainView === "rankings" ? "← Bracket" : "Rankings"}
-          </button>
-          <button
             onClick={() => setMainView((prev) => (prev === "leaderboard" ? "bracket" : "leaderboard"))}
             className={`eg-btn toolbar-btn--leaderboard ${mainView === "leaderboard" ? "toolbar-btn--active-view" : ""}`}
           >
             {mainView === "leaderboard" ? "← Bracket" : "🏆 Leaderboard"}
-          </button>
-          <button
-            onClick={() => setMainView((prev) => (prev === "predictor" ? "bracket" : "predictor"))}
-            className={`eg-btn toolbar-btn--predictor ${mainView === "predictor" ? "toolbar-btn--active-view" : ""}`}
-          >
-            {mainView === "predictor" ? "← Bracket" : "Predictor"}
           </button>
         </>
       )}
@@ -3617,73 +3601,40 @@ function App() {
       <div className="bg-shape bg-bottom" aria-hidden="true" />
 
       <main className="eg-app">
-        <nav className="og-top-nav" aria-label="Odds Gods tools">
-          <div className="og-top-nav-desktop">
-            <a className="og-top-nav-brand" href={LANDING_URL}>
-              <img className="og-top-nav-logo" src="/logo-icon.png?v=20260225" alt="Odds Gods" />
-              <span className="odds">ODDS</span> <span className="gods">GODS</span>
-              <span className="beta-badge">BETA</span>
-            </a>
-            <div className="og-top-nav-tabs">
-              <a
-                className="og-top-nav-link"
-                href="https://oddsgods.net/blog"
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                Blog
-              </a>
-              <a className="og-top-nav-link" href="/god-rankings.html" target="_blank" rel="noopener noreferrer">
-                Odds Gods Rankings
-              </a>
-            </div>
-            <div className="og-top-nav-auth">
-              {authLoading ? (
-                <span className="nav-auth-loading">...</span>
-              ) : isAuthenticated ? (
-                <div className="nav-user-info">
-                  <span className="nav-user-name">{profile?.display_name || user?.email || "User"}</span>
-                  <button className="nav-signout-btn" onClick={() => signOut()}>
-                    Sign out
-                  </button>
-                </div>
-              ) : (
-                <button className="nav-signin-btn" onClick={() => setAuthModalOpen(true)}>
-                  Log in / Sign up
+        <ToolNav
+          activeTool="bracket"
+          showBeta
+          desktopAuthSlot={
+            authLoading ? (
+              <span className="nav-auth-loading">...</span>
+            ) : isAuthenticated ? (
+              <div className="nav-user-info">
+                <span className="nav-user-name">{profile?.display_name || user?.email || "User"}</span>
+                <button className="nav-signout-btn" onClick={() => signOut()}>
+                  Sign out
                 </button>
-              )}
-            </div>
-          </div>
-          <div className="og-top-nav-mobile">
-            <div className="nav-left">
-              <a className="og-mobile-logo-link" href={LANDING_URL} aria-label="Odds Gods home">
-                <img className="nav-logo-icon nav-logo" src="/logo-icon.png?v=20260225" alt="Odds Gods" />
-              </a>
-              <span className="nav-product-title nav-wordmark">ODDS GODS</span>
-              <span className="beta-badge nav-beta">BETA</span>
-            </div>
-            <div className="nav-right">
-              <a className="og-top-nav-link" href="https://oddsgods.net/blog" target="_blank" rel="noopener noreferrer">
-                Blog
-              </a>
-              <a className="og-top-nav-link" href="/god-rankings.html" target="_blank" rel="noopener noreferrer">
-                Rankings
-              </a>
-              {isAuthenticated ? (
-                <>
-                  <span className="nav-user-name nav-user-name--mobile">{profile?.display_name || user?.email || "User"}</span>
-                  <button className="nav-signout-btn nav-signout-btn--mobile nav-auth-btn" onClick={() => signOut()}>
-                    Sign out
-                  </button>
-                </>
-              ) : (
-                <button className="nav-signin-btn nav-signin-btn--mobile nav-auth-btn" onClick={() => setAuthModalOpen(true)}>
-                  Log in
+              </div>
+            ) : (
+              <button className="nav-signin-btn" onClick={() => setAuthModalOpen(true)}>
+                Log in / Sign up
+              </button>
+            )
+          }
+          mobileAuthSlot={
+            isAuthenticated ? (
+              <>
+                <span className="nav-user-name nav-user-name--mobile">{profile?.display_name || user?.email || "User"}</span>
+                <button className="nav-signout-btn nav-signout-btn--mobile nav-auth-btn" onClick={() => signOut()}>
+                  Sign out
                 </button>
-              )}
-            </div>
-          </div>
-        </nav>
+              </>
+            ) : (
+              <button className="nav-signin-btn nav-signin-btn--mobile nav-auth-btn" onClick={() => setAuthModalOpen(true)}>
+                Log in
+              </button>
+            )
+          }
+        />
         {!isMobile ? (
           <div className="live-odds-band">
             <LiveOddsStrip
