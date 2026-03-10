@@ -20,6 +20,7 @@ const SIM_RUNS = 2000;
 type ConfTeamRow = (typeof CONF_TEAMS)[string][number];
 type ConfCandidateRow = { teamId: number; prob: number; team: ConfTeamRow };
 const INFO_ICON_TEXT = "\u24D8";
+const CLOSE_ICON_TEXT = "\u2715";
 
 const TEAM_STAT_LABELS: Record<TeamStatKey, string> = {
   rank_POM: "KenPom Rank",
@@ -27,10 +28,10 @@ const TEAM_STAT_LABELS: Record<TeamStatKey, string> = {
   rank_WLK: "Whitlock Rank",
   rank_MOR: "Moore Rank",
   elo_sos: "Odds Gods Elo SOS",
-  elo_last: "Odds Gods Elo",
+  elo_last: "OddsGods Elo",
   avg_net_rtg: "Net Rating",
   avg_off_rtg: "Offensive Rating",
-  elo_trend: "Odds Gods Elo Trend",
+  elo_trend: "OddsGods Elo Trend",
   avg_def_rtg: "Defensive Rating",
   last5_Margin: "Last 5 Margin",
   rank_BIH: "Bihl Rank",
@@ -46,13 +47,13 @@ const TEAM_STAT_DESCRIPTIONS: Record<TeamStatKey, string> = {
   rank_MOR:
     "Moore rankings. A rating algorithm that evaluates teams using statistical game data to estimate relative performance.",
   elo_sos:
-    "Mean of opponents' pre-game Elo across all games this season. Odds Gods created SOS metric that prioritizes opponent strength at the time of each game.",
+    "Mean of opponents' pre-game Elo across all games this season. OddsGods created SOS metric that prioritizes opponent strength at the time of each game.",
   elo_last:
-    "Odds Gods custom built Elo system. Continuous rating that carries across seasons and updates after every game based on opponent quality, season phase, and conference context.",
+    "OddsGods custom built Elo system. Continuous rating that carries across seasons and updates after every game based on opponent quality, season phase, and conference context.",
   avg_net_rtg: "Offensive rating minus defensive rating. Overall efficiency margin per 100 possessions.",
   avg_off_rtg: "Offensive rating. 100 * points / possessions.",
   elo_trend:
-    "Odds Gods Elo trend. Slope of a linear regression line fit to a team's season Elo history, representing average Elo points gained or lost per game.",
+    "OddsGods Elo trend. Slope of a linear regression line fit to a team's season Elo history, representing average Elo points gained or lost per game.",
   avg_def_rtg: "Defensive rating. 100 * opponent points / opponent possessions.",
   last5_Margin: "Rolling 5-game mean of scoring margin.",
   rank_BIH: "Bihl rankings. Rating system producing strength scores based on game outcomes and strength of schedule.",
@@ -271,10 +272,13 @@ function ConferenceBracketView({
   const roundOrder = useMemo(() => (def ? def.rounds.map((round) => round.id) : []), [def]);
   const [showFutures, setShowFutures] = useState(false);
   const [selectedStatsGame, setSelectedStatsGame] = useState<ConfResolvedGame | null>(null);
+  const knownLocks = useMemo(() => CONF_KNOWN_RESULTS[confId] ?? {}, [confId]);
 
+  // Merge known actual results (immutable) on top of user locks so the
+  // simulation always reflects real outcomes for completed games.
   const effectiveLocks = useMemo(
-    () => ({ ...locks, ...(CONF_KNOWN_RESULTS[confId] ?? {}) }),
-    [locks, confId]
+    () => ({ ...locks, ...knownLocks }),
+    [locks, knownLocks]
   );
 
   const { games: resolvedGames, sanitized } = useMemo(
@@ -305,7 +309,8 @@ function ConferenceBracketView({
 
   const laneHeightPx = useMemo(() => {
     const maxGamesInRound = Math.max(1, ...def.rounds.map((round) => (gamesByRound.get(round.id) ?? []).length));
-    return 520 + maxGamesInRound * 40;
+    // Keep conference cards from stacking/overlapping when rounds have many candidate rows.
+    return 760 + maxGamesInRound * 180;
   }, [def.rounds, gamesByRound]);
 
   const bracketGridStyle = useMemo<CSSProperties | undefined>(() => {
@@ -320,6 +325,7 @@ function ConferenceBracketView({
 
   const handlePick = useCallback(
     (game: ConfResolvedGame, teamId: number | null) => {
+      if (game.id in knownLocks) return;
       const nextLocks = { ...locks };
       if (teamId === null || locks[game.id] === teamId) {
         delete nextLocks[game.id];
@@ -328,7 +334,7 @@ function ConferenceBracketView({
       }
       onLocksChange(nextLocks);
     },
-    [locks, onLocksChange]
+    [knownLocks, locks, onLocksChange]
   );
 
   const [mobileRound, setMobileRound] = useState(roundOrder[0] ?? "");
@@ -393,12 +399,7 @@ function ConferenceBracketView({
                             top: `${((game.slot + 0.5) / slotCount) * 100}%`,
                           };
                       return (
-                        <div
-                          key={game.id}
-                          className="conf-game-node"
-                          data-game-id={game.id}
-                          style={nodeStyle}
-                        >
+                        <div key={game.id} className="conf-game-node" data-game-id={game.id} style={nodeStyle}>
                           <ConfGameCard
                             game={game}
                             confId={confId}
@@ -409,7 +410,8 @@ function ConferenceBracketView({
                             possibleWinners={possibleWinners}
                             onPick={handlePick}
                             onOpenMatchupStats={setSelectedStatsGame}
-                            isLocked={game.id in effectiveLocks}
+                            isLocked={game.id in sanitized}
+                            isHardLocked={game.id in knownLocks}
                           />
                         </div>
                       );
@@ -444,6 +446,7 @@ function ConfGameCard({
   onPick,
   onOpenMatchupStats,
   isLocked,
+  isHardLocked,
 }: {
   game: ConfResolvedGame;
   confId: string;
@@ -455,15 +458,16 @@ function ConfGameCard({
   onPick: (game: ConfResolvedGame, teamId: number | null) => void;
   onOpenMatchupStats: (game: ConfResolvedGame) => void;
   isLocked: boolean;
+  isHardLocked: boolean;
 }) {
   const rows = buildGameRowsForDisplay(game, confId, def, teamsById, gameWinProbs, possibleWinners);
   const knownMatchup = game.teamAId !== null && game.teamBId !== null;
 
   const renderRow = (candidate: ConfCandidateRow, index: number) => {
     const { team } = candidate;
-    const canPick = knownMatchup && (team.id === game.teamAId || team.id === game.teamBId);
+    const canPick = !isHardLocked && knownMatchup && (team.id === game.teamAId || team.id === game.teamBId);
     const isWinner = game.winnerId === team.id;
-    const isLoser = canPick && game.winnerId !== null && game.winnerId !== team.id;
+    const isLoser = game.winnerId !== null && game.winnerId !== team.id;
     const odds = formatOddsDisplay(candidate.prob, displayMode);
 
     return (
@@ -485,14 +489,14 @@ function ConfGameCard({
   };
 
   return (
-      <div className={`conf-game-card ${isLocked ? "conf-game-card--locked" : ""} ${knownMatchup ? "conf-game-card--with-info" : ""}`}>
-        {knownMatchup ? (
-          <button
-            type="button"
-            className="matchup-stats-icon matchup-stats-icon--conf"
-            onClick={(event) => {
-              event.stopPropagation();
-              onOpenMatchupStats(game);
+    <div className={`conf-game-card ${isLocked ? "conf-game-card--locked" : ""} ${knownMatchup ? "conf-game-card--with-info" : ""}`}>
+      {knownMatchup ? (
+        <button
+          type="button"
+          className="matchup-stats-icon matchup-stats-icon--conf"
+          onClick={(event) => {
+            event.stopPropagation();
+            onOpenMatchupStats(game);
           }}
           title="View matchup stats"
           aria-label="View matchup stats"
@@ -640,7 +644,7 @@ function ConfMatchupStatsModal({
         <div className="matchup-stats-head">
           <h3>Matchup Stats</h3>
           <button className="matchup-stats-close" onClick={onClose} aria-label="Close matchup stats">
-            x
+            {CLOSE_ICON_TEXT}
           </button>
         </div>
         <p className="matchup-stats-sub">
@@ -662,7 +666,7 @@ function ConfMatchupStatsModal({
                     aria-label="About Importance percent"
                     onClick={() => setActiveStatDescription((previous) => (previous === "importance" ? null : "importance"))}
                   >
-                    i
+                    {INFO_ICON_TEXT}
                   </button>
                   {activeStatDescription === "importance" ? (
                     <div className="matchup-stat-help-popover matchup-stat-help-popover--header">
@@ -686,7 +690,7 @@ function ConfMatchupStatsModal({
                         aria-label={`About ${TEAM_STAT_LABELS[key]}`}
                         onClick={() => setActiveStatDescription((previous) => (previous === key ? null : key))}
                       >
-                        i
+                        {INFO_ICON_TEXT}
                       </button>
                       {activeStatDescription === key ? (
                         <div className="matchup-stat-help-popover">{TEAM_STAT_DESCRIPTIONS[key]}</div>
