@@ -309,8 +309,8 @@ function ConferenceBracketView({
 
   const laneHeightPx = useMemo(() => {
     const maxGamesInRound = Math.max(1, ...def.rounds.map((round) => (gamesByRound.get(round.id) ?? []).length));
-    // Keep conference cards separated without over-stretching the vertical lanes.
-    return 680 + maxGamesInRound * 150;
+    // Keep conference cards separated while avoiding overly tall gaps between matchups.
+    return Math.max(560, 500 + maxGamesInRound * 110);
   }, [def.rounds, gamesByRound]);
 
   const bracketGridStyle = useMemo<CSSProperties | undefined>(() => {

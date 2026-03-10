@@ -4227,9 +4227,12 @@ function FirstFourGameCard({
       <div className="ff-game-header">
         <span className="ff-game-label">PLAY-IN · {(teamA.region || "").toUpperCase()}</span>
         <span className="ff-game-seed">Seed {seedLabel(teamA).replace(/[ab]$/i, "")}</span>
+      </div>
+
+      <div className="ff-game-matchup">
         <button
           type="button"
-          className="matchup-stats-icon matchup-stats-icon--ff"
+          className="matchup-stats-icon matchup-stats-icon--ff matchup-stats-icon--ff-inline"
           onClick={(event) => {
             event.stopPropagation();
             onOpenMatchupStats(game);
@@ -4239,9 +4242,6 @@ function FirstFourGameCard({
         >
           {"i"}
         </button>
-      </div>
-
-      <div className="ff-game-matchup">
         <button
           type="button"
           className={`ff-team-btn ${winner === teamA.id ? "ff-team-btn--winner" : ""} ${winner && winner !== teamA.id ? "ff-team-btn--loser" : ""}`}
@@ -5611,6 +5611,18 @@ function FinalsChampionshipCard({
       </div>
       {game && winnerTeam && loserTeam ? (
         <div className="championship-card championship-card--celebration">
+          <button
+            type="button"
+            className="matchup-stats-icon matchup-stats-icon--championship-card"
+            onClick={(event) => {
+              event.stopPropagation();
+              onOpenMatchupStats(game);
+            }}
+            title="View matchup stats"
+            aria-label="View matchup stats"
+          >
+            {"i"}
+          </button>
           <ChampionConfetti />
           <div className="championship-card-inner">
             <div className="championship-trophy">🏆</div>

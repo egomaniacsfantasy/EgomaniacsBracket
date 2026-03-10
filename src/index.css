@@ -844,10 +844,14 @@ body {
 }
 
 .matchup-stats-icon--ff {
-  position: static;
+  position: absolute;
+  left: 4px;
+  top: 50%;
+  right: auto;
+  transform: translateY(-50%);
   color: rgba(240, 230, 208, 0.9);
   flex-shrink: 0;
-  margin-left: auto;
+  margin-left: 0;
   display: inline-flex !important;
   opacity: 1 !important;
   visibility: visible !important;
@@ -877,6 +881,8 @@ body {
   display: flex;
   align-items: center;
   gap: 8px;
+  position: relative;
+  padding-left: 26px;
 }
 
 .ff-team-btn {
@@ -1019,6 +1025,14 @@ body {
   .ff-game-matchup {
     flex-direction: column;
     gap: 6px;
+    padding-left: 0;
+    padding-top: 26px;
+  }
+
+  .matchup-stats-icon--ff {
+    left: 50%;
+    top: 4px;
+    transform: translateX(-50%);
   }
 
   .ff-vs {
@@ -5701,6 +5715,16 @@ body.og-onboarding-open {
   color: rgba(240, 230, 208, 1);
 }
 
+.championship-card--celebration .matchup-stats-icon--championship-card {
+  top: 8px;
+  left: 8px;
+  right: auto;
+  z-index: 4;
+  color: rgba(240, 230, 208, 0.9);
+  border-color: rgba(240, 230, 208, 0.3);
+  background: rgba(255, 255, 255, 0.1);
+}
+
 .eg-game-card.collapsed .matchup-stats-icon,
 .bracket-cell--compact .matchup-stats-icon {
   display: none;
@@ -7419,6 +7443,7 @@ body {
   width: 100%;
   min-height: 180px;
   padding: 24px 28px;
+  position: relative;
   border: 1px solid rgba(171, 138, 69, 0.5);
   border-radius: 16px;
   background:
@@ -12621,7 +12646,7 @@ body.walkthrough-active .odds-value--changed::after {
   display: grid;
   grid-auto-columns: minmax(0, 1fr);
   grid-auto-flow: column;
-  gap: 12px;
+  gap: 8px;
   min-height: 560px;
   position: relative;
   align-items: start;
@@ -12655,7 +12680,7 @@ body.walkthrough-active .odds-value--changed::after {
 .conf-games-lane {
   position: relative;
   display: block;
-  height: max(var(--conf-lane-height, 1120px), 84vh);
+  height: max(var(--conf-lane-height, 940px), 74vh);
   border-left: 1px solid rgba(74, 193, 100, 0.45);
   padding-left: 12px;
   margin-top: 6px;
