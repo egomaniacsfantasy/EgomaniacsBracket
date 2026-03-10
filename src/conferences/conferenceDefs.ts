@@ -444,6 +444,8 @@ export const CONF_KNOWN_RESULTS: Record<string, Record<string, number>> = {
     "wcc-R3-1": 1334, // Pacific (6) def Seattle (7)
     "wcc-QF-0": 1333, // Oregon St (4) def San Francisco (5)
     "wcc-QF-1": 1365, // Santa Clara (3) def Pacific (6)
+    "wcc-SF-0": 1211, // Gonzaga (1) def Oregon St (4)
+    "wcc-SF-1": 1365, // Santa Clara (3) def St Mary's CA (2)
   },
   mvc: {
     "mvc-R1-0": 1179, // Drake (9) def S Illinois (8)
@@ -476,6 +478,7 @@ export const CONF_KNOWN_RESULTS: Record<string, Record<string, number>> = {
     "southern-QF-3": 1202, // Furman (6) def Wofford (3)
     "southern-SF-0": 1190, // ETSU (1) def W Carolina (5)
     "southern-SF-1": 1202, // Furman (6) def UNC Greensboro (7)
+    "southern-F-0":  1202, // Furman (6) def ETSU (1)
   },
   caa: {
     "caa-R1-0": 1318, // Northeastern (13) def NC A&T (12)
@@ -487,6 +490,8 @@ export const CONF_KNOWN_RESULTS: Record<string, Record<string, number>> = {
     "caa-QF-1": 1284, // Monmouth (4) def Drexel (5)
     "caa-QF-2": 1406, // Towson (7) def Col Charleston (2)
     "caa-QF-3": 1220, // Hofstra (3) def William & Mary (6)
+    "caa-SF-0": 1284, // Monmouth (4) def Campbell (9)
+    "caa-SF-1": 1220, // Hofstra (3) def Towson (7)
   },
   patriot: {
     "patriot-SF-0": 1131, // Boston Univ (4) def Navy (1)
@@ -516,6 +521,16 @@ export const CONF_KNOWN_RESULTS: Record<string, Record<string, number>> = {
     "big_sky-R1-1": 1225, // Idaho (7) def CS Sacramento (8)
     "big_sky-QF-0": 1340, // Portland St (1) def Idaho St (9)
     "big_sky-QF-1": 1225, // Idaho (7) def Montana St (2)
+    "big_sky-QF-2": 1285, // Montana (4) def N Colorado (5)
+    "big_sky-QF-3": 1186, // E Washington (3) def Weber St (6)
+  },
+  horizon: {
+    "horizon-SF-0": 1460, // Wright St (1) def N Kentucky (7)
+    "horizon-SF-1": 1178, // Detroit (3) def Robert Morris (2)
+  },
+  swac: {
+    "swac-R1-0": 1108, // Alcorn St (11) def Alabama St (10)
+    "swac-R1-1": 1212, // Grambling (9) def MS Valley St (12)
   },
   maac: {
     "maac-R1-0": 1357, // Sacred Heart (9) def Iona (8)
@@ -567,9 +582,12 @@ export const CONF_KNOWN_RESULTS: Record<string, Record<string, number>> = {
     "sun_belt-QF-1": 1204, // Ga Southern (10) def Coastal Car (3)
     "sun_belt-SF-0": 1407, // Troy (1) def Southern Miss (8)
     "sun_belt-SF-1": 1204, // Ga Southern (10) def Marshall (2)
+    "sun_belt-F-0":  1407, // Troy (1) def Ga Southern (10)
   },
   southland: {
     "southland-R1-0": 1309, // New Orleans (5) def Houston Chr (8)
     "southland-R1-1": 1311, // Nicholls St (6) def Northwestern LA (7)
+    "southland-QF-0": 1394, // TAM C. Christi (4) def New Orleans (5)
+    "southland-QF-1": 1410, // UTRGV (3) def Nicholls St (6)
   },
 };
