@@ -6980,11 +6980,6 @@ function TeamHoverAnchor({
   );
 }
 
-const STATS_NAME_ALIAS: Record<string, string> = {
-  "Long Island": "LIU Brooklyn",
-};
-const resolveStatsName = (name: string) => STATS_NAME_ALIAS[name] ?? name;
-
 function MatchupStatsModal({ game, onClose }: { game: ResolvedGame; onClose: () => void }) {
   const teamA = game.teamAId ? teamsById.get(game.teamAId) ?? null : null;
   const teamB = game.teamBId ? teamsById.get(game.teamBId) ?? null : null;
