@@ -6213,7 +6213,7 @@ function GameCard({
 
   return (
     <article
-      className={`eg-game-card round-${game.round.toLowerCase()}`}
+      className={`eg-game-card round-${game.round.toLowerCase()} ${useShowdownCard ? "eg-game-card--showdown" : ""}`}
       data-game-id={game.id}
       data-matchup-id={game.id}
       data-region={game.region}

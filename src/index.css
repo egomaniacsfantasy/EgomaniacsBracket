@@ -5730,6 +5730,10 @@ body.og-onboarding-open {
   display: none;
 }
 
+.eg-game-card--showdown > .matchup-stats-icon {
+  display: none !important;
+}
+
 .matchup-stats-overlay {
   position: fixed;
   inset: 0;
