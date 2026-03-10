@@ -3599,7 +3599,6 @@ function App() {
       <main className="eg-app">
         <ToolNav
           activeTool="bracket"
-          showBeta
           desktopAuthSlot={
             authLoading ? (
               <span className="nav-auth-loading">...</span>
@@ -3642,7 +3641,7 @@ function App() {
           </div>
         ) : null}
         <header className={`eg-header ${isMobile ? "mobile-hidden" : ""}`}>
-          <h1>The Bracket Lab</h1>
+          <h1>The Bracket Lab <span className="beta-badge">BETA</span></h1>
           <p className="eg-subtitle">
             Pick any game. Watch every championship odd change instantly.
           </p>

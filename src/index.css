@@ -6129,11 +6129,11 @@ body.og-onboarding-open {
 @media (max-width: 980px) {
   .og-top-nav {
     margin: -22px -18px 12px;
-    padding: 10px 18px;
+    padding: 12px 18px;
   }
 
   .og-top-nav-link {
-    font-size: 0.82rem;
+    font-size: 0.86rem;
   }
 }
 
@@ -6194,10 +6194,10 @@ body {
   top: 0;
   z-index: 50;
   margin: -24px -20px 16px;
-  padding: 12px 22px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
-  background: rgba(14, 12, 9, 0.9);
-  backdrop-filter: blur(10px);
+  padding: 14px 20px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+  background: rgba(14, 12, 9, 0.92);
+  backdrop-filter: blur(6px);
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -6254,9 +6254,9 @@ body {
   display: inline-flex;
   align-items: center;
   gap: 7px;
-  font-family: "IBM Plex Mono", "SFMono-Regular", Menlo, monospace;
-  font-size: 13px;
-  letter-spacing: 0.04em;
+  font-family: var(--font-mono);
+  font-size: 0.94rem;
+  letter-spacing: 0.02em;
   white-space: nowrap;
   color: rgba(240, 230, 208, 0.65);
   text-decoration: none;
@@ -6279,8 +6279,8 @@ body {
 }
 
 .og-top-nav-caret {
-  font-size: 11px;
-  opacity: 0.7;
+  font-size: 0.78rem;
+  opacity: 0.72;
   transition: transform 160ms ease;
 }
 
@@ -6288,12 +6288,12 @@ body {
   position: absolute;
   top: calc(100% + 12px);
   left: 0;
-  min-width: 228px;
+  min-width: 240px;
   padding: 8px;
-  border: 1px solid rgba(184, 125, 24, 0.22);
-  border-radius: 14px;
-  background: rgba(20, 17, 9, 0.96);
-  box-shadow: 0 24px 48px rgba(0, 0, 0, 0.38);
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  border-radius: 16px;
+  background: rgba(10, 11, 13, 0.96);
+  box-shadow: 0 22px 42px rgba(0, 0, 0, 0.34);
   backdrop-filter: blur(14px);
   display: flex;
   flex-direction: column;
@@ -6332,8 +6332,8 @@ body {
   padding: 0 12px;
   border-radius: 10px;
   font-family: var(--font-mono);
-  font-size: 12px;
-  letter-spacing: 0.04em;
+  font-size: 0.88rem;
+  letter-spacing: 0.02em;
   color: rgba(240, 230, 208, 0.68);
   text-decoration: none;
   transition: background 140ms ease, color 140ms ease;
@@ -6341,21 +6341,23 @@ body {
 
 .og-top-nav-dropdown-item:hover,
 .og-top-nav-dropdown-item.active {
-  background: rgba(184, 125, 24, 0.12);
+  background: rgba(200, 144, 63, 0.12);
   color: rgba(240, 230, 208, 0.95);
 }
 
 .beta-badge {
-  font-family: var(--font-mono);
-  font-size: 9px;
+  font-family: "IBM Plex Mono", "SFMono-Regular", Menlo, monospace;
+  font-size: 8px;
   font-weight: 600;
   letter-spacing: 0.14em;
   color: rgba(184, 125, 24, 0.9);
-  border: 1px solid rgba(184, 125, 24, 0.35);
-  border-radius: 4px;
-  padding: 2px 7px;
-  margin-left: 12px;
-  align-self: center;
+  border: 1px solid rgba(184, 125, 24, 0.34);
+  border-radius: 3px;
+  padding: 1px 5px;
+  margin-left: 6px;
+  vertical-align: middle;
+  position: relative;
+  top: -1px;
   flex-shrink: 0;
 }
 
