@@ -6506,10 +6506,10 @@ function ShowdownCard({
   return (
     <div className={`eg-showdown-card ${roundClass} eg-showdown-card--entering ${decided ? "decided" : ""}`}>
       <p className="eg-showdown-label">{roundLabel}</p>
-      {onOpenMatchupStats ? (
+      {onOpenMatchupStats && game.teamAId && game.teamBId ? (
         <button
           type="button"
-          className="matchup-stats-icon"
+          className="matchup-stats-icon matchup-stats-icon--showdown"
           onClick={(event) => {
             event.stopPropagation();
             onOpenMatchupStats(game);
@@ -6517,7 +6517,7 @@ function ShowdownCard({
           title="View matchup stats"
           aria-label="View matchup stats"
         >
-          {"i"}
+          ⓘ
         </button>
       ) : null}
       <div className="eg-showdown-matchup">
@@ -6979,6 +6979,11 @@ function TeamHoverAnchor({
     </span>
   );
 }
+
+const STATS_NAME_ALIAS: Record<string, string> = {
+  "Long Island": "LIU Brooklyn",
+};
+const resolveStatsName = (name: string) => STATS_NAME_ALIAS[name] ?? name;
 
 function MatchupStatsModal({ game, onClose }: { game: ResolvedGame; onClose: () => void }) {
   const teamA = game.teamAId ? teamsById.get(game.teamAId) ?? null : null;
