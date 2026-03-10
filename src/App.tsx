@@ -30,13 +30,13 @@ import { fullTeamName } from "./lib/teamNames";
 import { trackEvent } from "./lib/analytics";
 import { ConferenceTournaments } from "./conferences/ConferenceTournaments";
 import { ExpandedRankings } from "./rankings/ExpandedRankings";
+import { MatchupPredictor } from "./MatchupPredictor";
 import { useAuth } from "./AuthContext";
 import { AuthModal } from "./AuthModal";
 import { MyBracketsModal } from "./MyBracketsModal";
 import { LeaderboardFullWidth } from "./Leaderboard";
 import { deserializePicks, getUserBrackets, saveBracket, serializePicks, type SavedBracket } from "./bracketStorage";
 import { TEAM_STAT_IMPORTANCE, TEAM_STAT_ORDER, TEAM_STATS_2026, type TeamStatKey } from "./data/teamStats2026";
-import { ToolNav } from "./SiteChrome";
 import type { OddsDisplayMode, Region, ResolvedGame, SimulationOutput } from "./types";
 
 const DEFAULT_SIM_RUNS = 10000;
@@ -50,6 +50,8 @@ const ODDS_FORMAT_STORAGE_KEY = "bracketlab-odds-format";
 const STAGGERED_SIM_DELAY_MS = 2000;
 const MIN_STAGGERED_SIM_DELAY_MS = 1000;
 const MAX_STAGGERED_SIM_DELAY_MS = 5000;
+const LANDING_URL = "https://oddsgods.net";
+
 const regionSections: Region[][] = BRACKET_HALVES.map((half) => [...half.regions]);
 const mobileRegionOrder: Region[] = ["East", "West", "Midwest", "South"];
 const invertedRegions = new Set<Region>([regionSections[0][1], regionSections[1][1]]);
@@ -199,7 +201,7 @@ type ProbabilityPopupState = {
   savedProbA: number | null;
 };
 
-type MobileTab = "bracket" | "futures" | "leaderboard" | "conferences" | "rankings";
+type MobileTab = "bracket" | "futures" | "leaderboard" | "conferences" | "rankings" | "predictor";
 type MobileSection = Region | "FF";
 type MobileRegionRound = "FF" | "R64" | "R32" | "S16" | "E8";
 type MobileFfRound = "F4" | "CHAMP" | "WIN";
@@ -493,7 +495,7 @@ function App() {
   const [simRuns] = useState<number>(() => getRecommendedSimRuns());
   const [futuresFieldExpanded, setFuturesFieldExpanded] = useState(false);
   const [futuresEliminatedExpanded, setFuturesEliminatedExpanded] = useState(false);
-  const [mainView, setMainView] = useState<"bracket" | "futures" | "leaderboard" | "conferences" | "rankings">("bracket");
+  const [mainView, setMainView] = useState<"bracket" | "futures" | "leaderboard" | "conferences" | "rankings" | "predictor">("bracket");
   const [isUpdating, setIsUpdating] = useState(false);
   const [lastPickedKey, setLastPickedKey] = useState<string | null>(null);
   const [compactDesktop, setCompactDesktop] = useState(false);
@@ -617,10 +619,6 @@ function App() {
   const previousChaosScoreRef = useRef<number | null>(null);
   const chaosScoreSourceRef = useRef<"manual" | "staggered_sim" | "instant_sim">("manual");
   const previousStaggeredRunningRef = useRef(false);
-  const previousTopHalfCollapsedRef = useRef(false);
-  const previousBottomHalfCollapsedRef = useRef(false);
-  const previousTopHalfCompleteRef = useRef(false);
-  const previousBottomHalfCompleteRef = useRef(false);
   const walkthroughBeforeTeamOddsRef = useRef<Map<string, Map<string, number>>>(new Map());
   const walkthroughCascadeTimerRef = useRef<number | null>(null);
   const walkthroughCascadeStepTimersRef = useRef<number[]>([]);
@@ -2270,87 +2268,6 @@ function App() {
     });
   };
 
-  const isHalfComplete = (half: "top" | "bottom"): boolean => {
-    const regions = half === "top" ? BRACKET_HALVES[0].regions : BRACKET_HALVES[1].regions;
-    return regions.every((region) =>
-      (["FF", "R64", "R32", "S16", "E8"] as const).every((round) => {
-        const roundGames = gamesByRegionAndRound(games, region, round);
-        return roundGames.length > 0 && roundGames.every((game) => Boolean(game.winnerId));
-      })
-    );
-  };
-
-  const topHalfComplete = isHalfComplete("top");
-  const bottomHalfComplete = isHalfComplete("bottom");
-  const topHalfVisuallyCollapsed = topHalfComplete && !topHalfManuallyExpanded;
-  const bottomHalfVisuallyCollapsed = bottomHalfComplete && !bottomHalfManuallyExpanded;
-
-  const setHalfRoundExpansion = (half: "top" | "bottom", expanded: boolean) => {
-    const regions = half === "top" ? BRACKET_HALVES[0].regions : BRACKET_HALVES[1].regions;
-    setManuallyExpandedRounds((prev) => {
-      const next = { ...prev };
-      for (const region of regions) {
-        (["R64", "R32", "S16"] as const).forEach((round) => {
-          const key = `${region}-${round}` as const;
-          next[key] = expanded;
-        });
-      }
-      return next;
-    });
-  };
-
-  const handleExpandHalf = (half: "top" | "bottom") => {
-    if (half === "top") {
-      setTopHalfManuallyExpanded(true);
-    } else {
-      setBottomHalfManuallyExpanded(true);
-    }
-    trackEvent("bracket_half_expanded", { half });
-  };
-
-  const handleCollapseHalf = (half: "top" | "bottom") => {
-    if (half === "top") {
-      setTopHalfManuallyExpanded(false);
-    } else {
-      setBottomHalfManuallyExpanded(false);
-    }
-    setHalfRoundExpansion(half, false);
-  };
-
-  useEffect(() => {
-    if (!topHalfComplete && topHalfManuallyExpanded) {
-      setTopHalfManuallyExpanded(false);
-    }
-    if (!bottomHalfComplete && bottomHalfManuallyExpanded) {
-      setBottomHalfManuallyExpanded(false);
-    }
-  }, [bottomHalfComplete, bottomHalfManuallyExpanded, topHalfComplete, topHalfManuallyExpanded]);
-
-  useEffect(() => {
-    if (!previousTopHalfCompleteRef.current && topHalfComplete) {
-      setTopHalfManuallyExpanded(false);
-    }
-    previousTopHalfCompleteRef.current = topHalfComplete;
-  }, [topHalfComplete]);
-
-  useEffect(() => {
-    if (!previousBottomHalfCompleteRef.current && bottomHalfComplete) {
-      setBottomHalfManuallyExpanded(false);
-    }
-    previousBottomHalfCompleteRef.current = bottomHalfComplete;
-  }, [bottomHalfComplete]);
-
-  useEffect(() => {
-    if (!previousTopHalfCollapsedRef.current && topHalfVisuallyCollapsed) {
-      trackEvent("bracket_half_collapsed", { half: "top" });
-    }
-    if (!previousBottomHalfCollapsedRef.current && bottomHalfVisuallyCollapsed) {
-      trackEvent("bracket_half_collapsed", { half: "bottom" });
-    }
-    previousTopHalfCollapsedRef.current = topHalfVisuallyCollapsed;
-    previousBottomHalfCollapsedRef.current = bottomHalfVisuallyCollapsed;
-  }, [topHalfVisuallyCollapsed, bottomHalfVisuallyCollapsed]);
-
   const finalGames = finalRounds(games);
   const playInGames = useMemo(() => games.filter((game) => game.round === "FF"), [games]);
   const decidedPlayInCount = useMemo(
@@ -3104,6 +3021,12 @@ function App() {
           >
             {mainView === "leaderboard" ? "← Bracket" : "🏆 Leaderboard"}
           </button>
+          <button
+            onClick={() => setMainView((prev) => (prev === "predictor" ? "bracket" : "predictor"))}
+            className={`eg-btn toolbar-btn--predictor ${mainView === "predictor" ? "toolbar-btn--active-view" : ""}`}
+          >
+            {mainView === "predictor" ? "← Bracket" : "Predictor"}
+          </button>
         </>
       )}
       <button
@@ -3148,7 +3071,11 @@ function App() {
       ) : null}
       <div
         className="odds-mode-toggle toolbar-btn--odds"
-        style={!isMobile && mainView !== "bracket" && mainView !== "futures" ? { display: "none" } : undefined}
+        style={
+          !isMobile && mainView !== "bracket" && mainView !== "futures" && mainView !== "conferences"
+            ? { display: "none" }
+            : undefined
+        }
       >
         <button
           className={`odds-mode-btn ${displayMode === "american" ? "odds-mode-btn--active" : ""}`}
@@ -3626,42 +3553,73 @@ function App() {
       <div className="bg-shape bg-bottom" aria-hidden="true" />
 
       <main className="eg-app">
-        <ToolNav
-          activeTool="bracket"
-          showBeta
-          desktopAuthSlot={
-            authLoading ? (
-              <span className="nav-auth-loading">...</span>
-            ) : isAuthenticated ? (
-              <div className="nav-user-info">
-                <span className="nav-user-name">{profile?.display_name || user?.email || "User"}</span>
-                <button className="nav-signout-btn" onClick={() => signOut()}>
-                  Sign out
+        <nav className="og-top-nav" aria-label="Odds Gods tools">
+          <div className="og-top-nav-desktop">
+            <a className="og-top-nav-brand" href={LANDING_URL}>
+              <img className="og-top-nav-logo" src="/logo-icon.png?v=20260225" alt="Odds Gods" />
+              <span className="odds">ODDS</span> <span className="gods">GODS</span>
+              <span className="beta-badge">BETA</span>
+            </a>
+            <div className="og-top-nav-tabs">
+              <a
+                className="og-top-nav-link"
+                href="https://oddsgods.net/blog"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                Blog
+              </a>
+              <a className="og-top-nav-link" href="/god-rankings.html" target="_blank" rel="noopener noreferrer">
+                Odds Gods Rankings
+              </a>
+            </div>
+            <div className="og-top-nav-auth">
+              {authLoading ? (
+                <span className="nav-auth-loading">...</span>
+              ) : isAuthenticated ? (
+                <div className="nav-user-info">
+                  <span className="nav-user-name">{profile?.display_name || user?.email || "User"}</span>
+                  <button className="nav-signout-btn" onClick={() => signOut()}>
+                    Sign out
+                  </button>
+                </div>
+              ) : (
+                <button className="nav-signin-btn" onClick={() => setAuthModalOpen(true)}>
+                  Log in / Sign up
                 </button>
-              </div>
-            ) : (
-              <button className="nav-signin-btn" onClick={() => setAuthModalOpen(true)}>
-                Log in / Sign up
-              </button>
-            )
-          }
-          mobileAuthSlot={
-            authLoading ? (
-              <span className="nav-auth-loading">...</span>
-            ) : isAuthenticated ? (
-              <>
-                <span className="nav-user-name nav-user-name--mobile">{profile?.display_name || user?.email || "User"}</span>
-                <button className="nav-signout-btn nav-signout-btn--mobile nav-auth-btn" onClick={() => signOut()}>
-                  Sign out
+              )}
+            </div>
+          </div>
+          <div className="og-top-nav-mobile">
+            <div className="nav-left">
+              <a className="og-mobile-logo-link" href={LANDING_URL} aria-label="Odds Gods home">
+                <img className="nav-logo-icon nav-logo" src="/logo-icon.png?v=20260225" alt="Odds Gods" />
+              </a>
+              <span className="nav-product-title nav-wordmark">ODDS GODS</span>
+              <span className="beta-badge nav-beta">BETA</span>
+            </div>
+            <div className="nav-right">
+              <a className="og-top-nav-link" href="https://oddsgods.net/blog" target="_blank" rel="noopener noreferrer">
+                Blog
+              </a>
+              <a className="og-top-nav-link" href="/god-rankings.html" target="_blank" rel="noopener noreferrer">
+                Rankings
+              </a>
+              {isAuthenticated ? (
+                <>
+                  <span className="nav-user-name nav-user-name--mobile">{profile?.display_name || user?.email || "User"}</span>
+                  <button className="nav-signout-btn nav-signout-btn--mobile nav-auth-btn" onClick={() => signOut()}>
+                    Sign out
+                  </button>
+                </>
+              ) : (
+                <button className="nav-signin-btn nav-signin-btn--mobile nav-auth-btn" onClick={() => setAuthModalOpen(true)}>
+                  Log in
                 </button>
-              </>
-            ) : (
-              <button className="nav-signin-btn nav-signin-btn--mobile nav-auth-btn" onClick={() => setAuthModalOpen(true)}>
-                Log in
-              </button>
-            )
-          }
-        />
+              )}
+            </div>
+          </div>
+        </nav>
         {!isMobile ? (
           <div className="live-odds-band">
             <LiveOddsStrip
@@ -3765,26 +3723,13 @@ function App() {
               {toolbar}
               {chaosTrackerBar}
               <div className="eg-bracket-stack" style={{ display: mainView === "bracket" ? undefined : "none" }}>
-                <div style={{ display: topHalfVisuallyCollapsed ? "block" : "none" }}>
-                  <CollapsedHalfSummary
-                    half="top"
-                    games={games}
-                    onExpand={() => handleExpandHalf("top")}
-                  />
-                </div>
                 <section
                   className="eg-bracket-section top-half"
                   data-half-expanded={topHalfManuallyExpanded ? "true" : "false"}
-                  style={{ display: topHalfVisuallyCollapsed ? "none" : undefined }}
                 >
                   <div className="eg-section-head">
                     <h2>Top Half Bracket</h2>
                     <p>· {regionSections[0][0]} + {regionSections[0][1]}</p>
-                    {topHalfComplete ? (
-                      <button className="half-section-collapse-btn" onClick={() => handleCollapseHalf("top")}>
-                        Collapse ↑
-                      </button>
-                    ) : null}
                   </div>
                   <div className="eg-region-scroll">
                     <div className="eg-region-grid bracket-style">
@@ -3819,27 +3764,13 @@ function App() {
                     </div>
                   </div>
                 </section>
-
-                <div style={{ display: bottomHalfVisuallyCollapsed ? "block" : "none" }}>
-                  <CollapsedHalfSummary
-                    half="bottom"
-                    games={games}
-                    onExpand={() => handleExpandHalf("bottom")}
-                  />
-                </div>
                 <section
                   className="eg-bracket-section bottom-half"
                   data-half-expanded={bottomHalfManuallyExpanded ? "true" : "false"}
-                  style={{ display: bottomHalfVisuallyCollapsed ? "none" : undefined }}
                 >
                   <div className="eg-section-head">
                     <h2>Bottom Half Bracket</h2>
                     <p>· {regionSections[1][0]} + {regionSections[1][1]}</p>
-                    {bottomHalfComplete ? (
-                      <button className="half-section-collapse-btn" onClick={() => handleCollapseHalf("bottom")}>
-                        Collapse ↑
-                      </button>
-                    ) : null}
                   </div>
                   <div className="eg-region-scroll">
                     <div className="eg-region-grid bracket-style">
@@ -3927,6 +3858,9 @@ function App() {
               )}
               {mainView === "rankings" && (
                 <ExpandedRankings displayMode={displayMode} isMobile={isMobile} />
+              )}
+              {mainView === "predictor" && (
+                <MatchupPredictor displayMode={displayMode} />
               )}
               <div style={{ display: mainView === "futures" ? undefined : "none" }}>{futuresContent}</div>
             </div>
@@ -4610,10 +4544,10 @@ const TEAM_STAT_LABELS: Record<TeamStatKey, string> = {
   rank_WLK: "Whitlock Rank",
   rank_MOR: "Moore Rank",
   elo_sos: "Odds Gods Elo SOS",
-  elo_last: "Odds Gods Elo",
+  elo_last: "OddsGods Elo",
   avg_net_rtg: "Net Rating",
   avg_off_rtg: "Offensive Rating",
-  elo_trend: "Odds Gods Elo Trend",
+  elo_trend: "OddsGods Elo Trend",
   avg_def_rtg: "Defensive Rating",
   last5_Margin: "Last 5 Margin",
   rank_BIH: "Bihl Rank",
@@ -4639,13 +4573,13 @@ const TEAM_STAT_DESCRIPTIONS: Record<TeamStatKey, string> = {
   rank_MOR:
     "Moore rankings. A rating algorithm that evaluates teams using statistical game data to estimate relative performance.",
   elo_sos:
-    "Mean of opponents' pre-game Elo across all games this season. Odds Gods created SOS metric that prioritizes opponent strength at the time of each game.",
+    "Mean of opponents' pre-game Elo across all games this season. OddsGods created SOS metric that prioritizes opponent strength at the time of each game.",
   elo_last:
-    "Odds Gods custom built Elo system. Continuous rating that carries across seasons and updates after every game based on opponent quality, season phase, and conference context.",
+    "OddsGods custom built Elo system. Continuous rating that carries across seasons and updates after every game based on opponent quality, season phase, and conference context.",
   avg_net_rtg: "Offensive rating minus defensive rating. Overall efficiency margin per 100 possessions.",
   avg_off_rtg: "Offensive rating. 100 * points / possessions.",
   elo_trend:
-    "Odds Gods Elo trend. Slope of a linear regression line fit to a team's season Elo history, representing average Elo points gained or lost per game.",
+    "OddsGods Elo trend. Slope of a linear regression line fit to a team's season Elo history, representing average Elo points gained or lost per game.",
   avg_def_rtg: "Defensive rating. 100 * opponent points / opponent possessions.",
   last5_Margin: "Rolling 5-game mean of scoring margin.",
   rank_BIH: "Bihl rankings. Rating system producing strength scores based on game outcomes and strength of schedule.",
@@ -5529,50 +5463,6 @@ function RoundColumnHeader({
       <p className="eg-round-label">{fullLabel}</p>
       <button type="button" className="round-col-header-done-btn" onClick={onToggle}>
         Done
-      </button>
-    </div>
-  );
-}
-
-function CollapsedHalfSummary({
-  half,
-  games,
-  onExpand,
-}: {
-  half: "top" | "bottom";
-  games: ResolvedGame[];
-  onExpand: () => void;
-}) {
-  const regions = half === "top" ? BRACKET_HALVES[0].regions : BRACKET_HALVES[1].regions;
-  const label = half === "top" ? "Top Half Bracket" : "Bottom Half Bracket";
-  const winners = regions
-    .map((region) => {
-      const e8Game = gamesByRegionAndRound(games, region, "E8")[0];
-      if (!e8Game?.winnerId) return null;
-      return teamsById.get(e8Game.winnerId) ?? null;
-    })
-    .filter((team): team is NonNullable<typeof team> => Boolean(team));
-
-  return (
-    <div className="half-collapsed-bar">
-      <div className="half-collapsed-left">
-        <span className="half-collapsed-label">{label}</span>
-        <span className="half-collapsed-check">✓ Complete</span>
-      </div>
-      <div className="half-collapsed-teams">
-        {winners.map((team) => (
-            <div key={`${half}-${team.id}`} className="half-collapsed-team">
-              <TeamLogo teamName={team.name} src={teamLogoUrl(team)} className="half-collapsed-logo" teamSeed={seedLabel(team)} />
-              <span className="half-collapsed-name">
-                {seedLabel(team)} {team.name}
-              </span>
-              <span className="half-collapsed-region">{team.region}</span>
-            </div>
-        ))}
-        <span className="half-collapsed-arrow">→ Final Four</span>
-      </div>
-      <button type="button" className="half-collapsed-expand-btn" onClick={onExpand}>
-        Expand ↓
       </button>
     </div>
   );
@@ -6590,10 +6480,10 @@ function ShowdownCard({
   return (
     <div className={`eg-showdown-card ${roundClass} eg-showdown-card--entering ${decided ? "decided" : ""}`}>
       <p className="eg-showdown-label">{roundLabel}</p>
-      {onOpenMatchupStats && game.teamAId && game.teamBId ? (
+      {onOpenMatchupStats ? (
         <button
           type="button"
-          className="matchup-stats-icon matchup-stats-icon--showdown"
+          className="matchup-stats-icon"
           onClick={(event) => {
             event.stopPropagation();
             onOpenMatchupStats(game);
@@ -6601,7 +6491,7 @@ function ShowdownCard({
           title="View matchup stats"
           aria-label="View matchup stats"
         >
-          ⓘ
+          {"i"}
         </button>
       ) : null}
       <div className="eg-showdown-matchup">
@@ -7064,17 +6954,17 @@ function TeamHoverAnchor({
   );
 }
 
-const STATS_NAME_ALIAS: Record<string, string> = {
-  "Long Island": "LIU Brooklyn",
-};
-const resolveStatsName = (name: string) => STATS_NAME_ALIAS[name] ?? name;
-
 function MatchupStatsModal({ game, onClose }: { game: ResolvedGame; onClose: () => void }) {
   const teamA = game.teamAId ? teamsById.get(game.teamAId) ?? null : null;
   const teamB = game.teamBId ? teamsById.get(game.teamBId) ?? null : null;
   const [activeStatDescription, setActiveStatDescription] = useState<TeamStatKey | "importance" | null>(null);
   if (!teamA || !teamB) return null;
 
+  // Some teams have different names in teams.ts vs teamStats2026.ts
+  const STATS_NAME_ALIAS: Record<string, string> = {
+    "Long Island": "LIU Brooklyn",
+  };
+  const resolveStatsName = (name: string) => STATS_NAME_ALIAS[name] ?? name;
   const statsA = TEAM_STATS_2026[resolveStatsName(teamA.name)] ?? null;
   const statsB = TEAM_STATS_2026[resolveStatsName(teamB.name)] ?? null;
 
@@ -7589,4 +7479,3 @@ function ContextualHint({ message, rect, onDismiss }: { message: string; rect: D
 }
 
 export default App;
-
