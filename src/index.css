@@ -849,6 +849,8 @@ body {
   flex-shrink: 0;
   margin-left: auto;
   display: inline-flex !important;
+  opacity: 1 !important;
+  visibility: visible !important;
   border-color: rgba(240, 230, 208, 0.28);
   background: rgba(255, 255, 255, 0.09);
 }
@@ -5687,6 +5689,9 @@ body.og-onboarding-open {
   top: 8px;
   left: 8px;
   right: auto;
+  display: inline-flex !important;
+  opacity: 1 !important;
+  visibility: visible !important;
   color: rgba(240, 230, 208, 0.82);
   border-color: rgba(240, 230, 208, 0.28);
   background: rgba(255, 255, 255, 0.09);
@@ -8606,6 +8611,9 @@ body.walkthrough-active .eg-title-choice:hover {
   .matchup-stats-icon--mobile {
     top: 8px;
     right: 8px;
+    display: inline-flex !important;
+    opacity: 1 !important;
+    visibility: visible !important;
     color: rgba(240, 230, 208, 0.9);
     border-color: rgba(240, 230, 208, 0.28);
     background: rgba(255, 255, 255, 0.09);
@@ -12638,7 +12646,7 @@ body.walkthrough-active .odds-value--changed::after {
 .conf-games-lane {
   position: relative;
   display: block;
-  height: max(var(--conf-lane-height, 1320px), 92vh);
+  height: max(var(--conf-lane-height, 1120px), 84vh);
   border-left: 1px solid rgba(74, 193, 100, 0.45);
   padding-left: 12px;
   margin-top: 6px;
