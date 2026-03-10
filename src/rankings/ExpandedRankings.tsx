@@ -24,7 +24,7 @@ type RankingMetric = {
 };
 
 const RANKING_METRICS: RankingMetric[] = [
-  { key: "mrRank", label: "OddsGods Rank", format: (v) => `#${v}`, ascending: true },
+  { key: "mrRank", label: "Odds Gods Rank", format: (v) => `#${v}`, ascending: true },
   { key: "elo", label: "Elo Rating", format: (v) => v.toFixed(0), ascending: false },
   { key: "rankNET", label: "NET Ranking", format: (v) => `#${v}`, ascending: true },
   { key: "rankPOM", label: "KenPom", format: (v) => `#${v}`, ascending: true },
@@ -85,7 +85,13 @@ export function ExpandedRankings({
 
   return (
     <div className="rank-page">
-      <h2 className="rank-title">D1 Team Rankings</h2>
+      <section className="tool-page-header">
+        <p className="tool-page-kicker">College Basketball</p>
+        <h1>Power Rankings</h1>
+        <p className="tool-page-subtitle">
+          A Markov-style ladder ranking every D1 team by neutral-floor win probability. Sort by any metric. Filter by conference.
+        </p>
+      </section>
 
       <div className="rank-controls">
         <select

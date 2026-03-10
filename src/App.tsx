@@ -3888,6 +3888,7 @@ function App() {
                       regionLabel={`${regionSections[0][0]} + ${regionSections[0][1]}`}
                       lastPickedKey={lastPickedKey}
                       onPick={onPick}
+                      onOpenMatchupStats={openMatchupStats}
                     />
                     <FinalsChampionshipCard
                       game={titleGame}
@@ -3897,6 +3898,7 @@ function App() {
                       displayMode={displayMode}
                       lastPickedKey={lastPickedKey}
                       onPick={onPick}
+                      onOpenMatchupStats={openMatchupStats}
                     />
                     <FinalsSemifinalCard
                       game={rightSemi}
@@ -3908,6 +3910,7 @@ function App() {
                       regionLabel={`${regionSections[1][0]} + ${regionSections[1][1]}`}
                       lastPickedKey={lastPickedKey}
                       onPick={onPick}
+                      onOpenMatchupStats={openMatchupStats}
                     />
                   </div>
                 </section>
@@ -5585,6 +5588,7 @@ function FinalsSemifinalCard({
   regionLabel,
   lastPickedKey,
   onPick,
+  onOpenMatchupStats,
 }: {
   game: ResolvedGame | null;
   regions: Region[];
@@ -5595,6 +5599,7 @@ function FinalsSemifinalCard({
   regionLabel: string;
   lastPickedKey: string | null;
   onPick: (game: ResolvedGame, teamId: string | null) => void;
+  onOpenMatchupStats: (game: ResolvedGame) => void;
 }) {
   const futuresByTeamId = useMemo(() => new Map(futuresRows.map((row) => [row.teamId, row])), [futuresRows]);
   const showdownFinalists = useMemo(() => {
@@ -5630,6 +5635,7 @@ function FinalsSemifinalCard({
           displayMode={displayMode}
           lastPickedKey={lastPickedKey}
           onPick={(teamId) => onPick(game, teamId)}
+          onOpenMatchupStats={onOpenMatchupStats}
         />
       ) : (
         <div className="ff-panel ff-panel--ranking">
@@ -5672,6 +5678,7 @@ function FinalsChampionshipCard({
   displayMode,
   lastPickedKey,
   onPick,
+  onOpenMatchupStats,
 }: {
   game: ResolvedGame | null;
   futuresRows: SimulationOutput["futures"];
@@ -5680,6 +5687,7 @@ function FinalsChampionshipCard({
   displayMode: OddsDisplayMode;
   lastPickedKey: string | null;
   onPick: (game: ResolvedGame, teamId: string | null) => void;
+  onOpenMatchupStats: (game: ResolvedGame) => void;
 }) {
   const futuresByTeamId = useMemo(() => new Map(futuresRows.map((row) => [row.teamId, row])), [futuresRows]);
   const showdownFinalists = useMemo(() => {
@@ -5744,6 +5752,7 @@ function FinalsChampionshipCard({
           displayMode={displayMode}
           lastPickedKey={lastPickedKey}
           onPick={(teamId) => onPick(game, teamId)}
+          onOpenMatchupStats={onOpenMatchupStats}
         />
       ) : (
         <div className="ff-panel ff-panel--championship-ranking">
@@ -6552,12 +6561,14 @@ function ShowdownCard({
   displayMode,
   lastPickedKey,
   onPick,
+  onOpenMatchupStats,
 }: {
   game: ResolvedGame;
   finalists: CandidateRow[];
   displayMode: OddsDisplayMode;
   lastPickedKey: string | null;
   onPick: (teamId: string | null) => void;
+  onOpenMatchupStats?: (game: ResolvedGame) => void;
 }) {
   const roundClass = game.round === "CHAMP" ? "round-champ" : game.round === "F4" ? "round-f4" : "round-e8";
   const roundLabel = game.round === "CHAMP" ? "National Championship" : game.round === "F4" ? "Final Four" : "Elite 8";
@@ -6579,10 +6590,10 @@ function ShowdownCard({
   return (
     <div className={`eg-showdown-card ${roundClass} eg-showdown-card--entering ${decided ? "decided" : ""}`}>
       <p className="eg-showdown-label">{roundLabel}</p>
-      {onOpenMatchupStats ? (
+      {onOpenMatchupStats && game.teamAId && game.teamBId ? (
         <button
           type="button"
-          className="matchup-stats-icon"
+          className="matchup-stats-icon matchup-stats-icon--showdown"
           onClick={(event) => {
             event.stopPropagation();
             onOpenMatchupStats(game);
@@ -6590,7 +6601,7 @@ function ShowdownCard({
           title="View matchup stats"
           aria-label="View matchup stats"
         >
-          {"i"}
+          ⓘ
         </button>
       ) : null}
       <div className="eg-showdown-matchup">
@@ -7053,14 +7064,19 @@ function TeamHoverAnchor({
   );
 }
 
+const STATS_NAME_ALIAS: Record<string, string> = {
+  "Long Island": "LIU Brooklyn",
+};
+const resolveStatsName = (name: string) => STATS_NAME_ALIAS[name] ?? name;
+
 function MatchupStatsModal({ game, onClose }: { game: ResolvedGame; onClose: () => void }) {
   const teamA = game.teamAId ? teamsById.get(game.teamAId) ?? null : null;
   const teamB = game.teamBId ? teamsById.get(game.teamBId) ?? null : null;
   const [activeStatDescription, setActiveStatDescription] = useState<TeamStatKey | "importance" | null>(null);
   if (!teamA || !teamB) return null;
 
-  const statsA = TEAM_STATS_2026[teamA.name] ?? null;
-  const statsB = TEAM_STATS_2026[teamB.name] ?? null;
+  const statsA = TEAM_STATS_2026[resolveStatsName(teamA.name)] ?? null;
+  const statsB = TEAM_STATS_2026[resolveStatsName(teamB.name)] ?? null;
 
   return (
     <div className="matchup-stats-overlay" onClick={onClose}>
