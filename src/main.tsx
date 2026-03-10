@@ -24,6 +24,13 @@ if (path === "/demo") {
       <RankingsPage />
     </StrictMode>
   );
+} else if (path === "/predictor") {
+  const { PredictorPage } = await import("./PredictorPage");
+  createRoot(document.getElementById("root")!).render(
+    <StrictMode>
+      <PredictorPage />
+    </StrictMode>
+  );
 } else {
   const [{ default: App }, { AdminPage }, { AuthProvider }] = await Promise.all([
     import("./App"),

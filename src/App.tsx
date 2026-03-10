@@ -29,13 +29,14 @@ import { fallbackLogo, teamLogoUrl } from "./lib/logo";
 import { fullTeamName } from "./lib/teamNames";
 import { trackEvent } from "./lib/analytics";
 import { ConferenceTournaments } from "./conferences/ConferenceTournaments";
-import { MatchupPredictor } from "./MatchupPredictor";
+import { ExpandedRankings } from "./rankings/ExpandedRankings";
 import { useAuth } from "./AuthContext";
 import { AuthModal } from "./AuthModal";
 import { MyBracketsModal } from "./MyBracketsModal";
 import { LeaderboardFullWidth } from "./Leaderboard";
 import { deserializePicks, getUserBrackets, saveBracket, serializePicks, type SavedBracket } from "./bracketStorage";
 import { TEAM_STAT_IMPORTANCE, TEAM_STAT_ORDER, TEAM_STATS_2026, type TeamStatKey } from "./data/teamStats2026";
+import { ToolNav } from "./SiteChrome";
 import type { OddsDisplayMode, Region, ResolvedGame, SimulationOutput } from "./types";
 
 const DEFAULT_SIM_RUNS = 10000;
@@ -49,8 +50,6 @@ const ODDS_FORMAT_STORAGE_KEY = "bracketlab-odds-format";
 const STAGGERED_SIM_DELAY_MS = 2000;
 const MIN_STAGGERED_SIM_DELAY_MS = 1000;
 const MAX_STAGGERED_SIM_DELAY_MS = 5000;
-const LANDING_URL = "https://oddsgods.net";
-
 const regionSections: Region[][] = BRACKET_HALVES.map((half) => [...half.regions]);
 const mobileRegionOrder: Region[] = ["East", "West", "Midwest", "South"];
 const invertedRegions = new Set<Region>([regionSections[0][1], regionSections[1][1]]);
@@ -200,7 +199,7 @@ type ProbabilityPopupState = {
   savedProbA: number | null;
 };
 
-type MobileTab = "bracket" | "futures" | "leaderboard" | "conferences" | "predictor";
+type MobileTab = "bracket" | "futures" | "leaderboard" | "conferences" | "rankings";
 type MobileSection = Region | "FF";
 type MobileRegionRound = "FF" | "R64" | "R32" | "S16" | "E8";
 type MobileFfRound = "F4" | "CHAMP" | "WIN";
@@ -494,7 +493,7 @@ function App() {
   const [simRuns] = useState<number>(() => getRecommendedSimRuns());
   const [futuresFieldExpanded, setFuturesFieldExpanded] = useState(false);
   const [futuresEliminatedExpanded, setFuturesEliminatedExpanded] = useState(false);
-  const [mainView, setMainView] = useState<"bracket" | "futures" | "leaderboard" | "conferences" | "predictor">("bracket");
+  const [mainView, setMainView] = useState<"bracket" | "futures" | "leaderboard" | "conferences" | "rankings">("bracket");
   const [isUpdating, setIsUpdating] = useState(false);
   const [lastPickedKey, setLastPickedKey] = useState<string | null>(null);
   const [compactDesktop, setCompactDesktop] = useState(false);
@@ -2283,9 +2282,22 @@ function App() {
 
   const topHalfComplete = isHalfComplete("top");
   const bottomHalfComplete = isHalfComplete("bottom");
-  const topHalfVisuallyCollapsed = false;
-  const bottomHalfVisuallyCollapsed = false;
+  const topHalfVisuallyCollapsed = topHalfComplete && !topHalfManuallyExpanded;
+  const bottomHalfVisuallyCollapsed = bottomHalfComplete && !bottomHalfManuallyExpanded;
 
+  const setHalfRoundExpansion = (half: "top" | "bottom", expanded: boolean) => {
+    const regions = half === "top" ? BRACKET_HALVES[0].regions : BRACKET_HALVES[1].regions;
+    setManuallyExpandedRounds((prev) => {
+      const next = { ...prev };
+      for (const region of regions) {
+        (["R64", "R32", "S16"] as const).forEach((round) => {
+          const key = `${region}-${round}` as const;
+          next[key] = expanded;
+        });
+      }
+      return next;
+    });
+  };
 
   const handleExpandHalf = (half: "top" | "bottom") => {
     if (half === "top") {
@@ -2296,6 +2308,14 @@ function App() {
     trackEvent("bracket_half_expanded", { half });
   };
 
+  const handleCollapseHalf = (half: "top" | "bottom") => {
+    if (half === "top") {
+      setTopHalfManuallyExpanded(false);
+    } else {
+      setBottomHalfManuallyExpanded(false);
+    }
+    setHalfRoundExpansion(half, false);
+  };
 
   useEffect(() => {
     if (!topHalfComplete && topHalfManuallyExpanded) {
@@ -3073,16 +3093,16 @@ function App() {
             {mainView === "conferences" ? "← Bracket" : "Conf. Tourneys"}
           </button>
           <button
+            onClick={() => setMainView((prev) => (prev === "rankings" ? "bracket" : "rankings"))}
+            className={`eg-btn toolbar-btn--rankings ${mainView === "rankings" ? "toolbar-btn--active-view" : ""}`}
+          >
+            {mainView === "rankings" ? "← Bracket" : "Rankings"}
+          </button>
+          <button
             onClick={() => setMainView((prev) => (prev === "leaderboard" ? "bracket" : "leaderboard"))}
             className={`eg-btn toolbar-btn--leaderboard ${mainView === "leaderboard" ? "toolbar-btn--active-view" : ""}`}
           >
             {mainView === "leaderboard" ? "← Bracket" : "🏆 Leaderboard"}
-          </button>
-          <button
-            onClick={() => setMainView((prev) => (prev === "predictor" ? "bracket" : "predictor"))}
-            className={`eg-btn toolbar-btn--predictor ${mainView === "predictor" ? "toolbar-btn--active-view" : ""}`}
-          >
-            {mainView === "predictor" ? "← Bracket" : "Predictor"}
           </button>
         </>
       )}
@@ -3128,11 +3148,7 @@ function App() {
       ) : null}
       <div
         className="odds-mode-toggle toolbar-btn--odds"
-        style={
-          !isMobile && mainView !== "bracket" && mainView !== "futures" && mainView !== "conferences"
-            ? { display: "none" }
-            : undefined
-        }
+        style={!isMobile && mainView !== "bracket" && mainView !== "futures" ? { display: "none" } : undefined}
       >
         <button
           className={`odds-mode-btn ${displayMode === "american" ? "odds-mode-btn--active" : ""}`}
@@ -3610,73 +3626,42 @@ function App() {
       <div className="bg-shape bg-bottom" aria-hidden="true" />
 
       <main className="eg-app">
-        <nav className="og-top-nav" aria-label="Odds Gods tools">
-          <div className="og-top-nav-desktop">
-            <a className="og-top-nav-brand" href={LANDING_URL}>
-              <img className="og-top-nav-logo" src="/logo-icon.png?v=20260225" alt="Odds Gods" />
-              <span className="odds">ODDS</span> <span className="gods">GODS</span>
-              <span className="beta-badge">BETA</span>
-            </a>
-            <div className="og-top-nav-tabs">
-              <a
-                className="og-top-nav-link"
-                href="https://oddsgods.net/blog"
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                Blog
-              </a>
-              <a className="og-top-nav-link" href="/rankings">
-                Power Rankings
-              </a>
-            </div>
-            <div className="og-top-nav-auth">
-              {authLoading ? (
-                <span className="nav-auth-loading">...</span>
-              ) : isAuthenticated ? (
-                <div className="nav-user-info">
-                  <span className="nav-user-name">{profile?.display_name || user?.email || "User"}</span>
-                  <button className="nav-signout-btn" onClick={() => signOut()}>
-                    Sign out
-                  </button>
-                </div>
-              ) : (
-                <button className="nav-signin-btn" onClick={() => setAuthModalOpen(true)}>
-                  Log in / Sign up
+        <ToolNav
+          activeTool="bracket"
+          showBeta
+          desktopAuthSlot={
+            authLoading ? (
+              <span className="nav-auth-loading">...</span>
+            ) : isAuthenticated ? (
+              <div className="nav-user-info">
+                <span className="nav-user-name">{profile?.display_name || user?.email || "User"}</span>
+                <button className="nav-signout-btn" onClick={() => signOut()}>
+                  Sign out
                 </button>
-              )}
-            </div>
-          </div>
-          <div className="og-top-nav-mobile">
-            <div className="nav-left">
-              <a className="og-mobile-logo-link" href={LANDING_URL} aria-label="Odds Gods home">
-                <img className="nav-logo-icon nav-logo" src="/logo-icon.png?v=20260225" alt="Odds Gods" />
-              </a>
-              <span className="nav-product-title nav-wordmark">ODDS GODS</span>
-              <span className="beta-badge nav-beta">BETA</span>
-            </div>
-            <div className="nav-right">
-              <a className="og-top-nav-link" href="https://oddsgods.net/blog" target="_blank" rel="noopener noreferrer">
-                Blog
-              </a>
-              <a className="og-top-nav-link" href="/rankings">
-                Power Rankings
-              </a>
-              {isAuthenticated ? (
-                <>
-                  <span className="nav-user-name nav-user-name--mobile">{profile?.display_name || user?.email || "User"}</span>
-                  <button className="nav-signout-btn nav-signout-btn--mobile nav-auth-btn" onClick={() => signOut()}>
-                    Sign out
-                  </button>
-                </>
-              ) : (
-                <button className="nav-signin-btn nav-signin-btn--mobile nav-auth-btn" onClick={() => setAuthModalOpen(true)}>
-                  Log in
+              </div>
+            ) : (
+              <button className="nav-signin-btn" onClick={() => setAuthModalOpen(true)}>
+                Log in / Sign up
+              </button>
+            )
+          }
+          mobileAuthSlot={
+            authLoading ? (
+              <span className="nav-auth-loading">...</span>
+            ) : isAuthenticated ? (
+              <>
+                <span className="nav-user-name nav-user-name--mobile">{profile?.display_name || user?.email || "User"}</span>
+                <button className="nav-signout-btn nav-signout-btn--mobile nav-auth-btn" onClick={() => signOut()}>
+                  Sign out
                 </button>
-              )}
-            </div>
-          </div>
-        </nav>
+              </>
+            ) : (
+              <button className="nav-signin-btn nav-signin-btn--mobile nav-auth-btn" onClick={() => setAuthModalOpen(true)}>
+                Log in
+              </button>
+            )
+          }
+        />
         {!isMobile ? (
           <div className="live-odds-band">
             <LiveOddsStrip
@@ -3754,6 +3739,10 @@ function App() {
               <div className="mobile-futures-view">
                 <ConferenceTournaments displayMode={displayMode} isMobile={isMobile} />
               </div>
+            ) : mobileTab === "rankings" ? (
+              <div className="mobile-futures-view">
+                <ExpandedRankings displayMode={displayMode} isMobile={isMobile} />
+              </div>
             ) : (
               <div className="mobile-futures-view">
                 <LeaderboardFullWidth
@@ -3791,6 +3780,11 @@ function App() {
                   <div className="eg-section-head">
                     <h2>Top Half Bracket</h2>
                     <p>· {regionSections[0][0]} + {regionSections[0][1]}</p>
+                    {topHalfComplete ? (
+                      <button className="half-section-collapse-btn" onClick={() => handleCollapseHalf("top")}>
+                        Collapse ↑
+                      </button>
+                    ) : null}
                   </div>
                   <div className="eg-region-scroll">
                     <div className="eg-region-grid bracket-style">
@@ -3841,6 +3835,11 @@ function App() {
                   <div className="eg-section-head">
                     <h2>Bottom Half Bracket</h2>
                     <p>· {regionSections[1][0]} + {regionSections[1][1]}</p>
+                    {bottomHalfComplete ? (
+                      <button className="half-section-collapse-btn" onClick={() => handleCollapseHalf("bottom")}>
+                        Collapse ↑
+                      </button>
+                    ) : null}
                   </div>
                   <div className="eg-region-scroll">
                     <div className="eg-region-grid bracket-style">
@@ -3889,7 +3888,6 @@ function App() {
                       regionLabel={`${regionSections[0][0]} + ${regionSections[0][1]}`}
                       lastPickedKey={lastPickedKey}
                       onPick={onPick}
-                      onOpenMatchupStats={openMatchupStats}
                     />
                     <FinalsChampionshipCard
                       game={titleGame}
@@ -3899,7 +3897,6 @@ function App() {
                       displayMode={displayMode}
                       lastPickedKey={lastPickedKey}
                       onPick={onPick}
-                      onOpenMatchupStats={openMatchupStats}
                     />
                     <FinalsSemifinalCard
                       game={rightSemi}
@@ -3911,7 +3908,6 @@ function App() {
                       regionLabel={`${regionSections[1][0]} + ${regionSections[1][1]}`}
                       lastPickedKey={lastPickedKey}
                       onPick={onPick}
-                      onOpenMatchupStats={openMatchupStats}
                     />
                   </div>
                 </section>
@@ -3926,8 +3922,8 @@ function App() {
               {mainView === "conferences" && (
                 <ConferenceTournaments displayMode={displayMode} isMobile={isMobile} />
               )}
-              {mainView === "predictor" && (
-                <MatchupPredictor displayMode={displayMode} />
+              {mainView === "rankings" && (
+                <ExpandedRankings displayMode={displayMode} isMobile={isMobile} />
               )}
               <div style={{ display: mainView === "futures" ? undefined : "none" }}>{futuresContent}</div>
             </div>
@@ -4096,7 +4092,6 @@ function App() {
             onPick(playInGame, teamId);
           }}
           onRandomize={handleRandomizeFirstFour}
-          onOpenMatchupStats={openMatchupStats}
           onClose={() => setShowFirstFourModal(false)}
         />
       ) : null}
@@ -4210,14 +4205,12 @@ function FirstFourModal({
   gameWinProbs,
   onPick,
   onRandomize,
-  onOpenMatchupStats,
   onClose,
 }: {
   playInGames: ResolvedGame[];
   gameWinProbs: SimulationOutput["gameWinProbs"];
   onPick: (gameId: string, teamId: string | null) => void;
   onRandomize: () => void;
-  onOpenMatchupStats: (game: ResolvedGame) => void;
   onClose: () => void;
 }) {
   const allDecided = playInGames.every((game) => Boolean(game.winnerId));
@@ -4252,7 +4245,6 @@ function FirstFourModal({
               game={game}
               gameWinProbs={gameWinProbs}
               onPick={(teamId) => onPick(game.id, teamId)}
-              onOpenMatchupStats={onOpenMatchupStats}
             />
           ))}
         </div>
@@ -4274,12 +4266,10 @@ function FirstFourGameCard({
   game,
   gameWinProbs,
   onPick,
-  onOpenMatchupStats,
 }: {
   game: ResolvedGame;
   gameWinProbs: SimulationOutput["gameWinProbs"];
   onPick: (teamId: string) => void;
-  onOpenMatchupStats: (game: ResolvedGame) => void;
 }) {
   const teamA = game.teamAId ? teamsById.get(game.teamAId) ?? null : null;
   const teamB = game.teamBId ? teamsById.get(game.teamBId) ?? null : null;
@@ -4294,18 +4284,6 @@ function FirstFourGameCard({
       <div className="ff-game-header">
         <span className="ff-game-label">PLAY-IN · {(teamA.region || "").toUpperCase()}</span>
         <span className="ff-game-seed">Seed {seedLabel(teamA).replace(/[ab]$/i, "")}</span>
-        <button
-          type="button"
-          className="matchup-stats-icon matchup-stats-icon--ff"
-          onClick={(event) => {
-            event.stopPropagation();
-            onOpenMatchupStats(game);
-          }}
-          title="View matchup stats"
-          aria-label="View matchup stats"
-        >
-          {"\u24D8"}
-        </button>
       </div>
 
       <div className="ff-game-matchup">
@@ -4898,6 +4876,13 @@ function MobileTabBar({
       >
         <span className="mobile-tab-icon">🏀</span>
         <span className="mobile-tab-label">Conf.</span>
+      </button>
+      <button
+        className={`mobile-tab ${activeTab === "rankings" ? "active" : ""}`}
+        onClick={() => onTabChange("rankings")}
+      >
+        <span className="mobile-tab-icon">📊</span>
+        <span className="mobile-tab-label">Ranks</span>
       </button>
       <button
         className={`mobile-tab ${activeTab === "leaderboard" ? "active" : ""}`}
@@ -5582,7 +5567,6 @@ function FinalsSemifinalCard({
   regionLabel,
   lastPickedKey,
   onPick,
-  onOpenMatchupStats,
 }: {
   game: ResolvedGame | null;
   regions: Region[];
@@ -5593,7 +5577,6 @@ function FinalsSemifinalCard({
   regionLabel: string;
   lastPickedKey: string | null;
   onPick: (game: ResolvedGame, teamId: string | null) => void;
-  onOpenMatchupStats: (game: ResolvedGame) => void;
 }) {
   const futuresByTeamId = useMemo(() => new Map(futuresRows.map((row) => [row.teamId, row])), [futuresRows]);
   const showdownFinalists = useMemo(() => {
@@ -5629,7 +5612,6 @@ function FinalsSemifinalCard({
           displayMode={displayMode}
           lastPickedKey={lastPickedKey}
           onPick={(teamId) => onPick(game, teamId)}
-          onOpenMatchupStats={onOpenMatchupStats}
         />
       ) : (
         <div className="ff-panel ff-panel--ranking">
@@ -5672,7 +5654,6 @@ function FinalsChampionshipCard({
   displayMode,
   lastPickedKey,
   onPick,
-  onOpenMatchupStats,
 }: {
   game: ResolvedGame | null;
   futuresRows: SimulationOutput["futures"];
@@ -5681,7 +5662,6 @@ function FinalsChampionshipCard({
   displayMode: OddsDisplayMode;
   lastPickedKey: string | null;
   onPick: (game: ResolvedGame, teamId: string | null) => void;
-  onOpenMatchupStats: (game: ResolvedGame) => void;
 }) {
   const futuresByTeamId = useMemo(() => new Map(futuresRows.map((row) => [row.teamId, row])), [futuresRows]);
   const showdownFinalists = useMemo(() => {
@@ -5746,7 +5726,6 @@ function FinalsChampionshipCard({
           displayMode={displayMode}
           lastPickedKey={lastPickedKey}
           onPick={(teamId) => onPick(game, teamId)}
-          onOpenMatchupStats={onOpenMatchupStats}
         />
       ) : (
         <div className="ff-panel ff-panel--championship-ranking">
@@ -6554,14 +6533,12 @@ function ShowdownCard({
   displayMode,
   lastPickedKey,
   onPick,
-  onOpenMatchupStats,
 }: {
   game: ResolvedGame;
   finalists: CandidateRow[];
   displayMode: OddsDisplayMode;
   lastPickedKey: string | null;
   onPick: (teamId: string | null) => void;
-  onOpenMatchupStats?: (game: ResolvedGame) => void;
 }) {
   const roundClass = game.round === "CHAMP" ? "round-champ" : game.round === "F4" ? "round-f4" : "round-e8";
   const roundLabel = game.round === "CHAMP" ? "National Championship" : game.round === "F4" ? "Final Four" : "Elite 8";
@@ -6583,20 +6560,6 @@ function ShowdownCard({
   return (
     <div className={`eg-showdown-card ${roundClass} eg-showdown-card--entering ${decided ? "decided" : ""}`}>
       <p className="eg-showdown-label">{roundLabel}</p>
-      {onOpenMatchupStats ? (
-        <button
-          type="button"
-          className="matchup-stats-icon"
-          onClick={(event) => {
-            event.stopPropagation();
-            onOpenMatchupStats(game);
-          }}
-          title="View matchup stats"
-          aria-label="View matchup stats"
-        >
-          ⓘ
-        </button>
-      ) : null}
       <div className="eg-showdown-matchup">
         {finalists.map((candidate, index) => {
           const team = candidate.team;
@@ -7063,13 +7026,8 @@ function MatchupStatsModal({ game, onClose }: { game: ResolvedGame; onClose: () 
   const [activeStatDescription, setActiveStatDescription] = useState<TeamStatKey | "importance" | null>(null);
   if (!teamA || !teamB) return null;
 
-  // Some teams have different names in teams.ts vs teamStats2026.ts
-  const STATS_NAME_ALIAS: Record<string, string> = {
-    "Long Island": "LIU Brooklyn",
-  };
-  const resolveStatsName = (name: string) => STATS_NAME_ALIAS[name] ?? name;
-  const statsA = TEAM_STATS_2026[resolveStatsName(teamA.name)] ?? null;
-  const statsB = TEAM_STATS_2026[resolveStatsName(teamB.name)] ?? null;
+  const statsA = TEAM_STATS_2026[teamA.name] ?? null;
+  const statsB = TEAM_STATS_2026[teamB.name] ?? null;
 
   return (
     <div className="matchup-stats-overlay" onClick={onClose}>

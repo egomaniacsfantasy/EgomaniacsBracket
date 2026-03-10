@@ -1,10 +1,10 @@
-import { useCallback, useMemo, useState, type CSSProperties } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { TEAM_STAT_IMPORTANCE, TEAM_STAT_ORDER, TEAM_STATS_2026, type TeamStatKey } from "../data/teamStats2026";
 import { formatOddsDisplay } from "../lib/odds";
 import { getMappedEspnLogoPath } from "../lib/logoMap";
 import type { OddsDisplayMode } from "../types";
 import { buildConferenceBracket } from "./bracketBuilder";
-import { CONF_KNOWN_RESULTS, CONFERENCE_DEFS, CONFERENCE_DEFS_BY_ID, type ConfDefWithProbMap } from "./conferenceDefs";
+import { CONFERENCE_DEFS, CONFERENCE_DEFS_BY_ID, type ConfDefWithProbMap } from "./conferenceDefs";
 import {
   getConfGameWinProb,
   possibleConfWinnersByGame,
@@ -19,8 +19,6 @@ import type { ConfGameTemplate, ConfResolvedGame, ConfSimulationOutput } from ".
 const SIM_RUNS = 2000;
 type ConfTeamRow = (typeof CONF_TEAMS)[string][number];
 type ConfCandidateRow = { teamId: number; prob: number; team: ConfTeamRow };
-const INFO_ICON_TEXT = "\u24D8";
-const CLOSE_ICON_TEXT = "\u2715";
 
 const TEAM_STAT_LABELS: Record<TeamStatKey, string> = {
   rank_POM: "KenPom Rank",
@@ -273,16 +271,9 @@ function ConferenceBracketView({
   const [showFutures, setShowFutures] = useState(false);
   const [selectedStatsGame, setSelectedStatsGame] = useState<ConfResolvedGame | null>(null);
 
-  // Merge known actual results (immutable) on top of user locks so the
-  // simulation always reflects real outcomes for completed games.
-  const effectiveLocks = useMemo(
-    () => ({ ...locks, ...(CONF_KNOWN_RESULTS[confId] ?? {}) }),
-    [locks, confId]
-  );
-
   const { games: resolvedGames, sanitized } = useMemo(
-    () => resolveConfGames(gameTemplates, roundOrder, effectiveLocks, customProbs),
-    [gameTemplates, roundOrder, effectiveLocks, customProbs]
+    () => resolveConfGames(gameTemplates, roundOrder, locks, customProbs),
+    [gameTemplates, roundOrder, locks, customProbs]
   );
 
   const simOutput = useMemo(
@@ -305,16 +296,6 @@ function ConferenceBracketView({
     }
     return map;
   }, [resolvedGames, roundOrder]);
-
-  const laneHeightPx = useMemo(() => {
-    const maxGamesInRound = Math.max(1, ...def.rounds.map((round) => (gamesByRound.get(round.id) ?? []).length));
-    return 520 + maxGamesInRound * 40;
-  }, [def.rounds, gamesByRound]);
-
-  const bracketGridStyle = useMemo<CSSProperties | undefined>(() => {
-    if (isMobile) return undefined;
-    return { ["--conf-lane-height" as string]: `${laneHeightPx}px` } as CSSProperties;
-  }, [isMobile, laneHeightPx]);
 
   const entryRoundIndexByTeam = useMemo(
     () => getEntryRoundIndexByTeam(gameTemplates, roundOrder),
@@ -377,26 +358,22 @@ function ConferenceBracketView({
             </div>
           ) : null}
 
-          <div
-            className={`conf-bracket-grid ${isMobile ? "conf-bracket-grid--mobile" : ""}`}
-            style={bracketGridStyle}
-          >
+          <div className={`conf-bracket-grid ${isMobile ? "conf-bracket-grid--mobile" : ""}`}>
             {def.rounds.map((roundDef) => {
               if (isMobile && roundDef.id !== mobileRound) return null;
               const roundGames = gamesByRound.get(roundDef.id) ?? [];
-              const slotCount = Math.max(roundGames.length, 1);
               return (
                 <div key={roundDef.id} className="conf-round-col">
                   <p className="conf-round-label">{roundDef.label}</p>
                   <div className="conf-games-lane">
-                    {roundGames.map((game) => {
-                      const nodeStyle: CSSProperties | undefined = isMobile
-                        ? undefined
-                        : {
-                            top: `${((game.slot + 0.5) / slotCount) * 100}%`,
-                          };
+                    {roundGames.map((game, index) => {
+                      const topPercent = ((index + 0.5) / Math.max(1, roundGames.length)) * 100;
                       return (
-                        <div key={game.id} className="conf-game-node" data-game-id={game.id} style={nodeStyle}>
+                        <div
+                          key={game.id}
+                          className="conf-game-node"
+                          style={!isMobile ? { top: `${topPercent}%` } : undefined}
+                        >
                           <ConfGameCard
                             game={game}
                             confId={confId}
@@ -483,11 +460,11 @@ function ConfGameCard({
   };
 
   return (
-    <div className={`conf-game-card ${isLocked ? "conf-game-card--locked" : ""} ${knownMatchup ? "conf-game-card--with-info" : ""}`}>
+    <div className={`conf-game-card ${isLocked ? "conf-game-card--locked" : ""}`}>
       {knownMatchup ? (
         <button
           type="button"
-          className="matchup-stats-icon matchup-stats-icon--conf"
+          className="matchup-stats-icon"
           onClick={(event) => {
             event.stopPropagation();
             onOpenMatchupStats(game);
@@ -495,7 +472,7 @@ function ConfGameCard({
           title="View matchup stats"
           aria-label="View matchup stats"
         >
-          {INFO_ICON_TEXT}
+          i
         </button>
       ) : null}
       {rows.length > 0 ? (
@@ -638,7 +615,7 @@ function ConfMatchupStatsModal({
         <div className="matchup-stats-head">
           <h3>Matchup Stats</h3>
           <button className="matchup-stats-close" onClick={onClose} aria-label="Close matchup stats">
-            {CLOSE_ICON_TEXT}
+            x
           </button>
         </div>
         <p className="matchup-stats-sub">
@@ -660,7 +637,7 @@ function ConfMatchupStatsModal({
                     aria-label="About Importance percent"
                     onClick={() => setActiveStatDescription((previous) => (previous === "importance" ? null : "importance"))}
                   >
-                    {INFO_ICON_TEXT}
+                    i
                   </button>
                   {activeStatDescription === "importance" ? (
                     <div className="matchup-stat-help-popover matchup-stat-help-popover--header">
@@ -684,7 +661,7 @@ function ConfMatchupStatsModal({
                         aria-label={`About ${TEAM_STAT_LABELS[key]}`}
                         onClick={() => setActiveStatDescription((previous) => (previous === key ? null : key))}
                       >
-                        {INFO_ICON_TEXT}
+                        i
                       </button>
                       {activeStatDescription === key ? (
                         <div className="matchup-stat-help-popover">{TEAM_STAT_DESCRIPTIONS[key]}</div>
