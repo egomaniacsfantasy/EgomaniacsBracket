@@ -4092,6 +4092,7 @@ function App() {
             onPick(playInGame, teamId);
           }}
           onRandomize={handleRandomizeFirstFour}
+          onOpenMatchupStats={openMatchupStats}
           onClose={() => setShowFirstFourModal(false)}
         />
       ) : null}
@@ -4205,12 +4206,14 @@ function FirstFourModal({
   gameWinProbs,
   onPick,
   onRandomize,
+  onOpenMatchupStats,
   onClose,
 }: {
   playInGames: ResolvedGame[];
   gameWinProbs: SimulationOutput["gameWinProbs"];
   onPick: (gameId: string, teamId: string | null) => void;
   onRandomize: () => void;
+  onOpenMatchupStats: (game: ResolvedGame) => void;
   onClose: () => void;
 }) {
   const allDecided = playInGames.every((game) => Boolean(game.winnerId));
@@ -4245,6 +4248,7 @@ function FirstFourModal({
               game={game}
               gameWinProbs={gameWinProbs}
               onPick={(teamId) => onPick(game.id, teamId)}
+              onOpenMatchupStats={onOpenMatchupStats}
             />
           ))}
         </div>
@@ -4266,10 +4270,12 @@ function FirstFourGameCard({
   game,
   gameWinProbs,
   onPick,
+  onOpenMatchupStats,
 }: {
   game: ResolvedGame;
   gameWinProbs: SimulationOutput["gameWinProbs"];
   onPick: (teamId: string) => void;
+  onOpenMatchupStats: (game: ResolvedGame) => void;
 }) {
   const teamA = game.teamAId ? teamsById.get(game.teamAId) ?? null : null;
   const teamB = game.teamBId ? teamsById.get(game.teamBId) ?? null : null;
@@ -4284,6 +4290,18 @@ function FirstFourGameCard({
       <div className="ff-game-header">
         <span className="ff-game-label">PLAY-IN · {(teamA.region || "").toUpperCase()}</span>
         <span className="ff-game-seed">Seed {seedLabel(teamA).replace(/[ab]$/i, "")}</span>
+        <button
+          type="button"
+          className="matchup-stats-icon matchup-stats-icon--ff"
+          onClick={(event) => {
+            event.stopPropagation();
+            onOpenMatchupStats(game);
+          }}
+          title="View matchup stats"
+          aria-label="View matchup stats"
+        >
+          {"\u24D8"}
+        </button>
       </div>
 
       <div className="ff-game-matchup">

@@ -1,10 +1,10 @@
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useMemo, useState, type CSSProperties } from "react";
 import { TEAM_STAT_IMPORTANCE, TEAM_STAT_ORDER, TEAM_STATS_2026, type TeamStatKey } from "../data/teamStats2026";
 import { formatOddsDisplay } from "../lib/odds";
 import { getMappedEspnLogoPath } from "../lib/logoMap";
 import type { OddsDisplayMode } from "../types";
 import { buildConferenceBracket } from "./bracketBuilder";
-import { CONFERENCE_DEFS, CONFERENCE_DEFS_BY_ID, type ConfDefWithProbMap } from "./conferenceDefs";
+import { CONF_KNOWN_RESULTS, CONFERENCE_DEFS, CONFERENCE_DEFS_BY_ID, type ConfDefWithProbMap } from "./conferenceDefs";
 import {
   getConfGameWinProb,
   possibleConfWinnersByGame,
@@ -19,6 +19,7 @@ import type { ConfGameTemplate, ConfResolvedGame, ConfSimulationOutput } from ".
 const SIM_RUNS = 2000;
 type ConfTeamRow = (typeof CONF_TEAMS)[string][number];
 type ConfCandidateRow = { teamId: number; prob: number; team: ConfTeamRow };
+const INFO_ICON_TEXT = "\u24D8";
 
 const TEAM_STAT_LABELS: Record<TeamStatKey, string> = {
   rank_POM: "KenPom Rank",
@@ -271,9 +272,14 @@ function ConferenceBracketView({
   const [showFutures, setShowFutures] = useState(false);
   const [selectedStatsGame, setSelectedStatsGame] = useState<ConfResolvedGame | null>(null);
 
+  const effectiveLocks = useMemo(
+    () => ({ ...locks, ...(CONF_KNOWN_RESULTS[confId] ?? {}) }),
+    [locks, confId]
+  );
+
   const { games: resolvedGames, sanitized } = useMemo(
-    () => resolveConfGames(gameTemplates, roundOrder, locks, customProbs),
-    [gameTemplates, roundOrder, locks, customProbs]
+    () => resolveConfGames(gameTemplates, roundOrder, effectiveLocks, customProbs),
+    [gameTemplates, roundOrder, effectiveLocks, customProbs]
   );
 
   const simOutput = useMemo(
@@ -296,6 +302,16 @@ function ConferenceBracketView({
     }
     return map;
   }, [resolvedGames, roundOrder]);
+
+  const laneHeightPx = useMemo(() => {
+    const maxGamesInRound = Math.max(1, ...def.rounds.map((round) => (gamesByRound.get(round.id) ?? []).length));
+    return 520 + maxGamesInRound * 40;
+  }, [def.rounds, gamesByRound]);
+
+  const bracketGridStyle = useMemo<CSSProperties | undefined>(() => {
+    if (isMobile) return undefined;
+    return { ["--conf-lane-height" as string]: `${laneHeightPx}px` } as CSSProperties;
+  }, [isMobile, laneHeightPx]);
 
   const entryRoundIndexByTeam = useMemo(
     () => getEntryRoundIndexByTeam(gameTemplates, roundOrder),
@@ -358,21 +374,30 @@ function ConferenceBracketView({
             </div>
           ) : null}
 
-          <div className={`conf-bracket-grid ${isMobile ? "conf-bracket-grid--mobile" : ""}`}>
+          <div
+            className={`conf-bracket-grid ${isMobile ? "conf-bracket-grid--mobile" : ""}`}
+            style={bracketGridStyle}
+          >
             {def.rounds.map((roundDef) => {
               if (isMobile && roundDef.id !== mobileRound) return null;
               const roundGames = gamesByRound.get(roundDef.id) ?? [];
+              const slotCount = Math.max(roundGames.length, 1);
               return (
                 <div key={roundDef.id} className="conf-round-col">
                   <p className="conf-round-label">{roundDef.label}</p>
                   <div className="conf-games-lane">
-                    {roundGames.map((game, index) => {
-                      const topPercent = ((index + 0.5) / Math.max(1, roundGames.length)) * 100;
+                    {roundGames.map((game) => {
+                      const nodeStyle: CSSProperties | undefined = isMobile
+                        ? undefined
+                        : {
+                            top: `${((game.slot + 0.5) / slotCount) * 100}%`,
+                          };
                       return (
                         <div
                           key={game.id}
                           className="conf-game-node"
-                          style={!isMobile ? { top: `${topPercent}%` } : undefined}
+                          data-game-id={game.id}
+                          style={nodeStyle}
                         >
                           <ConfGameCard
                             game={game}
@@ -384,7 +409,7 @@ function ConferenceBracketView({
                             possibleWinners={possibleWinners}
                             onPick={handlePick}
                             onOpenMatchupStats={setSelectedStatsGame}
-                            isLocked={game.id in locks}
+                            isLocked={game.id in effectiveLocks}
                           />
                         </div>
                       );
@@ -460,19 +485,19 @@ function ConfGameCard({
   };
 
   return (
-    <div className={`conf-game-card ${isLocked ? "conf-game-card--locked" : ""}`}>
-      {knownMatchup ? (
-        <button
-          type="button"
-          className="matchup-stats-icon"
-          onClick={(event) => {
-            event.stopPropagation();
-            onOpenMatchupStats(game);
+      <div className={`conf-game-card ${isLocked ? "conf-game-card--locked" : ""} ${knownMatchup ? "conf-game-card--with-info" : ""}`}>
+        {knownMatchup ? (
+          <button
+            type="button"
+            className="matchup-stats-icon matchup-stats-icon--conf"
+            onClick={(event) => {
+              event.stopPropagation();
+              onOpenMatchupStats(game);
           }}
           title="View matchup stats"
           aria-label="View matchup stats"
         >
-          i
+          {INFO_ICON_TEXT}
         </button>
       ) : null}
       {rows.length > 0 ? (
