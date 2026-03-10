@@ -6210,7 +6210,7 @@ body {
   font-family: "Instrument Serif", serif;
   font-size: 0.95rem;
   letter-spacing: 0.13em;
-  color: rgba(240, 230, 208, 0.8);
+  color: var(--text-primary);
   text-decoration: none;
   text-transform: uppercase;
   line-height: 1;
@@ -6232,7 +6232,7 @@ body {
 }
 
 .og-top-nav-brand .gods {
-  color: rgba(240, 230, 208, 0.92);
+  color: #fae8c7;
   font-weight: 700;
   position: relative;
   top: 1px;
@@ -6256,26 +6256,30 @@ body {
   gap: 7px;
   font-family: var(--font-mono);
   font-size: 0.94rem;
-  letter-spacing: 0.02em;
   white-space: nowrap;
-  color: rgba(240, 230, 208, 0.65);
+  color: var(--text-secondary);
   text-decoration: none;
   transition: color 160ms ease;
 }
 
 .og-top-nav-link:hover {
-  color: rgba(240, 230, 208, 0.92);
+  color: var(--text-primary);
 }
 
 .og-top-nav-link.active {
-  color: rgba(240, 230, 208, 0.92);
+  color: var(--text-primary);
 }
 
 .og-top-nav-dropdown-trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
   border: 0;
   background: transparent;
-  padding: 0;
+  color: var(--text-secondary);
+  font: inherit;
   cursor: pointer;
+  padding: 0;
 }
 
 .og-top-nav-caret {
@@ -6332,9 +6336,8 @@ body {
   padding: 0 12px;
   border-radius: 10px;
   font-family: var(--font-mono);
-  font-size: 0.88rem;
-  letter-spacing: 0.02em;
-  color: rgba(240, 230, 208, 0.68);
+  font-size: 0.94rem;
+  color: var(--text-secondary);
   text-decoration: none;
   transition: background 140ms ease, color 140ms ease;
 }
@@ -6342,7 +6345,7 @@ body {
 .og-top-nav-dropdown-item:hover,
 .og-top-nav-dropdown-item.active {
   background: rgba(200, 144, 63, 0.12);
-  color: rgba(240, 230, 208, 0.95);
+  color: var(--text-primary);
 }
 
 .beta-badge {
