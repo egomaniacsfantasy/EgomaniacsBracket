@@ -2968,25 +2968,21 @@ function App() {
           {pickCount > 0 ? <span className="futures-btn-badge">{pickCount}</span> : null}
         </button>
       ) : null}
-      {pickCount >= 5 ? (
-        <button
-          onClick={onModelSim}
-          className="eg-btn toolbar-btn--instant"
-          style={!isMobile && mainView !== "bracket" && mainView !== "futures" ? { display: "none" } : undefined}
-        >
-          Instant Sim
-        </button>
-      ) : null}
-      {pickCount >= 5 ? (
-        <button
-          onClick={onModelSimStaggered}
-          className="eg-btn toolbar-btn--staggered"
-          disabled={staggeredSimRunning}
-          style={!isMobile && mainView !== "bracket" && mainView !== "futures" ? { display: "none" } : undefined}
-        >
-          {staggeredSimRunning ? "Staggered Sim Running..." : "Staggered Sim"}
-        </button>
-      ) : null}
+      <button
+        onClick={onModelSim}
+        className="eg-btn toolbar-btn--instant"
+        style={!isMobile && mainView !== "bracket" && mainView !== "futures" ? { display: "none" } : undefined}
+      >
+        Instant Sim
+      </button>
+      <button
+        onClick={onModelSimStaggered}
+        className="eg-btn toolbar-btn--staggered"
+        disabled={staggeredSimRunning}
+        style={!isMobile && mainView !== "bracket" && mainView !== "futures" ? { display: "none" } : undefined}
+      >
+        {staggeredSimRunning ? "Staggered Sim Running..." : "Staggered Sim"}
+      </button>
       {pickCount >= 10 ? (
         <button
           onClick={onSaveBracket}
