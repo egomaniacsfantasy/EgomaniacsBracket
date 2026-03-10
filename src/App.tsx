@@ -619,10 +619,6 @@ function App() {
   const previousChaosScoreRef = useRef<number | null>(null);
   const chaosScoreSourceRef = useRef<"manual" | "staggered_sim" | "instant_sim">("manual");
   const previousStaggeredRunningRef = useRef(false);
-  const previousTopHalfCollapsedRef = useRef(false);
-  const previousBottomHalfCollapsedRef = useRef(false);
-  const previousTopHalfCompleteRef = useRef(false);
-  const previousBottomHalfCompleteRef = useRef(false);
   const walkthroughBeforeTeamOddsRef = useRef<Map<string, Map<string, number>>>(new Map());
   const walkthroughCascadeTimerRef = useRef<number | null>(null);
   const walkthroughCascadeStepTimersRef = useRef<number[]>([]);
@@ -2272,66 +2268,6 @@ function App() {
     });
   };
 
-  const isHalfComplete = (half: "top" | "bottom"): boolean => {
-    const regions = half === "top" ? BRACKET_HALVES[0].regions : BRACKET_HALVES[1].regions;
-    return regions.every((region) =>
-      (["FF", "R64", "R32", "S16", "E8"] as const).every((round) => {
-        const roundGames = gamesByRegionAndRound(games, region, round);
-        return roundGames.length > 0 && roundGames.every((game) => Boolean(game.winnerId));
-      })
-    );
-  };
-
-  const topHalfComplete = isHalfComplete("top");
-  const bottomHalfComplete = isHalfComplete("bottom");
-  const topHalfVisuallyCollapsed = false;
-  const bottomHalfVisuallyCollapsed = false;
-
-
-  const handleExpandHalf = (half: "top" | "bottom") => {
-    if (half === "top") {
-      setTopHalfManuallyExpanded(true);
-    } else {
-      setBottomHalfManuallyExpanded(true);
-    }
-    trackEvent("bracket_half_expanded", { half });
-  };
-
-
-  useEffect(() => {
-    if (!topHalfComplete && topHalfManuallyExpanded) {
-      setTopHalfManuallyExpanded(false);
-    }
-    if (!bottomHalfComplete && bottomHalfManuallyExpanded) {
-      setBottomHalfManuallyExpanded(false);
-    }
-  }, [bottomHalfComplete, bottomHalfManuallyExpanded, topHalfComplete, topHalfManuallyExpanded]);
-
-  useEffect(() => {
-    if (!previousTopHalfCompleteRef.current && topHalfComplete) {
-      setTopHalfManuallyExpanded(false);
-    }
-    previousTopHalfCompleteRef.current = topHalfComplete;
-  }, [topHalfComplete]);
-
-  useEffect(() => {
-    if (!previousBottomHalfCompleteRef.current && bottomHalfComplete) {
-      setBottomHalfManuallyExpanded(false);
-    }
-    previousBottomHalfCompleteRef.current = bottomHalfComplete;
-  }, [bottomHalfComplete]);
-
-  useEffect(() => {
-    if (!previousTopHalfCollapsedRef.current && topHalfVisuallyCollapsed) {
-      trackEvent("bracket_half_collapsed", { half: "top" });
-    }
-    if (!previousBottomHalfCollapsedRef.current && bottomHalfVisuallyCollapsed) {
-      trackEvent("bracket_half_collapsed", { half: "bottom" });
-    }
-    previousTopHalfCollapsedRef.current = topHalfVisuallyCollapsed;
-    previousBottomHalfCollapsedRef.current = bottomHalfVisuallyCollapsed;
-  }, [topHalfVisuallyCollapsed, bottomHalfVisuallyCollapsed]);
-
   const finalGames = finalRounds(games);
   const playInGames = useMemo(() => games.filter((game) => game.round === "FF"), [games]);
   const decidedPlayInCount = useMemo(
@@ -3787,17 +3723,9 @@ function App() {
               {toolbar}
               {chaosTrackerBar}
               <div className="eg-bracket-stack" style={{ display: mainView === "bracket" ? undefined : "none" }}>
-                <div style={{ display: topHalfVisuallyCollapsed ? "block" : "none" }}>
-                  <CollapsedHalfSummary
-                    half="top"
-                    games={games}
-                    onExpand={() => handleExpandHalf("top")}
-                  />
-                </div>
                 <section
                   className="eg-bracket-section top-half"
                   data-half-expanded={topHalfManuallyExpanded ? "true" : "false"}
-                  style={{ display: topHalfVisuallyCollapsed ? "none" : undefined }}
                 >
                   <div className="eg-section-head">
                     <h2>Top Half Bracket</h2>
@@ -3836,18 +3764,9 @@ function App() {
                     </div>
                   </div>
                 </section>
-
-                <div style={{ display: bottomHalfVisuallyCollapsed ? "block" : "none" }}>
-                  <CollapsedHalfSummary
-                    half="bottom"
-                    games={games}
-                    onExpand={() => handleExpandHalf("bottom")}
-                  />
-                </div>
                 <section
                   className="eg-bracket-section bottom-half"
                   data-half-expanded={bottomHalfManuallyExpanded ? "true" : "false"}
-                  style={{ display: bottomHalfVisuallyCollapsed ? "none" : undefined }}
                 >
                   <div className="eg-section-head">
                     <h2>Bottom Half Bracket</h2>
@@ -5544,50 +5463,6 @@ function RoundColumnHeader({
       <p className="eg-round-label">{fullLabel}</p>
       <button type="button" className="round-col-header-done-btn" onClick={onToggle}>
         Done
-      </button>
-    </div>
-  );
-}
-
-function CollapsedHalfSummary({
-  half,
-  games,
-  onExpand,
-}: {
-  half: "top" | "bottom";
-  games: ResolvedGame[];
-  onExpand: () => void;
-}) {
-  const regions = half === "top" ? BRACKET_HALVES[0].regions : BRACKET_HALVES[1].regions;
-  const label = half === "top" ? "Top Half Bracket" : "Bottom Half Bracket";
-  const winners = regions
-    .map((region) => {
-      const e8Game = gamesByRegionAndRound(games, region, "E8")[0];
-      if (!e8Game?.winnerId) return null;
-      return teamsById.get(e8Game.winnerId) ?? null;
-    })
-    .filter((team): team is NonNullable<typeof team> => Boolean(team));
-
-  return (
-    <div className="half-collapsed-bar">
-      <div className="half-collapsed-left">
-        <span className="half-collapsed-label">{label}</span>
-        <span className="half-collapsed-check">✓ Complete</span>
-      </div>
-      <div className="half-collapsed-teams">
-        {winners.map((team) => (
-            <div key={`${half}-${team.id}`} className="half-collapsed-team">
-              <TeamLogo teamName={team.name} src={teamLogoUrl(team)} className="half-collapsed-logo" teamSeed={seedLabel(team)} />
-              <span className="half-collapsed-name">
-                {seedLabel(team)} {team.name}
-              </span>
-              <span className="half-collapsed-region">{team.region}</span>
-            </div>
-        ))}
-        <span className="half-collapsed-arrow">→ Final Four</span>
-      </div>
-      <button type="button" className="half-collapsed-expand-btn" onClick={onExpand}>
-        Expand ↓
       </button>
     </div>
   );
