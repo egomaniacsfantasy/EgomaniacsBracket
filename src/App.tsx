@@ -39,6 +39,11 @@ import { deserializePicks, getUserBrackets, saveBracket, serializePicks, type Sa
 import { TEAM_STAT_IMPORTANCE, TEAM_STAT_ORDER, TEAM_STATS_2026, type TeamStatKey } from "./data/teamStats2026";
 import type { OddsDisplayMode, Region, ResolvedGame, SimulationOutput } from "./types";
 import { ToolNav } from "./SiteChrome";
+import { CreateGroupModal } from "./CreateGroupModal";
+import { JoinGroupModal } from "./JoinGroupModal";
+import { GroupsHub, GroupsHubInline } from "./GroupsHub";
+import { GroupDetailView } from "./GroupDetailView";
+import type { UserGroup } from "./groupStorage";
 
 const DEFAULT_SIM_RUNS = 10000;
 const CHAOS_DISTRIBUTION_SIM_RUNS = 10000;
@@ -201,7 +206,7 @@ type ProbabilityPopupState = {
   savedProbA: number | null;
 };
 
-type MobileTab = "bracket" | "futures" | "leaderboard" | "conferences" | "rankings" | "predictor";
+type MobileTab = "bracket" | "futures" | "leaderboard" | "conferences" | "rankings" | "predictor" | "groups";
 type MobileSection = Region | "FF";
 type MobileRegionRound = "FF" | "R64" | "R32" | "S16" | "E8";
 type MobileFfRound = "F4" | "CHAMP" | "WIN";
@@ -592,6 +597,12 @@ function App() {
   const [authModalOpen, setAuthModalOpen] = useState(false);
   const [myBracketsOpen, setMyBracketsOpen] = useState(false);
   const [userBrackets, setUserBrackets] = useState<SavedBracket[]>([]);
+  const [groupsHubOpen, setGroupsHubOpen] = useState(false);
+  const [createGroupOpen, setCreateGroupOpen] = useState(false);
+  const [joinGroupOpen, setJoinGroupOpen] = useState(false);
+  const [activeGroup, setActiveGroup] = useState<UserGroup | null>(null);
+  const [pendingJoinCode, setPendingJoinCode] = useState<string | null>(null);
+  const [postAuthAction, setPostAuthAction] = useState<string | null>(null);
   const [leaderboardRefreshKey, setLeaderboardRefreshKey] = useState(0);
   const [promoCTAVisible, setPromoCTAVisible] = useState(false);
   const [promoShown, setPromoShown] = useState(false);
@@ -775,6 +786,31 @@ function App() {
     const encoded = encodeBracketState(sanitized);
     window.history.replaceState(null, "", `${window.location.pathname}${window.location.search}#${encoded}`);
   }, [sanitized]);
+
+  // Groups: check for ?join=XXXXX deep link parameter
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const joinCode = params.get("join");
+    if (joinCode) {
+      setPendingJoinCode(joinCode);
+      window.history.replaceState({}, "", window.location.pathname + window.location.hash);
+      if (isAuthenticated) {
+        setJoinGroupOpen(true);
+      } else {
+        setAuthModalOpen(true);
+        setPostAuthAction("join_group");
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Groups: after auth completes, open join modal if pending
+  useEffect(() => {
+    if (isAuthenticated && pendingJoinCode && postAuthAction === "join_group") {
+      setJoinGroupOpen(true);
+      setPostAuthAction(null);
+    }
+  }, [isAuthenticated, pendingJoinCode, postAuthAction]);
 
   useEffect(() => {
     if (isMobile) return;
@@ -3030,6 +3066,15 @@ function App() {
           My Brackets
         </button>
       ) : null}
+      {isAuthenticated ? (
+        <button
+          onClick={() => setGroupsHubOpen(true)}
+          className="eg-btn toolbar-btn--groups"
+          style={!isMobile && mainView !== "bracket" && mainView !== "futures" ? { display: "none" } : undefined}
+        >
+          👥 Groups
+        </button>
+      ) : null}
       {isMobile ? (
         <button
           onClick={() => setMobileTab("leaderboard")}
@@ -3714,6 +3759,14 @@ function App() {
               <div className="mobile-futures-view">
                 <ExpandedRankings displayMode={displayMode} isMobile={isMobile} />
               </div>
+            ) : mobileTab === "groups" ? (
+              <div className="mobile-futures-view">
+                <GroupsHubInline
+                  onCreateGroup={() => setCreateGroupOpen(true)}
+                  onJoinGroup={() => setJoinGroupOpen(true)}
+                  onOpenGroup={(group) => setActiveGroup(group)}
+                />
+              </div>
             ) : (
               <div className="mobile-futures-view">
                 <LeaderboardFullWidth
@@ -3911,6 +3964,34 @@ function App() {
         onRenameSuccess={onBracketRenamed}
         currentPicks={sanitized}
         currentChaosScore={chaosScore ?? 0}
+      />
+
+      <GroupsHub
+        isOpen={groupsHubOpen}
+        onClose={() => setGroupsHubOpen(false)}
+        onCreateGroup={() => { setGroupsHubOpen(false); setCreateGroupOpen(true); }}
+        onJoinGroup={() => { setGroupsHubOpen(false); setJoinGroupOpen(true); }}
+        onOpenGroup={(group) => { setGroupsHubOpen(false); setActiveGroup(group); }}
+      />
+
+      <CreateGroupModal
+        isOpen={createGroupOpen}
+        onClose={() => setCreateGroupOpen(false)}
+        onGroupCreated={(group) => { setCreateGroupOpen(false); setActiveGroup(group as UserGroup & { role: "admin"; bracketId: string; memberCount: number }); }}
+      />
+
+      <JoinGroupModal
+        isOpen={joinGroupOpen}
+        onClose={() => { setJoinGroupOpen(false); setPendingJoinCode(null); }}
+        onGroupJoined={(group) => { setJoinGroupOpen(false); setPendingJoinCode(null); setActiveGroup(group as UserGroup & { role: "member"; bracketId: string; memberCount: number }); }}
+        initialCode={pendingJoinCode}
+      />
+
+      <GroupDetailView
+        group={activeGroup}
+        isOpen={!!activeGroup}
+        onClose={() => setActiveGroup(null)}
+        tournamentStarted={false}
       />
 
       {statsModalGame ? (
@@ -4851,6 +4932,13 @@ function MobileTabBar({
       >
         <span className="mobile-tab-icon">📊</span>
         <span className="mobile-tab-label">Ranks</span>
+      </button>
+      <button
+        className={`mobile-tab ${activeTab === "groups" ? "active" : ""}`}
+        onClick={() => onTabChange("groups")}
+      >
+        <span className="mobile-tab-icon">👥</span>
+        <span className="mobile-tab-label">Groups</span>
       </button>
       <button
         className={`mobile-tab ${activeTab === "leaderboard" ? "active" : ""}`}

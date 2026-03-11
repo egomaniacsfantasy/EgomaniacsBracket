@@ -3,9 +3,15 @@
   "configurations": [
     {
       "name": "dev",
-      "runtimeExecutable": "npm",
-      "runtimeArgs": ["run", "dev"],
+      "runtimeExecutable": "npx",
+      "runtimeArgs": ["vite", "--host"],
       "port": 5173
+    },
+    {
+      "name": "tiktok",
+      "runtimeExecutable": "npx",
+      "runtimeArgs": ["http-server", "/Users/andrevlahakis/Documents/New project", "-c-1", "--cors"],
+      "port": 8092
     }
   ]
 }
