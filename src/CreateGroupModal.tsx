@@ -159,7 +159,7 @@ export function CreateGroupModal({
               </div>
 
               <button className="group-copy-link-btn" onClick={handleCopyCode}>
-                {copied ? "✓ Link Copied!" : "🔗 Copy Invite Link"}
+                {copied ? "✓ Copied!" : "🔗 Copy Invite Link"}
               </button>
 
               <button className="group-copy-code-btn" onClick={handleCopyCodeOnly}>

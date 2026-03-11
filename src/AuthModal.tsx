@@ -1,7 +1,10 @@
 import { useEffect, useRef, useState, type FormEvent, type MouseEvent } from "react";
 import { useAuth } from "./AuthContext";
+import { supabase } from "./supabaseClient";
 
-type Mode = "signup" | "signin" | "check-email";
+export type AuthContext = "submit" | "default" | "groups" | "join";
+
+type Mode = "signup" | "signin" | "check-email" | "forgot" | "forgot-sent";
 
 function getFriendlyAuthError(error: { message?: string } | null | undefined): string {
   const raw = error?.message ?? "";
@@ -52,12 +55,79 @@ function getFriendlyAuthError(error: { message?: string } | null | undefined): s
   return raw || "Something went wrong. Please try again.";
 }
 
+function getAuthCopy(context: AuthContext, mode: string) {
+  if (mode === "check-email" || mode === "forgot" || mode === "forgot-sent") return null;
+
+  switch (context) {
+    case "submit":
+      return {
+        title: "Save your bracket",
+        subtitle: "Create an account to save up to 25 brackets and compete on the leaderboard.",
+      };
+    case "groups":
+      return {
+        title: "Sign in for Groups",
+        subtitle: "Create or join groups to compete with friends.",
+      };
+    case "join":
+      return {
+        title: "Sign in to join",
+        subtitle: "Create an account to join the group you were invited to.",
+      };
+    case "default":
+    default:
+      return {
+        title: "Welcome to The Bracket Lab",
+        subtitle: "Save brackets, join groups, and compete on the leaderboard.",
+      };
+  }
+}
+
+function PasswordInput({
+  value,
+  onChange,
+  placeholder,
+  autoFocus,
+}: {
+  value: string;
+  onChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
+  placeholder: string;
+  autoFocus?: boolean;
+}) {
+  const [visible, setVisible] = useState(false);
+
+  return (
+    <div className="auth-password-wrap">
+      <input
+        className="auth-modal-input auth-modal-input--password"
+        type={visible ? "text" : "password"}
+        placeholder={placeholder}
+        value={value}
+        onChange={onChange}
+        autoFocus={autoFocus}
+        minLength={6}
+      />
+      <button
+        className="auth-password-toggle"
+        onClick={() => setVisible(!visible)}
+        type="button"
+        tabIndex={-1}
+        aria-label={visible ? "Hide password" : "Show password"}
+      >
+        {visible ? "\u{1F441}\u200D\u{1F5E8}" : "\u{1F441}"}
+      </button>
+    </div>
+  );
+}
+
 export function AuthModal({
   isOpen,
   onClose,
+  context = "default",
 }: {
   isOpen: boolean;
   onClose: () => void;
+  context?: AuthContext;
 }) {
   const { signUp, signIn, signInWithGoogle, isDisplayNameAvailable } = useAuth();
   const [mode, setMode] = useState<Mode>("signup");
@@ -162,7 +232,40 @@ export function AuthModal({
     }
   };
 
+  const handleForgotPassword = async (event: FormEvent) => {
+    event.preventDefault();
+    setError("");
+
+    if (!email.trim()) {
+      setError("Enter your email address.");
+      return;
+    }
+
+    setSubmitting(true);
+
+    try {
+      const { error: resetError } = await supabase.auth.resetPasswordForEmail(
+        email.trim(),
+        { redirectTo: window.location.origin }
+      );
+
+      setSubmitting(false);
+
+      if (resetError) {
+        setError(getFriendlyAuthError(resetError));
+        return;
+      }
+
+      setMode("forgot-sent");
+    } catch {
+      setSubmitting(false);
+      setError("Something went wrong. Please try again.");
+    }
+  };
+
   if (!isOpen) return null;
+
+  const copy = getAuthCopy(context, mode);
 
   return (
     <div className="auth-modal-backdrop" onClick={handleBackdropClick}>
@@ -181,12 +284,65 @@ export function AuthModal({
             </p>
             <p className="auth-modal-hint">Don&apos;t see it? Check your spam folder.</p>
           </div>
+        ) : mode === "forgot" ? (
+          <div className="auth-modal-forgot">
+            <h2 className="auth-modal-title">Reset your password</h2>
+            <p className="auth-modal-subtitle">
+              Enter your email and we&apos;ll send you a reset link.
+            </p>
+            <form onSubmit={handleForgotPassword}>
+              <label className="auth-modal-label">Email</label>
+              <input
+                className="auth-modal-input"
+                type="email"
+                placeholder="you@example.com"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                autoFocus
+              />
+              {error && <div className="auth-modal-error"><span>{error}</span></div>}
+              <button
+                className="auth-modal-submit"
+                type="submit"
+                disabled={submitting}
+              >
+                {submitting ? "Sending..." : "Send Reset Link"}
+              </button>
+            </form>
+            <button
+              className="auth-modal-mode-toggle"
+              onClick={() => { setMode("signin"); setError(""); }}
+              type="button"
+            >
+              &larr; Back to log in
+            </button>
+          </div>
+        ) : mode === "forgot-sent" ? (
+          <div className="auth-modal-forgot-sent">
+            <span className="auth-modal-icon">✉</span>
+            <h2 className="auth-modal-title">Check your inbox</h2>
+            <p className="auth-modal-subtitle">
+              We sent a password reset link to <strong>{email}</strong>
+            </p>
+            <p className="auth-modal-hint">
+              Didn&apos;t get it? Check spam or{" "}
+              <button
+                className="auth-modal-inline-link"
+                onClick={() => { setMode("forgot"); setError(""); }}
+                type="button"
+              >
+                try again
+              </button>.
+            </p>
+          </div>
         ) : mode === "signup" ? (
           <form onSubmit={handleSignUp} className="auth-modal-form">
-            <h3 className="auth-modal-title">Submit your bracket</h3>
-            <p className="auth-modal-subtitle">
-              Create an account to save up to 25 brackets and compete on the leaderboard. Password required.
-            </p>
+            {copy && (
+              <>
+                <h3 className="auth-modal-title">{copy.title}</h3>
+                <p className="auth-modal-subtitle">{copy.subtitle}</p>
+              </>
+            )}
 
             <button
               className="auth-modal-google-btn"
@@ -235,13 +391,10 @@ export function AuthModal({
             />
 
             <label className="auth-modal-label">Password</label>
-            <input
-              className="auth-modal-input"
-              type="password"
-              placeholder="At least 6 characters"
+            <PasswordInput
               value={password}
               onChange={(event) => setPassword(event.target.value)}
-              minLength={6}
+              placeholder="At least 6 characters"
             />
 
             {error ? (
@@ -296,8 +449,17 @@ export function AuthModal({
           </form>
         ) : (
           <form onSubmit={handleSignIn} className="auth-modal-form">
-            <h3 className="auth-modal-title">Welcome back</h3>
-            <p className="auth-modal-subtitle">Enter your email and password to log in.</p>
+            {copy && mode === "signin" ? (
+              <>
+                <h3 className="auth-modal-title">{copy.title}</h3>
+                <p className="auth-modal-subtitle">{copy.subtitle}</p>
+              </>
+            ) : (
+              <>
+                <h3 className="auth-modal-title">Welcome back</h3>
+                <p className="auth-modal-subtitle">Enter your email and password to log in.</p>
+              </>
+            )}
 
             <button
               className="auth-modal-google-btn"
@@ -331,13 +493,19 @@ export function AuthModal({
             />
 
             <label className="auth-modal-label">Password</label>
-            <input
-              className="auth-modal-input"
-              type="password"
-              placeholder="Your password"
+            <PasswordInput
               value={signinPassword}
               onChange={(event) => setSigninPassword(event.target.value)}
+              placeholder="Your password"
             />
+
+            <button
+              className="auth-modal-forgot-link"
+              onClick={() => { setMode("forgot"); setError(""); }}
+              type="button"
+            >
+              Forgot your password?
+            </button>
 
             {error ? (
               <div className="auth-modal-error">

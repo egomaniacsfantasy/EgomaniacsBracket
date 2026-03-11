@@ -32,7 +32,7 @@ import { ConferenceTournaments } from "./conferences/ConferenceTournaments";
 import { ExpandedRankings } from "./rankings/ExpandedRankings";
 import { MatchupPredictor } from "./MatchupPredictor";
 import { useAuth } from "./AuthContext";
-import { AuthModal } from "./AuthModal";
+import { AuthModal, type AuthContext as AuthContextType } from "./AuthModal";
 import { MyBracketsModal } from "./MyBracketsModal";
 import { LeaderboardFullWidth } from "./Leaderboard";
 import { deserializePicks, getUserBrackets, saveBracket, serializePicks, type SavedBracket } from "./bracketStorage";
@@ -596,6 +596,7 @@ function App() {
   const [saveStatus, setSaveStatus] = useState<null | "saving" | "saved" | "error">(null);
   const [saveErrorText, setSaveErrorText] = useState<string | null>(null);
   const [authModalOpen, setAuthModalOpen] = useState(false);
+  const [authContext, setAuthContext] = useState<AuthContextType>("default");
   const [myBracketsOpen, setMyBracketsOpen] = useState(false);
   const [userBrackets, setUserBrackets] = useState<SavedBracket[]>([]);
   const [groupsHubOpen, setGroupsHubOpen] = useState(false);
@@ -610,6 +611,9 @@ function App() {
   const [manuallyExpandedRounds, setManuallyExpandedRounds] = useState<ManualRoundExpansionState>({});
   const [topHalfManuallyExpanded, setTopHalfManuallyExpanded] = useState(false);
   const [bottomHalfManuallyExpanded, setBottomHalfManuallyExpanded] = useState(false);
+  const [saveCTADismissed, setSaveCTADismissed] = useState(false);
+  const [ctaJustAppeared, setCtaJustAppeared] = useState(false);
+  const [showConfetti, setShowConfetti] = useState(false);
   const [shareToastVisible, setShareToastVisible] = useState(false);
   const [shareModalVisible, setShareModalVisible] = useState(false);
   const [shareExporting, setShareExporting] = useState<ShareFormat | null>(null);
@@ -647,6 +651,7 @@ function App() {
   const staggeredIndexRef = useRef(0);
   const staggeredDelayRef = useRef(STAGGERED_SIM_DELAY_MS);
   const simGeneratedGameIdsRef = useRef<Set<string>>(new Set());
+  const prevShowSaveCtaRef = useRef(false);
   const walkthroughAdvanceTimerRef = useRef<number | null>(null);
   const walkthroughResolveTokenRef = useRef(0);
   const contextualHintTimerRef = useRef<number | null>(null);
@@ -792,9 +797,24 @@ function App() {
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const joinCode = params.get("join");
+    // Restore a pending join code that survived an email verification redirect
+    const storedJoinCode = sessionStorage.getItem("bracketlab-pending-join-code");
+    if (storedJoinCode && !joinCode) {
+      setPendingJoinCode(storedJoinCode);
+      if (isAuthenticated) {
+        setJoinGroupOpen(true);
+      } else {
+        setAuthContext("join");
+        setAuthModalOpen(true);
+        setPostAuthAction("join_group");
+      }
+    }
     if (joinCode) {
       setPendingJoinCode(joinCode);
-      // Dismiss onboarding/walkthrough so it doesn't overlap the auth modal
+      sessionStorage.setItem("bracketlab-pending-join-code", joinCode);
+      // User arrived via invite link — skip walkthrough/onboarding entirely
+      localStorage.setItem(ONBOARDING_STORAGE_KEY, "true");
+      localStorage.setItem(DESKTOP_FIRST_SEEN_KEY, "1");
       setWelcomeGateOpen(false);
       setShowDesktopFirst(false);
       setWalkthroughActive(false);
@@ -802,6 +822,7 @@ function App() {
       if (isAuthenticated) {
         setJoinGroupOpen(true);
       } else {
+        setAuthContext("join");
         setAuthModalOpen(true);
         setPostAuthAction("join_group");
       }
@@ -828,6 +849,14 @@ function App() {
       setPostAuthAction(null);
     }
   }, [isAuthenticated, postAuthAction, isMobile]);
+
+  // After auth completes from groups button, open groups hub
+  useEffect(() => {
+    if (isAuthenticated && postAuthAction === "open_groups") {
+      setGroupsHubOpen(true);
+      setPostAuthAction(null);
+    }
+  }, [isAuthenticated, postAuthAction]);
 
   // Post-sign-in: one-time groups discovery nudge
   useEffect(() => {
@@ -979,6 +1008,7 @@ function App() {
     if (typeof window !== "undefined") {
       window.localStorage.setItem(PROMO_DISMISSED_KEY, "1");
     }
+    setAuthContext("submit");
     setAuthModalOpen(true);
   };
 
@@ -1533,6 +1563,7 @@ function App() {
   const submissionsLocked = useMemo(() => userBrackets.some((bracket) => bracket.is_locked), [userBrackets]);
   const submissionLimitReached = submittedBracketCount >= 25;
   const canSubmitBrackets = isAuthenticated && !submissionsLocked && !submissionLimitReached;
+  const showSaveCta = pickCount >= 16;
   const pickedChaosGameIds = useMemo(() => getPickedChaosGameIds(games), [games]);
   const chaosPercentile = useMemo(() => {
     if (chaosScore === null || pickedChaosGameIds.length === 0 || !chaosDistribution) return null;
@@ -1915,6 +1946,7 @@ function App() {
   const onSaveBracket = async () => {
     if (!isAuthenticated || !user) {
       window.sessionStorage.setItem("pendingBracketSave", JSON.stringify(serializePicks(sanitized)));
+      setAuthContext("submit");
       setAuthModalOpen(true);
       return;
     }
@@ -2908,8 +2940,10 @@ function App() {
   useEffect(() => {
     if (!welcomeGateOpen || walkthroughActive) return;
     if (isMobile && showDesktopFirst) return;
+    // Skip walkthrough when user arrived via invite link — they have intent
+    if (pendingJoinCode || authModalOpen) return;
     startWalkthrough();
-  }, [isMobile, showDesktopFirst, startWalkthrough, walkthroughActive, welcomeGateOpen]);
+  }, [isMobile, showDesktopFirst, startWalkthrough, walkthroughActive, welcomeGateOpen, pendingJoinCode, authModalOpen]);
 
   useEffect(() => {
     const inWalkthroughSession = welcomeGateOpen || walkthroughActive;
@@ -3009,6 +3043,51 @@ function App() {
     return () => observer.disconnect();
   }, [isMobile, mainView]);
 
+  // Save CTA pulse effect — runs once when CTA first appears
+  useEffect(() => {
+    if (showSaveCta && !prevShowSaveCtaRef.current) {
+      setCtaJustAppeared(true);
+      const timer = setTimeout(() => setCtaJustAppeared(false), 4500);
+      return () => clearTimeout(timer);
+    }
+    prevShowSaveCtaRef.current = showSaveCta;
+  }, [showSaveCta]);
+
+  const handleSaveCtaClick = async () => {
+    if (!isAuthenticated || !user) {
+      window.sessionStorage.setItem("pendingBracketSave", JSON.stringify(serializePicks(sanitized)));
+      setAuthContext("submit");
+      setAuthModalOpen(true);
+      return;
+    }
+    // Reuse existing save logic
+    if (submissionsLocked || submissionLimitReached) return;
+    setSaveStatus("saving");
+    const defaultName = submittedBracketCount === 0 ? "My Bracket" : `Bracket #${Math.min(25, submittedBracketCount + 1)}`;
+    const { error } = await saveBracket(user.id, sanitized, defaultName, null, chaosScore ?? 0, { submit: true });
+    if (error) {
+      setSaveStatus("error");
+      setSaveErrorText((error as { message?: string })?.message ?? "Save failed");
+      if (saveStatusTimerRef.current !== null) window.clearTimeout(saveStatusTimerRef.current);
+      saveStatusTimerRef.current = window.setTimeout(() => {
+        setSaveStatus(null);
+        setSaveErrorText(null);
+        saveStatusTimerRef.current = null;
+      }, 3000);
+      return;
+    }
+    await refreshUserBrackets();
+    setSaveStatus("saved");
+    setSaveErrorText(null);
+    setShowConfetti(true);
+    setTimeout(() => setShowConfetti(false), 2000);
+    if (saveStatusTimerRef.current !== null) window.clearTimeout(saveStatusTimerRef.current);
+    saveStatusTimerRef.current = window.setTimeout(() => {
+      setSaveStatus(null);
+      saveStatusTimerRef.current = null;
+    }, 2000);
+  };
+
   const toolbar = (
     <div className="eg-main-actions toolbar">
       <button
@@ -3099,15 +3178,21 @@ function App() {
           My Brackets
         </button>
       ) : null}
-      {isAuthenticated ? (
-        <button
-          onClick={() => setGroupsHubOpen(true)}
-          className="eg-btn toolbar-btn--groups"
-          style={!isMobile && mainView !== "bracket" && mainView !== "futures" ? { display: "none" } : undefined}
-        >
-          👥 Groups
-        </button>
-      ) : null}
+      <button
+        onClick={() => {
+          if (isAuthenticated) {
+            setGroupsHubOpen(true);
+          } else {
+            setAuthContext("groups");
+            setPostAuthAction("open_groups");
+            setAuthModalOpen(true);
+          }
+        }}
+        className={`eg-btn toolbar-btn--groups ${!isAuthenticated ? "toolbar-btn--ghost" : ""}`}
+        style={!isMobile && mainView !== "bracket" && mainView !== "futures" ? { display: "none" } : undefined}
+      >
+        👥 Groups
+      </button>
       {isMobile ? (
         <button
           onClick={() => setMobileTab("leaderboard")}
@@ -3229,6 +3314,15 @@ function App() {
           %
         </button>
       </div>
+      {!isMobile && showSaveCta ? (
+        <button
+          className={`save-cta-btn save-cta-btn--toolbar ${ctaJustAppeared ? "save-cta-btn--intro" : ""}`}
+          onClick={handleSaveCtaClick}
+          style={mainView !== "bracket" && mainView !== "futures" ? { display: "none" } : undefined}
+        >
+          {saveStatus === "saving" ? "Saving..." : saveStatus === "saved" ? "✓ Saved" : "Save Bracket →"}
+        </button>
+      ) : null}
       {!isMobile && chaosScore !== null && pickCount >= 5 ? (
         <div
           className={`chaos-score-wrap ${chaosScoreChanged ? "chaos-score-pill--changed" : ""}`}
@@ -3688,7 +3782,7 @@ function App() {
                 </button>
               </div>
             ) : (
-              <button className="nav-signin-btn" onClick={() => setAuthModalOpen(true)}>
+              <button className="nav-signin-btn" onClick={() => { setAuthContext("default"); setAuthModalOpen(true); }}>
                 Log in / Sign up
               </button>
             )
@@ -3702,7 +3796,7 @@ function App() {
                 </button>
               </>
             ) : (
-              <button className="nav-signin-btn nav-signin-btn--mobile nav-auth-btn" onClick={() => setAuthModalOpen(true)}>
+              <button className="nav-signin-btn nav-signin-btn--mobile nav-auth-btn" onClick={() => { setAuthContext("default"); setAuthModalOpen(true); }}>
                 Log in
               </button>
             )
@@ -3809,6 +3903,7 @@ function App() {
                     if (isAuthenticated) {
                       setMobileTab("bracket");
                     } else {
+                      setAuthContext("submit");
                       setAuthModalOpen(true);
                       setPostAuthAction("submit_bracket");
                     }
@@ -3962,6 +4057,7 @@ function App() {
                     if (isAuthenticated) {
                       setMainView("bracket");
                     } else {
+                      setAuthContext("submit");
                       setAuthModalOpen(true);
                       setPostAuthAction("submit_bracket");
                     }
@@ -3995,6 +4091,42 @@ function App() {
         />
       ) : null}
 
+      {isMobile && showSaveCta && !saveCTADismissed && (
+        <div className="save-cta-mobile">
+          <button
+            className="save-cta-btn save-cta-btn--mobile"
+            onClick={handleSaveCtaClick}
+          >
+            {saveStatus === "saving" ? "Saving..." : saveStatus === "saved" ? "✓ Saved" : "Save Bracket →"}
+          </button>
+          <button
+            className="save-cta-mobile-dismiss"
+            onClick={() => setSaveCTADismissed(true)}
+            aria-label="Dismiss"
+          >
+            ✕
+          </button>
+        </div>
+      )}
+
+      {showConfetti && (
+        <div className="confetti-container" aria-hidden="true">
+          {Array.from({ length: 24 }, (_, i) => (
+            <div
+              key={i}
+              className="confetti-piece"
+              style={{
+                "--x": `${(Math.random() - 0.5) * 300}px`,
+                "--y": `${-150 - Math.random() * 200}px`,
+                "--r": `${Math.random() * 720 - 360}deg`,
+                "--delay": `${Math.random() * 200}ms`,
+                "--color": ["#b87d18", "#d4a745", "#efe4cf", "#c9963a", "#f5e6c8"][Math.floor(Math.random() * 5)],
+              } as React.CSSProperties}
+            />
+          ))}
+        </div>
+      )}
+
       <ConfirmResetModal
         visible={Boolean(resetModalConfig)}
         title={resetModalConfig?.title ?? ""}
@@ -4004,7 +4136,7 @@ function App() {
         onCancel={() => setResetModalConfig(null)}
       />
 
-      <AuthModal isOpen={authModalOpen} onClose={() => setAuthModalOpen(false)} />
+      <AuthModal isOpen={authModalOpen} onClose={() => setAuthModalOpen(false)} context={authContext} />
 
       <MyBracketsModal
         isOpen={myBracketsOpen}
@@ -4031,8 +4163,8 @@ function App() {
 
       <JoinGroupModal
         isOpen={joinGroupOpen}
-        onClose={() => { setJoinGroupOpen(false); setPendingJoinCode(null); }}
-        onGroupJoined={(group) => { setJoinGroupOpen(false); setPendingJoinCode(null); setActiveGroup(group as UserGroup & { role: "member"; bracketId: string; memberCount: number }); }}
+        onClose={() => { setJoinGroupOpen(false); setPendingJoinCode(null); sessionStorage.removeItem("bracketlab-pending-join-code"); }}
+        onGroupJoined={(group) => { setJoinGroupOpen(false); setPendingJoinCode(null); sessionStorage.removeItem("bracketlab-pending-join-code"); setActiveGroup(group as UserGroup & { role: "member"; bracketId: string; memberCount: number }); }}
         initialCode={pendingJoinCode}
       />
 
@@ -5317,7 +5449,7 @@ function DesktopFirstModal({ onDismiss }: { onDismiss: () => void }) {
         <div className="dfm-icon">💻</div>
         <h2 className="dfm-headline">Quick heads up.</h2>
         <p className="dfm-body">
-          BracketLab was built for the big screen. You can absolutely use it here, but the full bracket view,
+          The Bracket Lab was built for the big screen. You can absolutely use it here, but the full bracket view,
           probability editor, and real-time odds cascades are way better on desktop.
         </p>
         <p className="dfm-sub">Grab your laptop when you can. You won&apos;t regret it.</p>

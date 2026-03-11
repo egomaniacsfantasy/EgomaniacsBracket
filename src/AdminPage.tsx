@@ -33,7 +33,7 @@ export function AdminPage() {
   if (!authenticated) {
     return (
       <div style={{ padding: 40, maxWidth: 400, margin: "0 auto", fontFamily: "monospace", color: "#f0e6d0" }}>
-        <h2 style={{ color: "#b87d18" }}>BracketLab Admin</h2>
+        <h2 style={{ color: "#b87d18" }}>Bracket Lab Admin</h2>
         <input
           type="password"
           placeholder="Admin password"
@@ -56,7 +56,7 @@ export function AdminPage() {
 
   return (
     <div style={{ padding: 40, maxWidth: 1000, margin: "0 auto", fontFamily: "monospace", color: "#f0e6d0" }}>
-      <h2 style={{ color: "#b87d18" }}>BracketLab Admin</h2>
+      <h2 style={{ color: "#b87d18" }}>Bracket Lab Admin</h2>
       <AdminResultsEntry onResultsChange={() => setResultsRefresh((v) => v + 1)} />
       <AdminScoringControls scoringStatus={scoringStatus} setScoringStatus={setScoringStatus} />
       <AdminLockControls lockStatus={lockStatus} setLockStatus={setLockStatus} />
