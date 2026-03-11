@@ -63,8 +63,9 @@ export function CreateGroupModal({
 
   function handleCopyCode() {
     if (!createdGroup) return;
-    const link = `${window.location.origin}?join=${createdGroup.invite_code}`;
-    navigator.clipboard.writeText(link).then(() => {
+    const link = `${window.location.origin}/join.html?code=${createdGroup.invite_code}`;
+    const message = `Join my group "${createdGroup.name}" on The Bracket Lab and compete to see who has the best bracket! 🏀\n${link}`;
+    navigator.clipboard.writeText(message).then(() => {
       setCopied(true);
       setTimeout(() => setCopied(false), 2500);
     });

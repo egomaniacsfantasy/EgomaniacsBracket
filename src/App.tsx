@@ -4037,6 +4037,9 @@ function App() {
         isOpen={!!activeGroup}
         onClose={() => setActiveGroup(null)}
         tournamentStarted={false}
+        onGroupUpdated={({ name, emoji }) => {
+          setActiveGroup((prev) => prev ? { ...prev, name, emoji } : null);
+        }}
       />
 
       {statsModalGame ? (

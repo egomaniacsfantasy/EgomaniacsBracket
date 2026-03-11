@@ -226,6 +226,17 @@ export async function removeMember(groupId: string, targetUserId: string) {
   return { error };
 }
 
+export async function updateGroup(groupId: string, updates: { name?: string; emoji?: string }) {
+  const { data, error } = await supabase
+    .from("groups")
+    .update(updates)
+    .eq("id", groupId)
+    .select()
+    .single();
+
+  return { data: data as GroupRow | null, error };
+}
+
 export async function deleteGroup(groupId: string) {
   const { error } = await supabase.from("groups").delete().eq("id", groupId);
 

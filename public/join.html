@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Join My Group | The Bracket Lab</title>
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://bracket.oddsgods.net/join.html" />
+    <meta property="og:title" content="You've been invited to a Bracket Group!" />
+    <meta property="og:description" content="Join my group on The Bracket Lab and compete to see who has the best bracket. Build your picks, track the tournament, and prove you know March Madness." />
+    <meta property="og:image" content="https://bracket.oddsgods.net/og-image-20260303.png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:site_name" content="Odds Gods" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="You've been invited to a Bracket Group!" />
+    <meta name="twitter:description" content="Join my group on The Bracket Lab and compete to see who has the best bracket." />
+    <meta name="twitter:image" content="https://bracket.oddsgods.net/og-image-20260303.png" />
+    <script>
+      // Preserve the invite code and redirect to main app
+      var params = new URLSearchParams(window.location.search);
+      var code = params.get('code');
+      window.location.replace('/' + (code ? '?join=' + code : ''));
+    </script>
+  </head>
+  <body></body>
+</html>

@@ -1,11 +1,18 @@
 import { useState, useEffect, useMemo } from "react";
 import { useAuth } from "./AuthContext";
-import { getGroupStandings, leaveGroup, deleteGroup, updateMemberBracket, type GroupStanding, type UserGroup } from "./groupStorage";
+import { getGroupStandings, leaveGroup, deleteGroup, updateMemberBracket, updateGroup, type GroupStanding, type UserGroup } from "./groupStorage";
 import { getUserBrackets, type SavedBracket } from "./bracketStorage";
 import { GroupStandingsTab } from "./GroupStandingsTab";
 import { GroupPicksTab } from "./GroupPicksTab";
 import { GroupChaosTab } from "./GroupChaosTab";
 import { BracketViewer } from "./BracketViewer";
+
+const GROUP_EMOJIS = [
+  "🏀", "⚽", "🏈", "⚾", "🎾", "🏐", "🎯", "🏆", "🥇", "🏅",
+  "🔥", "⚡", "💪", "🦁", "🐻", "🦅", "🐺", "🦈", "🐍", "🦇",
+  "👑", "💎", "🎲", "🎰", "🃏", "🌪️", "☄️", "🚀", "💥", "🎪",
+  "🍀", "🌟", "⭐", "🏹", "⚔️", "🛡️", "🎖️", "🥊", "🏁", "🎳",
+];
 
 type RankedStanding = GroupStanding & { groupRank: number };
 
@@ -15,12 +22,14 @@ export function GroupDetailView({
   onClose,
   tournamentStarted,
   tournamentResults,
+  onGroupUpdated,
 }: {
   group: UserGroup | null;
   isOpen: boolean;
   onClose: () => void;
   tournamentStarted: boolean;
   tournamentResults?: unknown;
+  onGroupUpdated?: (updated: { name: string; emoji: string }) => void;
 }) {
   const { user } = useAuth();
   const [activeTab, setActiveTab] = useState<"standings" | "picks" | "chaos">("standings");
@@ -41,6 +50,13 @@ export function GroupDetailView({
   const [bracketPickerLoading, setBracketPickerLoading] = useState(false);
   const [bracketPickerError, setBracketPickerError] = useState("");
 
+  // Edit group state
+  const [showEditGroup, setShowEditGroup] = useState(false);
+  const [editName, setEditName] = useState("");
+  const [editEmoji, setEditEmoji] = useState("");
+  const [editLoading, setEditLoading] = useState(false);
+  const [editError, setEditError] = useState("");
+
   const isAdmin = group?.created_by === user?.id;
 
   useEffect(() => {
@@ -60,8 +76,9 @@ export function GroupDetailView({
 
   function handleCopyInvite() {
     if (!group) return;
-    const link = `${window.location.origin}?join=${group.invite_code}`;
-    navigator.clipboard.writeText(link).then(() => {
+    const link = `${window.location.origin}/join.html?code=${group.invite_code}`;
+    const message = `Join my group "${group.name}" on The Bracket Lab and compete to see who has the best bracket! 🏀\n${link}`;
+    navigator.clipboard.writeText(message).then(() => {
       setCopied(true);
       setTimeout(() => setCopied(false), 2500);
     });
@@ -93,6 +110,39 @@ export function GroupDetailView({
       return;
     }
     setShowBracketPicker(true);
+  }
+
+  function handleOpenEditGroup() {
+    if (!group) return;
+    setEditName(group.name);
+    setEditEmoji(group.emoji ?? "👥");
+    setEditError("");
+    setShowEditGroup(true);
+    setShowSettings(false);
+  }
+
+  async function handleSaveGroup() {
+    if (!group) return;
+    const trimmed = editName.trim();
+    if (!trimmed) {
+      setEditError("Group name cannot be empty.");
+      return;
+    }
+    if (trimmed.length > 40) {
+      setEditError("Group name must be 40 characters or fewer.");
+      return;
+    }
+    setEditLoading(true);
+    setEditError("");
+    const { error } = await updateGroup(group.id, { name: trimmed, emoji: editEmoji });
+    if (error) {
+      setEditError(error.message || "Failed to update group.");
+      setEditLoading(false);
+      return;
+    }
+    setEditLoading(false);
+    setShowEditGroup(false);
+    onGroupUpdated?.({ name: trimmed, emoji: editEmoji });
   }
 
   async function handleConfirmBracket() {
@@ -182,6 +232,11 @@ export function GroupDetailView({
             <span className="group-settings-code-label">INVITE CODE</span>
             <span className="group-settings-code-value">{group.invite_code}</span>
           </div>
+          {isAdmin && (
+            <button className="group-settings-action" onClick={handleOpenEditGroup}>
+              ✏️ Edit Group
+            </button>
+          )}
           {!isAdmin && (
             <button className="group-settings-action group-settings-action--danger" onClick={handleLeave}>
               Leave Group
@@ -275,6 +330,54 @@ export function GroupDetailView({
             </div>
             <button className="group-cta-btn" onClick={handleConfirmBracket} disabled={!selectedBracket || bracketPickerLoading}>
               {bracketPickerLoading ? "Saving..." : "Confirm Bracket"}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {showEditGroup && (
+        <div className="group-modal-overlay" onClick={() => { setShowEditGroup(false); setEditError(""); }}>
+          <div className="group-modal" onClick={(e) => e.stopPropagation()}>
+            <button className="group-modal-close-btn" onClick={() => { setShowEditGroup(false); setEditError(""); }}>
+              ✕
+            </button>
+            <div className="group-modal-header">
+              <span className="group-modal-icon">{editEmoji}</span>
+              <h2 className="group-modal-title">Edit Group</h2>
+              <p className="group-modal-subtitle">Update your group's name and emoji</p>
+            </div>
+            <div className="group-modal-body">
+              <label className="group-input-label">Group Emoji</label>
+              <div className="group-emoji-grid">
+                {GROUP_EMOJIS.map((e) => (
+                  <button
+                    key={e}
+                    type="button"
+                    className={`group-emoji-btn ${editEmoji === e ? "group-emoji-btn--selected" : ""}`}
+                    onClick={() => setEditEmoji(e)}
+                  >
+                    {e}
+                  </button>
+                ))}
+              </div>
+
+              <label className="group-input-label">Group Name</label>
+              <input
+                type="text"
+                className="group-input"
+                value={editName}
+                onChange={(e) => setEditName(e.target.value)}
+                placeholder="e.g. Office Pool 2026"
+                maxLength={40}
+                autoFocus
+                onKeyDown={(e) => e.key === "Enter" && handleSaveGroup()}
+              />
+              <span className="group-input-hint">{editName.length}/40</span>
+
+              {editError && <p className="group-error">{editError}</p>}
+            </div>
+            <button className="group-cta-btn" onClick={handleSaveGroup} disabled={!editName.trim() || editLoading}>
+              {editLoading ? "Saving..." : "Save Changes"}
             </button>
           </div>
         </div>
