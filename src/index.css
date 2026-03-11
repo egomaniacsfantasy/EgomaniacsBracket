@@ -13740,6 +13740,132 @@ body.walkthrough-active .odds-value--changed::after {
   margin: 0;
 }
 
+/* ── Invite Code Display (CreateGroupModal done step) ── */
+
+.invite-code-display {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 16px;
+  border: 1px solid rgba(184, 125, 24, 0.25);
+  border-radius: 10px;
+  background: rgba(184, 125, 24, 0.04);
+}
+
+.invite-code-label {
+  font-family: var(--font-mono, monospace);
+  font-size: 9px;
+  letter-spacing: 0.12em;
+  color: var(--text-tertiary, #6b6350);
+  text-transform: uppercase;
+}
+
+.invite-code-value {
+  font-family: var(--font-mono, monospace);
+  font-size: 24px;
+  font-weight: 700;
+  letter-spacing: 0.15em;
+  color: var(--text-amber, #b87d18);
+}
+
+.invite-actions {
+  display: flex;
+  gap: 8px;
+  width: 100%;
+}
+
+.invite-copy-btn,
+.invite-share-btn {
+  flex: 1;
+  padding: 12px 16px;
+  border-radius: 8px;
+  font-family: var(--font-mono, monospace);
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: filter 150ms;
+}
+
+.invite-copy-btn {
+  background: rgba(184, 125, 24, 0.85);
+  color: #0a0806;
+  border: none;
+}
+.invite-copy-btn:hover { filter: brightness(1.1); }
+
+.invite-share-btn {
+  background: transparent;
+  color: var(--text-amber, #b87d18);
+  border: 1px solid rgba(184, 125, 24, 0.40);
+}
+.invite-share-btn:hover {
+  background: rgba(184, 125, 24, 0.08);
+}
+
+.invite-preview {
+  margin-top: 12px;
+  padding: 10px 12px;
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  border-radius: 8px;
+}
+
+.invite-preview-label {
+  font-family: var(--font-mono, monospace);
+  font-size: 9px;
+  color: var(--text-tertiary, #6b6350);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  display: block;
+  margin-bottom: 6px;
+}
+
+.invite-preview-text {
+  font-family: var(--font-mono, monospace);
+  font-size: 10px;
+  color: var(--text-secondary, #a89a80);
+  line-height: 1.6;
+  margin: 0;
+  white-space: pre-line;
+  word-break: break-all;
+}
+
+/* ── Invite Toast (GroupDetailView) ── */
+
+.invite-toast {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  background: #1a1712;
+  border: 1px solid rgba(184, 125, 24, 0.25);
+  border-radius: 8px;
+  padding: 10px 14px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  white-space: nowrap;
+  z-index: 100;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+  animation: invite-toast-in 200ms ease-out;
+}
+
+@keyframes invite-toast-in {
+  from { opacity: 0; transform: translateY(-4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.invite-toast-check {
+  color: var(--text-amber, #b87d18);
+  font-size: 14px;
+}
+
+.invite-toast-text {
+  font-family: var(--font-mono, monospace);
+  font-size: 11px;
+  color: var(--text-secondary, #a89a80);
+}
+
 /* ── Groups Hub Panel ── */
 
 .groups-hub-panel {
@@ -13891,6 +14017,44 @@ body.walkthrough-active .odds-value--changed::after {
   flex-direction: column;
   gap: 8px;
   width: 100%;
+}
+
+.groups-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  padding: 32px 20px;
+  gap: 12px;
+}
+
+.groups-empty-icon {
+  margin-bottom: 4px;
+}
+
+.groups-empty-title {
+  font-family: var(--font-serif, Georgia, serif);
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--text-primary, #f0e6d0);
+  margin: 0;
+}
+
+.groups-empty-body {
+  font-family: var(--font-mono, monospace);
+  font-size: 12px;
+  color: var(--text-secondary, #a89a80);
+  line-height: 1.7;
+  margin: 0;
+  max-width: 280px;
+}
+
+.groups-empty-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 100%;
+  margin-top: 8px;
 }
 
 .groups-hub-loading {

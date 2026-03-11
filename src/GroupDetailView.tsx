@@ -6,13 +6,7 @@ import { GroupStandingsTab } from "./GroupStandingsTab";
 import { GroupPicksTab } from "./GroupPicksTab";
 import { GroupChaosTab } from "./GroupChaosTab";
 import { BracketViewer } from "./BracketViewer";
-
-const GROUP_EMOJIS = [
-  "🏀", "⚽", "🏈", "⚾", "🎾", "🏐", "🎯", "🏆", "🥇", "🏅",
-  "🔥", "⚡", "💪", "🦁", "🐻", "🦅", "🐺", "🦈", "🐍", "🦇",
-  "👑", "💎", "🎲", "🎰", "🃏", "🌪️", "☄️", "🚀", "💥", "🎪",
-  "🍀", "🌟", "⭐", "🏹", "⚔️", "🛡️", "🎖️", "🥊", "🏁", "🎳",
-];
+import { GROUP_EMOJIS } from "./constants";
 
 type RankedStanding = GroupStanding & { groupRank: number };
 
@@ -74,14 +68,34 @@ export function GroupDetailView({
     setLoading(false);
   }
 
+  const [showInviteToast, setShowInviteToast] = useState(false);
+
+  const canNativeShare = typeof navigator !== "undefined" && !!navigator.share;
+
   function handleCopyInvite() {
     if (!group) return;
     const link = `${window.location.origin}/join.html?code=${group.invite_code}`;
     const message = `Join my group "${group.name}" on The Bracket Lab and compete to see who has the best bracket! 🏀\n${link}`;
     navigator.clipboard.writeText(message).then(() => {
       setCopied(true);
+      setShowInviteToast(true);
       setTimeout(() => setCopied(false), 2500);
+      setTimeout(() => setShowInviteToast(false), 3000);
     });
+  }
+
+  async function handleNativeShare() {
+    if (!group) return;
+    const link = `${window.location.origin}/join.html?code=${group.invite_code}`;
+    try {
+      await navigator.share({
+        title: `Join ${group.name} on The Bracket Lab`,
+        text: `Join my group "${group.name}" on The Bracket Lab and compete to see who has the best bracket! 🏀`,
+        url: link,
+      });
+    } catch {
+      // User cancelled share sheet — no action needed
+    }
   }
 
   async function handleLeave() {
@@ -216,13 +230,24 @@ export function GroupDetailView({
           </span>
         </div>
 
-        <div className="group-detail-header-actions">
+        <div className="group-detail-header-actions" style={{ position: "relative" }}>
           <button className="group-invite-btn" onClick={handleCopyInvite}>
             {copied ? "✓ Copied!" : "🔗 Invite"}
           </button>
+          {canNativeShare && (
+            <button className="group-invite-btn" onClick={handleNativeShare}>
+              📤
+            </button>
+          )}
           <button className="group-settings-btn" onClick={() => setShowSettings(!showSettings)}>
             ⋯
           </button>
+          {showInviteToast && (
+            <div className="invite-toast">
+              <span className="invite-toast-check">✓</span>
+              <span className="invite-toast-text">Invite message copied to clipboard</span>
+            </div>
+          )}
         </div>
       </div>
 

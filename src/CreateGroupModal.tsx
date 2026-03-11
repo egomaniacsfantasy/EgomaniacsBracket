@@ -1,13 +1,7 @@
 import { useState } from "react";
 import { useAuth } from "./AuthContext";
 import { createGroup, joinOwnGroup, type GroupRow } from "./groupStorage";
-
-const GROUP_EMOJIS = [
-  "🏀", "⚽", "🏈", "⚾", "🎾", "🏐", "🎯", "🏆", "🥇", "🏅",
-  "🔥", "⚡", "💪", "🦁", "🐻", "🦅", "🐺", "🦈", "🐍", "🦇",
-  "👑", "💎", "🎲", "🎰", "🃏", "🌪️", "☄️", "🚀", "💥", "🎪",
-  "🍀", "🌟", "⭐", "🏹", "⚔️", "🛡️", "🎖️", "🥊", "🏁", "🎳",
-];
+import { GROUP_EMOJIS } from "./constants";
 
 export function CreateGroupModal({
   isOpen,
@@ -77,6 +71,22 @@ export function CreateGroupModal({
       setCopied(true);
       setTimeout(() => setCopied(false), 2500);
     });
+  }
+
+  const canNativeShare = typeof navigator !== "undefined" && !!navigator.share;
+
+  async function handleNativeShare() {
+    if (!createdGroup) return;
+    const link = `${window.location.origin}/join.html?code=${createdGroup.invite_code}`;
+    try {
+      await navigator.share({
+        title: `Join ${createdGroup.name} on The Bracket Lab`,
+        text: `Join my group "${createdGroup.name}" on The Bracket Lab and compete to see who has the best bracket! 🏀`,
+        url: link,
+      });
+    } catch {
+      // User cancelled share sheet — no action needed
+    }
   }
 
   function handleClose() {
@@ -153,18 +163,28 @@ export function CreateGroupModal({
             </div>
 
             <div className="group-modal-body group-modal-body--done">
-              <div className="group-invite-code-display">
-                <span className="group-invite-code-label">INVITE CODE</span>
-                <span className="group-invite-code-value">{createdGroup.invite_code}</span>
+              <div className="invite-code-display">
+                <span className="invite-code-label">YOUR GROUP CODE</span>
+                <span className="invite-code-value">{createdGroup.invite_code}</span>
               </div>
 
-              <button className="group-copy-link-btn" onClick={handleCopyCode}>
-                {copied ? "✓ Copied!" : "🔗 Copy Invite Link"}
-              </button>
+              <div className="invite-actions">
+                <button className="invite-copy-btn" onClick={handleCopyCode}>
+                  {copied ? "✓ Copied!" : "📋 Copy Invite"}
+                </button>
+                {canNativeShare && (
+                  <button className="invite-share-btn" onClick={handleNativeShare}>
+                    📤 Share
+                  </button>
+                )}
+              </div>
 
-              <button className="group-copy-code-btn" onClick={handleCopyCodeOnly}>
-                {copied ? "✓ Copied!" : "Copy Code Only"}
-              </button>
+              <div className="invite-preview">
+                <span className="invite-preview-label">What gets copied:</span>
+                <p className="invite-preview-text">
+                  {`Join my group "${createdGroup.name}" on The Bracket Lab and compete to see who has the best bracket! 🏀\n${window.location.origin}/join.html?code=${createdGroup.invite_code}`}
+                </p>
+              </div>
 
               <p className="group-invite-hint">You can add your bracket from the group page.</p>
             </div>
