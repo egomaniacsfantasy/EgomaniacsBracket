@@ -136,13 +136,13 @@ function LBFooter() {
   );
 }
 
-function LBEmptyState({ onClose }: { onClose?: () => void }) {
+function LBEmptyState({ onClose, onSubmitBracket }: { onClose?: () => void; onSubmitBracket?: () => void }) {
   return (
     <div className="lb-empty-state">
       <span className="lb-empty-icon">🏀</span>
       <h3 className="lb-empty-title">No brackets yet</h3>
       <p className="lb-empty-body">Be the first to submit your bracket and compete for the $100 prize.</p>
-      <button className="lb-empty-cta" onClick={() => onClose?.()}>
+      <button className="lb-empty-cta" onClick={() => (onSubmitBracket ?? onClose)?.()}>
         Submit my bracket →
       </button>
     </div>
@@ -324,10 +324,12 @@ export function LeaderboardFullWidth({
   isVisible = true,
   refreshKey = 0,
   onClose,
+  onSubmitBracket,
 }: {
   isVisible?: boolean;
   refreshKey?: number;
   onClose?: () => void;
+  onSubmitBracket?: () => void;
 }) {
   const { user } = useAuth();
   const [entries, setEntries] = useState<LeaderboardEntry[]>([]);
@@ -398,7 +400,7 @@ export function LeaderboardFullWidth({
         {loading ? (
           <div className="lb-loading">Loading leaderboard...</div>
         ) : parsedEntries.length === 0 ? (
-          <LBEmptyState onClose={onClose} />
+          <LBEmptyState onClose={onClose} onSubmitBracket={onSubmitBracket} />
         ) : tournamentStarted ? (
           <TournamentLeaderboard entries={parsedEntries} currentUserId={user?.id ?? null} />
         ) : (

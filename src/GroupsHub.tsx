@@ -69,6 +69,7 @@ export function GroupsHub({
             <div className="groups-hub-list">
               {groups.map((g) => (
                 <button key={g.id} className="groups-hub-card" onClick={() => onOpenGroup(g)}>
+                  <span className="groups-hub-card-emoji">{g.emoji ?? "👥"}</span>
                   <div className="groups-hub-card-left">
                     <span className="groups-hub-card-name">{g.name}</span>
                     <span className="groups-hub-card-meta">

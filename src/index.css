@@ -14480,6 +14480,87 @@ body.walkthrough-active .odds-value--changed::after {
   color: var(--text-primary, #f0e6d0);
 }
 
+/* ── Group Emoji Picker ── */
+.group-emoji-grid {
+  display: grid;
+  grid-template-columns: repeat(10, 1fr);
+  gap: 4px;
+  margin-bottom: 16px;
+}
+
+.group-emoji-btn {
+  background: transparent;
+  border: 2px solid transparent;
+  border-radius: 8px;
+  font-size: 22px;
+  padding: 6px 2px;
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s;
+  line-height: 1;
+}
+
+.group-emoji-btn:hover {
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.group-emoji-btn--selected {
+  border-color: var(--accent-amber, #e8a85c);
+  background: rgba(232, 168, 92, 0.12);
+}
+
+/* ── Group Card Emoji ── */
+.groups-hub-card-emoji {
+  font-size: 28px;
+  margin-right: 12px;
+  flex-shrink: 0;
+  line-height: 1;
+}
+
+/* ── Group Detail Emoji ── */
+.group-detail-emoji {
+  margin-right: 8px;
+}
+
+/* ── No-bracket standings row ── */
+.group-standings-row--no-bracket .gs-bracket-name--empty {
+  color: var(--text-tertiary, #6b6350);
+  font-style: italic;
+}
+
+.gs-select-bracket-btn {
+  background: none;
+  border: none;
+  color: var(--accent-amber, #e8a85c);
+  font-family: var(--font-mono, monospace);
+  font-size: 11px;
+  cursor: pointer;
+  padding: 0;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.gs-select-bracket-btn:hover {
+  color: var(--text-primary, #f0e6d0);
+}
+
+.gs-forecast-pct--empty {
+  color: var(--text-tertiary, #6b6350);
+}
+
+.group-bracket-picker-error-toast {
+  position: fixed;
+  bottom: 80px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(232, 92, 92, 0.9);
+  color: #fff;
+  padding: 10px 20px;
+  border-radius: 8px;
+  font-family: var(--font-mono, monospace);
+  font-size: 12px;
+  z-index: 2100;
+}
+
 /* ── Mobile Adaptations ── */
 
 @media (max-width: 768px) {
@@ -14551,6 +14632,15 @@ body.walkthrough-active .odds-value--changed::after {
   /* Input font size to prevent iOS zoom */
   .group-input {
     font-size: 16px;
+  }
+
+  /* Emoji grid — 8 columns on mobile */
+  .group-emoji-grid {
+    grid-template-columns: repeat(8, 1fr);
+  }
+  .group-emoji-btn {
+    font-size: 20px;
+    padding: 5px 2px;
   }
 
   /* Bracket viewer */

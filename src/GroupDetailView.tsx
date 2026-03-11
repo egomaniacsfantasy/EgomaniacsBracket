@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from "react";
 import { useAuth } from "./AuthContext";
-import { getGroupStandings, leaveGroup, deleteGroup, type GroupStanding, type UserGroup } from "./groupStorage";
+import { getGroupStandings, leaveGroup, deleteGroup, updateMemberBracket, type GroupStanding, type UserGroup } from "./groupStorage";
+import { getUserBrackets, type SavedBracket } from "./bracketStorage";
 import { GroupStandingsTab } from "./GroupStandingsTab";
 import { GroupPicksTab } from "./GroupPicksTab";
 import { GroupChaosTab } from "./GroupChaosTab";
@@ -32,6 +33,13 @@ export function GroupDetailView({
   } | null>(null);
   const [showSettings, setShowSettings] = useState(false);
   const [copied, setCopied] = useState(false);
+
+  // Bracket picker state for members with no bracket
+  const [showBracketPicker, setShowBracketPicker] = useState(false);
+  const [brackets, setBrackets] = useState<SavedBracket[]>([]);
+  const [selectedBracket, setSelectedBracket] = useState<string | null>(null);
+  const [bracketPickerLoading, setBracketPickerLoading] = useState(false);
+  const [bracketPickerError, setBracketPickerError] = useState("");
 
   const isAdmin = group?.created_by === user?.id;
 
@@ -71,6 +79,35 @@ export function GroupDetailView({
     if (!confirm(`Delete "${group.name}" permanently? All members will be removed. This cannot be undone.`)) return;
     await deleteGroup(group.id);
     onClose();
+  }
+
+  async function handleOpenBracketPicker() {
+    if (!user) return;
+    setBracketPickerLoading(true);
+    setBracketPickerError("");
+    const { data } = await getUserBrackets(user.id);
+    setBrackets(data);
+    setBracketPickerLoading(false);
+    if (data.length === 0) {
+      setBracketPickerError("You need at least one saved bracket. Save your current bracket first!");
+      return;
+    }
+    setShowBracketPicker(true);
+  }
+
+  async function handleConfirmBracket() {
+    if (!group || !user || !selectedBracket) return;
+    setBracketPickerLoading(true);
+    const { error } = await updateMemberBracket(group.id, user.id, selectedBracket);
+    if (error) {
+      setBracketPickerError(error.message || "Failed to set bracket.");
+      setBracketPickerLoading(false);
+      return;
+    }
+    setShowBracketPicker(false);
+    setSelectedBracket(null);
+    setBracketPickerLoading(false);
+    await loadStandings();
   }
 
   const rankedStandings: RankedStanding[] = useMemo(() => {
@@ -120,7 +157,10 @@ export function GroupDetailView({
         </button>
 
         <div className="group-detail-title-area">
-          <h1 className="group-detail-name">{group.name}</h1>
+          <h1 className="group-detail-name">
+            <span className="group-detail-emoji">{group.emoji ?? "👥"}</span>
+            {group.name}
+          </h1>
           <span className="group-detail-meta">
             {standings.length} {standings.length === 1 ? "member" : "members"}
           </span>
@@ -182,6 +222,7 @@ export function GroupDetailView({
                 tournamentStarted={tournamentStarted}
                 onViewBracket={setViewingBracket}
                 onRefresh={loadStandings}
+                onSelectBracket={handleOpenBracketPicker}
               />
             )}
             {activeTab === "picks" && (
@@ -197,6 +238,53 @@ export function GroupDetailView({
           </>
         )}
       </div>
+
+      {showBracketPicker && (
+        <div className="group-modal-overlay" onClick={() => { setShowBracketPicker(false); setSelectedBracket(null); }}>
+          <div className="group-modal" onClick={(e) => e.stopPropagation()}>
+            <button className="group-modal-close-btn" onClick={() => { setShowBracketPicker(false); setSelectedBracket(null); }}>
+              ✕
+            </button>
+            <div className="group-modal-header">
+              <span className="group-modal-icon">🏀</span>
+              <h2 className="group-modal-title">Select Your Bracket</h2>
+              <p className="group-modal-subtitle">Choose which bracket to enter into this group</p>
+            </div>
+            <div className="group-modal-body">
+              <div className="group-bracket-list">
+                {brackets.map((b) => (
+                  <button
+                    key={b.id}
+                    className={`group-bracket-option ${selectedBracket === b.id ? "group-bracket-option--selected" : ""}`}
+                    onClick={() => setSelectedBracket(b.id)}
+                  >
+                    <div className="group-bracket-option-info">
+                      <span className="group-bracket-option-name">{b.bracket_name}</span>
+                      <span className="group-bracket-option-meta">
+                        {Object.keys(b.picks || {}).length} picks
+                        {b.is_locked && " · 🔒 Locked"}
+                      </span>
+                    </div>
+                    <div
+                      className={`group-bracket-radio ${selectedBracket === b.id ? "group-bracket-radio--checked" : ""}`}
+                    />
+                  </button>
+                ))}
+              </div>
+              {bracketPickerError && <p className="group-error">{bracketPickerError}</p>}
+            </div>
+            <button className="group-cta-btn" onClick={handleConfirmBracket} disabled={!selectedBracket || bracketPickerLoading}>
+              {bracketPickerLoading ? "Saving..." : "Confirm Bracket"}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {bracketPickerError && !showBracketPicker && (
+        <div className="group-bracket-picker-error-toast">
+          {bracketPickerError}
+        </div>
+      )}
     </div>
   );
 }

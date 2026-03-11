@@ -1,7 +1,13 @@
 import { useState } from "react";
 import { useAuth } from "./AuthContext";
 import { createGroup, joinOwnGroup, type GroupRow } from "./groupStorage";
-import { getUserBrackets, type SavedBracket } from "./bracketStorage";
+
+const GROUP_EMOJIS = [
+  "🏀", "⚽", "🏈", "⚾", "🎾", "🏐", "🎯", "🏆", "🥇", "🏅",
+  "🔥", "⚡", "💪", "🦁", "🐻", "🦅", "🐺", "🦈", "🐍", "🦇",
+  "👑", "💎", "🎲", "🎰", "🃏", "🌪️", "☄️", "🚀", "💥", "🎪",
+  "🍀", "🌟", "⭐", "🏹", "⚔️", "🛡️", "🎖️", "🥊", "🏁", "🎳",
+];
 
 export function CreateGroupModal({
   isOpen,
@@ -13,16 +19,15 @@ export function CreateGroupModal({
   onGroupCreated?: (group: GroupRow) => void;
 }) {
   const { user } = useAuth();
-  const [step, setStep] = useState<"name" | "bracket" | "done">("name");
+  const [step, setStep] = useState<"name" | "done">("name");
   const [groupName, setGroupName] = useState("");
-  const [brackets, setBrackets] = useState<SavedBracket[]>([]);
-  const [selectedBracket, setSelectedBracket] = useState<string | null>(null);
+  const [selectedEmoji, setSelectedEmoji] = useState("🏀");
   const [createdGroup, setCreatedGroup] = useState<GroupRow | null>(null);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [copied, setCopied] = useState(false);
 
-  async function handleNameSubmit() {
+  async function handleCreateGroup() {
     if (!groupName.trim() || !user) return;
     if (groupName.trim().length > 40) {
       setError("Group name must be 40 characters or fewer.");
@@ -31,24 +36,7 @@ export function CreateGroupModal({
     setError("");
     setLoading(true);
 
-    const { data } = await getUserBrackets(user.id);
-    setBrackets(data);
-    setLoading(false);
-
-    if (data.length === 0) {
-      setError("You need at least one saved bracket to create a group. Save your current bracket first!");
-      return;
-    }
-
-    setStep("bracket");
-  }
-
-  async function handleCreate() {
-    if (!selectedBracket || !user) return;
-    setLoading(true);
-    setError("");
-
-    const { data: group, error: createError } = await createGroup(user.id, groupName.trim());
+    const { data: group, error: createError } = await createGroup(user.id, groupName.trim(), selectedEmoji);
     if (createError) {
       setError(createError.message || "Failed to create group.");
       setLoading(false);
@@ -60,7 +48,7 @@ export function CreateGroupModal({
       return;
     }
 
-    const { error: joinError } = await joinOwnGroup(group.id, user.id, selectedBracket);
+    const { error: joinError } = await joinOwnGroup(group.id, user.id, null);
     if (joinError) {
       setError(joinError.message || "Group created but failed to add you. Try joining with the code.");
       setLoading(false);
@@ -93,8 +81,7 @@ export function CreateGroupModal({
   function handleClose() {
     setStep("name");
     setGroupName("");
-    setBrackets([]);
-    setSelectedBracket(null);
+    setSelectedEmoji("🏀");
     setCreatedGroup(null);
     setError("");
     setLoading(false);
@@ -114,12 +101,26 @@ export function CreateGroupModal({
         {step === "name" && (
           <>
             <div className="group-modal-header">
-              <span className="group-modal-icon">👥</span>
+              <span className="group-modal-icon">{selectedEmoji}</span>
               <h2 className="group-modal-title">Create a Group</h2>
               <p className="group-modal-subtitle">Compete against friends with your bracket</p>
             </div>
 
             <div className="group-modal-body">
+              <label className="group-input-label">Group Emoji</label>
+              <div className="group-emoji-grid">
+                {GROUP_EMOJIS.map((e) => (
+                  <button
+                    key={e}
+                    type="button"
+                    className={`group-emoji-btn ${selectedEmoji === e ? "group-emoji-btn--selected" : ""}`}
+                    onClick={() => setSelectedEmoji(e)}
+                  >
+                    {e}
+                  </button>
+                ))}
+              </div>
+
               <label className="group-input-label">Group Name</label>
               <input
                 type="text"
@@ -129,62 +130,16 @@ export function CreateGroupModal({
                 placeholder="e.g. Office Pool 2026"
                 maxLength={40}
                 autoFocus
-                onKeyDown={(e) => e.key === "Enter" && handleNameSubmit()}
+                onKeyDown={(e) => e.key === "Enter" && handleCreateGroup()}
               />
               <span className="group-input-hint">{groupName.length}/40</span>
 
               {error && <p className="group-error">{error}</p>}
             </div>
 
-            <button className="group-cta-btn" onClick={handleNameSubmit} disabled={!groupName.trim() || loading}>
-              {loading ? "Loading..." : "Next — Pick Your Bracket"}
+            <button className="group-cta-btn" onClick={handleCreateGroup} disabled={!groupName.trim() || loading}>
+              {loading ? "Creating..." : "Create Group"}
             </button>
-          </>
-        )}
-
-        {step === "bracket" && (
-          <>
-            <div className="group-modal-header">
-              <span className="group-modal-icon">🏀</span>
-              <h2 className="group-modal-title">Choose Your Bracket</h2>
-              <p className="group-modal-subtitle">
-                Which bracket do you want to enter into &ldquo;{groupName}&rdquo;?
-              </p>
-            </div>
-
-            <div className="group-modal-body">
-              <div className="group-bracket-list">
-                {brackets.map((b) => (
-                  <button
-                    key={b.id}
-                    className={`group-bracket-option ${selectedBracket === b.id ? "group-bracket-option--selected" : ""}`}
-                    onClick={() => setSelectedBracket(b.id)}
-                  >
-                    <div className="group-bracket-option-info">
-                      <span className="group-bracket-option-name">{b.bracket_name}</span>
-                      <span className="group-bracket-option-meta">
-                        {Object.keys(b.picks || {}).length} picks
-                        {b.is_locked && " · 🔒 Locked"}
-                      </span>
-                    </div>
-                    <div
-                      className={`group-bracket-radio ${selectedBracket === b.id ? "group-bracket-radio--checked" : ""}`}
-                    />
-                  </button>
-                ))}
-              </div>
-
-              {error && <p className="group-error">{error}</p>}
-            </div>
-
-            <div className="group-modal-actions">
-              <button className="group-back-btn" onClick={() => setStep("name")}>
-                ← Back
-              </button>
-              <button className="group-cta-btn" onClick={handleCreate} disabled={!selectedBracket || loading}>
-                {loading ? "Creating..." : "Create Group"}
-              </button>
-            </div>
           </>
         )}
 
@@ -210,7 +165,7 @@ export function CreateGroupModal({
                 {copied ? "✓ Copied!" : "Copy Code Only"}
               </button>
 
-              <p className="group-invite-hint">Friends can also join at bracket.oddsgods.net with this code.</p>
+              <p className="group-invite-hint">You can add your bracket from the group page.</p>
             </div>
 
             <button className="group-cta-btn" onClick={handleClose}>

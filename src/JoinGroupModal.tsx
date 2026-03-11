@@ -139,7 +139,7 @@ export function JoinGroupModal({
         {step === "preview" && group && (
           <>
             <div className="group-modal-header">
-              <span className="group-modal-icon">🏀</span>
+              <span className="group-modal-icon">{group.emoji ?? "👥"}</span>
               <h2 className="group-modal-title">{group.name}</h2>
               <p className="group-modal-subtitle">You need a saved bracket to join</p>
             </div>
@@ -155,7 +155,7 @@ export function JoinGroupModal({
         {step === "bracket" && group && (
           <>
             <div className="group-modal-header">
-              <span className="group-modal-icon">🏀</span>
+              <span className="group-modal-icon">{group.emoji ?? "👥"}</span>
               <h2 className="group-modal-title">{group.name}</h2>
               <p className="group-modal-subtitle">Choose which bracket to enter</p>
             </div>

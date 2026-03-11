@@ -4,6 +4,7 @@ import type { LockedPicks } from "./lib/bracket";
 export type GroupRow = {
   id: string;
   name: string;
+  emoji: string;
   invite_code: string;
   created_by: string | null;
   created_at: string;
@@ -16,21 +17,21 @@ export type GroupMembership = {
   id: string;
   group_id: string;
   user_id: string;
-  bracket_id: string;
+  bracket_id: string | null;
   joined_at: string;
   role: "admin" | "member";
 };
 
 export type UserGroup = GroupRow & {
   role: "admin" | "member";
-  bracketId: string;
+  bracketId: string | null;
   memberCount: number;
 };
 
 export type GroupStanding = {
   group_id: string;
   user_id: string;
-  bracket_id: string;
+  bracket_id: string | null;
   role: string;
   joined_at: string;
   display_name: string;
@@ -51,7 +52,7 @@ export type GroupStanding = {
   score_updated_at: string | null;
 };
 
-export async function createGroup(userId: string, groupName: string) {
+export async function createGroup(userId: string, groupName: string, emoji: string = "👥") {
   const { data: codeData, error: codeError } = await supabase.rpc("generate_invite_code");
   if (codeError) return { data: null, error: codeError };
 
@@ -61,6 +62,7 @@ export async function createGroup(userId: string, groupName: string) {
     .from("groups")
     .insert({
       name: groupName.trim(),
+      emoji,
       invite_code: inviteCode,
       created_by: userId,
     })
@@ -123,7 +125,7 @@ export async function joinGroup(inviteCode: string, userId: string, bracketId: s
   return { data: { ...(membership as GroupMembership), group_name: g.name }, error: null };
 }
 
-export async function joinOwnGroup(groupId: string, userId: string, bracketId: string) {
+export async function joinOwnGroup(groupId: string, userId: string, bracketId: string | null) {
   const { data, error } = await supabase
     .from("group_members")
     .insert({
@@ -149,6 +151,7 @@ export async function getUserGroups(userId: string) {
       groups:group_id (
         id,
         name,
+        emoji,
         invite_code,
         created_by,
         created_at
@@ -162,7 +165,7 @@ export async function getUserGroups(userId: string) {
   const rows = ((memberships ?? []) as unknown) as Array<{
     group_id: string;
     role: "admin" | "member";
-    bracket_id: string;
+    bracket_id: string | null;
     groups: GroupRow;
   }>;
 
@@ -194,11 +197,21 @@ export async function getGroupStandings(groupId: string) {
 export async function getGroupByCode(inviteCode: string) {
   const { data, error } = await supabase
     .from("groups")
-    .select("id, name, invite_code, is_active, created_at")
+    .select("id, name, emoji, invite_code, is_active, created_at")
     .eq("invite_code", inviteCode.toUpperCase().trim())
     .single();
 
   return { data: data as GroupRow | null, error };
+}
+
+export async function updateMemberBracket(groupId: string, userId: string, bracketId: string) {
+  const { error } = await supabase
+    .from("group_members")
+    .update({ bracket_id: bracketId })
+    .eq("group_id", groupId)
+    .eq("user_id", userId);
+
+  return { error };
 }
 
 export async function leaveGroup(groupId: string, userId: string) {

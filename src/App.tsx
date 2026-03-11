@@ -215,7 +215,7 @@ const MAJOR_SHIFT_NUDGE_COOLDOWN = 3;
 type WalkthroughStepId = "hook" | "upset-pick" | "bracket-ripple" | "futures-panel" | "ready";
 type WalkthroughStepAdvance = "pick-detected" | "button-click";
 type TooltipPlacement = "above" | "below" | "left" | "right" | "bottom-sheet";
-type HintKey = "undo" | "sim" | "toggle" | "r32" | "walkthrough-undo";
+type HintKey = "undo" | "sim" | "toggle" | "r32" | "walkthrough-undo" | "groups-discovery";
 type HintsShown = Record<HintKey, boolean>;
 type ActiveHint = {
   key: HintKey;
@@ -351,6 +351,7 @@ const DEFAULT_HINTS_SHOWN: HintsShown = {
   toggle: false,
   r32: false,
   "walkthrough-undo": false,
+  "groups-discovery": false,
 };
 
 const ONBOARDING_UPSET_REGION: Region = "South";
@@ -434,7 +435,7 @@ const WALKTHROUGH_STEPS: WalkthroughStepConfig[] = [
   {
     id: "ready",
     heading: "Your bracket. Your scenario.",
-    body: "Start picking. Every game you decide reprices every round downstream.",
+    body: "Start picking. Every game you decide reprices every round downstream. Save your bracket, create a group, and compete with friends.",
     ctaText: "Start building →",
     advanceOn: "button-click",
     allowSkip: false,
@@ -811,6 +812,34 @@ function App() {
       setPostAuthAction(null);
     }
   }, [isAuthenticated, pendingJoinCode, postAuthAction]);
+
+  // After auth completes from leaderboard submit CTA, go to bracket view
+  useEffect(() => {
+    if (isAuthenticated && postAuthAction === "submit_bracket") {
+      if (isMobile) {
+        setMobileTab("bracket");
+      } else {
+        setMainView("bracket");
+      }
+      setPostAuthAction(null);
+    }
+  }, [isAuthenticated, postAuthAction, isMobile]);
+
+  // Post-sign-in: one-time groups discovery nudge
+  useEffect(() => {
+    if (!isAuthenticated) return;
+    const timer = window.setTimeout(() => {
+      const selector = isMobile ? ".mobile-tab--groups" : ".toolbar-btn--groups";
+      showContextualHint(
+        "groups-discovery",
+        "New! Create or join a group to compete with friends.",
+        selector,
+        5000,
+      );
+    }, 1500);
+    return () => window.clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isAuthenticated]);
 
   useEffect(() => {
     if (isMobile) return;
@@ -3772,6 +3801,14 @@ function App() {
                 <LeaderboardFullWidth
                   isVisible={mobileTab === "leaderboard"}
                   refreshKey={leaderboardRefreshKey}
+                  onSubmitBracket={() => {
+                    if (isAuthenticated) {
+                      setMobileTab("bracket");
+                    } else {
+                      setAuthModalOpen(true);
+                      setPostAuthAction("submit_bracket");
+                    }
+                  }}
                 />
               </div>
             )}
@@ -3917,6 +3954,14 @@ function App() {
                   isVisible={mainView === "leaderboard"}
                   refreshKey={leaderboardRefreshKey}
                   onClose={() => setMainView("bracket")}
+                  onSubmitBracket={() => {
+                    if (isAuthenticated) {
+                      setMainView("bracket");
+                    } else {
+                      setAuthModalOpen(true);
+                      setPostAuthAction("submit_bracket");
+                    }
+                  }}
                 />
               </div>
               {mainView === "conferences" && (
@@ -3977,7 +4022,7 @@ function App() {
       <CreateGroupModal
         isOpen={createGroupOpen}
         onClose={() => setCreateGroupOpen(false)}
-        onGroupCreated={(group) => { setCreateGroupOpen(false); setActiveGroup(group as UserGroup & { role: "admin"; bracketId: string; memberCount: number }); }}
+        onGroupCreated={(group) => { setCreateGroupOpen(false); setActiveGroup({ ...group, role: "admin" as const, bracketId: null, memberCount: 1 }); }}
       />
 
       <JoinGroupModal
@@ -4934,7 +4979,7 @@ function MobileTabBar({
         <span className="mobile-tab-label">Ranks</span>
       </button>
       <button
-        className={`mobile-tab ${activeTab === "groups" ? "active" : ""}`}
+        className={`mobile-tab mobile-tab--groups ${activeTab === "groups" ? "active" : ""}`}
         onClick={() => onTabChange("groups")}
       >
         <span className="mobile-tab-icon">👥</span>

@@ -12,6 +12,7 @@ export function GroupStandingsTab({
   tournamentStarted,
   onViewBracket,
   onRefresh,
+  onSelectBracket,
 }: {
   standings: RankedStanding[];
   soleLeader: string | null;
@@ -19,21 +20,23 @@ export function GroupStandingsTab({
   tournamentStarted: boolean;
   onViewBracket: (info: { bracketId: string; displayName: string; bracketName: string }) => void;
   onRefresh: () => void;
+  onSelectBracket?: () => void;
 }) {
   const forecasts = useMemo(() => {
-    if (standings.length === 0) return {} as Record<string, number>;
+    const withBrackets = standings.filter((s) => s.bracket_id != null);
+    if (withBrackets.length === 0) return {} as Record<string, number>;
 
     if (!tournamentStarted) {
-      const equalPct = Math.round(100 / standings.length);
+      const equalPct = Math.round(100 / withBrackets.length);
       const map: Record<string, number> = {};
-      standings.forEach((s) => {
-        map[s.bracket_id] = equalPct;
+      withBrackets.forEach((s) => {
+        map[s.bracket_id!] = equalPct;
       });
       return map;
     }
 
-    const ceilings = standings.map((s) => ({
-      bracketId: s.bracket_id,
+    const ceilings = withBrackets.map((s) => ({
+      bracketId: s.bracket_id!,
       score: s.total_score || 0,
       ceiling: (s.total_score || 0) + (s.max_remaining || 0),
     }));
@@ -42,10 +45,10 @@ export function GroupStandingsTab({
     const topScore = Math.max(...ceilings.map((c) => c.score));
 
     if (topScore === 0) {
-      const equalPct = Math.round(100 / standings.length);
+      const equalPct = Math.round(100 / withBrackets.length);
       const map: Record<string, number> = {};
-      standings.forEach((s) => {
-        map[s.bracket_id] = equalPct;
+      withBrackets.forEach((s) => {
+        map[s.bracket_id!] = equalPct;
       });
       return map;
     }
@@ -102,30 +105,34 @@ export function GroupStandingsTab({
 
       {standings.map((entry) => {
         const isCurrentUser = entry.user_id === currentUserId;
-        const hasCrown = soleLeader === entry.user_id && tournamentStarted;
-        const isTied = !soleLeader && entry.groupRank === 1 && tournamentStarted;
-        const champion = getChampionPick(entry.picks);
+        const hasBracket = entry.bracket_id != null;
+        const hasCrown = soleLeader === entry.user_id && tournamentStarted && hasBracket;
+        const isTied = !soleLeader && entry.groupRank === 1 && tournamentStarted && hasBracket;
+        const champion = hasBracket ? getChampionPick(entry.picks) : null;
         const championInfo = champion ? getTeamInfo(champion) : null;
-        const forecast = forecasts[entry.bracket_id] || 0;
-        const isEliminated = tournamentStarted && forecast === 0;
+        const forecast = hasBracket ? (forecasts[entry.bracket_id!] || 0) : 0;
+        const isEliminated = tournamentStarted && hasBracket && forecast === 0;
 
         return (
           <div
-            key={entry.bracket_id}
-            className={`group-standings-row ${isCurrentUser ? "group-standings-row--you" : ""} ${isEliminated ? "group-standings-row--eliminated" : ""}`}
+            key={entry.bracket_id ?? `member-${entry.user_id}`}
+            className={`group-standings-row ${isCurrentUser ? "group-standings-row--you" : ""} ${isEliminated ? "group-standings-row--eliminated" : ""} ${!hasBracket ? "group-standings-row--no-bracket" : ""}`}
             onClick={() => {
+              if (!hasBracket) return;
               if (entry.is_locked || tournamentStarted) {
                 onViewBracket({
-                  bracketId: entry.bracket_id,
+                  bracketId: entry.bracket_id!,
                   displayName: entry.display_name,
                   bracketName: entry.bracket_name,
                 });
               }
             }}
-            style={{ cursor: entry.is_locked || tournamentStarted ? "pointer" : "default" }}
+            style={{ cursor: hasBracket && (entry.is_locked || tournamentStarted) ? "pointer" : "default" }}
           >
             <span className="gs-col gs-col-rank">
-              {hasCrown ? (
+              {!hasBracket ? (
+                <span className="gs-rank-num">—</span>
+              ) : hasCrown ? (
                 <span className="gs-crown">👑</span>
               ) : isTied ? (
                 <span className="gs-tied-rank">T{entry.groupRank}</span>
@@ -139,11 +146,21 @@ export function GroupStandingsTab({
                 {entry.display_name}
                 {isCurrentUser && <span className="gs-you-badge">YOU</span>}
               </span>
-              <span className="gs-bracket-name">{entry.bracket_name}</span>
+              <span className={`gs-bracket-name ${!hasBracket ? "gs-bracket-name--empty" : ""}`}>
+                {hasBracket ? entry.bracket_name : (
+                  isCurrentUser && onSelectBracket ? (
+                    <button className="gs-select-bracket-btn" onClick={(e) => { e.stopPropagation(); onSelectBracket(); }}>
+                      Select Bracket →
+                    </button>
+                  ) : "No bracket yet"
+                )}
+              </span>
             </div>
 
             <div className="gs-col gs-col-champ">
-              {championInfo ? (
+              {!hasBracket ? (
+                <span className="gs-champ-empty">—</span>
+              ) : championInfo ? (
                 <div className="gs-champ-pick">
                   {championInfo.logoUrl && (
                     <img
@@ -168,22 +185,28 @@ export function GroupStandingsTab({
 
             {tournamentStarted && (
               <>
-                <span className="gs-col gs-col-score">{entry.total_score ?? "—"}</span>
+                <span className="gs-col gs-col-score">{hasBracket ? (entry.total_score ?? "—") : "—"}</span>
                 <span className="gs-col gs-col-correct">
-                  {entry.correct_picks ?? "—"}/{entry.possible_picks || 63}
+                  {hasBracket ? `${entry.correct_picks ?? "—"}/${entry.possible_picks || 63}` : "—"}
                 </span>
-                <span className="gs-col gs-col-remaining">{entry.max_remaining ?? "—"}</span>
+                <span className="gs-col gs-col-remaining">{hasBracket ? (entry.max_remaining ?? "—") : "—"}</span>
               </>
             )}
 
             <div className="gs-col gs-col-forecast">
-              <div className="gs-forecast-bar-bg">
-                <div
-                  className="gs-forecast-bar-fill"
-                  style={{ width: `${Math.min(forecast, 100)}%` }}
-                />
-              </div>
-              <span className="gs-forecast-pct">{isEliminated ? "ELIM" : `${forecast}%`}</span>
+              {hasBracket ? (
+                <>
+                  <div className="gs-forecast-bar-bg">
+                    <div
+                      className="gs-forecast-bar-fill"
+                      style={{ width: `${Math.min(forecast, 100)}%` }}
+                    />
+                  </div>
+                  <span className="gs-forecast-pct">{isEliminated ? "ELIM" : `${forecast}%`}</span>
+                </>
+              ) : (
+                <span className="gs-forecast-pct gs-forecast-pct--empty">—</span>
+              )}
             </div>
           </div>
         );
