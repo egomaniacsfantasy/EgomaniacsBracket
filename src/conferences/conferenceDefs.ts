@@ -446,6 +446,7 @@ export const CONF_KNOWN_RESULTS: Record<string, Record<string, number>> = {
     "wcc-QF-1": 1365, // Santa Clara (3) def Pacific (6)
     "wcc-SF-0": 1211, // Gonzaga (1) def Oregon St (4)
     "wcc-SF-1": 1365, // Santa Clara (3) def St Mary's CA (2)
+    "wcc-F-0":  1211, // Gonzaga (1) def Santa Clara (3) — CHAMPION
   },
   mvc: {
     "mvc-R1-0": 1179, // Drake (9) def S Illinois (8)
@@ -492,6 +493,7 @@ export const CONF_KNOWN_RESULTS: Record<string, Record<string, number>> = {
     "caa-QF-3": 1220, // Hofstra (3) def William & Mary (6)
     "caa-SF-0": 1284, // Monmouth (4) def Campbell (9)
     "caa-SF-1": 1220, // Hofstra (3) def Towson (7)
+    "caa-F-0":  1220, // Hofstra (3) def Monmouth (4) — CHAMPION
   },
   patriot: {
     "patriot-SF-0": 1131, // Boston Univ (4) def Navy (1)
@@ -502,6 +504,8 @@ export const CONF_KNOWN_RESULTS: Record<string, Record<string, number>> = {
     "aec-QF-1": 1262, // MA Lowell (4) def Albany (5)
     "aec-QF-2": 1312, // NJIT (3) def Maine (6)
     "aec-QF-3": 1436, // Vermont (2) def Bryant (7)
+    "aec-SF-0": 1420, // UMBC (1) def MA Lowell (4)
+    "aec-SF-1": 1436, // Vermont (2) def NJIT (3)
   },
   a_sun: {
     "a_sun-R1-0": 1468, // Bellarmine (8) def Jacksonville (9)
@@ -523,14 +527,19 @@ export const CONF_KNOWN_RESULTS: Record<string, Record<string, number>> = {
     "big_sky-QF-1": 1225, // Idaho (7) def Montana St (2)
     "big_sky-QF-2": 1285, // Montana (4) def N Colorado (5)
     "big_sky-QF-3": 1186, // E Washington (3) def Weber St (6)
+    "big_sky-SF-0": 1285, // Montana (4) def Portland St (1)
+    "big_sky-SF-1": 1225, // Idaho (7) def E Washington (3)
   },
   horizon: {
     "horizon-SF-0": 1460, // Wright St (1) def N Kentucky (7)
     "horizon-SF-1": 1178, // Detroit (3) def Robert Morris (2)
+    "horizon-F-0":  1460, // Wright St (1) def Detroit (3) — CHAMPION
   },
   swac: {
     "swac-R1-0": 1108, // Alcorn St (11) def Alabama St (10)
     "swac-R1-1": 1212, // Grambling (9) def MS Valley St (12)
+    "swac-R2-0": 1341, // Prairie View (8) def Alcorn St (11)
+    "swac-R2-1": 1238, // Jackson St (7) def Grambling (9)
   },
   maac: {
     "maac-R1-0": 1357, // Sacred Heart (9) def Iona (8)
@@ -541,6 +550,7 @@ export const CONF_KNOWN_RESULTS: Record<string, Record<string, number>> = {
     "maac-QF-3": 1373, // Siena (3) def Mt St Mary's (6)
     "maac-SF-0": 1467, // Merrimack (1) def Marist (5)
     "maac-SF-1": 1373, // Siena (3) def Fairfield (7)
+    "maac-F-0":  1373, // Siena (3) def Merrimack (1) — CHAMPION
   },
   nec: {
     "nec-QF-0": 1254, // LIU Brooklyn (1) def Chicago St (8)
@@ -549,6 +559,7 @@ export const CONF_KNOWN_RESULTS: Record<string, Record<string, number>> = {
     "nec-QF-3": 1476, // Stonehill (5) def Le Moyne (4)
     "nec-SF-0": 1254, // LIU Brooklyn (1) def Wagner (7)
     "nec-SF-1": 1479, // Mercyhurst (3) def Stonehill (5)
+    "nec-F-0":  1254, // LIU Brooklyn (1) def Mercyhurst (3) — CHAMPION
   },
   ovc: {
     "ovc-R1-0": 1183, // E Illinois (8) def SIUE (5)
@@ -589,5 +600,26 @@ export const CONF_KNOWN_RESULTS: Record<string, Record<string, number>> = {
     "southland-R1-1": 1311, // Nicholls St (6) def Northwestern LA (7)
     "southland-QF-0": 1394, // TAM C. Christi (4) def New Orleans (5)
     "southland-QF-1": 1410, // UTRGV (3) def Nicholls St (6)
+    "southland-SF-0": 1372, // SF Austin (1) def TAM C. Christi (4)
+    "southland-SF-1": 1270, // McNeese St (2) def UTRGV (3)
+  },
+  cusa: {
+    "cusa-R1-0": 1283, // Missouri St (9) def Florida Intl (8)
+    "cusa-R1-1": 1308, // New Mexico St (10) def Jacksonville St (7)
+  },
+  acc: {
+    "acc-R1-0": 1338, // Pittsburgh (15) def Stanford (10)
+    "acc-R1-1": 1448, // Wake Forest (13) def Virginia Tech (12)
+    "acc-R1-2": 1374, // SMU (11) def Syracuse (14)
+  },
+  big12: {
+    "big12-R1-0": 1153, // Cincinnati (9) def Utah (16)
+    "big12-R1-1": 1113, // Arizona St (12) def Baylor (13)
+    "big12-R1-2": 1140, // BYU (10) def Kansas St (15)
+    "big12-R1-3": 1329, // Oklahoma St (14) def Colorado (11)
+  },
+  bigTen: {
+    "bigTen-R1-0": 1268, // Maryland (17) def Oregon (16)
+    "bigTen-R1-1": 1321, // Northwestern (15) def Penn St (18)
   },
 };
