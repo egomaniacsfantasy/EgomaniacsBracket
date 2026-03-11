@@ -794,6 +794,10 @@ function App() {
     const joinCode = params.get("join");
     if (joinCode) {
       setPendingJoinCode(joinCode);
+      // Dismiss onboarding/walkthrough so it doesn't overlap the auth modal
+      setWelcomeGateOpen(false);
+      setShowDesktopFirst(false);
+      setWalkthroughActive(false);
       window.history.replaceState({}, "", window.location.pathname + window.location.hash);
       if (isAuthenticated) {
         setJoinGroupOpen(true);
