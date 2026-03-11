@@ -3103,7 +3103,7 @@ function App() {
         className="eg-btn toolbar-btn--reset"
         style={!isMobile && mainView !== "bracket" && mainView !== "futures" ? { display: "none" } : undefined}
       >
-        Reset All
+        {isMobile ? "Reset" : "Reset All"}
       </button>
       {!isMobile ? (
         <button
@@ -5443,18 +5443,39 @@ function MobileFinalFourView({
 }
 
 function DesktopFirstModal({ onDismiss }: { onDismiss: () => void }) {
+  const [linkCopied, setLinkCopied] = useState(false);
+
+  function handleCopyLink() {
+    navigator.clipboard.writeText(window.location.origin).then(() => {
+      setLinkCopied(true);
+      setTimeout(() => setLinkCopied(false), 2500);
+    }).catch(() => {
+      const input = document.createElement("input");
+      input.value = window.location.origin;
+      document.body.appendChild(input);
+      input.select();
+      document.execCommand("copy");
+      document.body.removeChild(input);
+      setLinkCopied(true);
+      setTimeout(() => setLinkCopied(false), 2500);
+    });
+  }
+
   return (
     <div className="dfm-overlay">
       <div className="dfm-card">
         <div className="dfm-icon">💻</div>
         <h2 className="dfm-headline">Quick heads up.</h2>
         <p className="dfm-body">
-          The Bracket Lab was built for the big screen. You can absolutely use it here, but the full bracket view,
-          probability editor, and real-time odds cascades are way better on desktop.
+          The Bracket Lab was built for the big screen. The full bracket view, probability editor,
+          and real-time odds cascades are significantly better on desktop.
         </p>
-        <p className="dfm-sub">Grab your laptop when you can. You won&apos;t regret it.</p>
+        <p className="dfm-sub">Text yourself a reminder — your future self will thank you.</p>
+        <button className="dfm-copy-link" onClick={handleCopyLink}>
+          {linkCopied ? "✓ Link copied!" : "🔗 Copy link to clipboard"}
+        </button>
         <button className="dfm-btn" onClick={onDismiss}>
-          Got it - continue on mobile
+          Got it — continue on mobile
         </button>
       </div>
     </div>
@@ -5654,17 +5675,31 @@ function LiveOddsStrip({
   const isMobileViewport = typeof window !== "undefined" && window.matchMedia("(max-width: 767px)").matches;
   const mobileTeams = topContenders.slice(0, 5);
   const desktopTeams = topContenders;
-  const loopingTeams = [...desktopTeams, ...desktopTeams];
+  const renderItem = (team: (typeof topContenders)[number], prefix: string) => (
+    <div key={`${prefix}-${team.id}`} className={`live-odds-item ${justChangedIds.has(team.id) ? "live-odds-chip--changed" : ""}`}>
+      <span className="team-abbr">{team.shortName}</span>
+      <span className="odds-val">{displayMode === "implied" ? team.titleImpliedPct : team.titleOdds}</span>
+    </div>
+  );
   return (
     <div className="live-odds-strip">
       {isMobileViewport ? <span className="live-odds-strip-label">Title</span> : null}
       <div className={isMobileViewport ? "live-odds-strip-chips" : "live-odds-inner"}>
-        {(isMobileViewport ? mobileTeams : loopingTeams).map((team, index) => (
-          <div key={`${team.id}-${index}`} className={`live-odds-item ${justChangedIds.has(team.id) ? "live-odds-chip--changed" : ""}`}>
-            <span className="team-abbr">{team.shortName}</span>
-            <span className="odds-val">{displayMode === "implied" ? team.titleImpliedPct : team.titleOdds}</span>
-          </div>
-        ))}
+        {isMobileViewport
+          ? mobileTeams.map((team, index) => (
+              <div key={`${team.id}-${index}`} className={`live-odds-item ${justChangedIds.has(team.id) ? "live-odds-chip--changed" : ""}`}>
+                <span className="team-abbr">{team.shortName}</span>
+                <span className="odds-val">{displayMode === "implied" ? team.titleImpliedPct : team.titleOdds}</span>
+              </div>
+            ))
+          : (
+            <>
+              {desktopTeams.map((t) => renderItem(t, "a"))}
+              <span className="ticker-separator" aria-hidden="true">|</span>
+              {desktopTeams.map((t) => renderItem(t, "b"))}
+              <span className="ticker-separator" aria-hidden="true">|</span>
+            </>
+          )}
       </div>
       {isMobileViewport ? (
         <button className="live-odds-strip-expand" onClick={onOpenFutures}>
