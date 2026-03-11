@@ -65,14 +65,6 @@ export function CreateGroupModal({
     });
   }
 
-  function handleCopyCodeOnly() {
-    if (!createdGroup) return;
-    navigator.clipboard.writeText(createdGroup.invite_code).then(() => {
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2500);
-    });
-  }
-
   const canNativeShare = typeof navigator !== "undefined" && !!navigator.share;
 
   async function handleNativeShare() {
