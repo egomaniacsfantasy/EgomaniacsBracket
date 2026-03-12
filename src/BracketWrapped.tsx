@@ -10,7 +10,7 @@ interface BracketWrappedProps {
 }
 
 const TOTAL_SCREENS = 5;
-const AUTO_ADVANCE_MS = 5000;
+const AUTO_ADVANCE_MS = 10000;
 
 const ROUND_LABELS: Record<string, string> = {
   R64: "R64",
@@ -221,6 +221,26 @@ export function BracketWrapped({ data, onClose }: BracketWrappedProps) {
           ) : null}
         </div>
       </div>
+
+      {/* Navigation arrows */}
+      {screen > 0 && (
+        <button
+          className="bw-nav-arrow bw-nav-arrow--left"
+          onClick={(e) => { e.stopPropagation(); goPrev(); }}
+          aria-label="Previous"
+        >
+          ‹
+        </button>
+      )}
+      {screen < TOTAL_SCREENS - 1 && (
+        <button
+          className="bw-nav-arrow bw-nav-arrow--right"
+          onClick={(e) => { e.stopPropagation(); goNext(); }}
+          aria-label="Next"
+        >
+          ›
+        </button>
+      )}
 
       {/* Progress bar */}
       <div className="bw-progress-bar">

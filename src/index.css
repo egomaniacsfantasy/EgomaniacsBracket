@@ -15231,6 +15231,39 @@ body.walkthrough-active .odds-value--changed::after {
 }
 .bw-close:hover { color: #f0e6d0; border-color: rgba(240,230,208,0.3); }
 
+/* Navigation arrows */
+.bw-nav-arrow {
+  position: fixed;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 10001;
+  background: rgba(240,230,208,0.08);
+  border: 1px solid rgba(240,230,208,0.12);
+  color: rgba(240,230,208,0.5);
+  font-size: 24px;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: color 150ms, background 150ms, border-color 150ms;
+  line-height: 1;
+}
+.bw-nav-arrow:hover {
+  color: #f0e6d0;
+  background: rgba(240,230,208,0.14);
+  border-color: rgba(240,230,208,0.25);
+}
+.bw-nav-arrow--left { left: 12px; }
+.bw-nav-arrow--right { right: 12px; }
+@media (max-width: 767px) {
+  .bw-nav-arrow { width: 30px; height: 30px; font-size: 20px; }
+  .bw-nav-arrow--left { left: 6px; }
+  .bw-nav-arrow--right { right: 6px; }
+}
+
 .bw-dots {
   display: none; /* replaced by .bw-progress-bar */
 }
