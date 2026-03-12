@@ -83,7 +83,6 @@ const ROUND_POINTS_BY_ROUND: Partial<Record<ResolvedGame["round"], number>> = {
   CHAMP: 320,
 };
 
-const BRACKET_SCORING_GAME_COUNT = 63;
 
 const MOBILE_ROUND_ORDER: Record<"FF" | "R64" | "R32" | "S16" | "E8", number> = {
   FF: 0,
@@ -2481,20 +2480,6 @@ function App() {
   );
   const allPlayInDecided = playInGames.length === 0 || decidedPlayInCount === playInGames.length;
   const pointsTrackingEnabled = allPlayInDecided;
-  const pickedScoringGamesCount = useMemo(
-    () =>
-      games.filter((game) => game.round !== "FF" && Boolean(game.winnerId && game.teamAId && game.teamBId)).length,
-    [games]
-  );
-  const bracketPotentialPoints = useMemo(() => {
-    if (!pointsTrackingEnabled) return 0;
-    return games.reduce((total, game) => {
-      if (game.round === "FF" || !game.winnerId || !game.teamAId || !game.teamBId) return total;
-      const pickedProb = getGameWinProb(game, game.winnerId);
-      const potential = computePotentialPoints(pickedProb, game.round);
-      return total + (potential ?? 0);
-    }, 0);
-  }, [games, pointsTrackingEnabled]);
   const onboardingFlowReady = !showDesktopFirst && !walkthroughActive;
   const leftSemi = finalGames.find((g) => g.id === "F4-Left-0") ?? null;
   const rightSemi = finalGames.find((g) => g.id === "F4-Right-0") ?? null;
