@@ -38,6 +38,9 @@ import { LeaderboardFullWidth } from "./Leaderboard";
 import { deserializePicks, getUserBrackets, saveBracket, serializePicks, type SavedBracket } from "./bracketStorage";
 import { TEAM_STAT_IMPORTANCE, TEAM_STAT_ORDER, TEAM_STATS_2026, type TeamStatKey } from "./data/teamStats2026";
 import type { OddsDisplayMode, Region, ResolvedGame, SimulationOutput } from "./types";
+import { computeWrappedData, type WrappedData } from "./lib/wrappedData";
+import { BracketWrapped } from "./BracketWrapped";
+import { BracketWrappedCard } from "./BracketWrappedCard";
 
 const DEFAULT_SIM_RUNS = 10000;
 const CHAOS_DISTRIBUTION_SIM_RUNS = 10000;
@@ -594,6 +597,9 @@ function App() {
   const [showChaosModal, setShowChaosModal] = useState(false);
   const [showCompletionCelebration, setShowCompletionCelebration] = useState(false);
   const [completionCelebrationData, setCompletionCelebrationData] = useState<CompletionCelebrationData | null>(null);
+  const [showWrappedFlow, setShowWrappedFlow] = useState(false);
+  const [showWrappedCard, setShowWrappedCard] = useState(false);
+  const [wrappedSeen, setWrappedSeen] = useState(false);
   const [statsModalGameId, setStatsModalGameId] = useState<string | null>(null);
   const [showFirstFourModal, setShowFirstFourModal] = useState(false);
   const [staggeredChaosTotal, setStaggeredChaosTotal] = useState(0);
@@ -1471,6 +1477,25 @@ function App() {
     if (label.includes("mild")) return "mild";
     return "chalk";
   }, [chaosLabelData]);
+
+  const nonFFGameCount = useMemo(() => games.filter((g) => g.round !== "FF").length, [games]);
+  const wrappedData: WrappedData | null = useMemo(() => {
+    if (pickCount < nonFFGameCount || simResult.futures.length === 0) return null;
+    const bl: Record<string, number> = {};
+    baselineByTeamId.forEach((row, id) => { bl[id] = row.champProb; });
+    return computeWrappedData({
+      lockedPicks: sanitized,
+      resolvedGames: games,
+      simResult,
+      baselineByTeamId: bl,
+      chaosScore: chaosScore ?? 0,
+      chaosPercentile: chaosPercentile ?? 50,
+      chaosLabel: chaosLabelData?.label ?? "Balanced",
+      chaosEmoji: chaosLabelData?.emoji ?? "⚖️",
+    });
+  }, [pickCount, nonFFGameCount, simResult, baselineByTeamId, sanitized, games, chaosScore, chaosPercentile, chaosLabelData]);
+
+  useEffect(() => { setWrappedSeen(false); }, [lockedPicks]);
 
   const applyCustomProbability = (gameId: string, customProbA: number | null) => {
     setCustomProbByGame((prev) => {
@@ -3057,6 +3082,23 @@ function App() {
       >
         {linkCopied ? "✓ Copied!" : "Copy Link"}
       </button>
+      {wrappedData ? (
+        <button
+          onClick={() => {
+            if (!wrappedSeen) {
+              trackEvent("wrapped_opened", { trigger: "toolbar", chaosLabel: wrappedData.identity.chaosLabel, champion: wrappedData.champion.teamName });
+              setShowWrappedFlow(true);
+            } else {
+              trackEvent("wrapped_share_card_opened", { trigger: "toolbar", chaosLabel: wrappedData.identity.chaosLabel });
+              setShowWrappedCard(true);
+            }
+          }}
+          className="eg-btn toolbar-btn--wrapped"
+          style={!isMobile && mainView !== "bracket" && mainView !== "futures" ? { display: "none" } : undefined}
+        >
+          🎁 Wrapped
+        </button>
+      ) : null}
       {staggeredSimRunning ? (
         <button
           onClick={onToggleStaggeredPause}
@@ -3978,6 +4020,42 @@ function App() {
           chaosEmoji={completionCelebrationData.chaosEmoji}
           onSave={onCompletionSave}
           onClose={() => setShowCompletionCelebration(false)}
+          wrappedSeen={wrappedSeen}
+          onWrapped={wrappedData ? () => {
+            trackEvent("wrapped_opened", { trigger: "completion", chaosLabel: wrappedData.identity.chaosLabel, champion: wrappedData.champion.teamName });
+            setShowCompletionCelebration(false);
+            setShowWrappedFlow(true);
+          } : undefined}
+          onShareCard={wrappedData ? () => {
+            trackEvent("wrapped_share_card_opened", { trigger: "completion", chaosLabel: wrappedData.identity.chaosLabel });
+            setShowCompletionCelebration(false);
+            setShowWrappedCard(true);
+          } : undefined}
+        />
+      ) : null}
+
+      {showWrappedFlow && wrappedData ? (
+        <BracketWrapped
+          data={wrappedData}
+          onClose={() => { setShowWrappedFlow(false); setWrappedSeen(true); }}
+        />
+      ) : null}
+
+      {showWrappedCard && wrappedData ? (
+        <BracketWrappedCard
+          data={wrappedData}
+          standalone
+          onClose={() => setShowWrappedCard(false)}
+          onSaveCard={async () => {
+            const { exportWrappedCard } = await import("./lib/wrappedExport");
+            try {
+              await exportWrappedCard(wrappedData);
+              trackEvent("wrapped_card_saved", { trigger: "standalone", chaosLabel: wrappedData.identity.chaosLabel, champion: wrappedData.champion.teamName });
+            } catch (err) {
+              console.error("Failed to export wrapped card:", err);
+            }
+          }}
+          onCopyLink={() => { navigator.clipboard.writeText(window.location.href); }}
         />
       ) : null}
 
@@ -4310,12 +4388,18 @@ function BracketCompletionCelebration({
   chaosEmoji,
   onSave,
   onClose,
+  onWrapped,
+  onShareCard,
+  wrappedSeen,
 }: {
   championName: string;
   chaosLabel: string;
   chaosEmoji: string;
   onSave: () => void;
   onClose: () => void;
+  onWrapped?: () => void;
+  onShareCard?: () => void;
+  wrappedSeen?: boolean;
 }) {
   return (
     <div className="completion-overlay" onClick={onClose}>
@@ -4344,6 +4428,15 @@ function BracketCompletionCelebration({
           <button className="completion-btn-primary" onClick={onSave}>
             Submit Bracket
           </button>
+          {onWrapped && !wrappedSeen ? (
+            <button className="completion-btn-wrapped" onClick={onWrapped}>
+              🎁 See Your Bracket Wrapped
+            </button>
+          ) : onShareCard && wrappedSeen ? (
+            <button className="completion-btn-secondary" onClick={onShareCard}>
+              View Share Card
+            </button>
+          ) : null}
           <button className="completion-btn-secondary" onClick={onClose}>
             Keep editing
           </button>
