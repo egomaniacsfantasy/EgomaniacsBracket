@@ -39,8 +39,8 @@ import { deserializePicks, getUserBrackets, saveBracket, serializePicks, type Sa
 import { TEAM_STAT_IMPORTANCE, TEAM_STAT_ORDER, TEAM_STATS_2026, type TeamStatKey } from "./data/teamStats2026";
 import type { OddsDisplayMode, Region, ResolvedGame, SimulationOutput } from "./types";
 
-const DEFAULT_SIM_RUNS = 10000;
-const CHAOS_DISTRIBUTION_SIM_RUNS = 10000;
+const DEFAULT_SIM_RUNS = 100000;
+const CHAOS_DISTRIBUTION_SIM_RUNS = 100000;
 const ONBOARDING_STORAGE_KEY = "oddsGods_onboardingDismissed";
 const HINTS_STORAGE_KEY = "oddsGods_hintsShown";
 const FIRST_PICK_NUDGE_SESSION_KEY = "oddsGods_firstPickCascadeNudgeSeen";
@@ -66,6 +66,17 @@ const gameRoundLabel: Record<string, string> = {
   CHAMP: "Championship",
 };
 
+const ROUND_POINTS_BY_ROUND: Partial<Record<ResolvedGame["round"], number>> = {
+  R64: 10,
+  R32: 20,
+  S16: 40,
+  E8: 80,
+  F4: 160,
+  CHAMP: 320,
+};
+
+const BRACKET_SCORING_GAME_COUNT = 63;
+
 const MOBILE_ROUND_ORDER: Record<"FF" | "R64" | "R32" | "S16" | "E8", number> = {
   FF: 0,
   R64: 1,
@@ -86,8 +97,8 @@ const getRecommendedSimRuns = (): number => {
   const memory = nav.deviceMemory ?? 4;
   const isMobileViewport = window.matchMedia("(max-width: 767px)").matches;
 
-  if (isMobileViewport || memory <= 4 || cores <= 4) return 1500;
-  if (memory <= 8 || cores <= 8) return 2500;
+  if (isMobileViewport || memory <= 4 || cores <= 4) return 10000;
+  if (memory <= 8 || cores <= 8) return 25000;
   return DEFAULT_SIM_RUNS;
 };
 
@@ -284,6 +295,23 @@ type CompletionCelebrationData = {
 function computeGameChaos(prob: number): number {
   const clamped = Math.max(prob, 1e-12);
   return -Math.log(clamped);
+}
+
+function getRoundBasePoints(round: ResolvedGame["round"]): number {
+  return ROUND_POINTS_BY_ROUND[round] ?? 0;
+}
+
+function computePotentialPoints(prob: number | null, round: ResolvedGame["round"]): number | null {
+  const basePoints = getRoundBasePoints(round);
+  if (basePoints <= 0 || prob === null || !Number.isFinite(prob)) return null;
+  const clamped = Math.max(0, Math.min(1, prob));
+  return (1 - clamped) * basePoints;
+}
+
+function formatPotentialPoints(points: number | null): string {
+  if (points === null || !Number.isFinite(points)) return "--";
+  const rounded = Math.round(points * 10) / 10;
+  return Number.isInteger(rounded) ? `${rounded}` : rounded.toFixed(1);
 }
 
 function computeChaosScoreFromGames(games: ResolvedGame[]): number | null {
@@ -2275,6 +2303,21 @@ function App() {
     [playInGames]
   );
   const allPlayInDecided = playInGames.length === 0 || decidedPlayInCount === playInGames.length;
+  const pointsTrackingEnabled = allPlayInDecided;
+  const pickedScoringGamesCount = useMemo(
+    () =>
+      games.filter((game) => game.round !== "FF" && Boolean(game.winnerId && game.teamAId && game.teamBId)).length,
+    [games]
+  );
+  const bracketPotentialPoints = useMemo(() => {
+    if (!pointsTrackingEnabled) return 0;
+    return games.reduce((total, game) => {
+      if (game.round === "FF" || !game.winnerId || !game.teamAId || !game.teamBId) return total;
+      const pickedProb = getGameWinProb(game, game.winnerId);
+      const potential = computePotentialPoints(pickedProb, game.round);
+      return total + (potential ?? 0);
+    }, 0);
+  }, [games, pointsTrackingEnabled]);
   const onboardingFlowReady = !showDesktopFirst && !walkthroughActive;
   const leftSemi = finalGames.find((g) => g.id === "F4-Left-0") ?? null;
   const rightSemi = finalGames.find((g) => g.id === "F4-Right-0") ?? null;
@@ -2937,7 +2980,6 @@ function App() {
       <button
         onClick={onModelSim}
         className="eg-btn toolbar-btn--instant"
-        style={!isMobile && mainView !== "bracket" && mainView !== "futures" ? { display: "none" } : undefined}
       >
         Instant Sim
       </button>
@@ -2945,7 +2987,6 @@ function App() {
         onClick={onModelSimStaggered}
         className="eg-btn toolbar-btn--staggered"
         disabled={staggeredSimRunning}
-        style={!isMobile && mainView !== "bracket" && mainView !== "futures" ? { display: "none" } : undefined}
       >
         {staggeredSimRunning ? "Staggered Sim Running..." : "Staggered Sim"}
       </button>
@@ -2976,15 +3017,28 @@ function App() {
                     : "Error — try again")
               : `Submit Bracket ${isAuthenticated ? `(${submittedBracketCount}/25)` : ""}`}
       </button>
-      {playInGames.length > 0 ? (
-        <button
-          onClick={() => setShowFirstFourModal(true)}
-          className="eg-btn toolbar-btn--firstfour"
-          style={!isMobile && mainView !== "bracket" && mainView !== "futures" ? { display: "none" } : undefined}
-        >
-          First Four {allPlayInDecided ? "✓" : `(${decidedPlayInCount}/${playInGames.length})`}
-        </button>
-      ) : null}
+      <button
+        onClick={() => setShowFirstFourModal(true)}
+        className="eg-btn toolbar-btn--firstfour"
+        style={!isMobile && mainView !== "bracket" && mainView !== "futures" ? { display: "none" } : undefined}
+      >
+        {playInGames.length > 0
+          ? `First Four ${allPlayInDecided ? "✓" : `(${decidedPlayInCount}/${playInGames.length})`}`
+          : "First Four"}
+      </button>
+      <div
+        className={`eg-chip toolbar-chip--points ${pointsTrackingEnabled ? "is-active" : "is-locked"}`}
+        style={!isMobile && mainView !== "bracket" && mainView !== "futures" ? { display: "none" } : undefined}
+        title={
+          pointsTrackingEnabled
+            ? "Potential bracket points based on your current picks. First Four is excluded."
+            : "Finish the First Four picks to unlock bracket points tracking."
+        }
+      >
+        {pointsTrackingEnabled
+          ? `Bracket Pts ${formatPotentialPoints(bracketPotentialPoints)} (${pickedScoringGamesCount}/${BRACKET_SCORING_GAME_COUNT})`
+          : "Bracket Pts unlock after First Four"}
+      </div>
       {isAuthenticated ? (
         <button
           onClick={() => setMyBracketsOpen(true)}
@@ -3647,6 +3701,7 @@ function App() {
                   {mobileSection === "FF" ? (
                     <MobileFinalFourView
                       activeRound={mobileFfRound}
+                      pointsTrackingEnabled={pointsTrackingEnabled}
                       allE8sComplete={allRegionE8Complete}
                       regionE8Status={regionE8Status}
                       allFinalFourComplete={allFinalFourComplete}
@@ -3667,6 +3722,7 @@ function App() {
                     <MobileRegionView
                       region={mobileSection}
                       activeRound={mobileRound}
+                      pointsTrackingEnabled={pointsTrackingEnabled}
                       games={games}
                       gameWinProbs={simResult.gameWinProbs}
                       possibleWinners={possibleWinners}
@@ -3737,6 +3793,7 @@ function App() {
                         <RegionBracket
                           key={`${region}-top`}
                           region={region}
+                          pointsTrackingEnabled={pointsTrackingEnabled}
                           games={games}
                           gameWinProbs={simResult.gameWinProbs}
                           possibleWinners={possibleWinners}
@@ -3778,6 +3835,7 @@ function App() {
                         <RegionBracket
                           key={`${region}-bottom`}
                           region={region}
+                          pointsTrackingEnabled={pointsTrackingEnabled}
                           games={games}
                           gameWinProbs={simResult.gameWinProbs}
                           possibleWinners={possibleWinners}
@@ -3811,6 +3869,7 @@ function App() {
                   <div className="ff-championship-section">
                     <FinalsSemifinalCard
                       game={leftSemi}
+                      pointsTrackingEnabled={pointsTrackingEnabled}
                       regions={regionSections[0]}
                       gameWinProbs={simResult.gameWinProbs}
                       possibleWinners={possibleWinners}
@@ -3823,6 +3882,7 @@ function App() {
                     />
                     <FinalsChampionshipCard
                       game={titleGame}
+                      pointsTrackingEnabled={pointsTrackingEnabled}
                       gameWinProbs={simResult.gameWinProbs}
                       possibleWinners={possibleWinners}
                       futuresRows={simResult.futures}
@@ -3833,6 +3893,7 @@ function App() {
                     />
                     <FinalsSemifinalCard
                       game={rightSemi}
+                      pointsTrackingEnabled={pointsTrackingEnabled}
                       regions={regionSections[1]}
                       gameWinProbs={simResult.gameWinProbs}
                       possibleWinners={possibleWinners}
@@ -4227,9 +4288,12 @@ function FirstFourGameCard({
       <div className="ff-game-header">
         <span className="ff-game-label">PLAY-IN · {(teamA.region || "").toUpperCase()}</span>
         <span className="ff-game-seed">Seed {seedLabel(teamA).replace(/[ab]$/i, "")}</span>
+      </div>
+
+      <div className="ff-game-matchup">
         <button
           type="button"
-          className="matchup-stats-icon matchup-stats-icon--ff"
+          className="matchup-stats-icon matchup-stats-icon--ff matchup-stats-icon--ff-inline"
           onClick={(event) => {
             event.stopPropagation();
             onOpenMatchupStats(game);
@@ -4239,9 +4303,6 @@ function FirstFourGameCard({
         >
           {"i"}
         </button>
-      </div>
-
-      <div className="ff-game-matchup">
         <button
           type="button"
           className={`ff-team-btn ${winner === teamA.id ? "ff-team-btn--winner" : ""} ${winner && winner !== teamA.id ? "ff-team-btn--loser" : ""}`}
@@ -4892,6 +4953,7 @@ function MobileRoundNav({
 function MobileRegionView({
   region,
   activeRound,
+  pointsTrackingEnabled,
   games,
   gameWinProbs,
   possibleWinners,
@@ -4915,6 +4977,7 @@ function MobileRegionView({
 }: {
   region: Region;
   activeRound: MobileRegionRound;
+  pointsTrackingEnabled: boolean;
   games: ResolvedGame[];
   gameWinProbs: SimulationOutput["gameWinProbs"];
   possibleWinners: Record<string, Set<string>>;
@@ -5015,6 +5078,7 @@ function MobileRegionView({
           <MobileMatchupCard
             key={game.id}
             game={game}
+            showPotentialPoints={pointsTrackingEnabled}
             displayMode={displayMode}
             onPick={handlePickForRound}
             onSwitchPick={onSwitchPick}
@@ -5030,6 +5094,7 @@ function MobileRegionView({
 
 function MobileFinalFourView({
   activeRound,
+  pointsTrackingEnabled,
   allE8sComplete,
   regionE8Status,
   allFinalFourComplete,
@@ -5047,6 +5112,7 @@ function MobileFinalFourView({
   mobileChaosBadge,
 }: {
   activeRound: MobileFfRound;
+  pointsTrackingEnabled: boolean;
   allE8sComplete: boolean;
   regionE8Status: Record<Region, boolean>;
   allFinalFourComplete: boolean;
@@ -5128,6 +5194,7 @@ function MobileFinalFourView({
             <MobileMatchupCard
               key={game.id}
               game={game}
+              showPotentialPoints={pointsTrackingEnabled}
               displayMode={displayMode}
               onPick={handlePickForRound}
               onSwitchPick={onSwitchPick}
@@ -5143,6 +5210,7 @@ function MobileFinalFourView({
         ) : (
           <MobileMatchupCard
             game={titleGame}
+            showPotentialPoints={pointsTrackingEnabled}
             displayMode={displayMode}
             onPick={handlePickForRound}
             onSwitchPick={onSwitchPick}
@@ -5246,6 +5314,7 @@ function MobileChampionshipCelebrationCard({
 function MobileMatchupCard({
   game,
   displayMode,
+  showPotentialPoints,
   onPick,
   onSwitchPick,
   onUndoPick,
@@ -5254,6 +5323,7 @@ function MobileMatchupCard({
 }: {
   game: ResolvedGame;
   displayMode: OddsDisplayMode;
+  showPotentialPoints: boolean;
   onPick: (game: ResolvedGame, teamId: string) => void;
   onSwitchPick: (game: ResolvedGame, teamId: string) => void;
   onUndoPick: (gameId: string) => void;
@@ -5300,7 +5370,12 @@ function MobileMatchupCard({
       >
         <span className="m-seed">{seedLabel(teamA)}</span>
         <TeamLogo teamName={teamA.name} src={teamLogoUrl(teamA)} />
-        <span className="m-name">{teamA.name}</span>
+        <span className="m-name-wrap">
+          <span className="m-name">{teamA.name}</span>
+          {showPotentialPoints ? (
+            <span className="matchup-points-inline">({formatPotentialPoints(computePotentialPoints(probA, game.round))})</span>
+          ) : null}
+        </span>
         <div className="m-stats">
           <span className="m-prob">{toImpliedLabel(probA)}</span>
           <span className={`m-odds ${isEdited ? "m-odds--edited" : ""}`}>{teamAOdds}</span>
@@ -5322,7 +5397,12 @@ function MobileMatchupCard({
       >
         <span className="m-seed">{seedLabel(teamB)}</span>
         <TeamLogo teamName={teamB.name} src={teamLogoUrl(teamB)} />
-        <span className="m-name">{teamB.name}</span>
+        <span className="m-name-wrap">
+          <span className="m-name">{teamB.name}</span>
+          {showPotentialPoints ? (
+            <span className="matchup-points-inline">({formatPotentialPoints(computePotentialPoints(probB, game.round))})</span>
+          ) : null}
+        </span>
         <div className="m-stats">
           <span className="m-prob">{toImpliedLabel(probB)}</span>
           <span className={`m-odds ${isEdited ? "m-odds--edited" : ""}`}>{teamBOdds}</span>
@@ -5470,6 +5550,7 @@ function RoundColumnHeader({
 
 function FinalsSemifinalCard({
   game,
+  pointsTrackingEnabled,
   regions,
   gameWinProbs,
   possibleWinners,
@@ -5481,6 +5562,7 @@ function FinalsSemifinalCard({
   onOpenMatchupStats,
 }: {
   game: ResolvedGame | null;
+  pointsTrackingEnabled: boolean;
   regions: Region[];
   gameWinProbs: SimulationOutput["gameWinProbs"];
   possibleWinners: Record<string, Set<string>>;
@@ -5524,6 +5606,7 @@ function FinalsSemifinalCard({
           finalists={showdownFinalists}
           displayMode={displayMode}
           lastPickedKey={lastPickedKey}
+          showPotentialPoints={pointsTrackingEnabled}
           onPick={(teamId) => onPick(game, teamId)}
           onOpenMatchupStats={onOpenMatchupStats}
         />
@@ -5562,6 +5645,7 @@ function FinalsSemifinalCard({
 
 function FinalsChampionshipCard({
   game,
+  pointsTrackingEnabled,
   futuresRows,
   gameWinProbs,
   possibleWinners,
@@ -5571,6 +5655,7 @@ function FinalsChampionshipCard({
   onOpenMatchupStats,
 }: {
   game: ResolvedGame | null;
+  pointsTrackingEnabled: boolean;
   futuresRows: SimulationOutput["futures"];
   gameWinProbs: SimulationOutput["gameWinProbs"];
   possibleWinners: Record<string, Set<string>>;
@@ -5611,6 +5696,18 @@ function FinalsChampionshipCard({
       </div>
       {game && winnerTeam && loserTeam ? (
         <div className="championship-card championship-card--celebration">
+          <button
+            type="button"
+            className="matchup-stats-icon matchup-stats-icon--championship-card"
+            onClick={(event) => {
+              event.stopPropagation();
+              onOpenMatchupStats(game);
+            }}
+            title="View matchup stats"
+            aria-label="View matchup stats"
+          >
+            {"i"}
+          </button>
           <ChampionConfetti />
           <div className="championship-card-inner">
             <div className="championship-trophy">🏆</div>
@@ -5641,6 +5738,7 @@ function FinalsChampionshipCard({
           finalists={showdownFinalists}
           displayMode={displayMode}
           lastPickedKey={lastPickedKey}
+          showPotentialPoints={pointsTrackingEnabled}
           onPick={(teamId) => onPick(game, teamId)}
           onOpenMatchupStats={onOpenMatchupStats}
         />
@@ -5781,6 +5879,7 @@ function ChampionConfetti() {
 
 function RegionBracket({
   region,
+  pointsTrackingEnabled,
   games,
   gameWinProbs,
   possibleWinners,
@@ -5801,6 +5900,7 @@ function RegionBracket({
   walkthroughCascadePathByRound,
 }: {
   region: Region;
+  pointsTrackingEnabled: boolean;
   games: ResolvedGame[];
   gameWinProbs: SimulationOutput["gameWinProbs"];
   possibleWinners: Record<string, Set<string>>;
@@ -5931,6 +6031,7 @@ function RegionBracket({
                       <div key={game.id} className={`eg-game-node ${cascadeNodeClass}`} style={nodeStyle}>
                         <GameCard
                           game={game}
+                          showPotentialPoints={pointsTrackingEnabled}
                           collapsed={collapsed}
                           gameWinProbs={gameWinProbs}
                           possibleWinners={possibleWinners}
@@ -5958,6 +6059,7 @@ function RegionBracket({
 
 function GameCard({
   game,
+  showPotentialPoints,
   collapsed = false,
   gameWinProbs,
   possibleWinners,
@@ -5971,6 +6073,7 @@ function GameCard({
   highlightOddsChanged,
 }: {
   game: ResolvedGame;
+  showPotentialPoints: boolean;
   collapsed?: boolean;
   gameWinProbs: SimulationOutput["gameWinProbs"];
   possibleWinners: Record<string, Set<string>>;
@@ -6134,7 +6237,7 @@ function GameCard({
 
   return (
     <article
-      className={`eg-game-card round-${game.round.toLowerCase()}`}
+      className={`eg-game-card round-${game.round.toLowerCase()} ${useShowdownCard ? "eg-game-card--showdown" : ""}`}
       data-game-id={game.id}
       data-matchup-id={game.id}
       data-region={game.region}
@@ -6143,7 +6246,7 @@ function GameCard({
       onMouseEnter={() => setShowChaosTooltip(true)}
       onMouseLeave={() => setShowChaosTooltip(false)}
     >
-      {game.teamAId && game.teamBId ? (
+      {game.teamAId && game.teamBId && !useShowdownCard ? (
         <button
           type="button"
           className="matchup-stats-icon"
@@ -6164,6 +6267,7 @@ function GameCard({
             finalists={finalistRows}
             displayMode={displayMode}
             lastPickedKey={lastPickedKey}
+            showPotentialPoints={showPotentialPoints}
             onPick={(teamId) => onPick(game, teamId)}
             onOpenMatchupStats={onOpenMatchupStats}
           />
@@ -6205,6 +6309,8 @@ function GameCard({
                   showEditIcon={rowIndex === 0}
                   teamId={team.id}
                   oddsChanged={Boolean(highlightOddsChanged)}
+                  potentialPoints={computePotentialPoints(candidate.prob, game.round)}
+                  showPotentialPoints={showPotentialPoints}
                   onOpenProbEditor={(anchorEl) => onOpenProbabilityPopup(game, anchorEl)}
                   onPick={() => onPick(game, canPick ? team.id : null)}
                 />
@@ -6315,7 +6421,12 @@ function GameCard({
                       </TeamHoverAnchor>
                     ) : null}
                     <TeamHoverAnchor teamName={team.name} logoSrc={teamLogoUrl(team)}>
-                      <AdaptiveTeamLabel className={`chip-code ${showLogo ? "" : "no-logo"}`} fullName={teamLabel} />
+                      <span className={`chip-code-line ${showLogo ? "" : "no-logo"}`}>
+                        <AdaptiveTeamLabel className={`chip-code ${showLogo ? "" : "no-logo"}`} fullName={teamLabel} />
+                        {showPotentialPoints ? (
+                          <span className="matchup-points-inline">({formatPotentialPoints(computePotentialPoints(candidate.prob, game.round))})</span>
+                        ) : null}
+                      </span>
                     </TeamHoverAnchor>
                     <span className="chip-odds-wrap">
                       {game.teamAId && game.teamBId && rowIndex === 0 && !game.winnerId ? (
@@ -6380,6 +6491,8 @@ function GameCard({
               editedProb={false}
               canEditProb={false}
               showEditIcon={false}
+              potentialPoints={null}
+              showPotentialPoints={false}
               onPick={() => {}}
             />
             <TeamRow
@@ -6398,6 +6511,8 @@ function GameCard({
               editedProb={false}
               canEditProb={false}
               showEditIcon={false}
+              potentialPoints={null}
+              showPotentialPoints={false}
               onPick={() => {}}
             />
           </>
@@ -6450,6 +6565,7 @@ function ShowdownCard({
   finalists,
   displayMode,
   lastPickedKey,
+  showPotentialPoints,
   onPick,
   onOpenMatchupStats,
 }: {
@@ -6457,6 +6573,7 @@ function ShowdownCard({
   finalists: CandidateRow[];
   displayMode: OddsDisplayMode;
   lastPickedKey: string | null;
+  showPotentialPoints: boolean;
   onPick: (teamId: string | null) => void;
   onOpenMatchupStats?: (game: ResolvedGame) => void;
 }) {
@@ -6532,6 +6649,11 @@ function ShowdownCard({
                   teamSeed={seedLabel(team)}
                 />
                 <span className="eg-showdown-name">{showdownTeamName(team.name)}</span>
+                {showPotentialPoints ? (
+                  <span className="eg-showdown-points">
+                    ({formatPotentialPoints(computePotentialPoints(candidate.prob, game.round))} pts)
+                  </span>
+                ) : null}
                 <span className="eg-showdown-odds odds-value" data-team-id={team.id}>
                   {decided
                     ? formatOddsDisplay(outcome === "win" ? 1 : 0, displayMode).primary
@@ -6585,6 +6707,8 @@ function TeamRow({
   showEditIcon,
   teamId,
   oddsChanged,
+  potentialPoints,
+  showPotentialPoints,
   onOpenProbEditor,
   onPick,
 }: {
@@ -6605,6 +6729,8 @@ function TeamRow({
   showEditIcon: boolean;
   teamId?: string;
   oddsChanged?: boolean;
+  potentialPoints: number | null;
+  showPotentialPoints: boolean;
   onOpenProbEditor?: (anchorEl: HTMLElement) => void;
   onPick: () => void;
 }) {
@@ -6667,7 +6793,12 @@ function TeamRow({
       {compact ? null : (
         <TeamHoverAnchor teamName={fullLabel} logoSrc={logoSrc ?? fallbackLogo(fullLabel)}>
           <span className="team-name-wrap">
-            <AdaptiveTeamLabel className="team-name btw-abbrev-name" fullName={fullLabel} />
+            <span className="team-name-line">
+              <AdaptiveTeamLabel className="team-name btw-abbrev-name" fullName={fullLabel} />
+              {showPotentialPoints ? (
+                <span className="matchup-points-inline">({formatPotentialPoints(potentialPoints)})</span>
+              ) : null}
+            </span>
             {formatted.secondary ? <span className="btw-title-odds">{formatted.secondary}</span> : null}
           </span>
         </TeamHoverAnchor>

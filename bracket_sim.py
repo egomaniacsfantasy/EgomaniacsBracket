@@ -61,7 +61,7 @@ MODEL_ARTIFACT_PATH = BASE / "model_mm_artifacts.pkl"
 RANDOM_STATE = 42
 np.random.seed(RANDOM_STATE)
 
-N_SIMS = 10_000
+N_SIMS = 100_000
 SEASON = 2025
 
 # ------------------------------------------------------------------
@@ -986,7 +986,7 @@ except PermissionError:
 import itertools, re
 
 SEASON_26          = 2026
-N_SIMS_26          = 10_000
+N_SIMS_26          = 100_000
 OUT_MATCHUP_26     = BASE / "matchup_probs_2026.xlsx"
 OUT_PREDS_26       = BASE / "2026_bracket_preds.xlsx"
 
@@ -1451,7 +1451,7 @@ print(df_stats_26[["TeamName","Region","Seed","elo_last","avg_net_rtg",
 OUT_CONF         = BASE / "conf_tourney_preds_2026.xlsx"
 OUT_CONF_STATS   = BASE / "conf_team_stats_2026.xlsx"
 OUT_CONF_MATCHUP = BASE / "conf_matchup_probs_2026.xlsx"
-N_SIMS_CONF      = 10_000
+N_SIMS_CONF      = 100_000
 
 _sp_conf        = pd.read_csv(BASE / "MTeamSpellings.csv")
 _spell2tid_conf = dict(zip(_sp_conf["TeamNameSpelling"].str.lower().str.strip(),
