@@ -6581,6 +6581,17 @@ function ShowdownCard({
   const roundLabel = game.round === "CHAMP" ? "National Championship" : game.round === "F4" ? "Final Four" : "Elite 8";
   const decided = Boolean(game.lockedByUser && game.winnerId);
   const isMobileViewport = typeof window !== "undefined" && window.matchMedia("(max-width: 767px)").matches;
+  const matchupKey = `${game.id}:${game.teamAId ?? ""}:${game.teamBId ?? ""}`;
+  const previousMatchupKeyRef = useRef<string | null>(null);
+  const [isEntering, setIsEntering] = useState(true);
+
+  useEffect(() => {
+    if (previousMatchupKeyRef.current === matchupKey) return;
+    previousMatchupKeyRef.current = matchupKey;
+    setIsEntering(true);
+    const timeoutId = window.setTimeout(() => setIsEntering(false), 520);
+    return () => window.clearTimeout(timeoutId);
+  }, [matchupKey]);
   const showdownLogoSize =
     game.round === "CHAMP"
       ? isMobileViewport
@@ -6595,7 +6606,7 @@ function ShowdownCard({
           : 64;
 
   return (
-    <div className={`eg-showdown-card ${roundClass} eg-showdown-card--entering ${decided ? "decided" : ""}`}>
+    <div className={`eg-showdown-card ${roundClass} ${isEntering ? "eg-showdown-card--entering" : ""} ${decided ? "decided" : ""}`}>
       <p className="eg-showdown-label">{roundLabel}</p>
       {onOpenMatchupStats ? (
         <button
