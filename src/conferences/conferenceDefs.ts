@@ -495,10 +495,6 @@ export const CONF_KNOWN_RESULTS: Record<string, Record<string, number>> = {
     "caa-SF-1": 1220, // Hofstra (3) def Towson (7)
     "caa-F-0":  1220, // Hofstra (3) def Monmouth (4) — CHAMPION
   },
-  patriot: {
-    "patriot-SF-0": 1131, // Boston Univ (4) def Navy (1)
-    "patriot-SF-1": 1250, // Lehigh (2) def Colgate (3)
-  },
   aec: {
     "aec-QF-0": 1420, // UMBC (1) def New Hampshire (8)
     "aec-QF-1": 1262, // MA Lowell (4) def Albany (5)
@@ -520,26 +516,10 @@ export const CONF_KNOWN_RESULTS: Record<string, Record<string, number>> = {
     "a_sun-SF-1": 1474, // Queens (3) def Austin Peay (2)
     "a_sun-F-0":  1474, // Queens (3) def Cent Arkansas (1) — CHAMPION
   },
-  big_sky: {
-    "big_sky-R1-0": 1226, // Idaho St (9) def Northern Arizona (10)
-    "big_sky-R1-1": 1225, // Idaho (7) def CS Sacramento (8)
-    "big_sky-QF-0": 1340, // Portland St (1) def Idaho St (9)
-    "big_sky-QF-1": 1225, // Idaho (7) def Montana St (2)
-    "big_sky-QF-2": 1285, // Montana (4) def N Colorado (5)
-    "big_sky-QF-3": 1186, // E Washington (3) def Weber St (6)
-    "big_sky-SF-0": 1285, // Montana (4) def Portland St (1)
-    "big_sky-SF-1": 1225, // Idaho (7) def E Washington (3)
-  },
   horizon: {
     "horizon-SF-0": 1460, // Wright St (1) def N Kentucky (7)
     "horizon-SF-1": 1178, // Detroit (3) def Robert Morris (2)
     "horizon-F-0":  1460, // Wright St (1) def Detroit (3) — CHAMPION
-  },
-  swac: {
-    "swac-R1-0": 1108, // Alcorn St (11) def Alabama St (10)
-    "swac-R1-1": 1212, // Grambling (9) def MS Valley St (12)
-    "swac-R2-0": 1341, // Prairie View (8) def Alcorn St (11)
-    "swac-R2-1": 1238, // Jackson St (7) def Grambling (9)
   },
   maac: {
     "maac-R1-0": 1357, // Sacred Heart (9) def Iona (8)
@@ -602,24 +582,99 @@ export const CONF_KNOWN_RESULTS: Record<string, Record<string, number>> = {
     "southland-QF-1": 1410, // UTRGV (3) def Nicholls St (6)
     "southland-SF-0": 1372, // SF Austin (1) def TAM C. Christi (4)
     "southland-SF-1": 1270, // McNeese St (2) def UTRGV (3)
+    "southland-F-0":  1270, // McNeese St (2) def SF Austin (1) — CHAMPION
   },
   cusa: {
     "cusa-R1-0": 1283, // Missouri St (9) def Florida Intl (8)
     "cusa-R1-1": 1308, // New Mexico St (10) def Jacksonville St (7)
+    "cusa-QF-0": 1283, // Missouri St (9) def Liberty (1)
+    "cusa-QF-2": 1358, // Sam Houston St (2) def New Mexico St (10)
   },
   acc: {
     "acc-R1-0": 1338, // Pittsburgh (15) def Stanford (10)
     "acc-R1-1": 1448, // Wake Forest (13) def Virginia Tech (12)
     "acc-R1-2": 1374, // SMU (11) def Syracuse (14)
+    "acc-R2-0": 1199, // Florida St (8) def California (9)
+    "acc-R2-1": 1301, // NC State (7) def Pittsburgh (15)
+    "acc-R2-2": 1155, // Clemson (5) def Wake Forest (13)
+    "acc-R2-3": 1257, // Louisville (6) def SMU (11)
   },
   big12: {
     "big12-R1-0": 1153, // Cincinnati (9) def Utah (16)
     "big12-R1-1": 1113, // Arizona St (12) def Baylor (13)
     "big12-R1-2": 1140, // BYU (10) def Kansas St (15)
     "big12-R1-3": 1329, // Oklahoma St (14) def Colorado (11)
+    "big12-R2-0": 1416, // UCF (8) def Cincinnati (9)
+    "big12-R2-1": 1235, // Iowa St (5) def Arizona St (12)
+    "big12-R2-2": 1140, // BYU (10) def West Virginia (7)
+    "big12-R2-3": 1395, // TCU (6) def Oklahoma St (14)
   },
   bigTen: {
     "bigTen-R1-0": 1268, // Maryland (17) def Oregon (16)
     "bigTen-R1-1": 1321, // Northwestern (15) def Penn St (18)
+    "bigTen-R2-0": 1234, // Iowa (9) def Maryland (17)
+    "bigTen-R2-1": 1449, // Washington (12) def USC (13)
+    "bigTen-R2-2": 1321, // Northwestern (15) def Indiana (10)
+    "bigTen-R2-3": 1353, // Rutgers (14) def Minnesota (11)
+  },
+  sec: {
+    "sec-R1-0": 1246, // Kentucky (9) def LSU (16)
+    "sec-R1-1": 1120, // Auburn (12) def Mississippi St (13)
+    "sec-R1-2": 1279, // Mississippi (15) def Texas (10)
+    "sec-R1-3": 1328, // Oklahoma (11) def South Carolina (14)
+  },
+  mwc: {
+    "mwc-R1-0": 1424, // UNLV (8) def Wyoming (9)
+    "mwc-R1-1": 1305, // Nevada (5) def Air Force (12)
+    "mwc-R1-2": 1161, // Colorado St (7) def Fresno St (10)
+    "mwc-R1-3": 1363, // San Jose St (11) def Boise St (6)
+  },
+  aac: {
+    "aac-R1-0": 1408, // Tulane (9) def Memphis (8)
+    "aac-R1-1": 1194, // FL Atlantic (7) def Temple (10)
+  },
+  a10: {
+    "a10-R1-0": 1260, // Loyola-Chicago (14) def Richmond (11)
+    "a10-R1-1": 1382, // St Bonaventure (13) def La Salle (12)
+  },
+  big_west: {
+    "big_west-R1-0": 1471, // UC San Diego (5) def Cal Poly (8)
+    "big_west-R1-1": 1413, // UC Davis (6) def UC Santa Barbara (7)
+  },
+  wac: {
+    "wac-R1-0": 1101, // Abilene Chr (6) def Tarleton St (7)
+  },
+  meac: {
+    "meac-QF-1": 1175, // Delaware St (7) def Morgan St (2)
+  },
+  patriot: {
+    "patriot-R1-0": 1215, // Holy Cross (10) def Lafayette (7)
+    "patriot-R1-1": 1137, // Bucknell (8) def Army (9)
+    "patriot-QF-0": 1298, // Navy (1) def Bucknell (8)
+    "patriot-QF-1": 1131, // Boston Univ (4) def American Univ (5)
+    "patriot-QF-2": 1159, // Colgate (3) def Loyola MD (6)
+    "patriot-QF-3": 1250, // Lehigh (2) def Holy Cross (10)
+    "patriot-SF-0": 1131, // Boston Univ (4) def Navy (1)
+    "patriot-SF-1": 1250, // Lehigh (2) def Colgate (3)
+    "patriot-F-0":  1250, // Lehigh (2) def Boston Univ (4) — CHAMPION
+  },
+  big_sky: {
+    "big_sky-R1-0": 1226, // Idaho St (9) def Northern Arizona (10)
+    "big_sky-R1-1": 1225, // Idaho (7) def CS Sacramento (8)
+    "big_sky-QF-0": 1340, // Portland St (1) def Idaho St (9)
+    "big_sky-QF-1": 1225, // Idaho (7) def Montana St (2)
+    "big_sky-QF-2": 1285, // Montana (4) def N Colorado (5)
+    "big_sky-QF-3": 1186, // E Washington (3) def Weber St (6)
+    "big_sky-SF-0": 1285, // Montana (4) def Portland St (1)
+    "big_sky-SF-1": 1225, // Idaho (7) def E Washington (3)
+    "big_sky-F-0":  1225, // Idaho (7) def Montana (4) — CHAMPION
+  },
+  swac: {
+    "swac-R1-0": 1108, // Alcorn St (11) def Alabama St (10)
+    "swac-R1-1": 1212, // Grambling (9) def MS Valley St (12)
+    "swac-R2-0": 1341, // Prairie View (8) def Alcorn St (11)
+    "swac-R2-1": 1238, // Jackson St (7) def Grambling (9)
+    "swac-QF-0": 1341, // Prairie View (8) def Bethune-Cookman (1)
+    "swac-QF-2": 1197, // Florida A&M (2) def Jackson St (7)
   },
 };
