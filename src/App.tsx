@@ -39,8 +39,8 @@ import { deserializePicks, getUserBrackets, saveBracket, serializePicks, type Sa
 import { TEAM_STAT_IMPORTANCE, TEAM_STAT_ORDER, TEAM_STATS_2026, type TeamStatKey } from "./data/teamStats2026";
 import type { OddsDisplayMode, Region, ResolvedGame, SimulationOutput } from "./types";
 
-const DEFAULT_SIM_RUNS = 100000;
-const CHAOS_DISTRIBUTION_SIM_RUNS = 100000;
+const DEFAULT_SIM_RUNS = 10000;
+const CHAOS_DISTRIBUTION_SIM_RUNS = 10000;
 const ONBOARDING_STORAGE_KEY = "oddsGods_onboardingDismissed";
 const HINTS_STORAGE_KEY = "oddsGods_hintsShown";
 const FIRST_PICK_NUDGE_SESSION_KEY = "oddsGods_firstPickCascadeNudgeSeen";
@@ -75,8 +75,6 @@ const ROUND_POINTS_BY_ROUND: Partial<Record<ResolvedGame["round"], number>> = {
   CHAMP: 320,
 };
 
-const BRACKET_SCORING_GAME_COUNT = 63;
-
 const MOBILE_ROUND_ORDER: Record<"FF" | "R64" | "R32" | "S16" | "E8", number> = {
   FF: 0,
   R64: 1,
@@ -97,8 +95,8 @@ const getRecommendedSimRuns = (): number => {
   const memory = nav.deviceMemory ?? 4;
   const isMobileViewport = window.matchMedia("(max-width: 767px)").matches;
 
-  if (isMobileViewport || memory <= 4 || cores <= 4) return 10000;
-  if (memory <= 8 || cores <= 8) return 25000;
+  if (isMobileViewport || memory <= 4 || cores <= 4) return 1500;
+  if (memory <= 8 || cores <= 8) return 2500;
   return DEFAULT_SIM_RUNS;
 };
 
@@ -306,12 +304,6 @@ function computePotentialPoints(prob: number | null, round: ResolvedGame["round"
   if (basePoints <= 0 || prob === null || !Number.isFinite(prob)) return null;
   const clamped = Math.max(0, Math.min(1, prob));
   return (1 - clamped) * basePoints;
-}
-
-function formatPotentialPoints(points: number | null): string {
-  if (points === null || !Number.isFinite(points)) return "--";
-  const rounded = Math.round(points * 10) / 10;
-  return Number.isInteger(rounded) ? `${rounded}` : rounded.toFixed(1);
 }
 
 function computeChaosScoreFromGames(games: ResolvedGame[]): number | null {
@@ -2303,21 +2295,7 @@ function App() {
     [playInGames]
   );
   const allPlayInDecided = playInGames.length === 0 || decidedPlayInCount === playInGames.length;
-  const pointsTrackingEnabled = allPlayInDecided;
-  const pickedScoringGamesCount = useMemo(
-    () =>
-      games.filter((game) => game.round !== "FF" && Boolean(game.winnerId && game.teamAId && game.teamBId)).length,
-    [games]
-  );
-  const bracketPotentialPoints = useMemo(() => {
-    if (!pointsTrackingEnabled) return 0;
-    return games.reduce((total, game) => {
-      if (game.round === "FF" || !game.winnerId || !game.teamAId || !game.teamBId) return total;
-      const pickedProb = getGameWinProb(game, game.winnerId);
-      const potential = computePotentialPoints(pickedProb, game.round);
-      return total + (potential ?? 0);
-    }, 0);
-  }, [games, pointsTrackingEnabled]);
+  const pointsTrackingEnabled = false;
   const onboardingFlowReady = !showDesktopFirst && !walkthroughActive;
   const leftSemi = finalGames.find((g) => g.id === "F4-Left-0") ?? null;
   const rightSemi = finalGames.find((g) => g.id === "F4-Right-0") ?? null;
@@ -3026,19 +3004,6 @@ function App() {
           ? `First Four ${allPlayInDecided ? "✓" : `(${decidedPlayInCount}/${playInGames.length})`}`
           : "First Four"}
       </button>
-      <div
-        className={`eg-chip toolbar-chip--points ${pointsTrackingEnabled ? "is-active" : "is-locked"}`}
-        style={!isMobile && mainView !== "bracket" && mainView !== "futures" ? { display: "none" } : undefined}
-        title={
-          pointsTrackingEnabled
-            ? "Potential bracket points based on your current picks. First Four is excluded."
-            : "Finish the First Four picks to unlock bracket points tracking."
-        }
-      >
-        {pointsTrackingEnabled
-          ? `Bracket Pts ${formatPotentialPoints(bracketPotentialPoints)} (${pickedScoringGamesCount}/${BRACKET_SCORING_GAME_COUNT})`
-          : "Bracket Pts unlock after First Four"}
-      </div>
       {isAuthenticated ? (
         <button
           onClick={() => setMyBracketsOpen(true)}
@@ -5314,7 +5279,7 @@ function MobileChampionshipCelebrationCard({
 function MobileMatchupCard({
   game,
   displayMode,
-  showPotentialPoints,
+  showPotentialPoints: _showPotentialPoints,
   onPick,
   onSwitchPick,
   onUndoPick,
@@ -5372,9 +5337,6 @@ function MobileMatchupCard({
         <TeamLogo teamName={teamA.name} src={teamLogoUrl(teamA)} />
         <span className="m-name-wrap">
           <span className="m-name">{teamA.name}</span>
-          {showPotentialPoints ? (
-            <span className="matchup-points-inline">({formatPotentialPoints(computePotentialPoints(probA, game.round))})</span>
-          ) : null}
         </span>
         <div className="m-stats">
           <span className="m-prob">{toImpliedLabel(probA)}</span>
@@ -5399,9 +5361,6 @@ function MobileMatchupCard({
         <TeamLogo teamName={teamB.name} src={teamLogoUrl(teamB)} />
         <span className="m-name-wrap">
           <span className="m-name">{teamB.name}</span>
-          {showPotentialPoints ? (
-            <span className="matchup-points-inline">({formatPotentialPoints(computePotentialPoints(probB, game.round))})</span>
-          ) : null}
         </span>
         <div className="m-stats">
           <span className="m-prob">{toImpliedLabel(probB)}</span>
@@ -6423,9 +6382,6 @@ function GameCard({
                     <TeamHoverAnchor teamName={team.name} logoSrc={teamLogoUrl(team)}>
                       <span className={`chip-code-line ${showLogo ? "" : "no-logo"}`}>
                         <AdaptiveTeamLabel className={`chip-code ${showLogo ? "" : "no-logo"}`} fullName={teamLabel} />
-                        {showPotentialPoints ? (
-                          <span className="matchup-points-inline">({formatPotentialPoints(computePotentialPoints(candidate.prob, game.round))})</span>
-                        ) : null}
                       </span>
                     </TeamHoverAnchor>
                     <span className="chip-odds-wrap">
@@ -6565,7 +6521,7 @@ function ShowdownCard({
   finalists,
   displayMode,
   lastPickedKey,
-  showPotentialPoints,
+  showPotentialPoints: _showPotentialPoints,
   onPick,
   onOpenMatchupStats,
 }: {
@@ -6581,6 +6537,17 @@ function ShowdownCard({
   const roundLabel = game.round === "CHAMP" ? "National Championship" : game.round === "F4" ? "Final Four" : "Elite 8";
   const decided = Boolean(game.lockedByUser && game.winnerId);
   const isMobileViewport = typeof window !== "undefined" && window.matchMedia("(max-width: 767px)").matches;
+  const matchupKey = `${game.id}:${game.teamAId ?? ""}:${game.teamBId ?? ""}`;
+  const previousMatchupKeyRef = useRef<string | null>(null);
+  const [isEntering, setIsEntering] = useState(true);
+
+  useEffect(() => {
+    if (previousMatchupKeyRef.current === matchupKey) return;
+    previousMatchupKeyRef.current = matchupKey;
+    setIsEntering(true);
+    const timeoutId = window.setTimeout(() => setIsEntering(false), 520);
+    return () => window.clearTimeout(timeoutId);
+  }, [matchupKey]);
   const showdownLogoSize =
     game.round === "CHAMP"
       ? isMobileViewport
@@ -6595,7 +6562,7 @@ function ShowdownCard({
           : 64;
 
   return (
-    <div className={`eg-showdown-card ${roundClass} eg-showdown-card--entering ${decided ? "decided" : ""}`}>
+    <div className={`eg-showdown-card ${roundClass} ${isEntering ? "eg-showdown-card--entering" : ""} ${decided ? "decided" : ""}`}>
       <p className="eg-showdown-label">{roundLabel}</p>
       {onOpenMatchupStats ? (
         <button
@@ -6649,11 +6616,6 @@ function ShowdownCard({
                   teamSeed={seedLabel(team)}
                 />
                 <span className="eg-showdown-name">{showdownTeamName(team.name)}</span>
-                {showPotentialPoints ? (
-                  <span className="eg-showdown-points">
-                    ({formatPotentialPoints(computePotentialPoints(candidate.prob, game.round))} pts)
-                  </span>
-                ) : null}
                 <span className="eg-showdown-odds odds-value" data-team-id={team.id}>
                   {decided
                     ? formatOddsDisplay(outcome === "win" ? 1 : 0, displayMode).primary
@@ -6707,8 +6669,8 @@ function TeamRow({
   showEditIcon,
   teamId,
   oddsChanged,
-  potentialPoints,
-  showPotentialPoints,
+  potentialPoints: _potentialPoints,
+  showPotentialPoints: _showPotentialPoints,
   onOpenProbEditor,
   onPick,
 }: {
@@ -6795,9 +6757,6 @@ function TeamRow({
           <span className="team-name-wrap">
             <span className="team-name-line">
               <AdaptiveTeamLabel className="team-name btw-abbrev-name" fullName={fullLabel} />
-              {showPotentialPoints ? (
-                <span className="matchup-points-inline">({formatPotentialPoints(potentialPoints)})</span>
-              ) : null}
             </span>
             {formatted.secondary ? <span className="btw-title-odds">{formatted.secondary}</span> : null}
           </span>
@@ -6950,18 +6909,23 @@ function showdownTeamName(name: string): string {
 function AdaptiveTeamLabel({ className, fullName }: { className: string; fullName: string }) {
   const ref = useRef<HTMLSpanElement>(null);
   const [label, setLabel] = useState(fullName);
-  const [prevLabel, setPrevLabel] = useState(fullName);
-  const [switching, setSwitching] = useState(false);
   const labelRef = useRef(fullName);
-  const switchTimerRef = useRef<number | null>(null);
+  const rafRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    labelRef.current = fullName;
+    setLabel(fullName);
+  }, [fullName]);
 
   useLayoutEffect(() => {
     const node = ref.current;
     if (!node) return undefined;
 
+    const SWITCH_HYSTERESIS_PX = 10;
+    const canvas = document.createElement("canvas");
+    const ctx = canvas.getContext("2d");
+
     const measure = (text: string, font: string): number => {
-      const canvas = document.createElement("canvas");
-      const ctx = canvas.getContext("2d");
       if (!ctx) return text.length * 8;
       ctx.font = font;
       return ctx.measureText(text).width;
@@ -6973,49 +6937,47 @@ function AdaptiveTeamLabel({ className, fullName }: { className: string; fullNam
       const style = window.getComputedStyle(el);
       const font = `${style.fontWeight} ${style.fontSize} ${style.fontFamily}`;
       const maxWidth = (el.parentElement as HTMLElement | null)?.clientWidth ?? el.clientWidth;
+      if (maxWidth <= 0) return;
       const full = fullName;
       const abbreviated = abbreviationForTeam(fullName);
       const fullWidth = measure(full, font);
-      const abbrevWidth = measure(abbreviated, font);
 
-      let next = full;
-      if (fullWidth > maxWidth + 1) next = abbreviated;
-      if (next === abbreviated && abbrevWidth > maxWidth + 1) {
-        // Keep full abbreviation even in tight layouts; never collapse to 1-letter initials.
+      let next = labelRef.current;
+      if (fullWidth > maxWidth + SWITCH_HYSTERESIS_PX) {
         next = abbreviated;
+      } else if (fullWidth < maxWidth - SWITCH_HYSTERESIS_PX) {
+        next = full;
       }
       if (next === labelRef.current) return;
 
-      if (switchTimerRef.current !== null) window.clearTimeout(switchTimerRef.current);
-      setPrevLabel(labelRef.current);
       labelRef.current = next;
       setLabel(next);
-      setSwitching(true);
-      switchTimerRef.current = window.setTimeout(() => setSwitching(false), 230);
     };
 
-    recalc();
-    const observer = new ResizeObserver(recalc);
+    const scheduleRecalc = () => {
+      if (rafRef.current !== null) return;
+      rafRef.current = window.requestAnimationFrame(() => {
+        rafRef.current = null;
+        recalc();
+      });
+    };
+
+    scheduleRecalc();
+    const observer = new ResizeObserver(scheduleRecalc);
     observer.observe(node);
-    window.addEventListener("resize", recalc);
+    if (node.parentElement) observer.observe(node.parentElement);
+    window.addEventListener("resize", scheduleRecalc);
 
     return () => {
       observer.disconnect();
-      window.removeEventListener("resize", recalc);
-      if (switchTimerRef.current !== null) window.clearTimeout(switchTimerRef.current);
+      window.removeEventListener("resize", scheduleRecalc);
+      if (rafRef.current !== null) window.cancelAnimationFrame(rafRef.current);
     };
   }, [fullName]);
 
   return (
-    <span ref={ref} className={`${className} adaptive-label ${switching ? "is-switching" : ""}`} title={fullName}>
-      {switching ? (
-        <>
-          <span className="adaptive-label-prev">{prevLabel}</span>
-          <span className="adaptive-label-next">{label}</span>
-        </>
-      ) : (
-        <span className="adaptive-label-current">{label}</span>
-      )}
+    <span ref={ref} className={`${className} adaptive-label`} title={fullName}>
+      <span className="adaptive-label-current">{label}</span>
     </span>
   );
 }
