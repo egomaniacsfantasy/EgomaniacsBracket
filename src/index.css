@@ -8471,6 +8471,10 @@ body.walkthrough-active .eg-title-choice:hover {
     max-width: 100%;
   }
 
+  .eg-shell.compact-desktop .eg-app {
+    padding: 0;
+  }
+
   .eg-app,
   .eg-page-shell,
   main {
@@ -15369,7 +15373,7 @@ body.walkthrough-active .odds-value--changed::after {
   font-family: "Space Grotesk", sans-serif;
   font-size: 13px;
   font-weight: 700;
-  padding: 10px 20px;
+  padding: 10px 24px;
   border-radius: 8px;
   border: none;
   cursor: pointer;
@@ -15697,7 +15701,7 @@ body.walkthrough-active .odds-value--changed::after {
   flex-direction: column;
   align-items: center;
   width: 100%;
-  gap: 16px;
+  gap: 12px;
   margin: auto 0;
 }
 .bw-screen5-actions {
@@ -15750,7 +15754,7 @@ body.walkthrough-active .odds-value--changed::after {
 .bw-card-highlights { margin-bottom: 10px; }
 .bw-card-hl { margin-bottom: 5px; }
 .bw-card-hl:last-child { margin-bottom: 0; }
-.bw-card-roast { margin-bottom: 8px; }
+.bw-card-roast { margin-bottom: 12px; }
 
 /* Top bar */
 .bw-card-topbar {

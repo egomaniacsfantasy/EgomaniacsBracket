@@ -1,4 +1,5 @@
 import type { WrappedData } from "./wrappedData";
+import { ordinal } from "./wrappedData";
 
 // ---------------------------------------------------------------------------
 // Canvas dimensions (Instagram Story format)
@@ -163,6 +164,26 @@ function wrapText(
   if (line) {
     ctx.fillText(line, x, currentY);
   }
+}
+
+function getWrappedLineCount(
+  ctx: CanvasRenderingContext2D,
+  text: string,
+  maxWidth: number
+): number {
+  const words = text.split(" ");
+  let line = "";
+  let count = 1;
+  for (const word of words) {
+    const test = line ? `${line} ${word}` : word;
+    if (ctx.measureText(test).width > maxWidth && line) {
+      count++;
+      line = word;
+    } else {
+      line = test;
+    }
+  }
+  return count;
 }
 
 // ---------------------------------------------------------------------------
@@ -334,6 +355,59 @@ function renderCard(
     ctx.restore();
   };
 
+  const LX = 14;
+  const CW = 360 - 28;
+
+  // ==========================================
+  // Pre-calculate dynamic heights for vertical centering
+  // ==========================================
+
+  // Roast box: measure wrapped text height
+  setFont(11, 400, SERIF, "italic");
+  const roastLineHeight = s(11 * 1.35);
+  const roastMaxWidth = s(CW - 30);
+  const roastLines = getWrappedLineCount(ctx, data.roastText, roastMaxWidth);
+  const roastTextHeight = roastLines * (11 * 1.35);
+  const roastPadding = 18; // 9px top + 9px bottom
+  const roastH = roastTextHeight + roastPadding;
+
+  // Bracket line: check if text needs smaller font
+  const bracketLineText = data.perfectBracketLine;
+  let blFontSize = 36; // Match CSS .bw-card-bracket-line-number font-size
+  setFont(blFontSize, 400, SERIF);
+  const blMaxWidth = s(CW - 20);
+  while (ctx.measureText(bracketLineText).width > blMaxWidth && blFontSize > 18) {
+    blFontSize -= 2;
+    setFont(blFontSize, 400, SERIF);
+  }
+
+  // Sum all content heights (mockup units)
+  const topBarH = 12;
+  const gap1 = 10; // topbar -> champ
+  const champH = 78;
+  const gap2 = 6; // champ -> chaos top border
+  const chaosH = 24;
+  const gap3 = 8; // chaos bottom border -> f4
+  const f4H = 22;
+  const gap4 = 10; // f4 -> bracket line
+  const blLabelH = 10;
+  const blNumberH = blFontSize * 1.1;
+  const blSubGap = 6;
+  const blSubH = 10;
+  const blTotalH = blLabelH + blNumberH + blSubGap + blSubH;
+  const gap5 = 12; // bracket line -> highlights
+  const hlH = 40; // slightly taller to match CSS padding: 6px 8px
+  const hlGap = 5; // match CSS .bw-card-hl margin-bottom: 5px
+  const highlightsH = hlH * 3 + hlGap * 2;
+  const gap6 = 10; // highlights -> roast
+  const gap7 = 8; // roast -> footer
+  const footerH = 32;
+
+  const totalH = topBarH + gap1 + champH + gap2 + chaosH + gap3 + f4H + gap4
+    + blTotalH + gap5 + highlightsH + gap6 + roastH + gap7 + footerH;
+
+  const startY = Math.max(30, Math.floor((640 - totalH) / 2));
+
   // ==========================================
   // STEP 1: BACKGROUND
   // ==========================================
@@ -346,22 +420,20 @@ function renderCard(
   drawRadialGradient(36, 320, 90, 48, 248, 113, 113, 0.03);
 
   // ==========================================
-  // STEP 2: GHOST LOGOS
+  // STEP 2: GHOST LOGOS (max 0.035 opacity, none below Y=490)
   // ==========================================
-  drawGhostLogo(logos.champion, 300 - 60, -65, 240, 0.055, 12);
-  drawGhostLogo(logos.finalFour[1] || logos.champion, -45, 605 - 35, 180, 0.05, -14);
-  drawGhostLogo(logos.finalFour[2] || logos.champion, -15, 180, 130, 0.035, 22);
-  drawGhostLogo(logos.finalFour[3] || logos.champion, 350 - 10, 480 - 160, 110, 0.04, -8);
-  drawGhostLogo(logos.boldestWinner, 30, 80, 90, 0.025, 30);
-  drawGhostLogo(logos.boldestLoser, 40, 340, 70, 0.02, -18);
+  drawGhostLogo(logos.champion, 240, -65, 240, 0.035, 12);
+  drawGhostLogo(logos.finalFour[1] || logos.champion, -45, 380, 180, 0.03, -14);
+  drawGhostLogo(logos.finalFour[2] || logos.champion, -15, 180, 130, 0.025, 22);
+  drawGhostLogo(logos.finalFour[3] || logos.champion, 300, 280, 110, 0.03, -8);
+  drawGhostLogo(logos.boldestWinner, 30, 80, 90, 0.02, 30);
+  drawGhostLogo(logos.boldestLoser, 40, 340, 70, 0.015, -18);
 
   // ==========================================
   // STEP 3: CONTENT
   // ==========================================
 
-  let Y = 50;
-  const LX = 14;
-  const CW = 360 - 28;
+  let Y = startY;
 
   // --- TOP BAR ---
   setFont(8, 700, SANS);
@@ -391,9 +463,10 @@ function renderCard(
       ctx.restore();
     }
   }
-  Y += 20;
+  Y += topBarH + gap1;
 
   // --- CHAMPION ROW ---
+  // CSS: .bw-card-champ-logo 74x74, gap 12px, label 7px/800, name 30px/400 serif, odds 11px/700
   ctx.save();
   ctx.shadowColor = "rgba(184,125,24,0.45)";
   ctx.shadowBlur = s(28);
@@ -402,23 +475,27 @@ function renderCard(
 
   const champTextX = LX + 74 + 12;
 
+  // CSS: .bw-card-champ-label — 7px, weight 800, letter-spacing 0.22em, color #b87d18
   setFont(7, 800, SANS);
   ctx.fillStyle = COLORS.amber;
   ctx.textAlign = "left";
   ctx.textBaseline = "top";
   ctx.fillText("YOUR CHAMPION", s(champTextX), s(Y + 4));
 
+  // CSS: .bw-card-champ-name — 30px Instrument Serif, color #f0e6d0
   setFont(30, 400, SERIF);
   ctx.fillStyle = COLORS.text;
   ctx.fillText(data.champion.teamName, s(champTextX), s(Y + 18));
 
+  // CSS: .bw-card-champ-odds — 11px/700 Space Grotesk, color #e7bf72
   setFont(11, 700, SANS);
   ctx.fillStyle = COLORS.amberText;
   ctx.fillText(`${data.champion.champOdds} to cut the nets`, s(champTextX), s(Y + 52));
 
-  Y += 82;
+  Y += champH + gap2;
 
   // --- CHAOS STRIP ---
+  // CSS: border-top: 1px solid rgba(184,125,24,0.08); padding: 6px 0
   ctx.strokeStyle = "rgba(184,125,24,0.08)";
   ctx.lineWidth = s(1);
   ctx.beginPath();
@@ -428,6 +505,7 @@ function renderCard(
 
   Y += 6;
 
+  // CSS: .bw-card-chaos-emoji 16px, .bw-card-chaos-label 9px/800 #e7bf72
   setFont(16, 400, SANS);
   ctx.fillStyle = COLORS.text;
   ctx.textBaseline = "middle";
@@ -438,6 +516,7 @@ function renderCard(
   ctx.fillStyle = COLORS.amberText;
   ctx.fillText(data.identity.chaosLabel, s(LX + 22), s(Y + 10));
 
+  // Bar labels + track
   const barLeft = LX + 95;
   const barRight = 360 - LX - 35;
   const barWidth = barRight - barLeft;
@@ -474,14 +553,16 @@ function renderCard(
   ctx.strokeStyle = COLORS.bgDeep;
   ctx.stroke();
 
+  // CSS: .bw-card-chaos-pct — 9px/800, color #ffc857
   setFont(9, 800, SANS);
   ctx.fillStyle = COLORS.amberHot;
   ctx.textAlign = "right";
   ctx.textBaseline = "middle";
-  ctx.fillText(`${Math.round(data.identity.chaosPercentile)}th`, s(360 - LX), s(Y + 10));
+  ctx.fillText(ordinal(Math.round(data.identity.chaosPercentile)), s(360 - LX), s(Y + 10));
 
-  Y += 24;
+  Y += chaosH - 6; // back to after the 6px we added
 
+  // Bottom border of chaos strip
   ctx.strokeStyle = "rgba(184,125,24,0.08)";
   ctx.lineWidth = s(1);
   ctx.beginPath();
@@ -489,9 +570,10 @@ function renderCard(
   ctx.lineTo(s(360 - LX), s(Y));
   ctx.stroke();
 
-  Y += 8;
+  Y += gap3;
 
   // --- FINAL FOUR STRIP ---
+  // CSS: .bw-card-f4-label 7px/800, .bw-card-f4-pill compact with 2px 5px padding
   setFont(7, 800, SANS);
   ctx.fillStyle = COLORS.textFaint;
   ctx.textAlign = "left";
@@ -504,7 +586,12 @@ function renderCard(
     const logo = logos.finalFour[i];
     if (!team || !logo) continue;
 
-    roundRect(f4X, Y + 2, 60, 18, 4);
+    // Measure text width for compact pill sizing (CSS: padding 2px 5px, gap 3px)
+    setFont(7, 700, SANS);
+    const abbrevWidth = ctx.measureText(team.teamAbbrev).width / S;
+    const pillW = 3 + 16 + 3 + abbrevWidth + 5; // paddingL + logo + gap + text + paddingR
+
+    roundRect(f4X, Y + 2, pillW, 18, 4);
     ctx.fillStyle = "rgba(255,255,255,0.02)";
     ctx.fill();
     ctx.strokeStyle = "rgba(240,230,208,0.05)";
@@ -519,39 +606,50 @@ function renderCard(
     ctx.textAlign = "left";
     ctx.fillText(team.teamAbbrev, s(f4X + 22), s(Y + 11));
 
-    f4X += 64;
+    f4X += pillW + 3; // 3px gap between pills (CSS gap: 3px)
   }
 
-  Y += 28;
+  Y += f4H + gap4;
 
   // --- BRACKET LINE ---
-  drawRadialGradient(180, Y + 20, 180, 30, 184, 125, 24, 0.06);
+  // CSS: .bw-card-bracket-line padding: 8px 0, radial bg
+  drawRadialGradient(180, Y + blTotalH / 2, 180, 30, 184, 125, 24, 0.06);
 
+  // Label: CSS .bw-card-bracket-line-label 7px/800 Space Grotesk, letter-spacing 0.25em
   setFont(7, 800, SANS);
   ctx.fillStyle = COLORS.textSoft;
   ctx.textAlign = "center";
   ctx.textBaseline = "top";
   ctx.fillText("YOUR PERFECT BRACKET LINE", s(180), s(Y));
 
-  setFont(42, 400, SERIF);
+  // Number: CSS .bw-card-bracket-line-number — dynamically sized
+  setFont(blFontSize, 400, SERIF);
   ctx.fillStyle = COLORS.amberHot;
   ctx.save();
   ctx.shadowColor = "rgba(255,200,87,0.2)";
   ctx.shadowBlur = s(60);
-  ctx.fillText(data.perfectBracketLine, s(180), s(Y + 12));
+  ctx.textAlign = "center";
+  ctx.textBaseline = "top";
+  ctx.fillText(bracketLineText, s(180), s(Y + blLabelH));
   ctx.restore();
+
+  // Subtitle: ensure it doesn't overlap the number
+  const numberBottomY = Y + blLabelH + blNumberH;
+  const subY = Math.max(Y + blLabelH + blNumberH, numberBottomY) + blSubGap;
 
   setFont(8, 400, SERIF, "italic");
   ctx.fillStyle = COLORS.textSoft;
   ctx.textAlign = "center";
-  ctx.fillText("good luck with that", s(180), s(Y + 56));
+  ctx.textBaseline = "top";
+  ctx.fillText("good luck with that", s(180), s(subY));
 
-  Y += 72;
+  Y += blTotalH + gap5;
 
   // --- THREE HIGHLIGHT ROWS ---
-  const hlH = 38;
+  // CSS: .bw-card-hl padding: 6px 8px, border-radius: 6px
 
   // BOLDEST (red left border)
+  // CSS: .bw-card-hl--boldest border-left: 3px solid #f87171, bg rgba(248,113,113,0.04)
   roundRect(LX + 3, Y, CW - 3, hlH, 6);
   ctx.fillStyle = "rgba(248,113,113,0.04)";
   ctx.fill();
@@ -560,7 +658,8 @@ function renderCard(
   roundRect(LX, Y, 3, hlH, 0);
   ctx.fill();
 
-  drawLogoWithShadow(logos.boldestWinner, LX + 8, Y + 6, 26, "rgba(0,0,0,0.5)", 4);
+  // CSS: logos 26x26
+  drawLogoWithShadow(logos.boldestWinner, LX + 8, Y + 7, 26, "rgba(0,0,0,0.5)", 4);
   ctx.save();
   ctx.globalAlpha = 0.3;
   try {
@@ -568,30 +667,35 @@ function renderCard(
   } catch {
     // filter not supported
   }
-  ctx.drawImage(logos.boldestLoser, s(LX + 26), s(Y + 6), s(26), s(26));
+  ctx.drawImage(logos.boldestLoser, s(LX + 26), s(Y + 7), s(26), s(26));
   ctx.filter = "none";
   ctx.restore();
 
   const hlTextX = LX + 58;
+
+  // CSS: .bw-card-hl-tag 6px/800, .bw-card-hl-tag--red color #f87171
   setFont(6, 800, SANS);
   ctx.fillStyle = COLORS.red;
   ctx.textAlign = "left";
   ctx.textBaseline = "top";
-  ctx.fillText("BOLDEST PICK", s(hlTextX), s(Y + 5));
+  ctx.fillText("BOLDEST PICK", s(hlTextX), s(Y + 6));
 
+  // CSS: .bw-card-hl-matchup 10px/700
   setFont(10, 700, SANS);
   ctx.fillStyle = COLORS.text;
   const boldestMainText = `#${data.boldestPick.winnerSeed} ${data.boldestPick.winnerName} over #${data.boldestPick.loserSeed} ${data.boldestPick.loserName}`;
-  ctx.fillText(boldestMainText, s(hlTextX), s(Y + 14));
+  ctx.fillText(boldestMainText, s(hlTextX), s(Y + 15));
 
+  // CSS: .bw-card-hl-detail 7px/400
   setFont(7, 400, SANS);
   ctx.fillStyle = COLORS.textSoft;
   ctx.fillText(
     `${data.boldestPick.round} · ${data.boldestPick.region || ""} · ${data.boldestPick.simBracketFraction} brackets`,
     s(hlTextX),
-    s(Y + 27)
+    s(Y + 28)
   );
 
+  // CSS: .bw-card-hl-number--red 24px Instrument Serif, color #ff4444
   setFont(24, 400, SERIF);
   ctx.fillStyle = COLORS.redHot;
   ctx.textAlign = "right";
@@ -602,9 +706,10 @@ function renderCard(
     s(Y + hlH / 2)
   );
 
-  Y += hlH + 4;
+  Y += hlH + hlGap;
 
   // RIPPLE (green border)
+  // CSS: .bw-card-hl--ripple border: 1px solid rgba(74,222,128,0.08), bg rgba(74,222,128,0.03)
   roundRect(LX, Y, CW, hlH, 6);
   ctx.fillStyle = "rgba(74,222,128,0.03)";
   ctx.fill();
@@ -612,42 +717,47 @@ function renderCard(
   ctx.lineWidth = s(1);
   ctx.stroke();
 
+  // CSS: .bw-card-hl-emoji 18px
   setFont(18, 400, SANS);
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
   ctx.fillText("\uD83C\uDF0A", s(LX + 18), s(Y + hlH / 2));
 
   const rlTextX = LX + 38;
+  // CSS: .bw-card-hl-tag--green color #4ade80
   setFont(6, 800, SANS);
   ctx.fillStyle = COLORS.green;
   ctx.textAlign = "left";
   ctx.textBaseline = "top";
-  ctx.fillText("RIPPLE EFFECT", s(rlTextX), s(Y + 5));
+  ctx.fillText("RIPPLE EFFECT", s(rlTextX), s(Y + 6));
 
   setFont(10, 700, SANS);
   ctx.fillStyle = COLORS.text;
   ctx.fillText(
     `${data.rippleEffect.biggestCasualty.teamName}'s title: ${data.rippleEffect.biggestCasualty.baselineChampOdds} \u2192 ${data.rippleEffect.biggestCasualty.currentChampOdds}`,
     s(rlTextX),
-    s(Y + 14)
+    s(Y + 15)
   );
 
   setFont(7, 400, SANS);
   ctx.fillStyle = COLORS.textSoft;
-  ctx.fillText(data.rippleEffect.causedByPick.description, s(rlTextX), s(Y + 27));
+  ctx.fillText(data.rippleEffect.causedByPick.description, s(rlTextX), s(Y + 28));
 
+  // CSS: .bw-card-hl-number--text 22px, color #f0e6d0
   setFont(22, 400, SERIF);
   ctx.fillStyle = COLORS.text;
   ctx.textAlign = "right";
   ctx.textBaseline = "top";
-  ctx.fillText(String(data.rippleEffect.totalGamesAffected), s(360 - LX - 6), s(Y + 4));
+  ctx.fillText(String(data.rippleEffect.totalGamesAffected), s(360 - LX - 6), s(Y + 5));
+  // CSS: .bw-card-hl-number-sub 6px/700
   setFont(6, 700, SANS);
   ctx.fillStyle = COLORS.textSoft;
-  ctx.fillText("ODDS SHIFTED", s(360 - LX - 6), s(Y + 26));
+  ctx.fillText("ODDS SHIFTED", s(360 - LX - 6), s(Y + 27));
 
-  Y += hlH + 4;
+  Y += hlH + hlGap;
 
   // WEAKEST (dashed border)
+  // CSS: .bw-card-hl--weakest border: 1px dashed rgba(248,113,113,0.2)
   roundRect(LX, Y, CW, hlH, 6);
   ctx.fillStyle = "rgba(255,255,255,0.01)";
   ctx.fill();
@@ -657,7 +767,7 @@ function renderCard(
   ctx.stroke();
   ctx.setLineDash([]);
 
-  drawLogoWithShadow(logos.weakestPicked, LX + 8, Y + 6, 26, "rgba(0,0,0,0.5)", 4);
+  drawLogoWithShadow(logos.weakestPicked, LX + 8, Y + 7, 26, "rgba(0,0,0,0.5)", 4);
   ctx.save();
   ctx.globalAlpha = 0.3;
   try {
@@ -665,22 +775,23 @@ function renderCard(
   } catch {
     // filter not supported
   }
-  ctx.drawImage(logos.weakestOpponent, s(LX + 26), s(Y + 6), s(26), s(26));
+  ctx.drawImage(logos.weakestOpponent, s(LX + 26), s(Y + 7), s(26), s(26));
   ctx.filter = "none";
   ctx.restore();
 
+  // CSS: .bw-card-hl-tag--amber color #b87d18
   setFont(6, 800, SANS);
   ctx.fillStyle = COLORS.amber;
   ctx.textAlign = "left";
   ctx.textBaseline = "top";
-  ctx.fillText("\u26A0 WEAKEST LINK", s(hlTextX), s(Y + 5));
+  ctx.fillText("\u26A0 WEAKEST LINK", s(hlTextX), s(Y + 6));
 
   setFont(10, 700, SANS);
   ctx.fillStyle = COLORS.text;
   ctx.fillText(
     `#${data.weakestLink.pickedTeamSeed} ${data.weakestLink.pickedTeamName} over #${data.weakestLink.opponentTeamSeed} ${data.weakestLink.opponentTeamName}`,
     s(hlTextX),
-    s(Y + 14)
+    s(Y + 15)
   );
 
   setFont(7, 400, SANS);
@@ -688,9 +799,10 @@ function renderCard(
   ctx.fillText(
     `${data.weakestLink.round} · ${data.weakestLink.region || ""} · flip this one pick`,
     s(hlTextX),
-    s(Y + 27)
+    s(Y + 28)
   );
 
+  // CSS: .bw-card-hl-number--green 20px, color #4ade80
   setFont(20, 400, SERIF);
   ctx.fillStyle = COLORS.green;
   ctx.textAlign = "right";
@@ -701,10 +813,10 @@ function renderCard(
     s(Y + hlH / 2)
   );
 
-  Y += hlH + 8;
+  Y += hlH + gap6;
 
-  // --- ROAST BOX ---
-  const roastH = 58;
+  // --- ROAST BOX (dynamic height) ---
+  // CSS: .bw-card-roast padding: 9px 12px, border-radius: 8px, border: 1px solid rgba(184,125,24,0.1)
   roundRect(LX, Y, CW, roastH, 8);
   const roastGrad = ctx.createLinearGradient(s(LX), s(Y), s(360 - LX), s(Y + roastH));
   roastGrad.addColorStop(0, "rgba(184,125,24,0.06)");
@@ -715,27 +827,31 @@ function renderCard(
   ctx.lineWidth = s(1);
   ctx.stroke();
 
+  // CSS: .bw-card-roast-quote 32px Instrument Serif, rgba(184,125,24,0.2)
   setFont(32, 400, SERIF);
   ctx.fillStyle = "rgba(184,125,24,0.2)";
   ctx.textAlign = "left";
   ctx.textBaseline = "top";
   ctx.fillText("\u201C", s(LX + 6), s(Y + 2));
 
+  // CSS: .bw-card-roast-text 11px Instrument Serif italic, rgba(239,228,207,0.7), line-height 1.35, padding-left: 16px
   setFont(11, 400, SERIF, "italic");
   ctx.fillStyle = COLORS.textDim;
   ctx.textAlign = "left";
   ctx.textBaseline = "top";
-  wrapText(ctx, data.roastText, s(LX + 20), s(Y + 8), s(CW - 30), s(11 * 1.35));
+  wrapText(ctx, data.roastText, s(LX + 20), s(Y + 9), roastMaxWidth, roastLineHeight);
 
-  Y += roastH + 8;
+  Y += roastH + gap7;
 
   // --- FOOTER ---
+  // CSS: .bw-card-footer-url 14px/700, color #f0e6d0
   setFont(14, 700, SANS);
   ctx.fillStyle = COLORS.text;
   ctx.textAlign = "center";
   ctx.textBaseline = "top";
   ctx.fillText("bracket.oddsgods.net", s(180), s(Y));
 
+  // CSS: .bw-card-footer-promo 11px/700, color #e7bf72
   setFont(11, 700, SANS);
   ctx.fillStyle = COLORS.amberText;
   ctx.fillText("\uD83D\uDCB0 Best bracket wins $100 \uD83D\uDCB0", s(180), s(Y + 20));

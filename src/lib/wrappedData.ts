@@ -131,11 +131,34 @@ function probToAmericanStr(prob: number): string {
 }
 
 function formatBracketLine(prob: number): string {
-  if (prob <= 0) return "+∞";
+  if (prob <= 0 || !isFinite(prob)) return "+∞";
   const raw = (1 - prob) / prob;
+
+  if (raw >= 1e15) {
+    const trillions = raw / 1e12;
+    if (trillions >= 1000) {
+      return "+" + (trillions / 1000).toFixed(1) + " Quadrillion";
+    }
+    return "+" + trillions.toFixed(0) + " Trillion";
+  }
+  if (raw >= 1e12) {
+    return "+" + (raw / 1e12).toFixed(1) + " Trillion";
+  }
+  if (raw >= 1e9) {
+    return "+" + (raw / 1e9).toFixed(1) + " Billion";
+  }
+
+  // Under a billion — show full number with commas
   const magnitude = Math.pow(10, Math.floor(Math.log10(raw)));
   const rounded = Math.round(raw / (magnitude / 10)) * (magnitude / 10);
   return "+" + Math.round(rounded).toLocaleString("en-US");
+}
+
+export function ordinal(n: number): string {
+  const suffixes = ["th", "st", "nd", "rd"];
+  const remainder = n % 100;
+  if (remainder >= 11 && remainder <= 13) return n + "th";
+  return n + (suffixes[n % 10] || "th");
 }
 
 function getOpponentId(game: ResolvedGame, teamId: string): string | null {

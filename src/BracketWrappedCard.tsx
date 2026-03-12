@@ -1,5 +1,6 @@
 import { useState } from "react";
 import type { WrappedData } from "./lib/wrappedData";
+import { ordinal } from "./lib/wrappedData";
 
 interface BracketWrappedCardProps {
   data: WrappedData;
@@ -122,7 +123,7 @@ export function BracketWrappedCard({
               />
             </div>
           </div>
-          <span className="bw-card-chaos-pct">{Math.round(identity.chaosPercentile)}th</span>
+          <span className="bw-card-chaos-pct">{ordinal(Math.round(identity.chaosPercentile))}</span>
         </div>
 
         {/* 4. Final Four strip */}
