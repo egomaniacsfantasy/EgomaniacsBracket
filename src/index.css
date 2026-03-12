@@ -1628,6 +1628,20 @@ button.lb-row {
   line-height: 1.4;
 }
 
+.toolbar-chip--points {
+  font-family: var(--font-mono);
+  letter-spacing: 0.03em;
+}
+
+.toolbar-chip--points.is-active {
+  border-color: rgba(184, 125, 24, 0.48);
+  color: rgba(240, 228, 198, 0.96);
+}
+
+.toolbar-chip--points.is-locked {
+  opacity: 0.78;
+}
+
 .futures-full {
   width: 100%;
   min-height: calc(100vh - 60px);
@@ -3059,6 +3073,22 @@ button.lb-row {
   width: 100%;
 }
 
+.team-name-line {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 4px;
+  max-width: 100%;
+  min-width: 0;
+}
+
+.matchup-points-inline {
+  font-family: var(--font-mono);
+  font-size: 0.56rem;
+  color: rgba(231, 191, 114, 0.86);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
 .btw-abbrev-name {
   display: block;
 }
@@ -3384,6 +3414,23 @@ button.lb-row {
   text-overflow: clip;
   line-height: 1;
   min-width: 0;
+}
+
+.chip-code-line {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 4px;
+  min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
+}
+
+.chip-code-line.no-logo {
+  grid-column: 2 / 4;
+}
+
+.chip-code-line .matchup-points-inline {
+  font-size: 0.54rem;
 }
 
 .eg-compact-grid.density-md .chip-code {
@@ -7769,6 +7816,13 @@ body {
   text-overflow: ellipsis;
 }
 
+.eg-showdown-points {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: rgba(231, 191, 114, 0.82);
+  line-height: 1;
+}
+
 .eg-showdown-card.round-champ .eg-showdown-name {
   font-size: 20px;
 }
@@ -8922,6 +8976,24 @@ body.walkthrough-active .eg-title-choice:hover {
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+  }
+
+  .m-name-wrap {
+    display: inline-flex;
+    align-items: baseline;
+    gap: 6px;
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+  }
+
+  .m-name-wrap .m-name {
+    flex: 0 1 auto;
+    min-width: 0;
+  }
+
+  .m-name-wrap .matchup-points-inline {
+    font-size: 10px;
   }
 
   .m-stats {
