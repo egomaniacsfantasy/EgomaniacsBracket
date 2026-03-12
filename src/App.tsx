@@ -39,8 +39,8 @@ import { deserializePicks, getUserBrackets, saveBracket, serializePicks, type Sa
 import { TEAM_STAT_IMPORTANCE, TEAM_STAT_ORDER, TEAM_STATS_2026, type TeamStatKey } from "./data/teamStats2026";
 import type { OddsDisplayMode, Region, ResolvedGame, SimulationOutput } from "./types";
 
-const DEFAULT_SIM_RUNS = 100000;
-const CHAOS_DISTRIBUTION_SIM_RUNS = 100000;
+const DEFAULT_SIM_RUNS = 10000;
+const CHAOS_DISTRIBUTION_SIM_RUNS = 10000;
 const ONBOARDING_STORAGE_KEY = "oddsGods_onboardingDismissed";
 const HINTS_STORAGE_KEY = "oddsGods_hintsShown";
 const FIRST_PICK_NUDGE_SESSION_KEY = "oddsGods_firstPickCascadeNudgeSeen";
@@ -75,8 +75,6 @@ const ROUND_POINTS_BY_ROUND: Partial<Record<ResolvedGame["round"], number>> = {
   CHAMP: 320,
 };
 
-const BRACKET_SCORING_GAME_COUNT = 63;
-
 const MOBILE_ROUND_ORDER: Record<"FF" | "R64" | "R32" | "S16" | "E8", number> = {
   FF: 0,
   R64: 1,
@@ -97,8 +95,8 @@ const getRecommendedSimRuns = (): number => {
   const memory = nav.deviceMemory ?? 4;
   const isMobileViewport = window.matchMedia("(max-width: 767px)").matches;
 
-  if (isMobileViewport || memory <= 4 || cores <= 4) return 10000;
-  if (memory <= 8 || cores <= 8) return 25000;
+  if (isMobileViewport || memory <= 4 || cores <= 4) return 1500;
+  if (memory <= 8 || cores <= 8) return 2500;
   return DEFAULT_SIM_RUNS;
 };
 
@@ -306,12 +304,6 @@ function computePotentialPoints(prob: number | null, round: ResolvedGame["round"
   if (basePoints <= 0 || prob === null || !Number.isFinite(prob)) return null;
   const clamped = Math.max(0, Math.min(1, prob));
   return (1 - clamped) * basePoints;
-}
-
-function formatPotentialPoints(points: number | null): string {
-  if (points === null || !Number.isFinite(points)) return "--";
-  const rounded = Math.round(points * 10) / 10;
-  return Number.isInteger(rounded) ? `${rounded}` : rounded.toFixed(1);
 }
 
 function computeChaosScoreFromGames(games: ResolvedGame[]): number | null {
@@ -2303,21 +2295,7 @@ function App() {
     [playInGames]
   );
   const allPlayInDecided = playInGames.length === 0 || decidedPlayInCount === playInGames.length;
-  const pointsTrackingEnabled = allPlayInDecided;
-  const pickedScoringGamesCount = useMemo(
-    () =>
-      games.filter((game) => game.round !== "FF" && Boolean(game.winnerId && game.teamAId && game.teamBId)).length,
-    [games]
-  );
-  const bracketPotentialPoints = useMemo(() => {
-    if (!pointsTrackingEnabled) return 0;
-    return games.reduce((total, game) => {
-      if (game.round === "FF" || !game.winnerId || !game.teamAId || !game.teamBId) return total;
-      const pickedProb = getGameWinProb(game, game.winnerId);
-      const potential = computePotentialPoints(pickedProb, game.round);
-      return total + (potential ?? 0);
-    }, 0);
-  }, [games, pointsTrackingEnabled]);
+  const pointsTrackingEnabled = false;
   const onboardingFlowReady = !showDesktopFirst && !walkthroughActive;
   const leftSemi = finalGames.find((g) => g.id === "F4-Left-0") ?? null;
   const rightSemi = finalGames.find((g) => g.id === "F4-Right-0") ?? null;
@@ -3026,19 +3004,6 @@ function App() {
           ? `First Four ${allPlayInDecided ? "✓" : `(${decidedPlayInCount}/${playInGames.length})`}`
           : "First Four"}
       </button>
-      <div
-        className={`eg-chip toolbar-chip--points ${pointsTrackingEnabled ? "is-active" : "is-locked"}`}
-        style={!isMobile && mainView !== "bracket" && mainView !== "futures" ? { display: "none" } : undefined}
-        title={
-          pointsTrackingEnabled
-            ? "Potential bracket points based on your current picks. First Four is excluded."
-            : "Finish the First Four picks to unlock bracket points tracking."
-        }
-      >
-        {pointsTrackingEnabled
-          ? `Bracket Pts ${formatPotentialPoints(bracketPotentialPoints)} (${pickedScoringGamesCount}/${BRACKET_SCORING_GAME_COUNT})`
-          : "Bracket Pts unlock after First Four"}
-      </div>
       {isAuthenticated ? (
         <button
           onClick={() => setMyBracketsOpen(true)}
@@ -5314,7 +5279,7 @@ function MobileChampionshipCelebrationCard({
 function MobileMatchupCard({
   game,
   displayMode,
-  showPotentialPoints,
+  showPotentialPoints: _showPotentialPoints,
   onPick,
   onSwitchPick,
   onUndoPick,
@@ -5372,9 +5337,6 @@ function MobileMatchupCard({
         <TeamLogo teamName={teamA.name} src={teamLogoUrl(teamA)} />
         <span className="m-name-wrap">
           <span className="m-name">{teamA.name}</span>
-          {showPotentialPoints ? (
-            <span className="matchup-points-inline">({formatPotentialPoints(computePotentialPoints(probA, game.round))})</span>
-          ) : null}
         </span>
         <div className="m-stats">
           <span className="m-prob">{toImpliedLabel(probA)}</span>
@@ -5399,9 +5361,6 @@ function MobileMatchupCard({
         <TeamLogo teamName={teamB.name} src={teamLogoUrl(teamB)} />
         <span className="m-name-wrap">
           <span className="m-name">{teamB.name}</span>
-          {showPotentialPoints ? (
-            <span className="matchup-points-inline">({formatPotentialPoints(computePotentialPoints(probB, game.round))})</span>
-          ) : null}
         </span>
         <div className="m-stats">
           <span className="m-prob">{toImpliedLabel(probB)}</span>
@@ -6423,9 +6382,6 @@ function GameCard({
                     <TeamHoverAnchor teamName={team.name} logoSrc={teamLogoUrl(team)}>
                       <span className={`chip-code-line ${showLogo ? "" : "no-logo"}`}>
                         <AdaptiveTeamLabel className={`chip-code ${showLogo ? "" : "no-logo"}`} fullName={teamLabel} />
-                        {showPotentialPoints ? (
-                          <span className="matchup-points-inline">({formatPotentialPoints(computePotentialPoints(candidate.prob, game.round))})</span>
-                        ) : null}
                       </span>
                     </TeamHoverAnchor>
                     <span className="chip-odds-wrap">
@@ -6565,7 +6521,7 @@ function ShowdownCard({
   finalists,
   displayMode,
   lastPickedKey,
-  showPotentialPoints,
+  showPotentialPoints: _showPotentialPoints,
   onPick,
   onOpenMatchupStats,
 }: {
@@ -6660,11 +6616,6 @@ function ShowdownCard({
                   teamSeed={seedLabel(team)}
                 />
                 <span className="eg-showdown-name">{showdownTeamName(team.name)}</span>
-                {showPotentialPoints ? (
-                  <span className="eg-showdown-points">
-                    ({formatPotentialPoints(computePotentialPoints(candidate.prob, game.round))} pts)
-                  </span>
-                ) : null}
                 <span className="eg-showdown-odds odds-value" data-team-id={team.id}>
                   {decided
                     ? formatOddsDisplay(outcome === "win" ? 1 : 0, displayMode).primary
@@ -6718,8 +6669,8 @@ function TeamRow({
   showEditIcon,
   teamId,
   oddsChanged,
-  potentialPoints,
-  showPotentialPoints,
+  potentialPoints: _potentialPoints,
+  showPotentialPoints: _showPotentialPoints,
   onOpenProbEditor,
   onPick,
 }: {
@@ -6806,9 +6757,6 @@ function TeamRow({
           <span className="team-name-wrap">
             <span className="team-name-line">
               <AdaptiveTeamLabel className="team-name btw-abbrev-name" fullName={fullLabel} />
-              {showPotentialPoints ? (
-                <span className="matchup-points-inline">({formatPotentialPoints(potentialPoints)})</span>
-              ) : null}
             </span>
             {formatted.secondary ? <span className="btw-title-odds">{formatted.secondary}</span> : null}
           </span>

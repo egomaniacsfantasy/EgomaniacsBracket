@@ -3230,6 +3230,81 @@ print(f"  First week: {_wr_computed[0]}  |  Last week: {_wr_computed[-1]}")
 
 # %%
 # ---------------------------------------------------------------------------
+# PHASE H2: DAILY MODEL RANKINGS (Historical daily snapshots, 2026 season)
+#
+# Build a daily history from DayNum 30 through the latest DayNum present in the
+# 2026 master dataset. For each DayNum:
+#   1) Use each team's most recent game row <= DayNum (carry-forward snapshot)
+#   2) Apply the latest available Massey ranks <= DayNum to all teams
+#   3) Compute Markov / PageRank MR_Score and MR_Rank
+#
+# Output: model_rankings_daily_2026.csv
+#   one row per (DayNum, TeamID) including trend metrics consumed by the site.
+# ---------------------------------------------------------------------------
+print("\n" + "=" * 70)
+print("PHASE H2: DAILY MODEL RANKINGS (Historical 2026 snapshots)")
+print("=" * 70)
+
+_WR_DAILY_START_DAYNUM = 30
+_wr_daily_max_daynum = int(_md26_h["DayNum"].max()) if not _md26_h.empty else _CURRENT_DAYNUM
+_wr_daily_daynums = list(range(_WR_DAILY_START_DAYNUM, _wr_daily_max_daynum + 1))
+_wr_daily_rows = []
+
+print(
+    f"  Daily window: DayNum {_WR_DAILY_START_DAYNUM} -> {_wr_daily_max_daynum} "
+    f"({len(_wr_daily_daynums)} days)"
+)
+
+for _i, _dn in enumerate(_wr_daily_daynums, start=1):
+    _snap_d = _wr_snap_at(_md26_h, _dn)
+    _snap_d = _wr_apply_massey(_snap_d, _dn)
+    _markov_d = _wr_markov(_snap_d, _dn) if len(_snap_d) >= _WR_MIN_TEAMS else {}
+
+    _scores = [(tid, vals["MR_Score"]) for tid, vals in _markov_d.items() if "MR_Score" in vals]
+    _scores_sorted = sorted(_scores, key=lambda x: x[1], reverse=True)
+    _rank_by_tid = {tid: rk for rk, (tid, _) in enumerate(_scores_sorted, start=1)}
+
+    for _tid in _wr_all_tids:
+        _feat = _snap_d.get(_tid, {})
+        _model = _markov_d.get(_tid, {})
+        _wr_daily_rows.append({
+            "Season": 2026,
+            "DayNum": int(_dn),
+            "TeamID": int(_tid),
+            "TeamName": _tid2name.get(_tid, str(_tid)),
+            "MR_Rank": int(_rank_by_tid[_tid]) if _tid in _rank_by_tid else None,
+            "MR_Score": round(float(_model["MR_Score"]), 4) if "MR_Score" in _model else None,
+            "Exp_Wins_pct": round(float(_model["Exp_Wins_pct"]), 2) if "Exp_Wins_pct" in _model else None,
+            "Elo": round(float(_feat.get("elo_last")), 1) if pd.notna(_feat.get("elo_last")) else None,
+            "Elo_Trend": round(float(_feat.get("elo_trend")), 4) if pd.notna(_feat.get("elo_trend")) else None,
+            "Elo_SOS": round(float(_feat.get("elo_sos")), 1) if pd.notna(_feat.get("elo_sos")) else None,
+            "Rank_POM": int(_feat.get("POM")) if pd.notna(_feat.get("POM")) else None,
+            "Rank_MAS": int(_feat.get("MAS")) if pd.notna(_feat.get("MAS")) else None,
+            "Rank_MOR": int(_feat.get("MOR")) if pd.notna(_feat.get("MOR")) else None,
+            "Rank_WLK": int(_feat.get("WLK")) if pd.notna(_feat.get("WLK")) else None,
+            "Rank_BIH": int(_feat.get("BIH")) if pd.notna(_feat.get("BIH")) else None,
+            "Rank_NET": int(_feat.get("NET")) if pd.notna(_feat.get("NET")) else None,
+            "Net_Rtg": round(float(_feat.get("avg_net_rtg")), 2) if pd.notna(_feat.get("avg_net_rtg")) else None,
+            "Off_Rtg": round(float(_feat.get("avg_off_rtg")), 2) if pd.notna(_feat.get("avg_off_rtg")) else None,
+            "Def_Rtg": round(float(_feat.get("avg_def_rtg")), 2) if pd.notna(_feat.get("avg_def_rtg")) else None,
+            "Last5_Margin": round(float(_feat.get("last5_Margin")), 1) if pd.notna(_feat.get("last5_Margin")) else None,
+        })
+
+    if _i % 7 == 0 or _i == len(_wr_daily_daynums):
+        print(f"  DayNum {_dn:>3}: wrote {_i}/{len(_wr_daily_daynums)} days")
+
+_df_wr_daily = pd.DataFrame(_wr_daily_rows)
+_df_wr_daily = _df_wr_daily.sort_values(["DayNum", "MR_Rank", "TeamName"], na_position="last").reset_index(drop=True)
+
+_OUT_WR_DAILY = BASE / "model_rankings_daily_2026.csv"
+_df_wr_daily.to_csv(_OUT_WR_DAILY, index=False)
+print(
+    f"Saved -> {_OUT_WR_DAILY}  "
+    f"({len(_df_wr_daily)} rows = {len(_wr_daily_daynums)} days Ã— {len(_wr_all_tids)} teams)"
+)
+
+# %%
+# ---------------------------------------------------------------------------
 # ALL-D1 MATCHUP PREDICTOR
 # Win probabilities for all C(365,2)=66,430 D1 pairs × 3 locations.
 # Uses identical feature construction + predict pattern as the bracket sim.
@@ -3484,6 +3559,7 @@ _push_files = [
     "conf_team_stats_2026.xlsx",
     "conf_matchup_probs_2026.xlsx",
     "model_rankings_2026.xlsx",
+    "model_rankings_daily_2026.csv",
 ]
 
 print("\n" + "=" * 60)
@@ -3518,6 +3594,7 @@ try:
         "src/conferences/data/confTeams.ts",
         "src/conferences/data/confMatchupProbs.ts",
         "src/rankings/data/d1Rankings.ts",
+        "src/rankings/data/rankingsTrend2026.ts",
     ]
     _ts_existing = [f for f in _ts_files if (BASE / f).exists()]
     if _ts_existing:
