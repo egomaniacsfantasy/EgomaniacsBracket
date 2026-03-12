@@ -10,6 +10,7 @@ interface BracketWrappedProps {
 }
 
 const TOTAL_SCREENS = 5;
+const AUTO_ADVANCE_MS = 5000;
 
 const ROUND_LABELS: Record<string, string> = {
   R64: "R64",
@@ -24,8 +25,23 @@ export function BracketWrapped({ data, onClose }: BracketWrappedProps) {
   const [screen, setScreen] = useState(0);
   const [linkCopied, setLinkCopied] = useState(false);
   const hasTrackedRef = useRef<Set<number>>(new Set());
+  const frameRef = useRef<HTMLDivElement>(null);
+  const [scale, setScale] = useState(1);
 
   const { identity, boldestPick, rippleEffect, weakestLink, champion, finalFour } = data;
+
+  // Compute scale factor for card frame
+  useEffect(() => {
+    const updateScale = () => {
+      if (frameRef.current) {
+        const frameHeight = frameRef.current.clientHeight;
+        setScale(frameHeight / 640);
+      }
+    };
+    updateScale();
+    window.addEventListener("resize", updateScale);
+    return () => window.removeEventListener("resize", updateScale);
+  }, []);
 
   // Collect logos for ghosted background
   const ghostLogos = [
@@ -46,6 +62,15 @@ export function BracketWrapped({ data, onClose }: BracketWrappedProps) {
       });
     }
   }, [screen, identity.chaosLabel]);
+
+  // Auto-advance timer (stops on screen 5)
+  useEffect(() => {
+    if (screen >= TOTAL_SCREENS - 1) return;
+    const timer = setTimeout(() => {
+      setScreen((s) => s + 1);
+    }, AUTO_ADVANCE_MS);
+    return () => clearTimeout(timer);
+  }, [screen]);
 
   // Escape key
   useEffect(() => {
@@ -109,10 +134,10 @@ export function BracketWrapped({ data, onClose }: BracketWrappedProps) {
     setTimeout(() => setLinkCopied(false), 2000);
   };
 
-  const handleSaveCard = async () => {
+  const handleShareCard = async () => {
     try {
       await exportWrappedCard(data);
-      trackEvent("wrapped_card_saved", {
+      trackEvent("wrapped_card_shared", {
         chaosLabel: identity.chaosLabel,
         champion: champion.teamName,
       });
@@ -135,60 +160,73 @@ export function BracketWrapped({ data, onClose }: BracketWrappedProps) {
         ✕
       </button>
 
-      {/* Progress dots */}
-      <div className="bw-dots">
-        {Array.from({ length: TOTAL_SCREENS }).map((_, i) => (
-          <span key={i} className={`bw-dot ${i === screen ? "bw-dot--active" : ""}`} />
-        ))}
-      </div>
-
-      {/* Ghosted background logos */}
-      <div className="bw-ghosts" aria-hidden="true">
-        {ghostLogos.map((url, i) => (
-          <img
-            key={`ghost-${i}`}
-            src={url}
-            alt=""
-            className="bw-ghost-logo"
-            style={{
-              width: [200, 140, 80, 180, 100, 120][i % 6],
-              top: `${[8, 30, 60, 15, 70, 45][i % 6]}%`,
-              left: `${[72, 3, 78, 45, 10, 65][i % 6]}%`,
-              transform: `rotate(${[-15, 10, -6, 18, -10, 8][i % 6]}deg)`,
-              opacity: [0.04, 0.035, 0.055, 0.04, 0.05, 0.03][i % 6],
-            }}
-          />
-        ))}
-      </div>
-
-      {/* Screen content — key forces remount for animation */}
-      <div className="bw-screen" key={screen}>
-        {screen === 0 && <Screen1Identity identity={identity} />}
-        {screen === 1 && <Screen2Boldest boldestPick={boldestPick} />}
-        {screen === 2 && <Screen3Ripple rippleEffect={rippleEffect} />}
-        {screen === 3 && <Screen4Weakest weakestLink={weakestLink} />}
-        {screen === 4 && (
-          <div className="bw-screen5-wrap">
-            <BracketWrappedCard data={data} />
-            <div className="bw-screen5-actions" onClick={(e) => e.stopPropagation()}>
-              <button className="bw-btn bw-btn--primary" onClick={handleSaveCard}>
-                Save Card
-              </button>
-              <button className="bw-btn bw-btn--secondary" onClick={handleCopyLink}>
-                {linkCopied ? "Copied!" : "Copy Link"}
-              </button>
-            </div>
+      {/* Card frame */}
+      <div className="bw-card-frame" ref={frameRef}>
+        <div
+          className="bw-card-frame-inner"
+          style={{ transform: `scale(${scale})`, transformOrigin: "top center", width: 360, height: 640 }}
+        >
+          {/* Ghosted background logos */}
+          <div className="bw-ghosts" aria-hidden="true">
+            {ghostLogos.map((url, i) => (
+              <img
+                key={`ghost-${i}`}
+                src={url}
+                alt=""
+                className="bw-ghost-logo"
+                style={{
+                  width: [200, 140, 80, 180, 100, 120][i % 6],
+                  top: `${[8, 30, 60, 15, 70, 45][i % 6]}%`,
+                  left: `${[72, 3, 78, 45, 10, 65][i % 6]}%`,
+                  transform: `rotate(${[-15, 10, -6, 18, -10, 8][i % 6]}deg)`,
+                  opacity: [0.04, 0.035, 0.055, 0.04, 0.05, 0.03][i % 6],
+                }}
+              />
+            ))}
           </div>
-        )}
+
+          {/* Screen content — key forces remount for animation */}
+          <div className="bw-screen" key={screen}>
+            {screen === 0 && <Screen1Identity identity={identity} />}
+            {screen === 1 && <Screen2Boldest boldestPick={boldestPick} />}
+            {screen === 2 && <Screen3Ripple rippleEffect={rippleEffect} />}
+            {screen === 3 && <Screen4Weakest weakestLink={weakestLink} />}
+            {screen === 4 && (
+              <div className="bw-screen5-wrap">
+                <BracketWrappedCard data={data} />
+                <div className="bw-screen5-actions" onClick={(e) => e.stopPropagation()}>
+                  <button className="bw-btn bw-btn--primary" onClick={handleShareCard}>
+                    Share Card 📤
+                  </button>
+                  <button className="bw-btn bw-btn--secondary" onClick={handleCopyLink}>
+                    {linkCopied ? "Copied!" : "Copy Link"}
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Footer (screens 1-4 only) */}
+          {screen < 4 ? (
+            <div className="bw-footer">
+              <span className="bw-footer-url">bracket.oddsgods.net</span>
+              <span className="bw-footer-promo">💰 Best bracket wins $100 💰</span>
+            </div>
+          ) : null}
+        </div>
       </div>
 
-      {/* Footer (screens 1-4 only) */}
-      {screen < 4 ? (
-        <div className="bw-footer">
-          <span className="bw-footer-url">bracket.oddsgods.net</span>
-          <span className="bw-footer-promo">💰 Best bracket wins $100 💰</span>
-        </div>
-      ) : null}
+      {/* Progress bar */}
+      <div className="bw-progress-bar">
+        {Array.from({ length: TOTAL_SCREENS }).map((_, i) => (
+          <div key={i} className="bw-progress-segment">
+            <div
+              className={`bw-progress-fill ${i < screen ? "bw-progress-complete" : ""} ${i === screen ? "bw-progress-active" : ""}`}
+              style={i === screen && screen < TOTAL_SCREENS - 1 ? { animationDuration: `${AUTO_ADVANCE_MS}ms` } : undefined}
+            />
+          </div>
+        ))}
+      </div>
     </div>
   );
 }

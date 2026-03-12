@@ -6999,44 +6999,51 @@ body {
 .save-cta-mobile {
   position: fixed;
   bottom: calc(56px + env(safe-area-inset-bottom, 0px) + 8px);
-  left: 16px;
-  right: 16px;
+  left: 50%;
+  transform: translateX(-50%);
   z-index: 100;
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
   animation: save-cta-slide-up 300ms ease-out;
 }
 
 @keyframes save-cta-slide-up {
-  from { opacity: 0; transform: translateY(16px); }
-  to { opacity: 1; transform: translateY(0); }
+  from { opacity: 0; transform: translateX(-50%) translateY(16px); }
+  to { opacity: 1; transform: translateX(-50%) translateY(0); }
 }
 
 .save-cta-btn--mobile {
-  flex: 1;
-  padding: 14px 20px;
-  border-radius: 10px;
-  border: none;
-  background: rgba(184, 125, 24, 0.90);
-  color: #0a0806;
+  padding: 10px 24px;
+  border-radius: 100px;
+  border: 1px solid rgba(184, 125, 24, 0.4);
+  background: rgba(14, 12, 9, 0.85);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  color: #ffc857;
   font-family: var(--font-mono);
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 700;
   letter-spacing: 0.03em;
   cursor: pointer;
-  transition: filter 150ms;
+  transition: background 150ms, border-color 150ms;
+  white-space: nowrap;
 }
-.save-cta-btn--mobile:hover { filter: brightness(1.1); }
+.save-cta-btn--mobile:hover {
+  background: rgba(184, 125, 24, 0.2);
+  border-color: rgba(184, 125, 24, 0.6);
+}
 
 .save-cta-mobile-dismiss {
-  width: 36px;
-  height: 36px;
+  width: 28px;
+  height: 28px;
   border-radius: 50%;
-  border: 1px solid rgba(255, 255, 255, 0.12);
+  border: 1px solid rgba(255, 255, 255, 0.1);
   background: rgba(14, 12, 9, 0.85);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
   color: var(--text-tertiary);
-  font-size: 12px;
+  font-size: 11px;
   cursor: pointer;
   display: flex;
   align-items: center;
@@ -15158,12 +15165,38 @@ body.walkthrough-active .odds-value--changed::after {
   position: fixed;
   inset: 0;
   z-index: 10000;
-  background: #080603;
+  background: #050403;
   display: flex;
-  flex-direction: column;
   align-items: center;
-  overflow-y: auto;
-  -webkit-overflow-scrolling: touch;
+  justify-content: center;
+}
+
+/* ── Card frame ── */
+.bw-card-frame {
+  position: relative;
+  overflow: hidden;
+}
+.bw-card-frame-inner {
+  position: relative;
+}
+@media (min-width: 768px) {
+  .bw-card-frame {
+    height: 85vh;
+    width: calc(85vh * 9 / 16);
+    max-width: 520px;
+    max-height: 920px;
+    border-radius: 24px;
+    border: 1px solid rgba(184,125,24,0.2);
+    box-shadow: 0 0 120px rgba(184,125,24,0.06), 0 40px 100px rgba(0,0,0,0.5);
+  }
+}
+@media (max-width: 767px) {
+  .bw-card-frame {
+    width: 100vw;
+    height: 100vh;
+    height: 100dvh;
+    border-radius: 0;
+  }
 }
 
 .bw-close {
@@ -15187,12 +15220,7 @@ body.walkthrough-active .odds-value--changed::after {
 .bw-close:hover { color: #f0e6d0; border-color: rgba(240,230,208,0.3); }
 
 .bw-dots {
-  position: fixed;
-  top: 20px;
-  right: 60px;
-  z-index: 10001;
-  display: flex;
-  gap: 6px;
+  display: none; /* replaced by .bw-progress-bar */
 }
 .bw-dot {
   width: 6px;
@@ -15222,16 +15250,16 @@ body.walkthrough-active .odds-value--changed::after {
 
 /* ── Screen content ── */
 .bw-screen {
-  flex: 1;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   width: 100%;
-  max-width: 420px;
-  padding: 60px 20px 80px;
+  height: 100%;
+  padding: 40px 20px 60px;
   position: relative;
   z-index: 1;
+  box-sizing: border-box;
 }
 
 @media (prefers-reduced-motion: no-preference) {
@@ -15249,7 +15277,7 @@ body.walkthrough-active .odds-value--changed::after {
 
 /* ── Footer ── */
 .bw-footer {
-  position: fixed;
+  position: absolute;
   bottom: 0;
   left: 0;
   right: 0;
@@ -15257,7 +15285,7 @@ body.walkthrough-active .odds-value--changed::after {
   display: flex;
   flex-direction: column;
   align-items: center;
-  padding: 12px 0 max(12px, env(safe-area-inset-bottom, 0));
+  padding: 12px 0;
   background: linear-gradient(transparent, #080603 40%);
 }
 .bw-footer-url {
@@ -15699,11 +15727,20 @@ body.walkthrough-active .odds-value--changed::after {
   display: flex;
   flex-direction: column;
   justify-content: center;
-  gap: 8px;
+  gap: 0;
   padding: 14px;
   flex: 1;
   min-height: 0;
 }
+.bw-card-topbar { margin-bottom: 10px; }
+.bw-card-champ-row { margin-bottom: 12px; }
+.bw-card-chaos-strip { margin-bottom: 10px; }
+.bw-card-f4-strip { margin-bottom: 10px; }
+.bw-card-bracket-line { margin-bottom: 12px; }
+.bw-card-highlights { margin-bottom: 10px; }
+.bw-card-hl { margin-bottom: 4px; }
+.bw-card-hl:last-child { margin-bottom: 0; }
+.bw-card-roast { margin-bottom: 8px; }
 
 /* Top bar */
 .bw-card-topbar {
@@ -15885,10 +15922,13 @@ body.walkthrough-active .odds-value--changed::after {
 }
 .bw-card-bracket-line-number {
   font-family: "Instrument Serif", serif;
-  font-size: 42px;
+  font-size: 36px;
   color: #ffc857;
   text-shadow: 0 0 60px rgba(255,200,87,0.2), 0 0 120px rgba(184,125,24,0.1);
   line-height: 1.1;
+  width: 100%;
+  text-align: center;
+  letter-spacing: -0.5px;
 }
 .bw-card-bracket-line-sub {
   font-family: "Instrument Serif", serif;
@@ -16014,7 +16054,7 @@ body.walkthrough-active .odds-value--changed::after {
   background: linear-gradient(135deg, rgba(184,125,24,0.06) 0%, rgba(184,125,24,0.02) 100%);
   border-radius: 8px;
   border: 1px solid rgba(184,125,24,0.1);
-  padding: 7px 10px;
+  padding: 9px 12px;
 }
 .bw-card-roast-quote {
   position: absolute;
@@ -16088,6 +16128,55 @@ body.walkthrough-active .odds-value--changed::after {
 }
 @media (prefers-reduced-motion: no-preference) {
   .completion-btn-wrapped { animation: bw-pulseGlow 2s ease-in-out infinite; }
+}
+
+/* ── Progress bar ── */
+.bw-progress-bar {
+  display: flex;
+  gap: 4px;
+  padding: 0 20px;
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 100%;
+  max-width: 520px;
+  z-index: 10;
+  box-sizing: border-box;
+}
+@media (min-width: 768px) {
+  .bw-progress-bar {
+    bottom: 16px;
+  }
+}
+@media (max-width: 767px) {
+  .bw-progress-bar {
+    top: 8px;
+    padding: 0 12px;
+    max-width: 100%;
+  }
+}
+.bw-progress-segment {
+  flex: 1;
+  height: 3px;
+  background: rgba(240,230,208,0.12);
+  border-radius: 2px;
+  overflow: hidden;
+}
+.bw-progress-fill {
+  height: 100%;
+  width: 0%;
+  border-radius: 2px;
+  background: rgba(184,125,24,0.8);
+}
+.bw-progress-fill.bw-progress-complete {
+  width: 100%;
+}
+.bw-progress-fill.bw-progress-active {
+  animation: bw-progressFill linear forwards;
+}
+@keyframes bw-progressFill {
+  from { width: 0%; }
+  to { width: 100%; }
 }
 
 /* ── Mobile: hide tab bar when wrapped is open ── */

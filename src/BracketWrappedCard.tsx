@@ -232,7 +232,7 @@ export function BracketWrappedCard({
         <div className="bw-card-actions">
           {onSaveCard ? (
             <button className="bw-btn bw-btn--primary" onClick={onSaveCard}>
-              Save Card
+              Share Card 📤
             </button>
           ) : null}
           <button className="bw-btn bw-btn--secondary" onClick={handleCopyLink}>

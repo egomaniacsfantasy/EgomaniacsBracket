@@ -181,37 +181,63 @@ export async function exportWrappedCard(data: WrappedData): Promise<void> {
 
   renderCard(ctx, data, logos);
 
-  canvas.toBlob(
-    async (blob) => {
-      if (!blob) return;
+  return new Promise<void>((resolve, reject) => {
+    canvas.toBlob(
+      async (blob) => {
+        if (!blob) {
+          reject(new Error("Failed to create blob"));
+          return;
+        }
 
-      // Try native share (mobile)
-      if (navigator.share && navigator.canShare) {
         const file = new File([blob], "bracket-wrapped.png", { type: "image/png" });
-        const shareData = { files: [file] };
-        if (navigator.canShare(shareData)) {
+
+        // Try native share first (works on iOS, Android, macOS Safari, Chrome)
+        if (navigator.share) {
           try {
-            await navigator.share(shareData);
+            await navigator.share({
+              files: [file],
+              title: "My Bracket Wrapped",
+              text: "Check out my March Madness bracket on bracket.oddsgods.net",
+            });
+            resolve();
             return;
-          } catch {
-            // User cancelled or share failed — fall through to download
+          } catch (e) {
+            if ((e as Error).name === "AbortError") {
+              resolve();
+              return;
+            }
+            // Share not supported for files — fall through
           }
         }
-      }
 
-      // Fallback: download
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = "bracket-wrapped.png";
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
-    },
-    "image/png",
-    1.0
-  );
+        // Fallback: try clipboard
+        if (navigator.clipboard && typeof ClipboardItem !== "undefined") {
+          try {
+            await navigator.clipboard.write([
+              new ClipboardItem({ "image/png": blob }),
+            ]);
+            resolve();
+            return;
+          } catch {
+            // Fall through to download
+          }
+        }
+
+        // Final fallback: download
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = "bracket-wrapped.png";
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+        resolve();
+      },
+      "image/png",
+      1.0
+    );
+  });
 }
 
 // ---------------------------------------------------------------------------
