@@ -15175,9 +15175,13 @@ body.walkthrough-active .odds-value--changed::after {
 .bw-card-frame {
   position: relative;
   overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 .bw-card-frame-inner {
   position: relative;
+  flex-shrink: 0;
 }
 @media (min-width: 768px) {
   .bw-card-frame {
@@ -15196,6 +15200,10 @@ body.walkthrough-active .odds-value--changed::after {
     height: 100vh;
     height: 100dvh;
     border-radius: 0;
+  }
+  .bw-card-frame-inner {
+    width: 100%;
+    height: 100%;
   }
 }
 
@@ -15256,7 +15264,7 @@ body.walkthrough-active .odds-value--changed::after {
   justify-content: center;
   width: 100%;
   height: 100%;
-  padding: 40px 20px 60px;
+  padding: 48px 20px 48px;
   position: relative;
   z-index: 1;
   box-sizing: border-box;
@@ -15272,6 +15280,7 @@ body.walkthrough-active .odds-value--changed::after {
   align-items: center;
   gap: 12px;
   text-align: center;
+  margin: auto 0;
   width: 100%;
 }
 
@@ -15689,6 +15698,7 @@ body.walkthrough-active .odds-value--changed::after {
   align-items: center;
   width: 100%;
   gap: 16px;
+  margin: auto 0;
 }
 .bw-screen5-actions {
   display: flex;
@@ -15738,7 +15748,7 @@ body.walkthrough-active .odds-value--changed::after {
 .bw-card-f4-strip { margin-bottom: 10px; }
 .bw-card-bracket-line { margin-bottom: 12px; }
 .bw-card-highlights { margin-bottom: 10px; }
-.bw-card-hl { margin-bottom: 4px; }
+.bw-card-hl { margin-bottom: 5px; }
 .bw-card-hl:last-child { margin-bottom: 0; }
 .bw-card-roast { margin-bottom: 8px; }
 

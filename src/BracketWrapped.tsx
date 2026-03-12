@@ -30,12 +30,18 @@ export function BracketWrapped({ data, onClose }: BracketWrappedProps) {
 
   const { identity, boldestPick, rippleEffect, weakestLink, champion, finalFour } = data;
 
-  // Compute scale factor for card frame
+  // Compute scale factor for card frame (desktop only — mobile uses natural sizing)
+  const isMobile = typeof window !== "undefined" && window.innerWidth < 768;
   useEffect(() => {
     const updateScale = () => {
+      if (window.innerWidth < 768) {
+        setScale(1);
+        return;
+      }
       if (frameRef.current) {
-        const frameHeight = frameRef.current.clientHeight;
-        setScale(frameHeight / 640);
+        const fw = frameRef.current.clientWidth;
+        const fh = frameRef.current.clientHeight;
+        setScale(Math.min(fw / 360, fh / 640));
       }
     };
     updateScale();
@@ -164,7 +170,7 @@ export function BracketWrapped({ data, onClose }: BracketWrappedProps) {
       <div className="bw-card-frame" ref={frameRef}>
         <div
           className="bw-card-frame-inner"
-          style={{ transform: `scale(${scale})`, transformOrigin: "top center", width: 360, height: 640 }}
+          style={isMobile ? undefined : { transform: `scale(${scale})`, transformOrigin: "center center", width: 360, height: 640 }}
         >
           {/* Ghosted background logos */}
           <div className="bw-ghosts" aria-hidden="true">
