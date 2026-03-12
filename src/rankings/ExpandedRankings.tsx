@@ -209,12 +209,19 @@ export function ExpandedRankings({
     }
     const polyline = polylinePoints.join(" ");
 
-    const xTickCount = Math.min(6, RANKING_TREND_DAYNUMS.length);
-    const xTicks = Array.from({ length: xTickCount }, (_, idx) => {
-      const pos = xTickCount === 1 ? 0 : idx / (xTickCount - 1);
-      const daynum = Math.round(xMin + pos * xRange);
-      return { x: xFor(daynum), label: `${daynum}` };
-    });
+    const xTickStep = xRange > 120 ? 20 : 10;
+    const firstTick = Math.ceil(xMin / xTickStep) * xTickStep;
+    const xTickValues: number[] = [];
+    for (let daynum = firstTick; daynum <= xMax; daynum += xTickStep) {
+      xTickValues.push(daynum);
+    }
+    if (xTickValues.length === 0) {
+      xTickValues.push(xMin);
+    }
+    const xTicks = xTickValues.map((daynum) => ({
+      x: xFor(daynum),
+      label: `${daynum}`,
+    }));
 
     const yTicks = (() => {
       if (rankLike) {
