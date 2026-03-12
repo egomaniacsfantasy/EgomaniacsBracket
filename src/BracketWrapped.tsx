@@ -7,7 +7,6 @@ import { exportWrappedCard } from "./lib/wrappedExport";
 interface BracketWrappedProps {
   data: WrappedData;
   onClose: () => void;
-  onShareCard: () => void;
 }
 
 const TOTAL_SCREENS = 5;
@@ -21,12 +20,12 @@ const ROUND_LABELS: Record<string, string> = {
   CHAMP: "CHAMPIONSHIP",
 };
 
-export function BracketWrapped({ data, onClose, onShareCard }: BracketWrappedProps) {
+export function BracketWrapped({ data, onClose }: BracketWrappedProps) {
   const [screen, setScreen] = useState(0);
   const [linkCopied, setLinkCopied] = useState(false);
   const hasTrackedRef = useRef<Set<number>>(new Set());
 
-  const { identity, boldestPick, rippleEffect, weakestLink, champion, finalFour, perfectBracketLine, roastText } = data;
+  const { identity, boldestPick, rippleEffect, weakestLink, champion, finalFour } = data;
 
   // Collect logos for ghosted background
   const ghostLogos = [
@@ -164,7 +163,7 @@ export function BracketWrapped({ data, onClose, onShareCard }: BracketWrappedPro
 
       {/* Screen content — key forces remount for animation */}
       <div className="bw-screen" key={screen}>
-        {screen === 0 && <Screen1Identity identity={identity} roastText={roastText} />}
+        {screen === 0 && <Screen1Identity identity={identity} />}
         {screen === 1 && <Screen2Boldest boldestPick={boldestPick} />}
         {screen === 2 && <Screen3Ripple rippleEffect={rippleEffect} />}
         {screen === 3 && <Screen4Weakest weakestLink={weakestLink} />}
@@ -200,10 +199,8 @@ export function BracketWrapped({ data, onClose, onShareCard }: BracketWrappedPro
 
 function Screen1Identity({
   identity,
-  roastText,
 }: {
   identity: WrappedData["identity"];
-  roastText: string;
 }) {
   return (
     <div className="bw-content bw-content--identity">

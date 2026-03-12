@@ -4353,7 +4353,6 @@ function App() {
         <BracketWrapped
           data={wrappedData}
           onClose={() => { setShowWrappedFlow(false); setWrappedSeen(true); }}
-          onShareCard={() => { setShowWrappedFlow(false); setWrappedSeen(true); }}
         />
       ) : null}
 
