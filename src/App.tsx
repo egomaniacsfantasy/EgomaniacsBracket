@@ -6909,18 +6909,23 @@ function showdownTeamName(name: string): string {
 function AdaptiveTeamLabel({ className, fullName }: { className: string; fullName: string }) {
   const ref = useRef<HTMLSpanElement>(null);
   const [label, setLabel] = useState(fullName);
-  const [prevLabel, setPrevLabel] = useState(fullName);
-  const [switching, setSwitching] = useState(false);
   const labelRef = useRef(fullName);
-  const switchTimerRef = useRef<number | null>(null);
+  const rafRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    labelRef.current = fullName;
+    setLabel(fullName);
+  }, [fullName]);
 
   useLayoutEffect(() => {
     const node = ref.current;
     if (!node) return undefined;
 
+    const SWITCH_HYSTERESIS_PX = 10;
+    const canvas = document.createElement("canvas");
+    const ctx = canvas.getContext("2d");
+
     const measure = (text: string, font: string): number => {
-      const canvas = document.createElement("canvas");
-      const ctx = canvas.getContext("2d");
       if (!ctx) return text.length * 8;
       ctx.font = font;
       return ctx.measureText(text).width;
@@ -6932,49 +6937,47 @@ function AdaptiveTeamLabel({ className, fullName }: { className: string; fullNam
       const style = window.getComputedStyle(el);
       const font = `${style.fontWeight} ${style.fontSize} ${style.fontFamily}`;
       const maxWidth = (el.parentElement as HTMLElement | null)?.clientWidth ?? el.clientWidth;
+      if (maxWidth <= 0) return;
       const full = fullName;
       const abbreviated = abbreviationForTeam(fullName);
       const fullWidth = measure(full, font);
-      const abbrevWidth = measure(abbreviated, font);
 
-      let next = full;
-      if (fullWidth > maxWidth + 1) next = abbreviated;
-      if (next === abbreviated && abbrevWidth > maxWidth + 1) {
-        // Keep full abbreviation even in tight layouts; never collapse to 1-letter initials.
+      let next = labelRef.current;
+      if (fullWidth > maxWidth + SWITCH_HYSTERESIS_PX) {
         next = abbreviated;
+      } else if (fullWidth < maxWidth - SWITCH_HYSTERESIS_PX) {
+        next = full;
       }
       if (next === labelRef.current) return;
 
-      if (switchTimerRef.current !== null) window.clearTimeout(switchTimerRef.current);
-      setPrevLabel(labelRef.current);
       labelRef.current = next;
       setLabel(next);
-      setSwitching(true);
-      switchTimerRef.current = window.setTimeout(() => setSwitching(false), 230);
     };
 
-    recalc();
-    const observer = new ResizeObserver(recalc);
+    const scheduleRecalc = () => {
+      if (rafRef.current !== null) return;
+      rafRef.current = window.requestAnimationFrame(() => {
+        rafRef.current = null;
+        recalc();
+      });
+    };
+
+    scheduleRecalc();
+    const observer = new ResizeObserver(scheduleRecalc);
     observer.observe(node);
-    window.addEventListener("resize", recalc);
+    if (node.parentElement) observer.observe(node.parentElement);
+    window.addEventListener("resize", scheduleRecalc);
 
     return () => {
       observer.disconnect();
-      window.removeEventListener("resize", recalc);
-      if (switchTimerRef.current !== null) window.clearTimeout(switchTimerRef.current);
+      window.removeEventListener("resize", scheduleRecalc);
+      if (rafRef.current !== null) window.cancelAnimationFrame(rafRef.current);
     };
   }, [fullName]);
 
   return (
-    <span ref={ref} className={`${className} adaptive-label ${switching ? "is-switching" : ""}`} title={fullName}>
-      {switching ? (
-        <>
-          <span className="adaptive-label-prev">{prevLabel}</span>
-          <span className="adaptive-label-next">{label}</span>
-        </>
-      ) : (
-        <span className="adaptive-label-current">{label}</span>
-      )}
+    <span ref={ref} className={`${className} adaptive-label`} title={fullName}>
+      <span className="adaptive-label-current">{label}</span>
     </span>
   );
 }

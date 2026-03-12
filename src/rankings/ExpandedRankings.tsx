@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { createPortal } from "react-dom";
 import type { OddsDisplayMode } from "../types";
 import { D1_TEAMS, CONF_NAME_MAP } from "./data/d1Rankings";
 import {
@@ -211,6 +212,61 @@ export function ExpandedRankings({
     return { width, height, polyline, circles, xTicks, yTicks };
   }, [metric, trendPoints]);
 
+  const trendModal = trendTeam ? (
+    <div className="rank-trend-modal-backdrop" onClick={() => setTrendTeamId(null)}>
+      <div className="rank-trend-modal" onClick={(event) => event.stopPropagation()}>
+        <div className="rank-trend-modal-head">
+          <h3>
+            {trendTeam.name} - {metric.label} Trend
+          </h3>
+          <button type="button" className="rank-trend-close" onClick={() => setTrendTeamId(null)} aria-label="Close trend modal">
+            x
+          </button>
+        </div>
+        {trendPoints.length === 0 ? (
+          <p className="rank-empty">No daily trend data available for this team/metric yet.</p>
+        ) : (
+          <div className="rank-trend-chart-wrap">
+            <svg viewBox={`0 0 ${chart.width} ${chart.height}`} className="rank-trend-chart" role="img" aria-label={`${trendTeam.name} ${metric.label} trend`}>
+              <line x1={54} y1={266} x2={744} y2={266} className="rank-chart-axis" />
+              <line x1={54} y1={16} x2={54} y2={266} className="rank-chart-axis" />
+
+              {chart.yTicks.map((tick) => (
+                <g key={`y-${tick.y.toFixed(2)}`}>
+                  <line x1={54} y1={tick.y} x2={744} y2={tick.y} className="rank-chart-grid" />
+                  <text x={46} y={tick.y + 3} className="rank-chart-label rank-chart-label--y">
+                    {tick.label}
+                  </text>
+                </g>
+              ))}
+
+              {chart.xTicks.map((tick) => (
+                <g key={`x-${tick.label}`}>
+                  <line x1={tick.x} y1={266} x2={tick.x} y2={16} className="rank-chart-grid rank-chart-grid--x" />
+                  <text x={tick.x} y={286} textAnchor="middle" className="rank-chart-label">
+                    {tick.label}
+                  </text>
+                </g>
+              ))}
+
+              <polyline points={chart.polyline} className="rank-chart-line" />
+              {chart.circles.map((point) => (
+                <circle key={`${point.daynum}-${point.value.toFixed(5)}`} cx={point.cx} cy={point.cy} r={2.8} className="rank-chart-dot">
+                  <title>
+                    Day {point.daynum}: {metric.format(point.value)}
+                  </title>
+                </circle>
+              ))}
+            </svg>
+            <div className="rank-trend-meta">
+              <span>DayNum {RANKING_TREND_DAYNUMS[0]} to {RANKING_TREND_DAYNUMS[RANKING_TREND_DAYNUMS.length - 1]}</span>
+              <span>{RANK_LIKE_METRICS.has(metric.key) ? "Lower is better for this metric." : "Higher is better for this metric."}</span>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  ) : null;
   return (
     <div className="rank-page">
       <h2 className="rank-title">D1 Team Rankings</h2>
@@ -288,61 +344,7 @@ export function ExpandedRankings({
         {sorted.length === 0 ? <p className="rank-empty">No teams match your search.</p> : null}
       </div>
 
-      {trendTeam ? (
-        <div className="rank-trend-modal-backdrop" onClick={() => setTrendTeamId(null)}>
-          <div className="rank-trend-modal" onClick={(event) => event.stopPropagation()}>
-            <div className="rank-trend-modal-head">
-              <h3>
-                {trendTeam.name} - {metric.label} Trend
-              </h3>
-              <button type="button" className="rank-trend-close" onClick={() => setTrendTeamId(null)} aria-label="Close trend modal">
-                x
-              </button>
-            </div>
-            {trendPoints.length === 0 ? (
-              <p className="rank-empty">No daily trend data available for this team/metric yet.</p>
-            ) : (
-              <div className="rank-trend-chart-wrap">
-                <svg viewBox={`0 0 ${chart.width} ${chart.height}`} className="rank-trend-chart" role="img" aria-label={`${trendTeam.name} ${metric.label} trend`}>
-                  <line x1={54} y1={266} x2={744} y2={266} className="rank-chart-axis" />
-                  <line x1={54} y1={16} x2={54} y2={266} className="rank-chart-axis" />
-
-                  {chart.yTicks.map((tick) => (
-                    <g key={`y-${tick.y.toFixed(2)}`}>
-                      <line x1={54} y1={tick.y} x2={744} y2={tick.y} className="rank-chart-grid" />
-                      <text x={46} y={tick.y + 3} className="rank-chart-label rank-chart-label--y">
-                        {tick.label}
-                      </text>
-                    </g>
-                  ))}
-
-                  {chart.xTicks.map((tick) => (
-                    <g key={`x-${tick.label}`}>
-                      <line x1={tick.x} y1={266} x2={tick.x} y2={16} className="rank-chart-grid rank-chart-grid--x" />
-                      <text x={tick.x} y={286} textAnchor="middle" className="rank-chart-label">
-                        {tick.label}
-                      </text>
-                    </g>
-                  ))}
-
-                  <polyline points={chart.polyline} className="rank-chart-line" />
-                  {chart.circles.map((point) => (
-                    <circle key={`${point.daynum}-${point.value.toFixed(5)}`} cx={point.cx} cy={point.cy} r={2.8} className="rank-chart-dot">
-                      <title>
-                        Day {point.daynum}: {metric.format(point.value)}
-                      </title>
-                    </circle>
-                  ))}
-                </svg>
-                <div className="rank-trend-meta">
-                  <span>DayNum {RANKING_TREND_DAYNUMS[0]} to {RANKING_TREND_DAYNUMS[RANKING_TREND_DAYNUMS.length - 1]}</span>
-                  <span>{RANK_LIKE_METRICS.has(metric.key) ? "Lower is better for this metric." : "Higher is better for this metric."}</span>
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
-      ) : null}
+      {trendModal && typeof document !== "undefined" ? createPortal(trendModal, document.body) : null}
     </div>
   );
 }
