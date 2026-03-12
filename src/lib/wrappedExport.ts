@@ -422,7 +422,7 @@ function renderCard(
   // STEP 1: BACKGROUND
   // ==========================================
   ctx.fillStyle = COLORS.bgDeep;
-  ctx.fillRect(0, 0, W, H);
+  ctx.fillRect(0, 0, W, 1920);
 
   // Radial gradients
   drawRadialGradient(180, 115, 234, 112, 184, 125, 24, 0.16);
