@@ -2,12 +2,13 @@ import type { WrappedData } from "./wrappedData";
 import { ordinal } from "./wrappedData";
 
 // ---------------------------------------------------------------------------
-// Canvas dimensions (Instagram Story format)
+// Canvas dimensions
 // ---------------------------------------------------------------------------
 const W = 1080;
-const H = 1920;
 // Scale factor: mockup designed at ~360x640, canvas is 3x
 const S = 3;
+// Vertical padding (mockup units) above and below content
+const V_PAD = 30;
 
 // ---------------------------------------------------------------------------
 // Colors (hardcoded — no CSS variable access in Canvas)
@@ -195,15 +196,23 @@ export async function exportWrappedCard(data: WrappedData): Promise<void> {
 
   const canvas = document.createElement("canvas");
   canvas.width = W;
-  canvas.height = H;
+  // Temporary height — renderCard will calculate the real height
+  canvas.height = 1920;
   const ctx = canvas.getContext("2d")!;
 
   const logos = await preloadLogos(data);
 
-  renderCard(ctx, data, logos);
+  const contentHeight = renderCard(ctx, data, logos);
+
+  // Trim canvas to actual content height
+  const trimmedCanvas = document.createElement("canvas");
+  trimmedCanvas.width = W;
+  trimmedCanvas.height = contentHeight;
+  const trimCtx = trimmedCanvas.getContext("2d")!;
+  trimCtx.drawImage(canvas, 0, 0);
 
   return new Promise<void>((resolve, reject) => {
-    canvas.toBlob(
+    trimmedCanvas.toBlob(
       async (blob) => {
         if (!blob) {
           reject(new Error("Failed to create blob"));
@@ -265,11 +274,12 @@ export async function exportWrappedCard(data: WrappedData): Promise<void> {
 // Canvas rendering
 // ---------------------------------------------------------------------------
 
+/** Renders the card and returns the total canvas height in pixels needed. */
 function renderCard(
   ctx: CanvasRenderingContext2D,
   data: WrappedData,
   logos: PreloadedLogos
-): void {
+): number {
   const s = (v: number) => v * S;
 
   const setFont = (size: number, weight: number | string, family: string, style = "") => {
@@ -406,7 +416,7 @@ function renderCard(
   const totalH = topBarH + gap1 + champH + gap2 + chaosH + gap3 + f4H + gap4
     + blTotalH + gap5 + highlightsH + gap6 + roastH + gap7 + footerH;
 
-  const startY = Math.max(30, Math.floor((640 - totalH) / 2));
+  const startY = V_PAD;
 
   // ==========================================
   // STEP 1: BACKGROUND
@@ -855,4 +865,7 @@ function renderCard(
   setFont(11, 700, SANS);
   ctx.fillStyle = COLORS.amberText;
   ctx.fillText("\uD83D\uDCB0 Best bracket wins $100 \uD83D\uDCB0", s(180), s(Y + 20));
+
+  // Return total pixel height: content ends at Y + footerH, plus bottom padding
+  return s(startY + totalH + V_PAD);
 }

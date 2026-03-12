@@ -15896,13 +15896,14 @@ body.walkthrough-active .odds-value--changed::after {
   margin-right: 4px;
 }
 .bw-card-f4-pill {
-  display: flex;
+  display: inline-flex;
   align-items: center;
   gap: 3px;
   background: rgba(255,255,255,0.02);
   border: 1px solid rgba(240,230,208,0.05);
   border-radius: 4px;
   padding: 2px 5px;
+  flex: 0 0 auto;
 }
 .bw-card-f4-logo {
   width: 16px;
@@ -15943,6 +15944,9 @@ body.walkthrough-active .odds-value--changed::after {
   width: 100%;
   text-align: center;
   letter-spacing: -0.5px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 .bw-card-bracket-line-sub {
   font-family: "Instrument Serif", serif;
