@@ -1497,6 +1497,25 @@ function App() {
 
   useEffect(() => { setWrappedSeen(false); }, [lockedPicks]);
 
+  // Detect bracket completion for Instant Sim / Staggered Sim paths
+  const prevPickCountRef = useRef(0);
+  const mountTimeRef = useRef(Date.now());
+  useEffect(() => {
+    const prev = prevPickCountRef.current;
+    prevPickCountRef.current = pickCount;
+    if (pickCount >= nonFFGameCount && prev < nonFFGameCount && Date.now() - mountTimeRef.current > 1000) {
+      const champGame = games.find((g) => g.round === "CHAMP");
+      const champId = champGame?.winnerId;
+      const champName = champId ? teamsById.get(champId)?.name ?? "Your champion" : "Your champion";
+      const completedChaos = computeChaosScoreFromGames(games);
+      const cLabel = getChaosLabel(completedChaos, URL_EXPECTED_GAME_COUNT) ?? { label: "Chalk", emoji: "📋" };
+      setTimeout(() => {
+        setCompletionCelebrationData({ championName: champName, chaosLabel: cLabel.label, chaosEmoji: cLabel.emoji });
+        setShowCompletionCelebration(true);
+      }, 800);
+    }
+  }, [pickCount, nonFFGameCount, games]);
+
   const applyCustomProbability = (gameId: string, customProbA: number | null) => {
     setCustomProbByGame((prev) => {
       const next = { ...prev };
