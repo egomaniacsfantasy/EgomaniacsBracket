@@ -12782,8 +12782,30 @@ body.walkthrough-active .odds-value--changed::after {
   border-color: rgba(240 192 64 / 0.5);
 }
 
-.mp-selector-name {
+.mp-selector-logo {
+  width: 20px;
+  height: 20px;
+  border-radius: 4px;
+  object-fit: contain;
+  flex: 0 0 20px;
+}
+
+.mp-selector-copy {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
   flex: 1;
+}
+
+.mp-selector-name {
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.mp-selector-copy .mp-selector-name {
   font-weight: 600;
 }
 
@@ -12856,12 +12878,29 @@ body.walkthrough-active .odds-value--changed::after {
   background: rgba(240 192 64 / 0.15);
 }
 
-.mp-dropdown-item-name {
+.mp-dropdown-logo {
+  width: 18px;
+  height: 18px;
+  border-radius: 4px;
+  object-fit: contain;
+  flex: 0 0 18px;
+}
+
+.mp-dropdown-item-copy {
+  min-width: 0;
   flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.mp-dropdown-item-name {
+  font-size: 0.9rem;
+  line-height: 1.2;
 }
 
 .mp-dropdown-item-conf {
-  font-size: 0.73rem;
+  font-size: 0.72rem;
   opacity: 0.5;
 }
 
@@ -12907,7 +12946,116 @@ body.walkthrough-active .odds-value--changed::after {
   color: #f0c040;
 }
 
-/* Probability bar */
+/* Probability summary */
+
+.mp-prob-summary {
+  background: rgba(255 255 255 / 0.04);
+  border: 1px solid rgba(255 255 255 / 0.1);
+  border-radius: 10px;
+  padding: 18px 20px;
+  margin-bottom: 28px;
+}
+
+.mp-prob-team {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  padding: 6px 0;
+}
+
+.mp-prob-team--fav .mp-prob-team-name {
+  color: #f0c040;
+}
+
+.mp-prob-team-main {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.mp-prob-logo {
+  width: 22px;
+  height: 22px;
+  border-radius: 4px;
+  object-fit: contain;
+  flex: 0 0 22px;
+}
+
+.mp-prob-copy {
+  min-width: 0;
+}
+
+.mp-prob-team-name {
+  font-size: 1.02rem;
+  font-weight: 700;
+  line-height: 1.1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.mp-prob-team-conf {
+  font-size: 0.7rem;
+  opacity: 0.58;
+  letter-spacing: 0.04em;
+  margin-top: 2px;
+}
+
+.mp-prob-team-odds {
+  display: flex;
+  gap: 10px;
+  align-items: baseline;
+  font-size: 1rem;
+  font-weight: 700;
+  flex: 0 0 auto;
+}
+
+.mp-prob-team-pct {
+  font-size: 0.82rem;
+  opacity: 0.74;
+}
+
+.mp-prob-track {
+  height: 12px;
+  background: rgba(255 255 255 / 0.08);
+  border-radius: 6px;
+  overflow: hidden;
+  margin: 8px 0 10px;
+}
+
+.mp-prob-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #f0c040 0%, #c8962c 100%);
+  border-radius: 6px;
+  transition: width 0.35s ease;
+  min-width: 2px;
+}
+
+.mp-prob-values {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.8rem;
+  opacity: 0.64;
+}
+
+.mp-prob-val {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.mp-prob-val--right {
+  text-align: right;
+}
+
+.mp-prob-pct {
+  font-size: 0.76rem;
+  opacity: 0.7;
+}
+
+/* Keep legacy bar classes in case cached chunks still reference them */
 
 .mp-prob-bar-wrap {
   background: rgba(255 255 255 / 0.04);
@@ -12955,23 +13103,6 @@ body.walkthrough-active .odds-value--changed::after {
   border-radius: 7px;
   transition: width 0.4s ease;
   min-width: 2px;
-}
-
-.mp-prob-values {
-  display: flex;
-  justify-content: space-between;
-  font-size: 1.1rem;
-  font-weight: 700;
-}
-
-.mp-prob-val--right {
-  text-align: right;
-}
-
-.mp-prob-pct {
-  font-size: 0.78rem;
-  font-weight: 400;
-  opacity: 0.6;
 }
 
 /* Stat table */

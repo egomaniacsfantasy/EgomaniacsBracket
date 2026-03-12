@@ -3,13 +3,17 @@ import { TEAM_STAT_IMPORTANCE, TEAM_STAT_ORDER, TEAM_STATS_2026, type TeamStatKe
 import { teams as bracketTeams } from "./data/teams";
 import { fallbackLogo, teamLogoUrl } from "./lib/logo";
 import { getMappedEspnLogoPath } from "./lib/logoMap";
-import { formatAmerican, toAmericanOdds, toImpliedLabel } from "./lib/odds";
+import { formatOddsDisplay } from "./lib/odds";
 import type { OddsDisplayMode } from "./types";
 
 let getMatchupProbFn: ((a: number, b: number, loc: "N" | "H" | "A") => number | null) | null = null;
 let getTeamIdxFn: ((id: number) => number) | null = null;
 let predictorTeamsCache: ReadonlyArray<{ id: number; name: string; conf: string }> | null = null;
 let loadingPromise: Promise<void> | null = null;
+
+type TeamOption = { id: number; name: string; conf: string };
+
+const bracketTeamByName = new Map(bracketTeams.map((team) => [team.name, team]));
 
 async function loadPredictorData(): Promise<void> {
   if (predictorTeamsCache) return;
@@ -28,10 +32,10 @@ const TEAM_STAT_LABELS: Record<TeamStatKey, string> = {
   rank_WLK: "Whitlock Rank",
   rank_MOR: "Moore Rank",
   elo_sos: "Odds Gods Elo SOS",
-  elo_last: "Odds Gods Elo",
+  elo_last: "OddsGods Elo",
   avg_net_rtg: "Net Rating",
   avg_off_rtg: "Offensive Rating",
-  elo_trend: "Odds Gods Elo Trend",
+  elo_trend: "OddsGods Elo Trend",
   avg_def_rtg: "Defensive Rating",
   last5_Margin: "Last 5 Margin",
   rank_BIH: "Bihl Rank",
@@ -48,9 +52,13 @@ const LOWER_IS_BETTER = new Set<TeamStatKey>([
   "rank_NET",
 ]);
 
-type TeamOption = { id: number; name: string; conf: string };
+const conferenceLabel = (conf: string): string => conf.replace(/_/g, " ").toUpperCase();
 
-const bracketTeamByName = new Map(bracketTeams.map((team) => [team.name, team]));
+const predictorTeamLogo = (teamName: string): string => {
+  const bracketTeam = bracketTeamByName.get(teamName);
+  if (bracketTeam) return teamLogoUrl(bracketTeam);
+  return getMappedEspnLogoPath(teamName) ?? fallbackLogo(teamName);
+};
 
 const formatStatValue = (value: number | null): string => {
   if (value === null || value === undefined || Number.isNaN(value)) return "-";
@@ -59,21 +67,6 @@ const formatStatValue = (value: number | null): string => {
   if (Math.abs(value) < 1) return value.toFixed(4);
   return value.toFixed(2);
 };
-
-const conferenceLabel = (conf: string): string => conf.replace(/_/g, " ").toUpperCase();
-
-const predictorTeamLogo = (name: string): string => {
-  const bracketTeam = bracketTeamByName.get(name);
-  if (bracketTeam) return teamLogoUrl(bracketTeam);
-  return getMappedEspnLogoPath(name) ?? fallbackLogo(name);
-};
-
-const americanLabel = (prob: number): string => {
-  const raw = toAmericanOdds(prob);
-  return raw > 50000 ? "+50000+" : formatAmerican(raw);
-};
-
-const seedLabelForTeam = (name: string): string | null => bracketTeamByName.get(name)?.seedLabel ?? null;
 
 function TeamSelector({
   label,
@@ -90,18 +83,19 @@ function TeamSelector({
 }) {
   const [query, setQuery] = useState("");
   const [open, setOpen] = useState(false);
-  const containerRef = useRef<HTMLDivElement | null>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
 
   const filtered = useMemo(() => {
     const trimmed = query.trim().toLowerCase();
-    if (!trimmed) return [];
-    return teams
+    const allowed = teams.filter((team) => team.id !== excludeId);
+    if (!trimmed) return allowed.slice(0, 50);
+    return allowed
       .filter(
         (team) =>
-          team.id !== excludeId &&
-          (team.name.toLowerCase().includes(trimmed) || conferenceLabel(team.conf).toLowerCase().includes(trimmed))
+          team.name.toLowerCase().includes(trimmed) ||
+          conferenceLabel(team.conf).toLowerCase().includes(trimmed)
       )
-      .slice(0, 40);
+      .slice(0, 50);
   }, [excludeId, query, teams]);
 
   const selected = teams.find((team) => team.id === selectedId) ?? null;
@@ -130,24 +124,23 @@ function TeamSelector({
             </span>
           </>
         ) : (
-          <span className="mp-selector-placeholder">Select a team…</span>
+          <span className="mp-selector-placeholder">Select a team...</span>
         )}
-        <span className="mp-selector-caret">{open ? "▲" : "▼"}</span>
+        <span className="mp-selector-caret">{open ? "^" : "v"}</span>
       </button>
+
       {open ? (
         <div className="mp-dropdown">
           <input
             autoFocus
             type="text"
             className="mp-dropdown-search"
-            placeholder="Search teams…"
+            placeholder="Search teams..."
             value={query}
             onChange={(event) => setQuery(event.target.value)}
           />
           <div className="mp-dropdown-list">
-            {query.trim().length === 0 ? (
-              <div className="mp-dropdown-empty">Start typing a team name...</div>
-            ) : filtered.length === 0 ? (
+            {filtered.length === 0 ? (
               <div className="mp-dropdown-empty">No teams found</div>
             ) : (
               filtered.map((team) => (
@@ -177,116 +170,118 @@ function TeamSelector({
   );
 }
 
-function MatchupShowdownCard({
+function ProbSummary({
   teamA,
   teamB,
   probA,
-  locationLabel,
+  displayMode,
 }: {
   teamA: TeamOption;
   teamB: TeamOption;
   probA: number;
-  locationLabel: string;
+  displayMode: OddsDisplayMode;
 }) {
   const probB = 1 - probA;
-  const aSeed = seedLabelForTeam(teamA.name);
-  const bSeed = seedLabelForTeam(teamB.name);
+  const oddsA = formatOddsDisplay(probA, displayMode);
+  const oddsB = formatOddsDisplay(probB, displayMode);
+  const pctA = (probA * 100).toFixed(1);
+  const pctB = (probB * 100).toFixed(1);
+  const teamAFavorite = probA >= probB;
 
   return (
-    <div className="eg-showdown-card mp-showdown-card eg-showdown-card--entering">
-      <div className="mp-showdown-head">
-        <p className="eg-showdown-label">Matchup Predictor</p>
-        <span className="mp-showdown-location">{locationLabel}</span>
-      </div>
-      <div className="eg-showdown-matchup">
-        <div className="eg-showdown-team mp-showdown-team">
-          {aSeed ? <span className="eg-showdown-seed">#{aSeed} seed</span> : <span className="mp-showdown-seed-spacer" />}
-          <img className="mp-showdown-logo" src={predictorTeamLogo(teamA.name)} alt={`${teamA.name} logo`} />
-          <span className="eg-showdown-name">{teamA.name}</span>
-          <span className="eg-showdown-odds">{americanLabel(probA)}</span>
-          <span className="mp-showdown-implied">{toImpliedLabel(probA)}</span>
+    <div className="mp-prob-summary">
+      <div className={`mp-prob-team ${teamAFavorite ? "mp-prob-team--fav" : ""}`}>
+        <div className="mp-prob-team-main">
+          <img className="mp-prob-logo" src={predictorTeamLogo(teamA.name)} alt="" aria-hidden="true" />
+          <div className="mp-prob-copy">
+            <div className="mp-prob-team-name">{teamA.name}</div>
+            <div className="mp-prob-team-conf">{conferenceLabel(teamA.conf)}</div>
+          </div>
         </div>
-        <span className="eg-showdown-vs">VS</span>
-        <div className="eg-showdown-team mp-showdown-team">
-          {bSeed ? <span className="eg-showdown-seed">#{bSeed} seed</span> : <span className="mp-showdown-seed-spacer" />}
-          <img className="mp-showdown-logo" src={predictorTeamLogo(teamB.name)} alt={`${teamB.name} logo`} />
-          <span className="eg-showdown-name">{teamB.name}</span>
-          <span className="eg-showdown-odds">{americanLabel(probB)}</span>
-          <span className="mp-showdown-implied">{toImpliedLabel(probB)}</span>
+        <div className="mp-prob-team-odds">
+          <span>{oddsA.primary}</span>
+          <span className="mp-prob-team-pct">{pctA}%</span>
         </div>
       </div>
-      <div className="mp-showdown-bar-shell">
-        <div className="mp-showdown-bar">
-          <div className="mp-showdown-bar-fill" style={{ width: `${(probA * 100).toFixed(1)}%` }} />
+
+      <div className="mp-prob-track">
+        <div className="mp-prob-fill" style={{ width: `${pctA}%` }} />
+      </div>
+
+      <div className={`mp-prob-team ${!teamAFavorite ? "mp-prob-team--fav" : ""}`}>
+        <div className="mp-prob-team-main">
+          <img className="mp-prob-logo" src={predictorTeamLogo(teamB.name)} alt="" aria-hidden="true" />
+          <div className="mp-prob-copy">
+            <div className="mp-prob-team-name">{teamB.name}</div>
+            <div className="mp-prob-team-conf">{conferenceLabel(teamB.conf)}</div>
+          </div>
         </div>
-        <div className="mp-showdown-bar-labels">
-          <span>{teamA.name}</span>
-          <span>{toImpliedLabel(probA)}</span>
-          <span>{toImpliedLabel(probB)}</span>
-          <span>{teamB.name}</span>
+        <div className="mp-prob-team-odds">
+          <span>{oddsB.primary}</span>
+          <span className="mp-prob-team-pct">{pctB}%</span>
         </div>
       </div>
     </div>
   );
 }
 
-function StatTable({ teamAName, teamBName }: { teamAName: string; teamBName: string }) {
-  const statsA = TEAM_STATS_2026[teamAName] ?? null;
-  const statsB = TEAM_STATS_2026[teamBName] ?? null;
-
+function StatTable({ nameA, nameB }: { nameA: string; nameB: string }) {
+  const statsA = TEAM_STATS_2026[nameA] ?? null;
+  const statsB = TEAM_STATS_2026[nameB] ?? null;
   if (!statsA && !statsB) return null;
 
   return (
-    <div className="mp-stat-card">
-      <div className="mp-stat-card-head">
-        <h3>Stat Comparison</h3>
-        <p>Current-season signals that drive the model.</p>
-      </div>
-      <div className="mp-stat-table-wrap">
-        <table className="matchup-stats-table mp-stat-table">
-          <thead>
-            <tr>
-              <th>Stat</th>
-              <th>{teamAName}</th>
-              <th>{teamBName}</th>
-              <th>Edge</th>
-              <th>Importance</th>
-            </tr>
-          </thead>
-          <tbody>
-            {TEAM_STAT_ORDER.map((key) => {
-              const valueA = statsA?.[key] ?? null;
-              const valueB = statsB?.[key] ?? null;
-              const lowerIsBetter = LOWER_IS_BETTER.has(key);
-              let edge = "-";
-              if (valueA !== null && valueB !== null && valueA !== valueB) {
-                const teamAHasEdge = lowerIsBetter ? valueA < valueB : valueA > valueB;
-                const delta = Math.abs(valueA - valueB);
-                const deltaLabel =
-                  delta >= 1000 ? delta.toFixed(1) : Number.isInteger(delta) ? `${delta}` : delta < 1 ? delta.toFixed(4) : delta.toFixed(2);
-                edge = `${teamAHasEdge ? teamAName : teamBName} +${deltaLabel}`;
-              } else if (valueA !== null && valueB !== null) {
-                edge = "Even";
-              }
+    <div className="mp-stat-table-wrap">
+      <table className="matchup-stats-table mp-stat-table">
+        <thead>
+          <tr>
+            <th>Stat</th>
+            <th>{nameA}</th>
+            <th>{nameB}</th>
+            <th>Edge</th>
+            <th>Importance</th>
+          </tr>
+        </thead>
+        <tbody>
+          {TEAM_STAT_ORDER.map((key) => {
+            const valueA = statsA?.[key] ?? null;
+            const valueB = statsB?.[key] ?? null;
+            const lowerIsBetter = LOWER_IS_BETTER.has(key);
+            let edge = "-";
 
-              return (
-                <tr key={key}>
-                  <td className="matchup-stat-name-cell">{TEAM_STAT_LABELS[key]}</td>
-                  <td>{formatStatValue(valueA)}</td>
-                  <td>{formatStatValue(valueB)}</td>
-                  <td>{edge}</td>
-                  <td>{TEAM_STAT_IMPORTANCE[key]}</td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
-      </div>
+            if (valueA !== null && valueB !== null && valueA !== valueB) {
+              const aIsBetter = lowerIsBetter ? valueA < valueB : valueA > valueB;
+              const delta = Math.abs(valueA - valueB);
+              const deltaStr =
+                delta >= 1000
+                  ? delta.toFixed(1)
+                  : Number.isInteger(delta)
+                    ? `${delta}`
+                    : delta < 1
+                      ? delta.toFixed(4)
+                      : delta.toFixed(2);
+              edge = `${aIsBetter ? nameA : nameB} +${deltaStr}`;
+            } else if (valueA !== null && valueB !== null) {
+              edge = "Even";
+            }
+
+            return (
+              <tr key={key}>
+                <td className="matchup-stat-name-cell">{TEAM_STAT_LABELS[key]}</td>
+                <td>{formatStatValue(valueA)}</td>
+                <td>{formatStatValue(valueB)}</td>
+                <td>{edge}</td>
+                <td>{TEAM_STAT_IMPORTANCE[key]}</td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
     </div>
   );
 }
 
-export function MatchupPredictor({ displayMode: _displayMode }: { displayMode?: OddsDisplayMode }) {
+export function MatchupPredictor({ displayMode }: { displayMode: OddsDisplayMode }) {
   const [teams, setTeams] = useState<ReadonlyArray<TeamOption> | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [teamAId, setTeamAId] = useState<number | null>(null);
@@ -295,36 +290,36 @@ export function MatchupPredictor({ displayMode: _displayMode }: { displayMode?: 
 
   useEffect(() => {
     let cancelled = false;
-
     loadPredictorData()
       .then(() => {
-        if (cancelled || !predictorTeamsCache) return;
-        setTeams([...predictorTeamsCache].sort((a, b) => a.name.localeCompare(b.name)));
+        if (!cancelled) setTeams(predictorTeamsCache);
       })
       .catch(() => {
         if (!cancelled) {
-          setLoadError("Prediction data is unavailable right now.");
+          setLoadError("Prediction data not available. Run scripts/generate_matchup_predictor.py first.");
         }
       });
-
     return () => {
       cancelled = true;
     };
   }, []);
 
-  const teamA = teams?.find((team) => team.id === teamAId) ?? null;
-  const teamB = teams?.find((team) => team.id === teamBId) ?? null;
+  const teamA = useMemo(
+    () => teams?.find((team) => team.id === teamAId) ?? null,
+    [teamAId, teams]
+  );
+  const teamB = useMemo(
+    () => teams?.find((team) => team.id === teamBId) ?? null,
+    [teamBId, teams]
+  );
 
   const probA = useMemo(() => {
-    if (!teamA || !teamB || !getTeamIdxFn || !getMatchupProbFn) return null;
-    const idxA = getTeamIdxFn(teamA.id);
-    const idxB = getTeamIdxFn(teamB.id);
+    if (!teams || !teamA || !teamB) return null;
+    const idxA = getTeamIdxFn?.(teamA.id) ?? -1;
+    const idxB = getTeamIdxFn?.(teamB.id) ?? -1;
     if (idxA < 0 || idxB < 0) return null;
-    return getMatchupProbFn(idxA, idxB, loc);
-  }, [loc, teamA, teamB]);
-
-  const locationLabel =
-    loc === "N" ? "Neutral Court" : loc === "H" ? `Home: ${teamA?.name ?? "Team A"}` : `Home: ${teamB?.name ?? "Team B"}`;
+    return getMatchupProbFn?.(idxA, idxB, loc) ?? null;
+  }, [loc, teamA, teamB, teams]);
 
   if (loadError) {
     return (
@@ -337,53 +332,71 @@ export function MatchupPredictor({ displayMode: _displayMode }: { displayMode?: 
   if (!teams) {
     return (
       <div className="mp-page">
-        <div className="mp-loading">Loading prediction data…</div>
+        <div className="mp-loading">Loading prediction data...</div>
       </div>
     );
   }
 
   return (
     <div className="mp-page">
+      <h2 className="mp-title">Team Matchup Predictor</h2>
+      <p className="mp-subtitle">
+        Select two teams and game site to view model odds and win probability.
+      </p>
+
       <div className="mp-controls">
-        <TeamSelector label="Team A" teams={teams} selectedId={teamAId} excludeId={teamBId} onSelect={setTeamAId} />
+        <TeamSelector
+          label="Team A"
+          teams={teams}
+          selectedId={teamAId}
+          excludeId={teamBId}
+          onSelect={setTeamAId}
+        />
 
         <div className="mp-location-wrap">
           <label className="mp-team-label">Game Site</label>
           <div className="mp-location-btns">
-            <button className={`mp-loc-btn ${loc === "H" ? "mp-loc-btn--active" : ""}`} onClick={() => setLoc("H")} type="button">
-              <span className="mp-loc-icon" aria-hidden="true">&#x1F3E0;</span>
-              <span className="mp-loc-text">{teamA?.name ?? "Team A"}</span>
+            <button
+              className={`mp-loc-btn ${loc === "H" ? "mp-loc-btn--active" : ""}`}
+              onClick={() => setLoc("H")}
+              type="button"
+            >
+              A Home
             </button>
-            <button className={`mp-loc-btn ${loc === "N" ? "mp-loc-btn--active" : ""}`} onClick={() => setLoc("N")} type="button">
-              <span className="mp-loc-icon" aria-hidden="true">&#x2696;</span>
-              <span className="mp-loc-text">Neutral</span>
+            <button
+              className={`mp-loc-btn ${loc === "N" ? "mp-loc-btn--active" : ""}`}
+              onClick={() => setLoc("N")}
+              type="button"
+            >
+              Neutral
             </button>
-            <button className={`mp-loc-btn ${loc === "A" ? "mp-loc-btn--active" : ""}`} onClick={() => setLoc("A")} type="button">
-              <span className="mp-loc-icon" aria-hidden="true">&#x1F3E0;</span>
-              <span className="mp-loc-text">{teamB?.name ?? "Team B"}</span>
+            <button
+              className={`mp-loc-btn ${loc === "A" ? "mp-loc-btn--active" : ""}`}
+              onClick={() => setLoc("A")}
+              type="button"
+            >
+              B Home
             </button>
           </div>
         </div>
 
-        <TeamSelector label="Team B" teams={teams} selectedId={teamBId} excludeId={teamAId} onSelect={setTeamBId} />
+        <TeamSelector
+          label="Team B"
+          teams={teams}
+          selectedId={teamBId}
+          excludeId={teamAId}
+          onSelect={setTeamBId}
+        />
       </div>
 
       {probA !== null && teamA && teamB ? (
-        <div className="mp-results-stack">
-          <MatchupShowdownCard key={`${teamA.id}-${teamB.id}-${loc}`} teamA={teamA} teamB={teamB} probA={probA} locationLabel={locationLabel} />
-          <StatTable teamAName={teamA.name} teamBName={teamB.name} />
-        </div>
+        <>
+          <ProbSummary teamA={teamA} teamB={teamB} probA={probA} displayMode={displayMode} />
+          <StatTable nameA={teamA.name} nameB={teamB.name} />
+        </>
       ) : (
         <div className="mp-placeholder">
-          {teamAId && teamBId ? (
-            "Computing matchup..."
-          ) : (
-            <>
-              <span className="mp-placeholder-icon">🏀</span>
-              <span className="mp-placeholder-title">Head-to-head matchup simulator</span>
-              <span className="mp-placeholder-body">Pick any two D1 teams to see win probabilities, stat comparisons, and key matchup factors — all powered by our model.</span>
-            </>
-          )}
+          {teamAId && teamBId ? "Computing..." : "Select two teams above to see the prediction."}
         </div>
       )}
     </div>
