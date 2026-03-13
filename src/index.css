@@ -1024,20 +1024,37 @@ body {
   }
 
   .ff-game-matchup {
-    flex-direction: column;
-    gap: 6px;
-    padding-left: 0;
-    padding-top: 26px;
+    flex-direction: row;
+    align-items: center;
+    gap: 8px;
+    padding-left: 10px;
+    padding-top: 10px;
   }
 
   .matchup-stats-icon--ff {
-    left: 50%;
-    top: 4px;
-    transform: translateX(-50%);
+    left: 4px;
+    top: 50%;
+    transform: translateY(-50%);
   }
 
   .ff-vs {
-    margin: -2px 0;
+    margin: 0 4px;
+    flex-shrink: 0;
+  }
+  .ff-team-btn {
+    flex: 1;
+    padding: 10px 8px;
+    min-width: 0;
+  }
+  .ff-team-name {
+    font-size: 13px;
+  }
+  .ff-team-pct {
+    font-size: 12px;
+  }
+  .ff-game-card {
+    padding: 10px 12px;
+    gap: 6px;
   }
 }
 
@@ -8171,6 +8188,7 @@ body.walkthrough-active .eg-title-choice:hover {
   }
 
   .og-top-nav {
+    display: none !important;
     height: calc(48px + env(safe-area-inset-top, 0px));
     margin: 0;
     padding: env(safe-area-inset-top, 0px) 14px 0;
@@ -8294,11 +8312,11 @@ body.walkthrough-active .eg-title-choice:hover {
   .eg-mobile-shell {
     position: relative;
     z-index: 10;
-    padding-top: calc(48px + env(safe-area-inset-top, 0px));
+    padding-top: calc(56px + env(safe-area-inset-top, 0px));
   }
 
   .mobile-bracket-scroll {
-    padding-bottom: calc(56px + 56px + 24px + env(safe-area-inset-bottom, 0));
+    padding-bottom: calc(56px + 24px + env(safe-area-inset-bottom, 0px));
   }
 
   .toolbar {
@@ -8306,7 +8324,7 @@ body.walkthrough-active .eg-title-choice:hover {
     align-items: center;
     gap: 8px;
     flex-wrap: nowrap;
-    padding: 8px 14px;
+    padding: 8px 16px;
     overflow-x: auto;
     overflow-y: hidden;
     -webkit-overflow-scrolling: touch;
@@ -8324,6 +8342,7 @@ body.walkthrough-active .eg-title-choice:hover {
   .mobile-toolbar-wrapper {
     position: relative;
     background: #0e0c09;
+    border-top: 1px solid rgba(255, 255, 255, 0.04);
   }
 
   .mobile-toolbar-wrapper::after {
@@ -8413,7 +8432,7 @@ body.walkthrough-active .eg-title-choice:hover {
   .mobile-region-tabs {
     display: flex;
     position: sticky;
-    top: calc(48px + env(safe-area-inset-top, 0px));
+    top: calc(56px + env(safe-area-inset-top, 0px));
     z-index: 60;
     background: #0e0c09;
     backdrop-filter: blur(8px);
@@ -8452,9 +8471,15 @@ body.walkthrough-active .eg-title-choice:hover {
   .mobile-round-nav {
     display: flex;
     gap: 8px;
-    padding: 14px 16px 10px;
+    padding: 10px 16px 8px;
     overflow-x: auto;
     scrollbar-width: none;
+    position: sticky;
+    top: calc(56px + 38px + env(safe-area-inset-top, 0px));
+    z-index: 55;
+    background: #0e0c09;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    margin: 0;
   }
 
   .mobile-round-nav::-webkit-scrollbar {
@@ -8463,8 +8488,8 @@ body.walkthrough-active .eg-title-choice:hover {
 
   .mobile-round-pill {
     flex-shrink: 0;
-    height: 30px;
-    padding: 0 14px;
+    height: 36px;
+    padding: 0 16px;
     border-radius: 100px;
     font-family: var(--font-mono);
     font-size: 11px;
@@ -8602,14 +8627,15 @@ body.walkthrough-active .eg-title-choice:hover {
   .m-card {
     position: relative;
     background: var(--bg-surface);
-    border: 1px solid rgba(255, 255, 255, 0.07);
+    border: 1px solid rgba(255, 255, 255, 0.10);
     border-radius: 10px;
     margin: 0 16px 12px;
     overflow: hidden;
   }
 
   .m-card--picked {
-    border-color: rgba(184, 125, 24, 0.18);
+    border: 1.5px solid rgba(184, 125, 24, 0.35);
+    box-shadow: 0 0 0 1px rgba(184, 125, 24, 0.08);
   }
 
   .matchup-stats-icon--mobile {
@@ -8736,7 +8762,7 @@ body.walkthrough-active .eg-title-choice:hover {
     justify-content: space-between;
     padding: 8px 14px;
     border-top: 1px solid rgba(255, 255, 255, 0.05);
-    min-height: 36px;
+    min-height: 40px;
   }
 
   .m-winner-label {
@@ -8749,11 +8775,15 @@ body.walkthrough-active .eg-title-choice:hover {
     background: none;
     border: none;
     font-family: var(--font-mono);
-    font-size: 11px;
+    font-size: 12px;
     color: var(--text-tertiary);
     text-decoration: underline;
     text-underline-offset: 2px;
-    padding: 0;
+    padding: 8px 14px;
+    min-height: 36px;
+    display: inline-flex;
+    align-items: center;
+    border-radius: 6px;
   }
 
   .m-edit-prob-btn {
@@ -8995,6 +9025,7 @@ body.walkthrough-active .eg-title-choice:hover {
   }
 
   .live-odds-strip {
+    display: none;
     position: fixed;
     bottom: 56px;
     left: 0;
@@ -9003,7 +9034,6 @@ body.walkthrough-active .eg-title-choice:hover {
     background: rgba(20, 17, 10, 0.97);
     backdrop-filter: blur(10px);
     border-top: 1px solid rgba(184, 125, 24, 0.18);
-    display: flex;
     align-items: center;
     gap: 10px;
     padding: 0 12px 0 14px;
@@ -9078,6 +9108,10 @@ body.walkthrough-active .eg-title-choice:hover {
     padding: 0;
     flex-shrink: 0;
     opacity: 0.8;
+  }
+
+  body.mobile-tab-futures .live-odds-strip {
+    display: flex;
   }
 
   .mobile-futures-view {
@@ -10606,6 +10640,23 @@ body.walkthrough-active .eg-title-choice:hover {
 
   .my-bracket-card-actions {
     flex-wrap: wrap;
+  }
+}
+
+@media (max-width: 500px) {
+  .matchup-stats-overlay {
+    padding: 0;
+    align-items: flex-end;
+  }
+  .matchup-stats-modal {
+    width: 100%;
+    max-height: 80vh;
+    border-radius: 16px 16px 0 0;
+    padding: 16px;
+  }
+  .matchup-stats-close {
+    min-width: 44px;
+    min-height: 44px;
   }
 }
 
@@ -12711,7 +12762,7 @@ body.walkthrough-active .odds-value--changed::after {
   }
 
   .mobile-tab-label {
-    font-size: 0.6rem;
+    font-size: 10px;
   }
 }
 
@@ -14610,42 +14661,29 @@ body.walkthrough-active .odds-value--changed::after {
     font-size: 1.2rem;
   }
 
-  .eg-mobile-shell {
-    padding-top: calc(58px + env(safe-area-inset-top, 0px));
+  .top-nav-bar__logo {
+    width: 28px;
+    height: 28px;
   }
 
-  .toolbar {
-    flex-direction: column;
-    align-items: stretch;
-    gap: 8px;
-    margin: 0;
-    padding: 10px 14px;
-    border: none;
-    border-bottom: 1px solid rgba(171, 138, 69, 0.15);
-    border-radius: 0;
-    background: #0e0c09;
+  .eg-mobile-shell {
+    padding-top: calc(56px + env(safe-area-inset-top, 0px));
   }
+
+  /* LEGACY MOBILE - DISABLED: vertical column toolbar layout */
+  /* .toolbar { flex-direction: column; ... } — overridden by horizontal scroll layout */
 
   .toolbar-group {
-    width: 100%;
-    flex-wrap: wrap;
+    display: contents !important;
   }
 
-  .toolbar-group--left {
-    justify-content: flex-start;
-  }
-
-  .toolbar-group--right {
-    justify-content: flex-start;
-    margin-left: 0;
-    gap: 6px;
-  }
+  /* LEGACY MOBILE - DISABLED: group left/right overrides for vertical layout */
 
   .toolbar .eg-btn,
   .toolbar .eg-chip,
   .toolbar .eg-mini-btn {
-    height: 32px;
-    padding: 5px 8px;
+    height: 36px;
+    padding: 0 10px;
     font-size: 11px;
     border-radius: 8px;
   }
@@ -14664,12 +14702,11 @@ body.walkthrough-active .odds-value--changed::after {
     min-height: 32px;
   }
 
-  .mobile-toolbar-wrapper::after {
-    display: none;
-  }
+  /* LEGACY MOBILE - DISABLED: keep fade gradient for horizontal scroll toolbar */
+  /* .mobile-toolbar-wrapper::after { display: none; } */
 
   .chaos-tracker-bar {
-    top: calc(58px + env(safe-area-inset-top, 0px));
+    top: calc(56px + env(safe-area-inset-top, 0px));
     padding: 8px 14px;
     gap: 10px;
     flex-wrap: wrap;
@@ -14697,6 +14734,6 @@ body.walkthrough-active .odds-value--changed::after {
   }
 
   .mobile-region-tabs {
-    top: calc(58px + env(safe-area-inset-top, 0px));
+    top: calc(56px + env(safe-area-inset-top, 0px));
   }
 }
