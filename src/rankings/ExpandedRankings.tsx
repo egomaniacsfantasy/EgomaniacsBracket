@@ -73,6 +73,7 @@ const RANK_LIKE_METRICS = new Set<RankingTrendMetric>([
 const ALL_CONFS = Array.from(new Set(D1_TEAMS.map((t) => t.conf))).sort();
 
 type TrendPoint = { daynum: number; value: number };
+const TREND_DISPLAY_START_DAYNUM = 40;
 
 function formatAxisValue(value: number, metric: RankingMetric): string {
   if (RANK_LIKE_METRICS.has(metric.key)) return `${Math.round(value)}`;
@@ -135,6 +136,7 @@ export function ExpandedRankings({
     const points: TrendPoint[] = [];
     for (let i = 0; i < RANKING_TREND_DAYNUMS.length; i += 1) {
       const daynum = RANKING_TREND_DAYNUMS[i];
+      if (daynum < TREND_DISPLAY_START_DAYNUM) continue;
       const value = values[i];
       if (value === null || value === undefined || Number.isNaN(value)) continue;
       const normalizedValue = rankLike ? Math.round(value) : value;
@@ -173,7 +175,8 @@ export function ExpandedRankings({
       };
     }
 
-    const xMin = RANKING_TREND_DAYNUMS[0];
+    const firstDaynumInData = RANKING_TREND_DAYNUMS[0];
+    const xMin = Math.max(TREND_DISPLAY_START_DAYNUM, firstDaynumInData);
     const xMax = RANKING_TREND_DAYNUMS[RANKING_TREND_DAYNUMS.length - 1];
     const rankLike = RANK_LIKE_METRICS.has(metric.key);
     const yVals = trendPoints.map((point) => point.value);
@@ -301,7 +304,10 @@ export function ExpandedRankings({
               ))}
             </svg>
             <div className="rank-trend-meta">
-              <span>DayNum {RANKING_TREND_DAYNUMS[0]} to {RANKING_TREND_DAYNUMS[RANKING_TREND_DAYNUMS.length - 1]}</span>
+              <span>
+                DayNum {Math.max(TREND_DISPLAY_START_DAYNUM, RANKING_TREND_DAYNUMS[0])} to{" "}
+                {RANKING_TREND_DAYNUMS[RANKING_TREND_DAYNUMS.length - 1]}
+              </span>
               <span>{RANK_LIKE_METRICS.has(metric.key) ? "Lower is better for this metric." : "Higher is better for this metric."}</span>
             </div>
           </div>
