@@ -77,6 +77,23 @@ async function convertImagesToBase64(
   };
 }
 
+/**
+ * Wait for all images in a container to be fully loaded.
+ */
+async function waitForImages(container: HTMLElement): Promise<void> {
+  const imgs = Array.from(container.querySelectorAll<HTMLImageElement>("img"));
+  await Promise.all(
+    imgs.map((img) =>
+      img.complete
+        ? Promise.resolve()
+        : new Promise<void>((resolve) => {
+            img.onload = () => resolve();
+            img.onerror = () => resolve();
+          })
+    )
+  );
+}
+
 // ---------------------------------------------------------------------------
 // Main export function
 // ---------------------------------------------------------------------------
@@ -97,11 +114,24 @@ export async function exportWrappedCard(): Promise<void> {
   const restoreImages = await convertImagesToBase64(target);
 
   try {
-    const blob = await toBlob(target, {
+    // Wait for all images to be fully loaded with new base64 src
+    await waitForImages(target);
+    // Let the DOM settle after src changes
+    await new Promise((resolve) => requestAnimationFrame(resolve));
+
+    const options = {
       pixelRatio: 3,
       backgroundColor: "#080603",
       quality: 1.0,
-    });
+      cacheBust: true,
+    };
+
+    // First pass warms html-to-image's internal cache (known quirk —
+    // images often missing on the first render, present on second)
+    await toBlob(target, options).catch(() => {});
+
+    // Second pass renders with all images embedded
+    const blob = await toBlob(target, options);
     if (!blob) return;
 
     // Share → clipboard → download fallback chain
