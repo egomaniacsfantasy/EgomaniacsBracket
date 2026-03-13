@@ -14711,7 +14711,6 @@ body.walkthrough-active .odds-value--changed::after {
 .bw-card-topbar { margin-bottom: 10px; }
 .bw-card-champ-row { margin-bottom: 12px; }
 .bw-card-chaos-strip { margin-bottom: 14px; }
-.bw-card-f4-strip { margin-bottom: 10px; }
 .bw-card-bracket-line { margin-bottom: 12px; }
 .bw-card-highlights { margin-bottom: 10px; }
 .bw-card-hl { margin-bottom: 5px; }
@@ -14861,51 +14860,13 @@ body.walkthrough-active .odds-value--changed::after {
   flex-shrink: 0;
 }
 
-/* Final Four strip */
-.bw-card-f4-strip {
-  display: flex;
-  align-items: center;
-  gap: 3px;
-}
-.bw-card-f4-label {
-  font-family: "Space Grotesk", sans-serif;
-  font-size: 7px;
-  font-weight: 800;
-  letter-spacing: 0.15em;
-  text-transform: uppercase;
-  color: rgba(240,230,208,0.15);
-  margin-right: 4px;
-}
-.bw-card-f4-pill {
-  display: inline-flex;
-  align-items: center;
-  gap: 3px;
-  background: rgba(255,255,255,0.02);
-  border: 1px solid rgba(240,230,208,0.03);
-  border-radius: 4px;
-  padding: 2px 5px;
-  flex: 0 0 auto;
-}
-.bw-card-f4-logo {
-  width: 16px;
-  height: 16px;
-  border-radius: 2px;
-  object-fit: contain;
-}
-.bw-card-f4-abbrev {
-  font-family: "Space Grotesk", sans-serif;
-  font-size: 7px;
-  font-weight: 700;
-  color: rgba(239,228,207,0.7);
-}
-
 /* Bracket line */
 .bw-card-bracket-line {
   display: flex;
   flex-direction: column;
   align-items: center;
   padding: 8px 0;
-  background: radial-gradient(ellipse 100% 100% at 50% 50%, rgba(184,125,24,0.06) 0%, transparent 70%);
+  background: radial-gradient(ellipse 80% 100% at 50% 50%, rgba(184,125,24,0.06) 0%, transparent 70%);
   border-radius: 8px;
 }
 .bw-card-bracket-line-label {
@@ -14932,7 +14893,7 @@ body.walkthrough-active .odds-value--changed::after {
 .bw-card-bracket-line-sub {
   font-family: "Instrument Serif", serif;
   font-style: italic;
-  font-size: 8px;
+  font-size: 9px;
   color: rgba(240,230,208,0.4);
 }
 

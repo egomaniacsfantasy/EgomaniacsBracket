@@ -147,7 +147,7 @@ export const LOGO_MAP: Record<string, number> = {
   Liberty: 2335,
   Lindenwood: 2815,
   Lipscomb: 288,
-  "LIU Brooklyn": 112358,
+  "LIU Brooklyn": 2344,
   "Long Beach St": 299,
   "Long Island": 2344,
   Longwood: 2348,
@@ -197,6 +197,7 @@ export const LOGO_MAP: Record<string, number> = {
   "N Florida": 2454,
   "N Illinois": 2459,
   "N Iowa": 2460,
+  "Northern Iowa": 2460,
   "N Kentucky": 94,
   "N Texas": 249,
   Navy: 2426,
@@ -245,6 +246,7 @@ export const LOGO_MAP: Record<string, number> = {
   Providence: 2507,
   Purdue: 2509,
   // Q-R
+  "Queens NC": 2511,
   Quinnipiac: 2514,
   Radford: 2515,
   "Rhode Island": 227,
@@ -296,6 +298,7 @@ export const LOGO_MAP: Record<string, number> = {
   // T
   Tarleton: 2867,
   TCU: 2628,
+  Texas: 251,
   Temple: 218,
   Tennessee: 2633,
   "Tennessee St": 2634,
@@ -332,6 +335,7 @@ export const LOGO_MAP: Record<string, number> = {
   Utah: 254,
   "Utah St": 328,
   "Utah Tech": 3101,
+  "Utah Valley": 3084,
   UTEP: 2638,
   UTSA: 2636,
   // V
@@ -435,6 +439,9 @@ const LOGO_ALIASES: Record<string, string> = {
   "Texas State": "Texas St",
   "Texas Southern": "Texas Southern",
   "Youngstown State": "Youngstown St",
+  "McNeese St": "McNeese",
+  "Southern Univ": "Southern",
+  "Northern Iowa": "N Iowa",
   "Wichita State": "Wichita St",
   "Arizona State": "Arizona St",
 };

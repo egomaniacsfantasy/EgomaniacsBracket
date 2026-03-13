@@ -88,7 +88,8 @@ export interface WrappedData {
     teamAbbrev: string;
     teamLogoUrl: string;
   }>;
-  perfectBracketLine: string;
+  bracketOddsDisplay: string;
+  bracketOddsComparison: string;
   bracketLikelihood: number;
   roastText: string;
 }
@@ -140,28 +141,108 @@ function formatPercent(prob: number): string {
   return `${percent.toFixed(decimals)}%`;
 }
 
-function formatBracketLine(prob: number): string {
-  if (prob <= 0 || !isFinite(prob)) return "+∞";
-  const raw = (1 - prob) / prob;
+function formatBracketOdds(prob: number): string {
+  if (prob <= 0 || !isFinite(prob)) return "1 in ∞";
+  const oneInX = 1 / prob;
 
-  if (raw >= 1e15) {
-    const trillions = raw / 1e12;
-    if (trillions >= 1000) {
-      return "+" + (trillions / 1000).toFixed(1) + " Quadrillion";
-    }
-    return "+" + trillions.toFixed(0) + " Trillion";
-  }
-  if (raw >= 1e12) {
-    return "+" + (raw / 1e12).toFixed(1) + " Trillion";
-  }
-  if (raw >= 1e9) {
-    return "+" + (raw / 1e9).toFixed(1) + " Billion";
-  }
+  const format = (val: number): string => {
+    const s = val.toFixed(1);
+    return s.endsWith(".0") ? s.slice(0, -2) : s;
+  };
 
-  // Under a billion — show full number with commas
-  const magnitude = Math.pow(10, Math.floor(Math.log10(raw)));
-  const rounded = Math.round(raw / (magnitude / 10)) * (magnitude / 10);
-  return "+" + Math.round(rounded).toLocaleString("en-US");
+  if (oneInX >= 1e18) return `1 in ${format(oneInX / 1e18)} quintillion`;
+  if (oneInX >= 1e15) return `1 in ${format(oneInX / 1e15)} quadrillion`;
+  if (oneInX >= 1e12) return `1 in ${format(oneInX / 1e12)} trillion`;
+  if (oneInX >= 1e9) return `1 in ${format(oneInX / 1e9)} billion`;
+  if (oneInX >= 1e6) return `1 in ${format(oneInX / 1e6)} million`;
+
+  return `1 in ${Math.round(oneInX).toLocaleString("en-US")}`;
+}
+
+const BRACKET_COMPARISONS: Record<string, string[]> = {
+  // 1 in trillions (1e12 – 1e14)
+  trillion: [
+    "you're more likely to shuffle a deck into perfect order",
+    "better odds of winning the Powerball twice in a row",
+    "more likely to find a specific needle in a thousand haystacks",
+    "a monkey typing Shakespeare has better odds",
+    "you're more likely to guess someone's phone number on the first try — twice",
+    "more likely to pick a specific second out of 30,000 years",
+    "a coin landing heads 40 times in a row is more likely",
+    "you'd have better luck picking one star out of a galaxy — blindfolded",
+    "more likely to randomly guess a WiFi password on the first try",
+    "a raindrop has better odds of landing on the same blade of grass twice",
+    "better odds of dealing a royal flush three hands in a row",
+    "you're statistically more likely to become an astronaut",
+    "more likely to find a four-leaf clover on every attempt for a year straight",
+    "a single atom has better odds of being in the same spot twice",
+    "better odds of every flight you take this year being delayed to the same minute",
+    "more likely to pick the same grain of rice from a warehouse — blindfolded",
+    "a golf ball has better odds of landing in the same divot twice from orbit",
+    "more likely to accidentally text your ex and have them respond kindly",
+    "you're more likely to guess the exact temperature in every US city simultaneously",
+    "better odds of your lost luggage arriving before you do — every single time",
+  ],
+
+  // 1 in hundreds of trillions to quadrillions (1e14 – 1e17)
+  quadrillion: [
+    "more likely to find one specific grain of sand on a beach",
+    "a blindfolded dart throw hitting the same atom twice has better odds",
+    "better odds of being dealt a royal flush five hands running",
+    "you're more likely to randomly guess the exact time of day to the millisecond — ten times",
+    "more likely to win the lottery, get struck by lightning, and find a pearl in your oyster — same day",
+    "a photon has better odds of hitting the same electron twice",
+    "better odds of every traffic light being green for the rest of your life",
+    "more likely to pick the same snowflake out of a blizzard twice",
+    "you're more likely to name every Oscar winner in order by guessing",
+    "better odds of flipping heads 50 times in a row",
+    "a random Wikipedia click has better odds of landing on your hometown's page 12 times straight",
+    "more likely to step on the same ant in two different countries",
+    "better odds of being born on a leap day, on a solar eclipse, during a World Cup final",
+    "you're more likely to pick the same water molecule from the ocean twice",
+    "more likely to perfectly predict the weather every day for three years",
+    "better odds of your Spotify shuffle playing every song in alphabetical order",
+    "a blindfolded free throw from half court has better odds — times a thousand",
+    "you're more likely to accidentally dial the White House and get through",
+    "more likely to find the same parking spot at every mall you visit for a decade",
+    "better odds of every bird in your city landing on the same wire at the same second",
+  ],
+
+  // 1 in quintillions+ (1e17+)
+  quintillion: [
+    "the sun burning out tomorrow is genuinely more likely",
+    "better odds of every human on Earth picking the same random number",
+    "you're more likely to walk through a wall via quantum tunneling",
+    "more likely to find a specific atom in the Milky Way",
+    "a shuffled deck of cards has better odds of landing in the same order twice",
+    "better odds of spontaneously teleporting to Mars",
+    "every slot machine in Vegas hitting jackpot simultaneously is more likely",
+    "you're more likely to exhale the same air molecule Caesar breathed — on command",
+    "more likely to count to this number before the heat death of the universe. barely.",
+    "better odds of every person alive flipping a coin and all getting heads",
+    "a cosmic ray has better odds of spelling your name in Morse code",
+    "you're more likely to pick the same star from the observable universe — twice",
+    "more likely to randomly generate the Declaration of Independence by keyboard mashing",
+    "better odds of finding Waldo in every book simultaneously with your eyes closed",
+    "the entire ocean has better odds of spontaneously freezing on a summer day",
+    "you're more likely to dream the exact winning lottery numbers — seven drawings in a row",
+    "better odds of a single photon from the sun hitting the same square inch of Earth twice",
+    "a monkey at a typewriter writes this bracket comparison line first",
+    "more likely to be struck by lightning while holding a winning lottery ticket on a leap day",
+    "the gods respect the audacity. they do not respect the probability.",
+  ],
+};
+
+function getBracketComparison(prob: number): string {
+  const oneInX = 1 / prob;
+  let tier: string;
+
+  if (oneInX >= 1e17) tier = "quintillion";
+  else if (oneInX >= 1e14) tier = "quadrillion";
+  else tier = "trillion";
+
+  const pool = BRACKET_COMPARISONS[tier];
+  return pool[Math.floor(Math.random() * pool.length)];
 }
 
 export function ordinal(n: number): string {
@@ -391,7 +472,8 @@ export function computeWrappedData(args: {
   });
 
   const bracketLikelihood = simResult.likelihoodApprox;
-  const perfectBracketLine = formatBracketLine(bracketLikelihood);
+  const bracketOddsDisplay = formatBracketOdds(bracketLikelihood);
+  const bracketOddsComparison = getBracketComparison(bracketLikelihood);
 
   // Champion path: trace the champion's 6-game route to the title
   const PATH_ROUND_LABELS: Record<string, string> = {
@@ -565,7 +647,8 @@ export function computeWrappedData(args: {
     },
 
     finalFour,
-    perfectBracketLine,
+    bracketOddsDisplay,
+    bracketOddsComparison,
     bracketLikelihood,
     roastText,
   };

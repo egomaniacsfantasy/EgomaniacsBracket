@@ -48,7 +48,8 @@ export function BracketWrappedCard({
     championPath,
     champion,
     finalFour,
-    perfectBracketLine,
+    bracketOddsDisplay,
+    bracketOddsComparison,
   } = data;
   const chaosPercentilePosition = Math.max(2, Math.min(98, identity.chaosPercentile));
 
@@ -147,22 +148,11 @@ export function BracketWrappedCard({
           <span className="bw-card-chaos-pct">{ordinal(Math.round(identity.chaosPercentile))}</span>
         </div>
 
-        {/* 4. Final Four strip */}
-        <div className="bw-card-f4-strip">
-          <span className="bw-card-f4-label">F4</span>
-          {finalFour.map((team) => (
-            <div key={team.teamId} className="bw-card-f4-pill">
-              <img src={team.teamLogoUrl} alt="" className="bw-card-f4-logo" />
-              <span className="bw-card-f4-abbrev">{team.teamAbbrev}</span>
-            </div>
-          ))}
-        </div>
-
-        {/* 5. Bracket line */}
+        {/* 4. Bracket odds */}
         <div className="bw-card-bracket-line">
-          <span className="bw-card-bracket-line-label">YOUR PERFECT BRACKET LINE</span>
-          <span className="bw-card-bracket-line-number">{perfectBracketLine}</span>
-          <span className="bw-card-bracket-line-sub">good luck with that</span>
+          <span className="bw-card-bracket-line-label">ODDS OF YOUR EXACT BRACKET</span>
+          <span className="bw-card-bracket-line-number">{bracketOddsDisplay}</span>
+          <span className="bw-card-bracket-line-sub">{bracketOddsComparison}</span>
         </div>
 
         {/* 6. Three highlight rows */}
