@@ -172,7 +172,7 @@ function getOpponentId(game: ResolvedGame, teamId: string): string | null {
 interface ReachedRoundMeta {
   roundKey: string;
   roundReached: string;
-  baselineField: keyof FuturesRow;
+  baselineField: keyof Omit<FuturesRow, "teamId">;
   depth: number;
 }
 
