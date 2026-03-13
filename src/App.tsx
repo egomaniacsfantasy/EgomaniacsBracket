@@ -1481,19 +1481,16 @@ function App() {
   const nonFFGameCount = useMemo(() => games.filter((g) => g.round !== "FF").length, [games]);
   const wrappedData: WrappedData | null = useMemo(() => {
     if (pickCount < nonFFGameCount || simResult.futures.length === 0) return null;
-    const bl: Record<string, number> = {};
-    baselineByTeamId.forEach((row, id) => { bl[id] = row.champProb; });
     return computeWrappedData({
-      lockedPicks: sanitized,
       resolvedGames: games,
       simResult,
-      baselineByTeamId: bl,
+      baselineByTeamId,
       chaosScore: chaosScore ?? 0,
       chaosPercentile: chaosPercentile ?? 50,
       chaosLabel: chaosLabelData?.label ?? "Balanced",
       chaosEmoji: chaosLabelData?.emoji ?? "⚖️",
     });
-  }, [pickCount, nonFFGameCount, simResult, baselineByTeamId, sanitized, games, chaosScore, chaosPercentile, chaosLabelData]);
+  }, [pickCount, nonFFGameCount, simResult, baselineByTeamId, games, chaosScore, chaosPercentile, chaosLabelData]);
 
   useEffect(() => { setWrappedSeen(false); }, [lockedPicks]);
 

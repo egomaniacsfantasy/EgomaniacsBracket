@@ -19,6 +19,12 @@ const ROUND_LABELS: Record<string, string> = {
   CHAMP: "Championship",
 };
 
+function formatPercent(prob: number): string {
+  const percent = prob * 100;
+  const decimals = percent > 0 && percent < 10 ? 1 : 0;
+  return `${percent.toFixed(decimals)}%`;
+}
+
 export function BracketWrappedCard({
   data,
   onSaveCard,
@@ -35,14 +41,24 @@ export function BracketWrappedCard({
     setTimeout(() => setLinkCopied(false), 2000);
   };
 
-  const { identity, boldestPick, rippleEffect, weakestLink, champion, finalFour, perfectBracketLine, roastText } = data;
+  const {
+    identity,
+    boldestPick,
+    unlikelyRun,
+    weakestLink,
+    champion,
+    finalFour,
+    perfectBracketLine,
+    roastText,
+  } = data;
 
   // Collect logos for ghosted background
   const ghostLogos = [
     champion.teamLogoUrl,
+    unlikelyRun.teamLogoUrl,
     boldestPick.winnerLogoUrl,
     weakestLink.pickedTeamLogoUrl,
-    ...finalFour.slice(0, 3).map((t) => t.teamLogoUrl),
+    ...finalFour.slice(0, 2).map((t) => t.teamLogoUrl),
   ].filter(Boolean);
 
   return (
@@ -168,26 +184,23 @@ export function BracketWrappedCard({
             </span>
           </div>
 
-          {/* Ripple */}
-          <div className="bw-card-hl bw-card-hl--ripple">
-            <span className="bw-card-hl-emoji">🌊</span>
+          {/* Unlikely */}
+          <div className="bw-card-hl bw-card-hl--unlikely">
+            <img
+              src={unlikelyRun.teamLogoUrl}
+              alt={unlikelyRun.teamName}
+              className="bw-card-hl-logo-front bw-card-hl-logo--unlikely"
+            />
             <div className="bw-card-hl-info">
-              <span className="bw-card-hl-tag bw-card-hl-tag--green">RIPPLE EFFECT</span>
+              <span className="bw-card-hl-tag bw-card-hl-tag--amber">🏃 UNLIKELY RUN</span>
               <span className="bw-card-hl-matchup">
-                {rippleEffect.biggestCasualty.teamName}&apos;s title:{" "}
-                {rippleEffect.biggestCasualty.baselineChampOdds} to{" "}
-                {rippleEffect.biggestCasualty.currentChampOdds}
+                #{unlikelyRun.teamSeed} {unlikelyRun.teamName} → {unlikelyRun.roundReached}
               </span>
-              <span className="bw-card-hl-detail">
-                {rippleEffect.causedByPick.description}
-              </span>
+              <span className="bw-card-hl-detail">baseline odds of reaching this stage</span>
             </div>
-            <div className="bw-card-hl-number-stack">
-              <span className="bw-card-hl-number bw-card-hl-number--text">
-                {rippleEffect.totalGamesAffected}
-              </span>
-              <span className="bw-card-hl-number-sub">ODDS SHIFTED</span>
-            </div>
+            <span className="bw-card-hl-number bw-card-hl-number--amber">
+              {formatPercent(unlikelyRun.baselineProb)}
+            </span>
           </div>
 
           {/* Weakest */}

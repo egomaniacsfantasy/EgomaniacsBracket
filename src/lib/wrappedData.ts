@@ -1,4 +1,4 @@
-import type { ResolvedGame, SimulationOutput } from "../types";
+import type { FuturesRow, ResolvedGame, Round, SimulationOutput } from "../types";
 import { teamsById } from "../data/teams";
 import { getGameWinProb } from "./bracket";
 import { teamLogoUrl } from "./logo";
@@ -36,20 +36,16 @@ export interface WrappedData {
     simBracketFraction: string;
   };
 
-  // === CARD 3: RIPPLE EFFECT ===
-  rippleEffect: {
-    totalGamesAffected: number;
-    biggestCasualty: {
-      teamId: string;
-      teamName: string;
-      teamLogoUrl: string;
-      baselineChampOdds: string;
-      currentChampOdds: string;
-      deltaPercent: number;
-    };
-    causedByPick: {
-      description: string;
-    };
+  // === CARD 3: UNLIKELY RUN ===
+  unlikelyRun: {
+    teamName: string;
+    teamSeed: number;
+    teamId: string;
+    teamLogoUrl: string;
+    roundReached: string;
+    roundKey: string;
+    baselineProb: number;
+    region: string;
   };
 
   // === CARD 4: WEAKEST LINK ===
@@ -111,14 +107,14 @@ const ROAST_TEMPLATES: Record<string, string[]> = {
   ],
   "Upset Heavy": [
     "{numUpsets} upsets and a dream. You trust your gut more than the model, and your bracket has the scars to prove it. {champion} at {championOdds}? Bold.",
-    "Your bracket looked at the favorites and chose violence. {rippleTeam} fans are in shambles. The gods are intrigued.",
+    "Your bracket looked at the favorites and chose violence. {unlikelyRunTeam} on a {unlikelyRunRound} run at {unlikelyRunProb}. The gods are intrigued.",
     "{numUpsets} upsets scattered across the bracket like a tornado through a trailer park. {champion} somehow survives the chaos. We'll see.",
   ],
   "Chaos Agent": [
-    "{numUpsets} double-digit seeds past the first weekend, a perfect bracket line longer than a phone number, and {rippleTeam} fans cursing your name. The gods are entertained.",
-    "You didn't fill a bracket — you wrote fan fiction. {champion} at {championOdds} with {numUpsets} upsets clearing the path. This bracket doesn't need luck — it needs a miracle and a therapist.",
+    "{numUpsets} double-digit seeds past the first weekend, {unlikelyRunTeam} on a {unlikelyRunRound} run at {unlikelyRunProb}, and a perfect bracket line longer than a phone number. The gods are entertained.",
+    "You didn't fill a bracket — you wrote fan fiction. {champion} at {championOdds}, {unlikelyRunTeam} on a {unlikelyRunRound} run at {unlikelyRunProb}, and {numUpsets} upsets clearing the path.",
     "Your bracket has the structural integrity of a paper towel in a hurricane. {numUpsets} upsets, a {weakestMultiplier}× weakest link, and {champion} cutting down the nets at {championOdds}. Either you're a genius or you're completely unserious. We'll find out in April.",
-    "{numUpsets} upsets. {rippleTeam}'s title hopes didn't die in one game — they died in YOUR bracket. {champion} at {championOdds}. The gods are not responsible for what happens next.",
+    "{numUpsets} upsets. {unlikelyRunTeam} reaching the {unlikelyRunRound} carried just {unlikelyRunProb} baseline odds. The gods are not responsible for what happens next.",
   ],
 };
 
@@ -128,6 +124,12 @@ const ROAST_TEMPLATES: Record<string, string[]> = {
 
 function probToAmericanStr(prob: number): string {
   return formatAmerican(toAmericanOdds(prob));
+}
+
+function formatPercent(prob: number): string {
+  const percent = prob * 100;
+  const decimals = percent > 0 && percent < 10 ? 1 : 0;
+  return `${percent.toFixed(decimals)}%`;
 }
 
 function formatBracketLine(prob: number): string {
@@ -167,14 +169,44 @@ function getOpponentId(game: ResolvedGame, teamId: string): string | null {
   return null;
 }
 
-const ROUND_RANK: Record<string, number> = {
-  FF: 0,
-  R64: 1,
-  R32: 2,
-  S16: 3,
-  E8: 4,
-  F4: 5,
-  CHAMP: 6,
+interface ReachedRoundMeta {
+  roundKey: string;
+  roundReached: string;
+  baselineField: keyof FuturesRow;
+  depth: number;
+}
+
+const REACHED_ROUND_BY_GAME_ROUND: Partial<Record<Round, ReachedRoundMeta>> = {
+  R32: {
+    roundKey: "S16",
+    roundReached: "Sweet 16",
+    baselineField: "sweet16Prob",
+    depth: 3,
+  },
+  S16: {
+    roundKey: "E8",
+    roundReached: "Elite 8",
+    baselineField: "elite8Prob",
+    depth: 4,
+  },
+  E8: {
+    roundKey: "F4",
+    roundReached: "Final Four",
+    baselineField: "final4Prob",
+    depth: 5,
+  },
+  F4: {
+    roundKey: "CHAMP",
+    roundReached: "Championship",
+    baselineField: "titleGameProb",
+    depth: 6,
+  },
+  CHAMP: {
+    roundKey: "CHAMPION",
+    roundReached: "Champion",
+    baselineField: "champProb",
+    depth: 7,
+  },
 };
 
 // ---------------------------------------------------------------------------
@@ -182,10 +214,9 @@ const ROUND_RANK: Record<string, number> = {
 // ---------------------------------------------------------------------------
 
 export function computeWrappedData(args: {
-  lockedPicks: Record<string, string>;
   resolvedGames: ResolvedGame[];
   simResult: SimulationOutput;
-  baselineByTeamId: Record<string, number>;
+  baselineByTeamId: Map<string, FuturesRow>;
   chaosScore: number;
   chaosPercentile: number;
   chaosLabel: string;
@@ -261,109 +292,68 @@ export function computeWrappedData(args: {
   const simBracketFraction = `1 in ${simBracketN}`;
 
   // =========================================================================
-  // CARD 3: RIPPLE EFFECT
+  // CARD 3: UNLIKELY RUN
   // =========================================================================
 
-  // Count teams whose championship probability shifted > 1pp from baseline
-  let gamesAffected = 0;
-  const allTeamIds = Object.keys(baselineByTeamId);
-  for (const teamId of allTeamIds) {
-    const baseline = baselineByTeamId[teamId] ?? 0;
-    const current = currentChampByTeamId[teamId] ?? 0;
-    if (Math.abs(current - baseline) > 0.01) {
-      gamesAffected++;
+  const furthestRunByTeam = new Map<
+    string,
+    {
+      meta: ReachedRoundMeta;
+      teamName: string;
+      teamSeed: number;
+      teamLogoUrl: string;
+      region: string;
     }
-  }
-  // Also count teams only in sim (not in baseline) with champProb > 1%
-  for (const teamId of Object.keys(currentChampByTeamId)) {
-    if (!(teamId in baselineByTeamId) && currentChampByTeamId[teamId] > 0.01) {
-      gamesAffected++;
-    }
-  }
+  >();
 
-  // Find biggest casualty: team with largest NEGATIVE championship delta
-  let biggestDrop = 0;
-  let casualtyTeamId: string | null = null;
-
-  for (const teamId of allTeamIds) {
-    const baseline = baselineByTeamId[teamId] ?? 0;
-    const current = currentChampByTeamId[teamId] ?? 0;
-    const drop = baseline - current; // positive means they lost probability
-    if (drop > biggestDrop) {
-      biggestDrop = drop;
-      casualtyTeamId = teamId;
-    }
-  }
-
-  // Default casualty if no team lost probability
-  if (!casualtyTeamId) {
-    // Pick the team with highest baseline that isn't the champion
-    const champGame = resolvedGames.find((g) => g.round === "CHAMP");
-    const champId = champGame?.winnerId;
-    let bestBaseline = -1;
-    for (const teamId of allTeamIds) {
-      if (teamId === champId) continue;
-      const bl = baselineByTeamId[teamId] ?? 0;
-      if (bl > bestBaseline) {
-        bestBaseline = bl;
-        casualtyTeamId = teamId;
-      }
-    }
-    if (!casualtyTeamId) casualtyTeamId = allTeamIds[0];
-  }
-
-  const casualtyTeam = teamsById.get(casualtyTeamId!)!;
-  const baselineCasualtyProb = baselineByTeamId[casualtyTeamId!] ?? 0;
-  const currentCasualtyProb = currentChampByTeamId[casualtyTeamId!] ?? 0;
-  const deltaPercent = -((baselineCasualtyProb - currentCasualtyProb) * 100);
-
-  // Find the user pick that caused the casualty
-  let causativeGame: ResolvedGame | null = null;
-
-  // 1. Direct elimination: game where casualty team was one of the teams and user picked opponent
   for (const game of resolvedGames) {
     if (!game.winnerId || !game.lockedByUser) continue;
-    if (game.round === "FF") continue;
+    const reachedMeta = REACHED_ROUND_BY_GAME_ROUND[game.round];
+    if (!reachedMeta) continue;
+
+    const team = teamsById.get(game.winnerId);
+    if (!team) continue;
+
+    const existing = furthestRunByTeam.get(game.winnerId);
+    if (!existing || reachedMeta.depth > existing.meta.depth) {
+      furthestRunByTeam.set(game.winnerId, {
+        meta: reachedMeta,
+        teamName: team.name,
+        teamSeed: team.seed,
+        teamLogoUrl: teamLogoUrl(team),
+        region: team.region,
+      });
+    }
+  }
+
+  let unlikelyRun:
+    | (WrappedData["unlikelyRun"] & {
+        depth: number;
+      })
+    | null = null;
+
+  for (const [teamId, run] of furthestRunByTeam) {
+    const baselineRow = baselineByTeamId.get(teamId);
+    const baselineProb = baselineRow?.[run.meta.baselineField] ?? 0;
+
     if (
-      (game.teamAId === casualtyTeamId || game.teamBId === casualtyTeamId) &&
-      game.winnerId !== casualtyTeamId
+      unlikelyRun === null ||
+      baselineProb < unlikelyRun.baselineProb - 1e-9 ||
+      (Math.abs(baselineProb - unlikelyRun.baselineProb) <= 1e-9 && run.meta.depth > unlikelyRun.depth)
     ) {
-      if (
-        !causativeGame ||
-        ROUND_RANK[game.round] < ROUND_RANK[causativeGame.round]
-      ) {
-        causativeGame = game;
-      }
+      unlikelyRun = {
+        teamId,
+        teamName: run.teamName,
+        teamSeed: run.teamSeed,
+        teamLogoUrl: run.teamLogoUrl,
+        roundReached: run.meta.roundReached,
+        roundKey: run.meta.roundKey,
+        baselineProb,
+        region: run.region,
+        depth: run.meta.depth,
+      };
     }
   }
-
-  // 2. Indirect: boldest upset in the casualty's region
-  if (!causativeGame && casualtyTeam.region) {
-    let regionBoldestProb = 1;
-    for (const game of resolvedGames) {
-      if (!game.winnerId || !game.lockedByUser) continue;
-      if (game.round === "FF") continue;
-      if (game.region !== casualtyTeam.region) continue;
-      const wp = getGameWinProb(game, game.winnerId) ?? 0.5;
-      if (wp < regionBoldestProb) {
-        regionBoldestProb = wp;
-        causativeGame = game;
-      }
-    }
-  }
-
-  // 3. Last resort: use the overall boldest pick
-  if (!causativeGame) {
-    causativeGame = boldestGame;
-  }
-
-  const causeWinnerId = causativeGame.winnerId!;
-  const causeLoserId = getOpponentId(causativeGame, causeWinnerId)!;
-  const causeWinner = teamsById.get(causeWinnerId);
-  const causeLoser = teamsById.get(causeLoserId);
-  const causedDescription = causeWinner && causeLoser
-    ? `you picked #${causeWinner.seed} ${causeWinner.name} over #${causeLoser.seed} ${causeLoser.name}`
-    : "your bracket picks";
 
   // =========================================================================
   // CARD 4: WEAKEST LINK
@@ -436,7 +426,7 @@ export function computeWrappedData(args: {
   const championTeamId = champGame?.winnerId ?? "";
   const championTeam = teamsById.get(championTeamId);
   const champProbability = currentChampByTeamId[championTeamId] ?? 0;
-  const baselineChampProbability = baselineByTeamId[championTeamId] ?? 0;
+  const baselineChampProbability = baselineByTeamId.get(championTeamId)?.champProb ?? 0;
 
   const f4Games = resolvedGames.filter((g) => g.round === "F4");
   const f4TeamIds = f4Games
@@ -469,11 +459,42 @@ export function computeWrappedData(args: {
     ? probToAmericanStr(baselineChampProbability)
     : "+∞";
 
+  const fallbackUnlikelyRun = championTeam
+    ? {
+        teamId: championTeamId,
+        teamName: championTeam.name,
+        teamSeed: championTeam.seed,
+        teamLogoUrl: teamLogoUrl(championTeam),
+        roundReached: "Champion",
+        roundKey: "CHAMPION",
+        baselineProb: baselineChampProbability,
+        region: championTeam.region,
+        depth: 7,
+      }
+    : {
+        teamId: boldestWinnerId,
+        teamName: boldestWinner.name,
+        teamSeed: boldestWinner.seed,
+        teamLogoUrl: teamLogoUrl(boldestWinner),
+        roundReached: "Sweet 16",
+        roundKey: "S16",
+        baselineProb: baselineByTeamId.get(boldestWinnerId)?.sweet16Prob ?? 0,
+        region: boldestWinner.region,
+        depth: 3,
+      };
+
+  const resolvedUnlikelyRun = unlikelyRun ?? fallbackUnlikelyRun;
+  const unlikelyRunRoundLabel = resolvedUnlikelyRun.roundReached === "Champion"
+    ? "title"
+    : resolvedUnlikelyRun.roundReached;
+
   const roastText = template
     .replace(/\{champion\}/g, championTeam?.name ?? "Your champion")
     .replace(/\{championOdds\}/g, champOddsStr)
     .replace(/\{numUpsets\}/g, String(numUpsets))
-    .replace(/\{rippleTeam\}/g, casualtyTeam.name)
+    .replace(/\{unlikelyRunTeam\}/g, resolvedUnlikelyRun.teamName)
+    .replace(/\{unlikelyRunRound\}/g, unlikelyRunRoundLabel)
+    .replace(/\{unlikelyRunProb\}/g, formatPercent(resolvedUnlikelyRun.baselineProb))
     .replace(
       /\{weakestMultiplier\}/g,
       Math.max(1, bestMultiplier).toFixed(1)
@@ -514,19 +535,15 @@ export function computeWrappedData(args: {
       simBracketFraction,
     },
 
-    rippleEffect: {
-      totalGamesAffected: gamesAffected,
-      biggestCasualty: {
-        teamId: casualtyTeamId!,
-        teamName: casualtyTeam.name,
-        teamLogoUrl: teamLogoUrl(casualtyTeam),
-        baselineChampOdds: probToAmericanStr(baselineCasualtyProb),
-        currentChampOdds: probToAmericanStr(currentCasualtyProb),
-        deltaPercent: Math.round(deltaPercent * 10) / 10,
-      },
-      causedByPick: {
-        description: causedDescription,
-      },
+    unlikelyRun: {
+      teamId: resolvedUnlikelyRun.teamId,
+      teamName: resolvedUnlikelyRun.teamName,
+      teamSeed: resolvedUnlikelyRun.teamSeed,
+      teamLogoUrl: resolvedUnlikelyRun.teamLogoUrl,
+      roundReached: resolvedUnlikelyRun.roundReached,
+      roundKey: resolvedUnlikelyRun.roundKey,
+      baselineProb: resolvedUnlikelyRun.baselineProb,
+      region: resolvedUnlikelyRun.region,
     },
 
     weakestLink: {

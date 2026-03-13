@@ -21,6 +21,22 @@ const ROUND_LABELS: Record<string, string> = {
   CHAMP: "CHAMPIONSHIP",
 };
 
+function formatPercent(prob: number): string {
+  const percent = prob * 100;
+  const decimals = percent > 0 && percent < 10 ? 1 : 0;
+  return `${percent.toFixed(decimals)}%`;
+}
+
+function unlikelyRunHeroLine(roundReached: string): string {
+  return roundReached === "Champion" ? "to win it all" : `to the ${roundReached}`;
+}
+
+function unlikelyRunContextLine(teamName: string, roundReached: string, baselineProb: number): string {
+  const destination =
+    roundReached === "Champion" ? "winning the title" : `reaching the ${roundReached}`;
+  return `Before any picks were made, the model gave ${teamName} a ${formatPercent(baselineProb)} chance of ${destination}.`;
+}
+
 export function BracketWrapped({ data, onClose }: BracketWrappedProps) {
   const [screen, setScreen] = useState(0);
   const [linkCopied, setLinkCopied] = useState(false);
@@ -28,7 +44,7 @@ export function BracketWrapped({ data, onClose }: BracketWrappedProps) {
   const frameRef = useRef<HTMLDivElement>(null);
   const [scale, setScale] = useState(1);
 
-  const { identity, boldestPick, rippleEffect, weakestLink, champion, finalFour } = data;
+  const { identity, boldestPick, unlikelyRun, weakestLink, champion, finalFour } = data;
 
   // Compute scale factor for card frame (desktop only — mobile uses natural sizing)
   const isMobile = typeof window !== "undefined" && window.innerWidth < 768;
@@ -53,7 +69,7 @@ export function BracketWrapped({ data, onClose }: BracketWrappedProps) {
   const ghostLogos = [
     champion.teamLogoUrl,
     boldestPick.winnerLogoUrl,
-    boldestPick.loserLogoUrl,
+    unlikelyRun.teamLogoUrl,
     weakestLink.pickedTeamLogoUrl,
     ...finalFour.slice(0, 2).map((t) => t.teamLogoUrl),
   ].filter(Boolean);
@@ -195,7 +211,7 @@ export function BracketWrapped({ data, onClose }: BracketWrappedProps) {
           <div className="bw-screen" key={screen}>
             {screen === 0 && <Screen1Identity identity={identity} />}
             {screen === 1 && <Screen2Boldest boldestPick={boldestPick} />}
-            {screen === 2 && <Screen3Ripple rippleEffect={rippleEffect} />}
+            {screen === 2 && <Screen3Unlikely unlikelyRun={unlikelyRun} />}
             {screen === 3 && <Screen4Weakest weakestLink={weakestLink} />}
             {screen === 4 && (
               <div className="bw-screen5-wrap">
@@ -340,42 +356,41 @@ function Screen2Boldest({ boldestPick }: { boldestPick: WrappedData["boldestPick
 }
 
 // ---------------------------------------------------------------------------
-// Screen 3: The Ripple Effect
+// Screen 3: The Unlikely Run
 // ---------------------------------------------------------------------------
 
-function Screen3Ripple({ rippleEffect }: { rippleEffect: WrappedData["rippleEffect"] }) {
+function Screen3Unlikely({ unlikelyRun }: { unlikelyRun: WrappedData["unlikelyRun"] }) {
   return (
-    <div className="bw-content bw-content--ripple">
-      <span className="bw-heading bw-heading--amber">YOUR RIPPLE EFFECT</span>
-      <span className="bw-big-number">{rippleEffect.totalGamesAffected}</span>
-      <span className="bw-big-label">odds shifted by your picks</span>
+    <div className="bw-content bw-content--unlikely">
+      <span className="bw-heading bw-heading--amber">UNLIKELY RUN</span>
 
-      <div className="bw-divider" />
+      <img
+        src={unlikelyRun.teamLogoUrl}
+        alt={unlikelyRun.teamName}
+        className="bw-unlikely-logo"
+      />
 
-      <div className="bw-casualty-card">
-        <span className="bw-casualty-label">BIGGEST CASUALTY</span>
-        <div className="bw-casualty-row">
-          <img
-            src={rippleEffect.biggestCasualty.teamLogoUrl}
-            alt={rippleEffect.biggestCasualty.teamName}
-            className="bw-casualty-logo"
-          />
-          <div className="bw-casualty-info">
-            <span className="bw-casualty-name">{rippleEffect.biggestCasualty.teamName}</span>
-            <span className="bw-casualty-odds">
-              Title: {rippleEffect.biggestCasualty.baselineChampOdds} to{" "}
-              {rippleEffect.biggestCasualty.currentChampOdds}
-            </span>
-          </div>
-          <span className="bw-casualty-delta">
-            {rippleEffect.biggestCasualty.deltaPercent > 0 ? "+" : ""}
-            {rippleEffect.biggestCasualty.deltaPercent.toFixed(1)}%
-          </span>
-        </div>
-        <p className="bw-casualty-attribution">
-          because {rippleEffect.causedByPick.description}
-        </p>
+      <div className="bw-unlikely-team">
+        <span className="bw-unlikely-name">{unlikelyRun.teamName}</span>
+        <span className="bw-unlikely-seed">#{unlikelyRun.teamSeed} seed</span>
       </div>
+
+      <h2 className="bw-unlikely-round">{unlikelyRunHeroLine(unlikelyRun.roundReached)}</h2>
+
+      <div className="bw-prob-display">
+        <span className="bw-prob-number bw-prob-number--amber">
+          {formatPercent(unlikelyRun.baselineProb)}
+        </span>
+        <span className="bw-prob-label">baseline probability</span>
+      </div>
+
+      <p className="bw-context-line bw-context-line--unlikely">
+        {unlikelyRunContextLine(
+          unlikelyRun.teamName,
+          unlikelyRun.roundReached,
+          unlikelyRun.baselineProb
+        )}
+      </p>
     </div>
   );
 }
