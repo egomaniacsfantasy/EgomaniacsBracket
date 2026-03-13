@@ -1,7 +1,7 @@
-import html2canvas from "html2canvas";
+import { toBlob } from "html-to-image";
 
 // ---------------------------------------------------------------------------
-// Image → Base64 conversion (prevents html2canvas CORS failures)
+// Image → Base64 conversion (prevents CORS failures in SVG foreignObject)
 // ---------------------------------------------------------------------------
 
 /**
@@ -83,8 +83,8 @@ async function convertImagesToBase64(
 
 /**
  * Export the Bracket Wrapped card by screenshotting the rendered React component.
- * Uses html2canvas to capture #wrapped-export-target directly, guaranteeing
- * the export matches the on-screen card exactly — no dual rendering paths.
+ * Uses html-to-image (SVG foreignObject) so the browser's own rendering engine
+ * handles all CSS — letter-spacing, fonts, layout are pixel-perfect.
  */
 export async function exportWrappedCard(): Promise<void> {
   const target = document.getElementById("wrapped-export-target");
@@ -93,26 +93,18 @@ export async function exportWrappedCard(): Promise<void> {
     return;
   }
 
-  // Step 1: Convert all images to base64 (critical for html2canvas CORS handling)
+  // Convert all images to base64 (critical for foreignObject CORS handling)
   const restoreImages = await convertImagesToBase64(target);
 
   try {
-    // Step 2: Capture the rendered component
-    const canvas = await html2canvas(target, {
-      scale: 3,
+    const blob = await toBlob(target, {
+      pixelRatio: 3,
       backgroundColor: "#080603",
-      useCORS: true,
-      allowTaint: false,
-      logging: false,
-    });
-
-    // Step 3: Convert to blob
-    const blob = await new Promise<Blob | null>((resolve) => {
-      canvas.toBlob(resolve, "image/png", 1.0);
+      quality: 1.0,
     });
     if (!blob) return;
 
-    // Step 4: Share → clipboard → download fallback chain
+    // Share → clipboard → download fallback chain
 
     // Try native share (mobile / Mac share sheet)
     if (navigator.share && navigator.canShare) {
@@ -150,7 +142,6 @@ export async function exportWrappedCard(): Promise<void> {
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
   } finally {
-    // Restore original image sources
     restoreImages();
   }
 }
