@@ -34,6 +34,10 @@ import { MatchupPredictor } from "./MatchupPredictor";
 import { useAuth } from "./AuthContext";
 import { AuthModal } from "./AuthModal";
 import { MyBracketsModal } from "./MyBracketsModal";
+import { CreateGroupModal } from "./CreateGroupModal";
+import { JoinGroupModal } from "./JoinGroupModal";
+import { GroupsHub } from "./GroupsHub";
+import { GroupDetailView } from "./GroupDetailView";
 import { LeaderboardFullWidth } from "./Leaderboard";
 import { deserializePicks, getUserBrackets, saveBracket, serializePicks, type SavedBracket } from "./bracketStorage";
 import { TEAM_STAT_IMPORTANCE, TEAM_STAT_ORDER, TEAM_STATS_2026, type TeamStatKey } from "./data/teamStats2026";
@@ -41,6 +45,9 @@ import type { OddsDisplayMode, Region, ResolvedGame, SimulationOutput } from "./
 import { computeWrappedData, type WrappedData } from "./lib/wrappedData";
 import { BracketWrapped } from "./BracketWrapped";
 import { BracketWrappedCard } from "./BracketWrappedCard";
+import { OverflowMenu, type OverflowMenuItem } from "./OverflowMenu";
+import { TopNavBar, type TopNavView } from "./TopNavBar";
+import type { UserGroup } from "./groupStorage";
 
 const DEFAULT_SIM_RUNS = 10000;
 const CHAOS_DISTRIBUTION_SIM_RUNS = 10000;
@@ -53,7 +60,6 @@ const ODDS_FORMAT_STORAGE_KEY = "bracketlab-odds-format";
 const STAGGERED_SIM_DELAY_MS = 2000;
 const MIN_STAGGERED_SIM_DELAY_MS = 1000;
 const MAX_STAGGERED_SIM_DELAY_MS = 5000;
-const LANDING_URL = "https://oddsgods.net";
 
 const regionSections: Region[][] = BRACKET_HALVES.map((half) => [...half.regions]);
 const mobileRegionOrder: Region[] = ["East", "West", "Midwest", "South"];
@@ -235,6 +241,7 @@ type ResetModalConfig = {
   confirmLabel: string;
   onConfirm: () => void;
 };
+type ToolbarMenuId = "sim" | "reset" | "overflow";
 type RegionalRound = "FF" | "R64" | "R32" | "S16" | "E8";
 type ManualRoundExpansionState = Partial<Record<`${Region}-${RegionalRound}`, boolean>>;
 type WalkthroughStepConfig = {
@@ -578,11 +585,16 @@ function App() {
   });
   const [activeHint, setActiveHint] = useState<ActiveHint | null>(null);
   const [resetModalConfig, setResetModalConfig] = useState<ResetModalConfig | null>(null);
+  const [openToolbarMenu, setOpenToolbarMenu] = useState<ToolbarMenuId | null>(null);
   const [linkCopied, setLinkCopied] = useState(false);
   const [saveStatus, setSaveStatus] = useState<null | "saving" | "saved" | "error">(null);
   const [saveErrorText, setSaveErrorText] = useState<string | null>(null);
   const [authModalOpen, setAuthModalOpen] = useState(false);
   const [myBracketsOpen, setMyBracketsOpen] = useState(false);
+  const [groupsHubOpen, setGroupsHubOpen] = useState(false);
+  const [createGroupOpen, setCreateGroupOpen] = useState(false);
+  const [joinGroupOpen, setJoinGroupOpen] = useState(false);
+  const [activeGroup, setActiveGroup] = useState<UserGroup | null>(null);
   const [userBrackets, setUserBrackets] = useState<SavedBracket[]>([]);
   const [leaderboardRefreshKey, setLeaderboardRefreshKey] = useState(0);
   const [promoCTAVisible, setPromoCTAVisible] = useState(false);
@@ -635,6 +647,9 @@ function App() {
   const contextualHintTimerRef = useRef<number | null>(null);
   const copyLinkTimerRef = useRef<number | null>(null);
   const saveStatusTimerRef = useRef<number | null>(null);
+  const simMenuRef = useRef<HTMLDivElement | null>(null);
+  const resetMenuRef = useRef<HTMLDivElement | null>(null);
+  const overflowMenuRef = useRef<HTMLDivElement | null>(null);
   const promoCTATimerRef = useRef<number | null>(null);
   const firstFourAutoShownRef = useRef(false);
   const shareToastTimerRef = useRef<number | null>(null);
@@ -670,6 +685,37 @@ function App() {
       if (!activeGameIds.has(gameId)) simGeneratedGameIdsRef.current.delete(gameId);
     }
   }, [lockedPicks]);
+
+  useEffect(() => {
+    if (!openToolbarMenu) return;
+
+    const activeRef =
+      openToolbarMenu === "sim"
+        ? simMenuRef
+        : openToolbarMenu === "reset"
+          ? resetMenuRef
+          : overflowMenuRef;
+
+    const handleMouseDown = (event: MouseEvent) => {
+      if (activeRef.current?.contains(event.target as Node)) return;
+      setOpenToolbarMenu(null);
+    };
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setOpenToolbarMenu(null);
+    };
+
+    document.addEventListener("mousedown", handleMouseDown);
+    document.addEventListener("keydown", handleKeyDown);
+    return () => {
+      document.removeEventListener("mousedown", handleMouseDown);
+      document.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [openToolbarMenu]);
+
+  useEffect(() => {
+    setOpenToolbarMenu(null);
+  }, [isMobile, mainView, mobileTab]);
 
   useEffect(() => {
     const media = window.matchMedia("(max-width: 1850px)");
@@ -2968,254 +3014,341 @@ function App() {
     return () => observer.disconnect();
   }, [isMobile, mainView]);
 
+  const userLabel = profile?.display_name || user?.email || "User";
+  const showToolbar = isMobile
+    ? mobileTab === "bracket" || mobileTab === "futures"
+    : mainView === "bracket" || mainView === "futures";
+  const topNavActiveView: TopNavView = isMobile
+    ? mobileTab === "leaderboard"
+      ? "leaderboard"
+      : mobileTab === "conferences"
+        ? "conferences"
+        : mobileTab === "rankings"
+          ? "rankings"
+          : "bracket"
+    : mainView === "leaderboard"
+      ? "leaderboard"
+      : mainView === "conferences"
+        ? "conferences"
+        : mainView === "rankings"
+          ? "rankings"
+          : "bracket";
+
+  const switchTopNavView = (view: TopNavView) => {
+    if (isMobile) {
+      setMobileTab(view === "bracket" ? "bracket" : view);
+    } else {
+      setMainView(view === "bracket" ? "bracket" : view);
+    }
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
+  const openWrappedFromToolbar = () => {
+    if (!wrappedData) return;
+    if (!wrappedSeen) {
+      trackEvent("wrapped_opened", {
+        trigger: "toolbar",
+        chaosLabel: wrappedData.identity.chaosLabel,
+        champion: wrappedData.champion.teamName,
+      });
+      setShowWrappedFlow(true);
+      return;
+    }
+    trackEvent("wrapped_share_card_opened", {
+      trigger: "toolbar",
+      chaosLabel: wrappedData.identity.chaosLabel,
+    });
+    setShowWrappedCard(true);
+  };
+
+  const showChaosInToolbar = !isMobile && chaosScore !== null;
+  const showChaosInOverflow = isMobile && chaosScore !== null;
+
+  const overflowPrimaryItems: OverflowMenuItem[] = [
+    {
+      id: "first-four",
+      label: playInGames.length > 0
+        ? `First Four ${allPlayInDecided ? "✓" : `(${decidedPlayInCount}/${playInGames.length})`}`
+        : "First Four",
+      onSelect: () => {
+        setOpenToolbarMenu(null);
+        setShowFirstFourModal(true);
+      },
+    },
+    {
+      id: "copy-link",
+      label: linkCopied ? "✓ Copied!" : "Copy Link",
+      onSelect: () => {
+        setOpenToolbarMenu(null);
+        void onCopyShareLink();
+      },
+    },
+    ...(wrappedData
+      ? [{
+          id: "wrapped",
+          label: "🎁 Wrapped",
+          onSelect: () => {
+            setOpenToolbarMenu(null);
+            openWrappedFromToolbar();
+          },
+        }]
+      : []),
+    {
+      id: "groups",
+      label: "👥 Groups",
+      onSelect: () => {
+        setOpenToolbarMenu(null);
+        if (isAuthenticated) {
+          setGroupsHubOpen(true);
+        } else {
+          setAuthModalOpen(true);
+        }
+      },
+    },
+    ...(isAuthenticated
+      ? [{
+          id: "my-brackets",
+          label: "My Brackets",
+          onSelect: () => {
+            setOpenToolbarMenu(null);
+            setMyBracketsOpen(true);
+          },
+        }]
+      : []),
+    ...(!walkthroughActive && !welcomeGateOpen
+      ? [{
+          id: "replay-tour",
+          label: "Replay Tour",
+          onSelect: () => {
+            setOpenToolbarMenu(null);
+            startWalkthrough({ replay: true });
+          },
+        }]
+      : []),
+  ];
+
+  const overflowSecondaryItems: OverflowMenuItem[] = [
+    {
+      id: "reset-all",
+      label: "Reset All",
+      onSelect: () => {
+        setOpenToolbarMenu(null);
+        onRequestResetAll();
+      },
+      tone: "accent",
+    },
+  ];
+
+  const mobileOverflowChaos = showChaosInOverflow ? (
+    <button
+      type="button"
+      className="chaos-pill chaos-pill--overflow"
+      data-level={chaosPillLevel}
+      title={`Chaos Score: ${chaosScore?.toFixed(1)} across ${pickCount} games. Higher = more unlikely bracket.`}
+      onClick={() => {
+        setOpenToolbarMenu(null);
+        onChaosPillTap();
+      }}
+    >
+      <span className="chaos-pill-emoji">{chaosLabelData?.emoji ?? "📋"}</span>
+      <span className="chaos-pill-label">{chaosLabelData?.label ?? "Chalk"}</span>
+      <span className="chaos-pill-score">{chaosScore?.toFixed(1)}</span>
+      {chaosPercentile !== null ? <span className="chaos-pill-pct">Top {Math.max(1, Math.round(100 - chaosPercentile))}%</span> : null}
+    </button>
+  ) : null;
+
   const toolbar = (
     <div className="eg-main-actions toolbar">
-      <button
-        onClick={onUndo}
-        disabled={undoStack.length === 0}
-        className="eg-btn toolbar-btn--undo"
-        style={!isMobile && mainView !== "bracket" && mainView !== "futures" ? { display: "none" } : undefined}
-      >
-        Undo
-      </button>
-      <button
-        onClick={onRequestResetAll}
-        className="eg-btn toolbar-btn--reset"
-        style={!isMobile && mainView !== "bracket" && mainView !== "futures" ? { display: "none" } : undefined}
-      >
-        Reset All
-      </button>
-      {!isMobile ? (
+      <div className="toolbar-group toolbar-group--left">
         <button
-          onClick={() => setMainView((prev) => (prev === "futures" ? "bracket" : "futures"))}
-          className={`eg-btn toolbar-btn--futures ${mainView === "futures" ? "toolbar-btn--futures-active" : ""}`}
-          style={!isMobile && mainView !== "bracket" && mainView !== "futures" ? { display: "none" } : undefined}
+          onClick={onUndo}
+          disabled={undoStack.length === 0}
+          className="eg-btn toolbar-btn--undo"
+        >
+          ↩ Undo
+        </button>
+
+        <div className="toolbar-dropdown-wrap" ref={simMenuRef}>
+          <button
+            type="button"
+            className="eg-btn toolbar-btn--simulate"
+            onClick={() => setOpenToolbarMenu((prev) => (prev === "sim" ? null : "sim"))}
+            aria-expanded={openToolbarMenu === "sim"}
+            aria-haspopup="menu"
+          >
+            🎲 Simulate ▾
+          </button>
+          {openToolbarMenu === "sim" ? (
+            <div className="toolbar-dropdown" role="menu" aria-label="Simulation options">
+              <button
+                type="button"
+                className="toolbar-dropdown-item"
+                onClick={() => {
+                  setOpenToolbarMenu(null);
+                  onModelSim();
+                }}
+              >
+                Instant Sim
+              </button>
+              <button
+                type="button"
+                className="toolbar-dropdown-item"
+                disabled={staggeredSimRunning}
+                onClick={() => {
+                  setOpenToolbarMenu(null);
+                  onModelSimStaggered();
+                }}
+              >
+                {staggeredSimRunning ? "Staggered Sim Running..." : "Staggered Sim"}
+              </button>
+            </div>
+          ) : null}
+        </div>
+
+        <div className="toolbar-dropdown-wrap" ref={resetMenuRef}>
+          <button
+            type="button"
+            className="eg-btn toolbar-btn--reset"
+            onClick={() => setOpenToolbarMenu((prev) => (prev === "reset" ? null : "reset"))}
+            aria-expanded={openToolbarMenu === "reset"}
+            aria-haspopup="menu"
+          >
+            Reset ▾
+          </button>
+          {openToolbarMenu === "reset" ? (
+            <div className="toolbar-dropdown" role="menu" aria-label="Reset options">
+              <button
+                type="button"
+                className="toolbar-dropdown-item"
+                onClick={() => {
+                  setOpenToolbarMenu(null);
+                  onRequestResetAll();
+                }}
+              >
+                Reset All
+              </button>
+            </div>
+          ) : null}
+        </div>
+      </div>
+
+      <div className="toolbar-group toolbar-group--right">
+        <button
+          onClick={() => {
+            if (isMobile) {
+              setMobileTab((prev) => (prev === "futures" ? "bracket" : "futures"));
+            } else {
+              setMainView((prev) => (prev === "futures" ? "bracket" : "futures"));
+            }
+          }}
+          className={`eg-btn toolbar-btn--futures ${
+            (isMobile ? mobileTab === "futures" : mainView === "futures") ? "toolbar-btn--futures-active" : ""
+          }`}
         >
           <span className="futures-btn-icon">📊</span>
           <span className="futures-btn-label">Futures</span>
           {pickCount > 0 ? <span className="futures-btn-badge">{pickCount}</span> : null}
         </button>
-      ) : null}
-      <button
-        onClick={onModelSim}
-        className="eg-btn toolbar-btn--instant"
-      >
-        Instant Sim
-      </button>
-      <button
-        onClick={onModelSimStaggered}
-        className="eg-btn toolbar-btn--staggered"
-        disabled={staggeredSimRunning}
-      >
-        {staggeredSimRunning ? "Staggered Sim Running..." : "Staggered Sim"}
-      </button>
-      <button
-        onClick={onSaveBracket}
-        className="eg-btn toolbar-btn--save toolbar-btn--save-action"
-        disabled={saveStatus === "saving" || (isAuthenticated && !canSubmitBrackets)}
-        title={
-          !isAuthenticated
-            ? "Sign in to submit your bracket"
-            : submissionsLocked
-              ? "Submissions locked at tip-off"
-              : submissionLimitReached
-                ? "Submission limit reached (25/25)"
-                : `Submitted: ${submittedBracketCount}/25`
-        }
-        style={!isMobile && mainView !== "bracket" && mainView !== "futures" ? { display: "none" } : undefined}
-      >
-        {saveStatus === "saving"
-          ? "Submitting..."
-          : saveStatus === "saved"
-            ? "✓ Submitted"
-            : saveStatus === "error"
-              ? (saveErrorText?.includes("25")
-                  ? "Submission limit reached (25/25)"
-                  : saveErrorText?.toLowerCase().includes("locked")
-                    ? "Submissions locked"
-                    : "Error — try again")
-              : `Submit Bracket ${isAuthenticated ? `(${submittedBracketCount}/25)` : ""}`}
-      </button>
-      <button
-        onClick={() => setShowFirstFourModal(true)}
-        className="eg-btn toolbar-btn--firstfour"
-        style={!isMobile && mainView !== "bracket" && mainView !== "futures" ? { display: "none" } : undefined}
-      >
-        {playInGames.length > 0
-          ? `First Four ${allPlayInDecided ? "✓" : `(${decidedPlayInCount}/${playInGames.length})`}`
-          : "First Four"}
-      </button>
-      {isAuthenticated ? (
-        <button
-          onClick={() => setMyBracketsOpen(true)}
-          className="eg-btn toolbar-btn--mybrackets"
-          style={!isMobile && mainView !== "bracket" && mainView !== "futures" ? { display: "none" } : undefined}
-        >
-          My Brackets
-        </button>
-      ) : null}
-      {isMobile ? (
-        <button
-          onClick={() => setMobileTab("leaderboard")}
-          className="eg-btn toolbar-btn--leaderboard"
-        >
-          🏆 Leaderboard
-        </button>
-      ) : (
-        <>
+
+        {showChaosInToolbar ? (
+          <div className={`chaos-score-wrap ${chaosScoreChanged ? "chaos-score-pill--changed" : ""}`}>
+            <button
+              type="button"
+              className="chaos-pill"
+              data-level={chaosPillLevel}
+              title={`Chaos Score: ${chaosScore.toFixed(1)} across ${pickCount} games. Higher = more unlikely bracket.`}
+              onClick={onChaosPillTap}
+            >
+              <span className="chaos-pill-emoji">{chaosLabelData?.emoji ?? "📋"}</span>
+              <span className="chaos-pill-label">{chaosLabelData?.label ?? "Chalk"}</span>
+              <span className="chaos-pill-score">{chaosScore.toFixed(1)}</span>
+              {chaosPercentile !== null ? <span className="chaos-pill-pct">Top {Math.max(1, Math.round(100 - chaosPercentile))}%</span> : null}
+            </button>
+          </div>
+        ) : null}
+
+        <div className="odds-mode-toggle toolbar-btn--odds">
           <button
-            onClick={() => setMainView((prev) => (prev === "conferences" ? "bracket" : "conferences"))}
-            className={`eg-btn toolbar-btn--conferences ${mainView === "conferences" ? "toolbar-btn--active-view" : ""}`}
+            className={`odds-mode-btn ${displayMode === "implied" ? "odds-mode-btn--active" : ""}`}
+            onClick={() => {
+              showContextualHint(
+                "toggle",
+                "Switch between American odds (+300) and implied win probability (25.0%) across the entire product.",
+                ".odds-mode-toggle",
+                4000
+              );
+              trackEvent("odds_mode_toggled", { from: displayMode, to: "implied" });
+              setDisplayMode("implied");
+            }}
+            aria-label="Show implied percentage"
           >
-            {mainView === "conferences" ? "← Bracket" : "Conf. Tourneys"}
+            %
           </button>
           <button
-            onClick={() => setMainView((prev) => (prev === "rankings" ? "bracket" : "rankings"))}
-            className={`eg-btn toolbar-btn--rankings ${mainView === "rankings" ? "toolbar-btn--active-view" : ""}`}
+            className={`odds-mode-btn ${displayMode === "american" ? "odds-mode-btn--active" : ""}`}
+            onClick={() => {
+              showContextualHint(
+                "toggle",
+                "Switch between American odds (+300) and implied win probability (25.0%) across the entire product.",
+                ".odds-mode-toggle",
+                4000
+              );
+              trackEvent("odds_mode_toggled", { from: displayMode, to: "american" });
+              setDisplayMode("american");
+            }}
+            aria-label="Show American odds"
           >
-            {mainView === "rankings" ? "← Bracket" : "Rankings"}
+            US
           </button>
-          <button
-            onClick={() => setMainView((prev) => (prev === "leaderboard" ? "bracket" : "leaderboard"))}
-            className={`eg-btn toolbar-btn--leaderboard ${mainView === "leaderboard" ? "toolbar-btn--active-view" : ""}`}
-          >
-            {mainView === "leaderboard" ? "← Bracket" : "🏆 Leaderboard"}
-          </button>
-          <button
-            onClick={() => setMainView((prev) => (prev === "predictor" ? "bracket" : "predictor"))}
-            className={`eg-btn toolbar-btn--predictor ${mainView === "predictor" ? "toolbar-btn--active-view" : ""}`}
-          >
-            {mainView === "predictor" ? "← Bracket" : "Predictor"}
-          </button>
-        </>
-      )}
-      <button
-        onClick={onCopyShareLink}
-        className="eg-btn copy-link-btn toolbar-btn--copy"
-        data-copied={linkCopied ? "true" : "false"}
-        aria-label="Copy shareable bracket link"
-        style={!isMobile && mainView !== "bracket" && mainView !== "futures" ? { display: "none" } : undefined}
-      >
-        {linkCopied ? "✓ Copied!" : "Copy Link"}
-      </button>
-      {wrappedData ? (
-        <button
-          onClick={() => {
-            if (!wrappedSeen) {
-              trackEvent("wrapped_opened", { trigger: "toolbar", chaosLabel: wrappedData.identity.chaosLabel, champion: wrappedData.champion.teamName });
-              setShowWrappedFlow(true);
-            } else {
-              trackEvent("wrapped_share_card_opened", { trigger: "toolbar", chaosLabel: wrappedData.identity.chaosLabel });
-              setShowWrappedCard(true);
-            }
-          }}
-          className="eg-btn toolbar-btn--wrapped"
-          style={!isMobile && mainView !== "bracket" && mainView !== "futures" ? { display: "none" } : undefined}
-        >
-          🎁 Wrapped
-        </button>
-      ) : null}
-      {staggeredSimRunning ? (
-        <button
-          onClick={onToggleStaggeredPause}
-          className="eg-btn toolbar-btn--staggered-toggle"
-          aria-label={staggeredSimPaused ? "Resume staggered simulation" : "Pause staggered simulation"}
-          title={staggeredSimPaused ? "Resume staggered simulation" : "Pause staggered simulation"}
-          style={!isMobile && mainView !== "bracket" && mainView !== "futures" ? { display: "none" } : undefined}
-        >
-          {staggeredSimPaused ? "▶" : "⏸"}
-        </button>
-      ) : null}
-      {staggeredSimRunning ? (
-        <div
-          className="eg-stagger-controls toolbar-btn--stagger-controls"
-          style={!isMobile && mainView !== "bracket" && mainView !== "futures" ? { display: "none" } : undefined}
-        >
-          <label htmlFor="stagger-delay" className="eg-stagger-label">
-            Stagger Delay: {(staggeredSimDelayMs / 1000).toFixed(1)}s
-          </label>
-          <input
-            id="stagger-delay"
-            type="range"
-            min={MIN_STAGGERED_SIM_DELAY_MS}
-            max={MAX_STAGGERED_SIM_DELAY_MS}
-            step={250}
-            value={staggeredSimDelayMs}
-            onChange={(event) => setStaggeredSimDelayMs(Number(event.target.value))}
-            className="eg-stagger-slider"
-          />
         </div>
-      ) : null}
-      <div
-        className="odds-mode-toggle toolbar-btn--odds"
-        style={
-          !isMobile && mainView !== "bracket" && mainView !== "futures" && mainView !== "conferences"
-            ? { display: "none" }
-            : undefined
-        }
-      >
+
         <button
-          className={`odds-mode-btn ${displayMode === "american" ? "odds-mode-btn--active" : ""}`}
-          onClick={() => {
-            showContextualHint(
-              "toggle",
-              "Switch between American odds (+300) and implied win probability (25.0%) across the entire product.",
-              ".odds-mode-toggle",
-              4000
-            );
-            trackEvent("odds_mode_toggled", {
-              from: displayMode,
-              to: "american",
-            });
-            setDisplayMode("american");
-          }}
-          aria-label="Show American odds"
+          onClick={onSaveBracket}
+          className="eg-btn toolbar-btn--save toolbar-btn--save-action"
+          disabled={saveStatus === "saving" || (isAuthenticated && !canSubmitBrackets)}
+          title={
+            !isAuthenticated
+              ? "Sign in to submit your bracket"
+              : submissionsLocked
+                ? "Submissions locked at tip-off"
+                : submissionLimitReached
+                  ? "Submission limit reached (25/25)"
+                  : `Submitted: ${submittedBracketCount}/25`
+          }
         >
-          +/-
+          {saveStatus === "saving"
+            ? "Submitting..."
+            : saveStatus === "saved"
+              ? "✓ Submitted"
+              : saveStatus === "error"
+                ? (saveErrorText?.includes("25")
+                    ? "Submission limit reached (25/25)"
+                    : saveErrorText?.toLowerCase().includes("locked")
+                      ? "Submissions locked"
+                      : "Error — try again")
+                : `Submit Bracket ${isAuthenticated ? `(${submittedBracketCount}/25)` : ""}`}
         </button>
-        <button
-          className={`odds-mode-btn ${displayMode === "implied" ? "odds-mode-btn--active" : ""}`}
-          onClick={() => {
-            showContextualHint(
-              "toggle",
-              "Switch between American odds (+300) and implied win probability (25.0%) across the entire product.",
-              ".odds-mode-toggle",
-              4000
-            );
-            trackEvent("odds_mode_toggled", {
-              from: displayMode,
-              to: "implied",
-            });
-            setDisplayMode("implied");
-          }}
-          aria-label="Show implied percentage"
-        >
-          %
-        </button>
-      </div>
-      {!isMobile && chaosScore !== null ? (
-        <div
-          className={`chaos-score-wrap ${chaosScoreChanged ? "chaos-score-pill--changed" : ""}`}
-        >
+
+        <div className="toolbar-dropdown-wrap toolbar-dropdown-wrap--right" ref={overflowMenuRef}>
           <button
             type="button"
-            className="chaos-pill"
-            data-level={chaosPillLevel}
-            title={`Chaos Score: ${chaosScore.toFixed(1)} across ${pickCount} games. Higher = more unlikely bracket.`}
-            onClick={onChaosPillTap}
+            className="eg-btn toolbar-btn--overflow"
+            onClick={() => setOpenToolbarMenu((prev) => (prev === "overflow" ? null : "overflow"))}
+            aria-expanded={openToolbarMenu === "overflow"}
+            aria-haspopup="menu"
+            aria-label="More actions"
           >
-            <span className="chaos-pill-emoji">{chaosLabelData?.emoji ?? "📋"}</span>
-            <span className="chaos-pill-label">{chaosLabelData?.label ?? "Chalk"}</span>
-            <span className="chaos-pill-score">{chaosScore.toFixed(1)}</span>
-            {chaosPercentile !== null ? <span className="chaos-pill-pct">Top {Math.max(1, Math.round(100 - chaosPercentile))}%</span> : null}
+            •••
           </button>
+          {openToolbarMenu === "overflow" ? (
+            <OverflowMenu
+              primaryItems={overflowPrimaryItems}
+              secondaryItems={overflowSecondaryItems}
+              chaosNode={mobileOverflowChaos}
+            />
+          ) : null}
         </div>
-      ) : null}
-      {isAuthenticated && submissionsLocked ? (
-        <div className="bracket-lock-banner" style={!isMobile && mainView !== "bracket" && mainView !== "futures" ? { display: "none" } : undefined}>
-          🔒 Submissions locked at tip-off. Tournament is live — check the leaderboard.
-        </div>
-      ) : null}
+      </div>
     </div>
   );
 
@@ -3235,10 +3368,35 @@ function App() {
           ) : null}
         </div>
         <div className="chaos-tracker-right">
-          <span className="chaos-tracker-count">
-            {staggeredGamesResolved}/{staggeredTotalGames}
-          </span>
-          <span className="chaos-tracker-count-label">games</span>
+          <div className="chaos-tracker-progress">
+            <span className="chaos-tracker-count">
+              {staggeredGamesResolved}/{staggeredTotalGames}
+            </span>
+            <span className="chaos-tracker-count-label">games</span>
+          </div>
+          <div className="chaos-tracker-controls">
+            <button
+              type="button"
+              className="chaos-tracker-toggle"
+              onClick={onToggleStaggeredPause}
+              aria-label={staggeredSimPaused ? "Resume staggered simulation" : "Pause staggered simulation"}
+            >
+              {staggeredSimPaused ? "▶ Resume" : "⏸ Pause"}
+            </button>
+            <label htmlFor="stagger-delay" className="chaos-tracker-delay">
+              Speed {(staggeredSimDelayMs / 1000).toFixed(1)}s
+            </label>
+            <input
+              id="stagger-delay"
+              type="range"
+              min={MIN_STAGGERED_SIM_DELAY_MS}
+              max={MAX_STAGGERED_SIM_DELAY_MS}
+              step={250}
+              value={staggeredSimDelayMs}
+              onChange={(event) => setStaggeredSimDelayMs(Number(event.target.value))}
+              className="chaos-tracker-slider"
+            />
+          </div>
         </div>
       </div>
     ) : null;
@@ -3630,73 +3788,19 @@ function App() {
       <div className="bg-shape bg-bottom" aria-hidden="true" />
 
       <main className="eg-app">
-        <nav className="og-top-nav" aria-label="Odds Gods tools">
-          <div className="og-top-nav-desktop">
-            <a className="og-top-nav-brand" href={LANDING_URL}>
-              <img className="og-top-nav-logo" src="/logo-icon.png?v=20260225" alt="Odds Gods" />
-              <span className="odds">ODDS</span> <span className="gods">GODS</span>
-              <span className="beta-badge">BETA</span>
-            </a>
-            <div className="og-top-nav-tabs">
-              <a
-                className="og-top-nav-link"
-                href="https://oddsgods.net/blog"
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                Blog
-              </a>
-              <a className="og-top-nav-link" href="/god-rankings.html" target="_blank" rel="noopener noreferrer">
-                Odds Gods Rankings
-              </a>
-            </div>
-            <div className="og-top-nav-auth">
-              {authLoading ? (
-                <span className="nav-auth-loading">...</span>
-              ) : isAuthenticated ? (
-                <div className="nav-user-info">
-                  <span className="nav-user-name">{profile?.display_name || user?.email || "User"}</span>
-                  <button className="nav-signout-btn" onClick={() => signOut()}>
-                    Sign out
-                  </button>
-                </div>
-              ) : (
-                <button className="nav-signin-btn" onClick={() => setAuthModalOpen(true)}>
-                  Log in / Sign up
-                </button>
-              )}
-            </div>
-          </div>
-          <div className="og-top-nav-mobile">
-            <div className="nav-left">
-              <a className="og-mobile-logo-link" href={LANDING_URL} aria-label="Odds Gods home">
-                <img className="nav-logo-icon nav-logo" src="/logo-icon.png?v=20260225" alt="Odds Gods" />
-              </a>
-              <span className="nav-product-title nav-wordmark">ODDS GODS</span>
-              <span className="beta-badge nav-beta">BETA</span>
-            </div>
-            <div className="nav-right">
-              <a className="og-top-nav-link" href="https://oddsgods.net/blog" target="_blank" rel="noopener noreferrer">
-                Blog
-              </a>
-              <a className="og-top-nav-link" href="/god-rankings.html" target="_blank" rel="noopener noreferrer">
-                Rankings
-              </a>
-              {isAuthenticated ? (
-                <>
-                  <span className="nav-user-name nav-user-name--mobile">{profile?.display_name || user?.email || "User"}</span>
-                  <button className="nav-signout-btn nav-signout-btn--mobile nav-auth-btn" onClick={() => signOut()}>
-                    Sign out
-                  </button>
-                </>
-              ) : (
-                <button className="nav-signin-btn nav-signin-btn--mobile nav-auth-btn" onClick={() => setAuthModalOpen(true)}>
-                  Log in
-                </button>
-              )}
-            </div>
-          </div>
-        </nav>
+        <TopNavBar
+          activeView={topNavActiveView}
+          authLoading={authLoading}
+          isAuthenticated={isAuthenticated}
+          userLabel={userLabel}
+          showBeta
+          onSelectBracket={() => switchTopNavView("bracket")}
+          onSelectLeaderboard={() => switchTopNavView("leaderboard")}
+          onSelectConferences={() => switchTopNavView("conferences")}
+          onSelectRankings={() => switchTopNavView("rankings")}
+          onSignIn={() => setAuthModalOpen(true)}
+          onSignOut={() => signOut()}
+        />
         {!isMobile ? (
           <div className="live-odds-band">
             <LiveOddsStrip
@@ -3715,8 +3819,11 @@ function App() {
         </header>
         {isMobile ? (
           <section className="eg-mobile-shell">
-            <div className="mobile-toolbar-wrapper">{toolbar}</div>
-            {chaosTrackerBar}
+            {showToolbar ? <div className="mobile-toolbar-wrapper">{toolbar}</div> : null}
+            {showToolbar ? chaosTrackerBar : null}
+            {isAuthenticated && submissionsLocked && showToolbar ? (
+              <div className="bracket-lock-banner">🔒 Submissions locked at tip-off. Tournament is live — check the leaderboard.</div>
+            ) : null}
             {mobileTab === "bracket" ? (
               <>
                 <MobileRegionTabs activeSection={mobileSection} onChange={setMobileSection} />
@@ -3799,8 +3906,11 @@ function App() {
         ) : (
           <section className="eg-layout">
             <div className="eg-main-panel">
-              {toolbar}
-              {chaosTrackerBar}
+              {showToolbar ? toolbar : null}
+              {showToolbar ? chaosTrackerBar : null}
+              {isAuthenticated && submissionsLocked && showToolbar ? (
+                <div className="bracket-lock-banner">🔒 Submissions locked at tip-off. Tournament is live — check the leaderboard.</div>
+              ) : null}
               <div className="eg-bracket-stack" style={{ display: mainView === "bracket" ? undefined : "none" }}>
                 <section
                   className="eg-bracket-section top-half"
@@ -3982,6 +4092,48 @@ function App() {
         onRenameSuccess={onBracketRenamed}
         currentPicks={sanitized}
         currentChaosScore={chaosScore ?? 0}
+      />
+
+      <GroupsHub
+        isOpen={groupsHubOpen}
+        onClose={() => setGroupsHubOpen(false)}
+        onCreateGroup={() => {
+          setGroupsHubOpen(false);
+          setCreateGroupOpen(true);
+        }}
+        onJoinGroup={() => {
+          setGroupsHubOpen(false);
+          setJoinGroupOpen(true);
+        }}
+        onOpenGroup={(group) => {
+          setGroupsHubOpen(false);
+          setActiveGroup(group);
+        }}
+      />
+
+      <CreateGroupModal
+        isOpen={createGroupOpen}
+        onClose={() => setCreateGroupOpen(false)}
+        onGroupCreated={() => {
+          setCreateGroupOpen(false);
+          setGroupsHubOpen(true);
+        }}
+      />
+
+      <JoinGroupModal
+        isOpen={joinGroupOpen}
+        onClose={() => setJoinGroupOpen(false)}
+        onGroupJoined={() => {
+          setJoinGroupOpen(false);
+          setGroupsHubOpen(true);
+        }}
+      />
+
+      <GroupDetailView
+        group={activeGroup}
+        isOpen={Boolean(activeGroup)}
+        onClose={() => setActiveGroup(null)}
+        tournamentStarted={false}
       />
 
       {statsModalGame ? (
