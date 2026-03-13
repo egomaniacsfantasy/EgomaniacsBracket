@@ -1028,12 +1028,6 @@ function App() {
     setWalkthroughActive(true);
   };
 
-  const _handleDismissDesktopFirst = () => {
-    setShowDesktopFirst(false);
-    if (typeof window !== "undefined") {
-      window.localStorage.setItem(DESKTOP_FIRST_SEEN_KEY, "1");
-    }
-  };
 
   const showContextualHint = (key: HintKey, message: string, selector: string, durationMs: number) => {
     if (hintsShown[key]) return;
@@ -5546,24 +5540,6 @@ function MobileFinalFourView({
   );
 }
 
-function _DesktopFirstModal({ onDismiss }: { onDismiss: () => void }) {
-  return (
-    <div className="dfm-overlay">
-      <div className="dfm-card">
-        <div className="dfm-icon">💻</div>
-        <h2 className="dfm-headline">Quick heads up.</h2>
-        <p className="dfm-body">
-          BracketLab was built for the big screen. You can absolutely use it here, but the full bracket view,
-          probability editor, and real-time odds cascades are way better on desktop.
-        </p>
-        <p className="dfm-sub">Grab your laptop when you can. You won&apos;t regret it.</p>
-        <button className="dfm-btn" onClick={onDismiss}>
-          Got it - continue on mobile
-        </button>
-      </div>
-    </div>
-  );
-}
 
 function MobileChampionCard({ titleGame }: { titleGame: ResolvedGame | null }) {
   const champion = titleGame?.winnerId ? teamsById.get(titleGame.winnerId) : null;
