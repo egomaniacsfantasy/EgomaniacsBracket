@@ -3213,15 +3213,6 @@ function App() {
         }]
       : []),
     {
-      id: "predictor",
-      label: "Predictor",
-      onSelect: () => {
-        setOpenToolbarMenu(null);
-        if (isMobile) setMobileTab("predictor");
-        else setMainView("predictor");
-      },
-    },
-    {
       id: "copy-link",
       label: linkCopied ? "✓ Copied!" : "Copy Link",
       onSelect: () => {
@@ -3393,22 +3384,6 @@ function App() {
             title={isAuthenticated ? "View and manage your groups" : "Sign in to view and manage groups"}
           >
             Groups
-          </button>
-        ) : null}
-
-        {!isMobile ? (
-          <button
-            type="button"
-            onClick={() => {
-              if (isMobile) setMobileTab("predictor");
-              else setMainView("predictor");
-            }}
-            className={`eg-btn toolbar-btn--predictor ${
-              (isMobile ? mobileTab === "predictor" : mainView === "predictor") ? "toolbar-btn--active-view" : ""
-            }`}
-            title="Open head-to-head matchup predictor"
-          >
-            Predictor
           </button>
         ) : null}
 

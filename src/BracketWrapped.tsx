@@ -215,12 +215,21 @@ export function BracketWrapped({ data, onClose }: BracketWrappedProps) {
               <div className="bw-screen5-wrap">
                 <BracketWrappedCard data={data} />
                 <div className="bw-screen5-actions" onClick={(e) => e.stopPropagation()}>
-                  <button className="bw-btn bw-btn--primary" onClick={handleShareCard}>
-                    Share Card
+                  <button
+                    className="bw-screen5-review"
+                    onClick={goPrev}
+                    aria-label="Go back to the previous Bracket Wrapped slide"
+                  >
+                    ← Review Story
                   </button>
-                  <button className="bw-btn bw-btn--secondary" onClick={handleCopyLink}>
-                    {linkCopied ? "Copied!" : "Copy Link"}
-                  </button>
+                  <div className="bw-screen5-cta-row">
+                    <button className="bw-btn bw-btn--primary" onClick={handleShareCard}>
+                      Share Card
+                    </button>
+                    <button className="bw-btn bw-btn--secondary" onClick={handleCopyLink}>
+                      {linkCopied ? "Copied!" : "Copy Link"}
+                    </button>
+                  </div>
                 </div>
               </div>
             )}
@@ -237,7 +246,7 @@ export function BracketWrapped({ data, onClose }: BracketWrappedProps) {
       </div>
 
       {/* Navigation arrows */}
-      {screen > 0 && (
+      {screen > 0 && screen < TOTAL_SCREENS - 1 && (
         <button
           className="bw-nav-arrow bw-nav-arrow--left"
           onClick={(e) => { e.stopPropagation(); goPrev(); }}

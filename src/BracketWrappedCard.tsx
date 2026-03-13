@@ -49,8 +49,8 @@ export function BracketWrappedCard({
     champion,
     finalFour,
     perfectBracketLine,
-    roastText,
   } = data;
+  const chaosPercentilePosition = Math.max(2, Math.min(98, identity.chaosPercentile));
 
   // Collect logos for ghosted background
   const ghostLogos = [
@@ -132,11 +132,15 @@ export function BracketWrappedCard({
             <div className="bw-card-chaos-bar-track">
               <div
                 className="bw-card-chaos-bar-fill"
-                style={{ width: `${Math.max(2, Math.min(98, identity.chaosPercentile))}%` }}
+                style={{ width: `${chaosPercentilePosition}%` }}
+              />
+              <div
+                className="bw-card-chaos-bar-glow"
+                style={{ left: `${chaosPercentilePosition}%` }}
               />
               <div
                 className="bw-card-chaos-bar-marker"
-                style={{ left: `${Math.max(2, Math.min(98, identity.chaosPercentile))}%` }}
+                style={{ left: `${chaosPercentilePosition}%` }}
               />
             </div>
           </div>
@@ -224,18 +228,10 @@ export function BracketWrappedCard({
           </div>
         </div>
 
-        {/* 7. Roast box */}
-        <div className="bw-card-roast">
-          <span className="bw-card-roast-quote" aria-hidden="true">
-            &ldquo;
-          </span>
-          <p className="bw-card-roast-text">{roastText}</p>
-        </div>
-
         {/* Separator line above footer */}
         <div className="bw-card-separator" />
 
-        {/* 8. Footer */}
+        {/* 7. Footer */}
         <div className="bw-card-footer">
           <span className="bw-card-footer-url">bracket.oddsgods.net</span>
           <span className="bw-card-footer-promo">💰 Best bracket wins $100 💰</span>

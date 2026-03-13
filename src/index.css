@@ -14215,8 +14215,75 @@ body.walkthrough-active .odds-value--changed::after {
 }
 .bw-screen5-actions {
   display: flex;
+  flex-direction: column;
+  align-items: center;
   gap: 10px;
+  width: min(100%, 420px);
+}
+
+.bw-screen5-review {
+  display: inline-flex;
+  align-items: center;
   justify-content: center;
+  gap: 6px;
+  min-height: 30px;
+  padding: 0 14px;
+  border-radius: 999px;
+  border: 1px solid rgba(240,230,208,0.12);
+  background: rgba(240,230,208,0.05);
+  color: rgba(240,230,208,0.68);
+  font-family: "Space Grotesk", sans-serif;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: color 150ms, border-color 150ms, background 150ms;
+}
+
+.bw-screen5-review:hover {
+  color: #f0e6d0;
+  background: rgba(240,230,208,0.09);
+  border-color: rgba(240,230,208,0.24);
+}
+
+.bw-screen5-cta-row {
+  display: flex;
+  gap: 10px;
+  width: 100%;
+  justify-content: center;
+}
+
+.bw-screen5-cta-row .bw-btn {
+  flex: 1 1 0;
+  min-width: 0;
+}
+
+@media (max-width: 767px) {
+  .bw-screen5-wrap {
+    gap: 10px;
+  }
+
+  .bw-screen5-actions {
+    gap: 8px;
+    width: min(100%, 356px);
+  }
+
+  .bw-screen5-review {
+    align-self: flex-start;
+    margin-left: 2px;
+    min-height: 28px;
+    padding: 0 12px;
+    font-size: 10px;
+  }
+
+  .bw-screen5-cta-row {
+    gap: 8px;
+  }
+
+  .bw-screen5-cta-row .bw-btn {
+    padding: 10px 14px;
+  }
 }
 
 /* ────────────────────────────────────────────────────────────────────────────
@@ -14249,9 +14316,9 @@ body.walkthrough-active .odds-value--changed::after {
   z-index: 1;
   display: flex;
   flex-direction: column;
-  justify-content: center;
+  justify-content: flex-start;
   gap: 0;
-  padding: 14px;
+  padding: 14px 14px 10px;
   flex: 1;
   min-height: 0;
 }
@@ -14263,7 +14330,6 @@ body.walkthrough-active .odds-value--changed::after {
 .bw-card-highlights { margin-bottom: 10px; }
 .bw-card-hl { margin-bottom: 5px; }
 .bw-card-hl:last-child { margin-bottom: 0; }
-.bw-card-roast { margin-bottom: 12px; }
 
 /* Top bar */
 .bw-card-topbar {
@@ -14360,6 +14426,8 @@ body.walkthrough-active .odds-value--changed::after {
   height: 4px;
   border-radius: 2px;
   background: rgba(240,230,208,0.08);
+  overflow: visible;
+  isolation: isolate;
 }
 .bw-card-chaos-bar-fill {
   position: absolute;
@@ -14369,6 +14437,24 @@ body.walkthrough-active .odds-value--changed::after {
   border-radius: 2px;
   background: linear-gradient(90deg, #b87d18, #ffc857);
   box-shadow: 0 0 8px rgba(231,168,50,0.4);
+  z-index: 1;
+}
+.bw-card-chaos-bar-glow {
+  position: absolute;
+  top: 50%;
+  width: 34px;
+  height: 34px;
+  transform: translate(-50%, -50%);
+  border-radius: 50%;
+  background: radial-gradient(
+    circle,
+    rgba(255,200,87,0.42) 0%,
+    rgba(255,200,87,0.22) 34%,
+    rgba(255,200,87,0.10) 52%,
+    rgba(255,200,87,0) 74%
+  );
+  pointer-events: none;
+  z-index: 2;
 }
 .bw-card-chaos-bar-marker {
   position: absolute;
@@ -14378,8 +14464,8 @@ body.walkthrough-active .odds-value--changed::after {
   border-radius: 50%;
   background: #ffc857;
   border: 1.5px solid #080603;
-  box-shadow: 0 0 6px rgba(255,200,87,0.5);
   transform: translate(-50%, -50%);
+  z-index: 3;
 }
 .bw-card-chaos-pct {
   font-family: "Space Grotesk", sans-serif;
@@ -14585,40 +14671,12 @@ body.walkthrough-active .odds-value--changed::after {
   color: rgba(240,230,208,0.4);
 }
 
-/* Roast box */
-.bw-card-roast {
-  position: relative;
-  background: linear-gradient(135deg, rgba(184,125,24,0.06) 0%, rgba(184,125,24,0.02) 100%);
-  border-radius: 8px;
-  border: 1px solid rgba(184,125,24,0.1);
-  padding: 7px 10px 14px 10px;
-}
-.bw-card-roast-quote {
-  position: absolute;
-  top: 2px;
-  left: 8px;
-  font-family: "Instrument Serif", serif;
-  font-size: 32px;
-  color: rgba(184,125,24,0.2);
-  line-height: 1;
-  pointer-events: none;
-}
-.bw-card-roast-text {
-  font-family: "Instrument Serif", serif;
-  font-style: italic;
-  font-size: 11px;
-  color: rgba(239,228,207,0.7);
-  line-height: 1.35;
-  padding-left: 16px;
-  margin: 0;
-}
-
 /* Separator line above footer */
 .bw-card-separator {
   width: 40px;
   height: 1px;
   background: rgba(184,125,24,0.1);
-  margin: 8px auto;
+  margin: 6px auto 4px;
 }
 
 /* Card footer */
@@ -14627,6 +14685,7 @@ body.walkthrough-active .odds-value--changed::after {
   flex-direction: column;
   align-items: center;
   gap: 0;
+  padding-bottom: 2px;
 }
 .bw-card-footer-url {
   font-family: "Space Grotesk", sans-serif;
