@@ -142,7 +142,7 @@ export function BracketWrapped({ data, onClose }: BracketWrappedProps) {
 
   const handleShareCard = async () => {
     try {
-      await exportWrappedCard(data);
+      await exportWrappedCard();
       trackEvent("wrapped_card_shared", {
         chaosLabel: identity.chaosLabel,
         champion: champion.teamName,

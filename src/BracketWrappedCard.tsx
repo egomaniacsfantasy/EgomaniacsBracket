@@ -46,7 +46,7 @@ export function BracketWrappedCard({
   ].filter(Boolean);
 
   return (
-    <div className="bw-card-wrap">
+    <div className="bw-card-wrap" id="wrapped-export-target">
       {standalone && onClose ? (
         <button className="bw-close" onClick={onClose} aria-label="Close">
           ✕
