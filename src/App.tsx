@@ -718,6 +718,19 @@ function App() {
   }, [isMobile, mainView, mobileTab]);
 
   useEffect(() => {
+    if (!isMobile) {
+      document.body.classList.remove("mobile-tab-futures");
+      return;
+    }
+    if (mobileTab === "futures") {
+      document.body.classList.add("mobile-tab-futures");
+    } else {
+      document.body.classList.remove("mobile-tab-futures");
+    }
+    return () => document.body.classList.remove("mobile-tab-futures");
+  }, [isMobile, mobileTab]);
+
+  useEffect(() => {
     const media = window.matchMedia("(max-width: 1850px)");
     const apply = () => setCompactDesktop(media.matches);
     apply();
@@ -3085,6 +3098,30 @@ function App() {
   const firstFourInlineProgress = playInGames.length > 0 ? `${decidedPlayInCount}/${playInGames.length}` : null;
 
   const overflowPrimaryItems: OverflowMenuItem[] = [
+    ...(isMobile
+      ? [{
+          id: "submit-bracket",
+          label: saveStatus === "saving"
+            ? "Submitting..."
+            : saveStatus === "saved"
+              ? "✓ Submitted"
+              : saveStatus === "error"
+                ? "Error — try again"
+                : `Submit Bracket ${isAuthenticated ? `(${submittedBracketCount}/25)` : ""}`,
+          onSelect: () => {
+            setOpenToolbarMenu(null);
+            onSaveBracket();
+          },
+        },
+        {
+          id: "groups",
+          label: "Groups",
+          onSelect: () => {
+            setOpenToolbarMenu(null);
+            openGroupsFromToolbar();
+          },
+        }]
+      : []),
     ...(!showInlineFirstFour
       ? [{
           id: "first-four",
@@ -3261,14 +3298,16 @@ function App() {
           </button>
         ) : null}
 
-        <button
-          type="button"
-          onClick={openGroupsFromToolbar}
-          className="eg-btn toolbar-btn--groups"
-          title={isAuthenticated ? "View and manage your groups" : "Sign in to view and manage groups"}
-        >
-          Groups
-        </button>
+        {!isMobile ? (
+          <button
+            type="button"
+            onClick={openGroupsFromToolbar}
+            className="eg-btn toolbar-btn--groups"
+            title={isAuthenticated ? "View and manage your groups" : "Sign in to view and manage groups"}
+          >
+            Groups
+          </button>
+        ) : null}
 
         <button
           type="button"
@@ -3284,22 +3323,20 @@ function App() {
           Predictor
         </button>
 
-        <button
-          onClick={() => {
-            if (isMobile) {
-              setMobileTab((prev) => (prev === "futures" ? "bracket" : "futures"));
-            } else {
+        {!isMobile ? (
+          <button
+            onClick={() => {
               setMainView((prev) => (prev === "futures" ? "bracket" : "futures"));
-            }
-          }}
-          className={`eg-btn toolbar-btn--futures ${
-            (isMobile ? mobileTab === "futures" : mainView === "futures") ? "toolbar-btn--futures-active" : ""
-          }`}
-        >
-          <span className="futures-btn-icon">📊</span>
-          <span className="futures-btn-label">Futures</span>
-          {pickCount > 0 ? <span className="futures-btn-badge">{pickCount}</span> : null}
-        </button>
+            }}
+            className={`eg-btn toolbar-btn--futures ${
+              mainView === "futures" ? "toolbar-btn--futures-active" : ""
+            }`}
+          >
+            <span className="futures-btn-icon">📊</span>
+            <span className="futures-btn-label">Futures</span>
+            {pickCount > 0 ? <span className="futures-btn-badge">{pickCount}</span> : null}
+          </button>
+        ) : null}
 
         {showChaosInToolbar ? (
           <div className={`chaos-score-wrap ${chaosScoreChanged ? "chaos-score-pill--changed" : ""}`}>
@@ -3353,32 +3390,34 @@ function App() {
           </button>
         </div>
 
-        <button
-          onClick={onSaveBracket}
-          className="eg-btn toolbar-btn--save toolbar-btn--save-action"
-          disabled={saveStatus === "saving" || (isAuthenticated && !canSubmitBrackets)}
-          title={
-            !isAuthenticated
-              ? "Sign in to submit your bracket"
-              : submissionsLocked
-                ? "Submissions locked at tip-off"
-                : submissionLimitReached
-                  ? "Submission limit reached (25/25)"
-                  : `Submitted: ${submittedBracketCount}/25`
-          }
-        >
-          {saveStatus === "saving"
-            ? "Submitting..."
-            : saveStatus === "saved"
-              ? "✓ Submitted"
-              : saveStatus === "error"
-                ? (saveErrorText?.includes("25")
+        {!isMobile ? (
+          <button
+            onClick={onSaveBracket}
+            className="eg-btn toolbar-btn--save toolbar-btn--save-action"
+            disabled={saveStatus === "saving" || (isAuthenticated && !canSubmitBrackets)}
+            title={
+              !isAuthenticated
+                ? "Sign in to submit your bracket"
+                : submissionsLocked
+                  ? "Submissions locked at tip-off"
+                  : submissionLimitReached
                     ? "Submission limit reached (25/25)"
-                    : saveErrorText?.toLowerCase().includes("locked")
-                      ? "Submissions locked"
-                      : "Error — try again")
-                : `Submit Bracket ${isAuthenticated ? `(${submittedBracketCount}/25)` : ""}`}
-        </button>
+                    : `Submitted: ${submittedBracketCount}/25`
+            }
+          >
+            {saveStatus === "saving"
+              ? "Submitting..."
+              : saveStatus === "saved"
+                ? "✓ Submitted"
+                : saveStatus === "error"
+                  ? (saveErrorText?.includes("25")
+                      ? "Submission limit reached (25/25)"
+                      : saveErrorText?.toLowerCase().includes("locked")
+                        ? "Submissions locked"
+                        : "Error — try again")
+                  : `Submit Bracket ${isAuthenticated ? `(${submittedBracketCount}/25)` : ""}`}
+          </button>
+        ) : null}
 
         <div className="toolbar-dropdown-wrap toolbar-dropdown-wrap--right" ref={overflowMenuRef}>
           <button
@@ -4345,7 +4384,7 @@ function App() {
         </Suspense>
       ) : null}
 
-      {showDesktopFirst && isMobile ? <DesktopFirstModal onDismiss={handleDismissDesktopFirst} /> : null}
+      {/* DesktopFirstModal disabled — mobile experience is fully supported */}
 
       {showFirstFourModal && onboardingFlowReady ? (
         <FirstFourModal
