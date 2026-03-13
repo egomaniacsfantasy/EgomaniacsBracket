@@ -3061,20 +3061,35 @@ function App() {
     setShowWrappedCard(true);
   };
 
+  const openFirstFourFromToolbar = () => {
+    setOpenToolbarMenu(null);
+    setShowFirstFourModal(true);
+  };
+
+  const openGroupsFromToolbar = () => {
+    setOpenToolbarMenu(null);
+    if (isAuthenticated) {
+      setGroupsHubOpen(true);
+    } else {
+      setAuthModalOpen(true);
+    }
+  };
+
   const showChaosInToolbar = !isMobile && chaosScore !== null;
   const showChaosInOverflow = isMobile && chaosScore !== null;
+  const showInlineFirstFour = playInGames.length > 0 && !allPlayInDecided;
+  const firstFourInlineProgress = playInGames.length > 0 ? `${decidedPlayInCount}/${playInGames.length}` : null;
 
   const overflowPrimaryItems: OverflowMenuItem[] = [
-    {
-      id: "first-four",
-      label: playInGames.length > 0
-        ? `First Four ${allPlayInDecided ? "✓" : `(${decidedPlayInCount}/${playInGames.length})`}`
-        : "First Four",
-      onSelect: () => {
-        setOpenToolbarMenu(null);
-        setShowFirstFourModal(true);
-      },
-    },
+    ...(!showInlineFirstFour
+      ? [{
+          id: "first-four",
+          label: playInGames.length > 0
+            ? `First Four ${allPlayInDecided ? "✓" : `(${decidedPlayInCount}/${playInGames.length})`}`
+            : "First Four",
+          onSelect: openFirstFourFromToolbar,
+        }]
+      : []),
     {
       id: "copy-link",
       label: linkCopied ? "✓ Copied!" : "Copy Link",
@@ -3093,18 +3108,6 @@ function App() {
           },
         }]
       : []),
-    {
-      id: "groups",
-      label: "👥 Groups",
-      onSelect: () => {
-        setOpenToolbarMenu(null);
-        if (isAuthenticated) {
-          setGroupsHubOpen(true);
-        } else {
-          setAuthModalOpen(true);
-        }
-      },
-    },
     ...(isAuthenticated
       ? [{
           id: "my-brackets",
@@ -3233,6 +3236,27 @@ function App() {
       </div>
 
       <div className="toolbar-group toolbar-group--right">
+        {showInlineFirstFour ? (
+          <button
+            type="button"
+            onClick={openFirstFourFromToolbar}
+            className="eg-btn toolbar-btn--first-four"
+            title="Pick the First Four winners to lock in the Round of 64 field"
+          >
+            <span>First Four</span>
+            {firstFourInlineProgress ? <span className="toolbar-btn-badge">{firstFourInlineProgress}</span> : null}
+          </button>
+        ) : null}
+
+        <button
+          type="button"
+          onClick={openGroupsFromToolbar}
+          className="eg-btn toolbar-btn--groups"
+          title={isAuthenticated ? "View and manage your groups" : "Sign in to view and manage groups"}
+        >
+          Groups
+        </button>
+
         <button
           onClick={() => {
             if (isMobile) {
