@@ -1028,7 +1028,7 @@ function App() {
     setWalkthroughActive(true);
   };
 
-  const handleDismissDesktopFirst = () => {
+  const _handleDismissDesktopFirst = () => {
     setShowDesktopFirst(false);
     if (typeof window !== "undefined") {
       window.localStorage.setItem(DESKTOP_FIRST_SEEN_KEY, "1");
@@ -5546,7 +5546,7 @@ function MobileFinalFourView({
   );
 }
 
-function DesktopFirstModal({ onDismiss }: { onDismiss: () => void }) {
+function _DesktopFirstModal({ onDismiss }: { onDismiss: () => void }) {
   return (
     <div className="dfm-overlay">
       <div className="dfm-card">
