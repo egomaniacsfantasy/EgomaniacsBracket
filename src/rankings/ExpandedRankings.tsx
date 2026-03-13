@@ -69,6 +69,10 @@ const RANK_LIKE_METRICS = new Set<RankingTrendMetric>([
   "rankWLK",
   "rankBIH",
 ]);
+const LOWER_IS_BETTER_METRICS = new Set<RankingTrendMetric>([
+  ...RANK_LIKE_METRICS,
+  "defRtg",
+]);
 
 const ALL_CONFS = Array.from(new Set(D1_TEAMS.map((t) => t.conf))).sort();
 
@@ -179,6 +183,7 @@ export function ExpandedRankings({
     const xMin = Math.max(TREND_DISPLAY_START_DAYNUM, firstDaynumInData);
     const xMax = RANKING_TREND_DAYNUMS[RANKING_TREND_DAYNUMS.length - 1];
     const rankLike = RANK_LIKE_METRICS.has(metric.key);
+    const lowerIsBetter = LOWER_IS_BETTER_METRICS.has(metric.key);
     const yVals = trendPoints.map((point) => point.value);
     const rawYMin = Math.min(...yVals);
     const rawYMax = Math.max(...yVals);
@@ -189,7 +194,7 @@ export function ExpandedRankings({
 
     const xFor = (daynum: number) => padL + ((daynum - xMin) / xRange) * plotW;
     const yFor = (value: number) =>
-      rankLike
+      lowerIsBetter
         ? padT + ((value - yMin) / yRange) * plotH
         : padT + (1 - (value - yMin) / yRange) * plotH;
 
@@ -308,7 +313,11 @@ export function ExpandedRankings({
                 DayNum {Math.max(TREND_DISPLAY_START_DAYNUM, RANKING_TREND_DAYNUMS[0])} to{" "}
                 {RANKING_TREND_DAYNUMS[RANKING_TREND_DAYNUMS.length - 1]}
               </span>
-              <span>{RANK_LIKE_METRICS.has(metric.key) ? "Lower is better for this metric." : "Higher is better for this metric."}</span>
+              <span>
+                {LOWER_IS_BETTER_METRICS.has(metric.key)
+                  ? "Lower is better for this metric."
+                  : "Higher is better for this metric."}
+              </span>
             </div>
           </div>
         )}
