@@ -13222,7 +13222,7 @@ body.walkthrough-active .odds-value--changed::after {
 }
 .bw-close:hover { color: #f0e6d0; border-color: rgba(240,230,208,0.3); }
 
-/* Navigation arrows */
+/* Navigation buttons */
 .bw-nav-arrow {
   position: fixed;
   top: 50%;
@@ -13231,16 +13231,20 @@ body.walkthrough-active .odds-value--changed::after {
   background: rgba(240,230,208,0.08);
   border: 1px solid rgba(240,230,208,0.12);
   color: rgba(240,230,208,0.5);
-  font-size: 24px;
-  width: 36px;
-  height: 36px;
-  border-radius: 50%;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  min-width: 70px;
+  height: 34px;
+  padding: 0 14px;
+  border-radius: 999px;
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
   transition: color 150ms, background 150ms, border-color 150ms;
   line-height: 1;
+  text-transform: uppercase;
 }
 .bw-nav-arrow:hover {
   color: #f0e6d0;
@@ -13250,7 +13254,12 @@ body.walkthrough-active .odds-value--changed::after {
 .bw-nav-arrow--left { left: 12px; }
 .bw-nav-arrow--right { right: 12px; }
 @media (max-width: 767px) {
-  .bw-nav-arrow { width: 30px; height: 30px; font-size: 20px; }
+  .bw-nav-arrow {
+    min-width: 58px;
+    height: 30px;
+    padding: 0 10px;
+    font-size: 11px;
+  }
   .bw-nav-arrow--left { left: 6px; }
   .bw-nav-arrow--right { right: 6px; }
 }

@@ -45,8 +45,7 @@ export function BracketWrapped({ data, onClose }: BracketWrappedProps) {
   const [scale, setScale] = useState(1);
 
   const { identity, boldestPick, unlikelyRun, championPath, champion, finalFour } = data;
-
-  // Compute scale factor for card frame (desktop only Ã¢â‚¬â€ mobile uses natural sizing)
+  // Compute scale factor for card frame (desktop only; mobile uses natural sizing)
   const isMobile = typeof window !== "undefined" && window.innerWidth < 768;
   useEffect(() => {
     const updateScale = () => {
@@ -179,7 +178,7 @@ export function BracketWrapped({ data, onClose }: BracketWrappedProps) {
         }}
         aria-label="Close"
       >
-        Ã¢Å“â€¢
+        X
       </button>
 
       {/* Card frame */}
@@ -206,8 +205,7 @@ export function BracketWrapped({ data, onClose }: BracketWrappedProps) {
               />
             ))}
           </div>
-
-          {/* Screen content Ã¢â‚¬â€ key forces remount for animation */}
+          {/* Screen content; key forces remount for animation */}
           <div className="bw-screen" key={screen}>
             {screen === 0 && <Screen1Identity identity={identity} />}
             {screen === 1 && <Screen2Boldest boldestPick={boldestPick} />}
@@ -218,7 +216,7 @@ export function BracketWrapped({ data, onClose }: BracketWrappedProps) {
                 <BracketWrappedCard data={data} />
                 <div className="bw-screen5-actions" onClick={(e) => e.stopPropagation()}>
                   <button className="bw-btn bw-btn--primary" onClick={handleShareCard}>
-                    Share Card Ã°Å¸â€œÂ¤
+                    Share Card
                   </button>
                   <button className="bw-btn bw-btn--secondary" onClick={handleCopyLink}>
                     {linkCopied ? "Copied!" : "Copy Link"}
@@ -232,7 +230,7 @@ export function BracketWrapped({ data, onClose }: BracketWrappedProps) {
           {screen < 4 ? (
             <div className="bw-footer">
               <span className="bw-footer-url">bracket.oddsgods.net</span>
-              <span className="bw-footer-promo">Ã°Å¸â€™Â° Best bracket wins $100 Ã°Å¸â€™Â°</span>
+              <span className="bw-footer-promo">Best bracket wins $100</span>
             </div>
           ) : null}
         </div>
@@ -245,7 +243,7 @@ export function BracketWrapped({ data, onClose }: BracketWrappedProps) {
           onClick={(e) => { e.stopPropagation(); goPrev(); }}
           aria-label="Previous"
         >
-          Ã¢â‚¬Â¹
+          Back
         </button>
       )}
       {screen < TOTAL_SCREENS - 1 && (
@@ -254,7 +252,7 @@ export function BracketWrapped({ data, onClose }: BracketWrappedProps) {
           onClick={(e) => { e.stopPropagation(); goNext(); }}
           aria-label="Next"
         >
-          Ã¢â‚¬Âº
+          Next
         </button>
       )}
 
@@ -323,7 +321,7 @@ function Screen2Boldest({ boldestPick }: { boldestPick: WrappedData["boldestPick
       <span className="bw-heading bw-heading--red">YOUR BOLDEST CALL</span>
       <span className="bw-round-tag bw-round-tag--red">
         {ROUND_LABELS[boldestPick.round] ?? boldestPick.round}
-        {boldestPick.region ? ` Ã‚Â· ${boldestPick.region.toUpperCase()}` : ""}
+        {boldestPick.region ? ` - ${boldestPick.region.toUpperCase()}` : ""}
       </span>
 
       <div className="bw-matchup">
