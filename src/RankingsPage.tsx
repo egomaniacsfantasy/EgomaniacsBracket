@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { ExpandedRankings } from "./rankings/ExpandedRankings";
-import { StandaloneFooter, ToolNav } from "./SiteChrome";
+import { StandaloneFooter } from "./SiteChrome";
+import { TopNavBar } from "./TopNavBar";
 import "./index.css";
 
 export function RankingsPage() {
@@ -22,7 +23,19 @@ export function RankingsPage() {
       <div className="bg-shape bg-top" aria-hidden="true" />
       <div className="bg-shape bg-bottom" aria-hidden="true" />
       <main className="eg-app eg-page-shell">
-        <ToolNav activeTool="rankings" />
+        <TopNavBar
+          activeView="rankings"
+          authLoading={false}
+          isAuthenticated={false}
+          showBeta
+          onSelectBracket={() => window.location.assign("/")}
+          onSelectLeaderboard={() => window.location.assign("/")}
+          onSelectConferences={() => window.location.assign("/")}
+          onSelectRankings={() => window.location.assign("/rankings")}
+          onSelectPredictor={() => window.location.assign("/predictor")}
+          onSignIn={() => window.location.assign("/")}
+          onSignOut={() => {}}
+        />
         <div className="tool-page-body">
           <ExpandedRankings displayMode="implied" isMobile={isMobile} />
         </div>

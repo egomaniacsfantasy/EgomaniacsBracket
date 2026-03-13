@@ -86,6 +86,29 @@ function formatAxisValue(value: number, metric: RankingMetric): string {
   return value.toFixed(decimals);
 }
 
+function getMobileMetricLabel(metric: RankingMetric): string {
+  switch (metric.key) {
+    case "mrRank":
+      return "OG";
+    case "mrScore":
+      return "Model";
+    case "netRtg":
+      return "Net";
+    case "offRtg":
+      return "Off";
+    case "defRtg":
+      return "Def";
+    case "eloSos":
+      return "SOS";
+    case "eloTrend":
+      return "Elo Δ";
+    case "last5Margin":
+      return "L5";
+    default:
+      return metric.label;
+  }
+}
+
 export function ExpandedRankings({
   displayMode: _displayMode,
   isMobile,
@@ -100,6 +123,7 @@ export function ExpandedRankings({
   const [trendTeamId, setTrendTeamId] = useState<number | null>(null);
 
   const metric = RANKING_METRICS[metricIdx];
+  const metricHeaderLabel = isMobile ? getMobileMetricLabel(metric) : metric.label;
 
   const teamById = useMemo(() => new Map(D1_TEAMS.map((team) => [team.id, team])), []);
 
@@ -386,7 +410,7 @@ export function ExpandedRankings({
                 onClick={() => setSortAsc((prev) => (prev === null ? !metric.ascending : !prev))}
                 style={{ cursor: "pointer" }}
               >
-                {metric.label} {(sortAsc ?? metric.ascending) ? "↑" : "↓"}
+                {metricHeaderLabel} {(sortAsc ?? metric.ascending) ? "↑" : "↓"}
               </th>
             </tr>
           </thead>

@@ -8349,9 +8349,9 @@ body.walkthrough-active .eg-title-choice:hover {
   .toolbar {
     display: flex;
     align-items: center;
-    gap: 6px;
+    gap: 4px;
     flex-wrap: nowrap;
-    padding: 6px 16px;
+    padding: 6px 12px 6px 16px;
     overflow-x: auto;
     overflow-y: hidden;
     -webkit-overflow-scrolling: touch;
@@ -8367,7 +8367,7 @@ body.walkthrough-active .eg-title-choice:hover {
   .toolbar::after {
     content: "";
     flex-shrink: 0;
-    width: 4px;
+    width: 0;
   }
 
   .toolbar::-webkit-scrollbar {
@@ -8395,8 +8395,8 @@ body.walkthrough-active .eg-title-choice:hover {
   .toolbar .eg-mini-btn {
     flex-shrink: 0;
     height: 34px;
-    padding: 0 10px;
-    font-size: 11px;
+    padding: 0 8px;
+    font-size: 10px;
     font-family: var(--font-mono);
     letter-spacing: 0.04em;
     border-radius: 8px;
@@ -8410,12 +8410,13 @@ body.walkthrough-active .eg-title-choice:hover {
     flex-shrink: 0;
     height: 34px;
     border-radius: 8px;
+    min-width: 58px;
   }
 
   .toolbar .odds-mode-btn {
-    min-width: 34px;
-    padding: 0 10px;
-    font-size: 11px;
+    min-width: 28px;
+    padding: 0 8px;
+    font-size: 10px;
   }
 
   .toolbar button.active,
@@ -8430,12 +8431,47 @@ body.walkthrough-active .eg-title-choice:hover {
     flex-shrink: 0;
   }
 
-  .toolbar-btn--undo {
+  .toolbar-dropdown-wrap--sim {
     order: 1;
+  }
+
+  .toolbar-btn--odds {
+    order: 2;
+  }
+
+  .toolbar-btn--first-four {
+    order: 3;
+  }
+
+  .toolbar-dropdown-wrap--overflow {
+    order: 4;
+  }
+
+  .toolbar-btn--undo {
+    display: none !important;
+  }
+
+  .toolbar-dropdown-wrap--reset {
+    display: none !important;
   }
 
   .toolbar-btn--reset {
     order: 2;
+  }
+
+  .toolbar-btn--first-four {
+    gap: 6px;
+  }
+
+  .toolbar-btn-badge {
+    min-width: 24px;
+    padding: 2px 6px;
+    font-size: 10px;
+  }
+
+  .toolbar-btn--overflow {
+    min-width: 34px;
+    padding-inline: 8px !important;
   }
 
   .toolbar-btn--save-action {
@@ -8460,10 +8496,6 @@ body.walkthrough-active .eg-title-choice:hover {
 
   .toolbar-btn--copy {
     order: 8;
-  }
-
-  .toolbar-btn--odds {
-    order: 9;
   }
 
   .toolbar-btn--staggered-toggle {
@@ -8517,8 +8549,8 @@ body.walkthrough-active .eg-title-choice:hover {
 
   .mobile-round-nav {
     display: flex;
-    gap: 8px;
-    padding: 8px 16px;
+    gap: 6px;
+    padding: 4px 16px 2px;
     overflow-x: auto;
     scrollbar-width: none;
     position: sticky;
@@ -8598,10 +8630,10 @@ body.walkthrough-active .eg-title-choice:hover {
     display: flex;
     align-items: center;
     gap: 10px;
-    margin: 4px 16px 8px;
-    padding: 11px 12px;
+    margin: 0 16px;
+    padding: 0;
     background: rgba(184, 125, 24, 0.09);
-    border: 1px solid rgba(184, 125, 24, 0.28);
+    border: 0 solid rgba(184, 125, 24, 0.28);
     border-radius: 9px;
     opacity: 0;
     transform: translateY(-8px);
@@ -8616,6 +8648,9 @@ body.walkthrough-active .eg-title-choice:hover {
     transform: translateY(0);
     pointer-events: auto;
     max-height: 84px;
+    margin: 4px 16px 8px;
+    padding: 11px 12px;
+    border-width: 1px;
   }
 
   .cascade-nudge-icon {
@@ -12819,6 +12854,7 @@ body.walkthrough-active .odds-value--changed::after {
   display: flex;
   align-items: center;
   gap: 8px;
+  min-width: 0;
 }
 
 .rank-team-logo {
@@ -12830,6 +12866,10 @@ body.walkthrough-active .odds-value--changed::after {
 }
 
 .rank-team-name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
   font-weight: 500;
   white-space: nowrap;
 }
@@ -12843,6 +12883,7 @@ body.walkthrough-active .odds-value--changed::after {
   font-size: 0.68rem;
   line-height: 1.2;
   cursor: pointer;
+  flex-shrink: 0;
 }
 
 .rank-trend-link:hover {
@@ -12857,6 +12898,7 @@ body.walkthrough-active .odds-value--changed::after {
   padding: 1px 5px;
   border-radius: 4px;
   white-space: nowrap;
+  flex-shrink: 0;
 }
 
 .rank-td--conf {
@@ -13024,7 +13066,8 @@ body.walkthrough-active .odds-value--changed::after {
   }
 
   .rank-page {
-    padding: 16px 12px;
+    max-width: none;
+    padding: 16px;
   }
 
   .rank-controls {
@@ -13033,8 +13076,9 @@ body.walkthrough-active .odds-value--changed::after {
   }
 
   .rankings-massey-badge {
-    margin: 0 16px 12px;
+    margin: 0 0 12px;
     padding: 10px 14px;
+    align-items: flex-start;
   }
 
   .rankings-massey-text {
@@ -13047,6 +13091,64 @@ body.walkthrough-active .odds-value--changed::after {
 
   .rank-title {
     font-size: 1.4rem;
+  }
+
+  .rank-table-wrap {
+    overflow-x: hidden;
+  }
+
+  .rank-table {
+    table-layout: fixed;
+  }
+
+  .rank-th,
+  .rank-td {
+    padding: 8px 6px;
+  }
+
+  .rank-th--rank,
+  .rank-td--rank {
+    width: 30px;
+  }
+
+  .rank-th--metric,
+  .rank-td--metric {
+    width: 74px;
+  }
+
+  .rank-th--metric {
+    font-size: 0.62rem;
+    letter-spacing: 0.02em;
+  }
+
+  .rank-td--metric {
+    font-size: 0.76rem;
+  }
+
+  .rank-td--team {
+    gap: 6px;
+  }
+
+  .rank-team-logo {
+    width: 22px;
+    height: 22px;
+  }
+
+  .rank-team-name {
+    font-size: 0.8rem;
+  }
+
+  .rank-trend-link {
+    padding: 2px 6px;
+    font-size: 0.62rem;
+  }
+
+  .rank-team-conf-badge {
+    max-width: 56px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    font-size: 0.55rem;
+    padding: 1px 4px;
   }
 
   .rank-trend-modal {

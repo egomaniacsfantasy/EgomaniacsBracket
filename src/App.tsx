@@ -3173,6 +3173,14 @@ function App() {
   const overflowPrimaryItems: OverflowMenuItem[] = [
     ...(isMobile
       ? [{
+          id: "reset-bracket",
+          label: "Reset Bracket",
+          onSelect: () => {
+            setOpenToolbarMenu(null);
+            onRequestResetAll();
+          },
+        },
+        {
           id: "submit-bracket",
           label: saveStatus === "saving"
             ? "Submitting..."
@@ -3221,6 +3229,16 @@ function App() {
         void onCopyShareLink();
       },
     },
+    ...(isMobile && undoStack.length > 0
+      ? [{
+          id: "undo-last-pick",
+          label: "↩ Undo Last Pick",
+          onSelect: () => {
+            setOpenToolbarMenu(null);
+            onUndo();
+          },
+        }]
+      : []),
     ...(isMobile
       ? [{
           id: "report-bug",
@@ -3261,17 +3279,19 @@ function App() {
       : []),
   ];
 
-  const overflowSecondaryItems: OverflowMenuItem[] = [
-    {
-      id: "reset-all",
-      label: "Reset All",
-      onSelect: () => {
-        setOpenToolbarMenu(null);
-        onRequestResetAll();
-      },
-      tone: "accent",
-    },
-  ];
+  const overflowSecondaryItems: OverflowMenuItem[] = isMobile
+    ? []
+    : [
+        {
+          id: "reset-all",
+          label: "Reset All",
+          onSelect: () => {
+            setOpenToolbarMenu(null);
+            onRequestResetAll();
+          },
+          tone: "accent",
+        },
+      ];
 
   const toolbar = (
     <div className="eg-main-actions toolbar">
@@ -3321,31 +3341,33 @@ function App() {
           ) : null}
         </div>
 
-        <div className="toolbar-dropdown-wrap toolbar-dropdown-wrap--reset" ref={resetMenuRef}>
-          <button
-            type="button"
-            className="eg-btn toolbar-btn--reset"
-            onClick={() => setOpenToolbarMenu((prev) => (prev === "reset" ? null : "reset"))}
-            aria-expanded={openToolbarMenu === "reset"}
-            aria-haspopup="menu"
-          >
-            Reset ▾
-          </button>
-          {openToolbarMenu === "reset" ? (
-            <div className="toolbar-dropdown" role="menu" aria-label="Reset options">
-              <button
-                type="button"
-                className="toolbar-dropdown-item"
-                onClick={() => {
-                  setOpenToolbarMenu(null);
-                  onRequestResetAll();
-                }}
-              >
-                Reset All
-              </button>
-            </div>
-          ) : null}
-        </div>
+        {!isMobile ? (
+          <div className="toolbar-dropdown-wrap toolbar-dropdown-wrap--reset" ref={resetMenuRef}>
+            <button
+              type="button"
+              className="eg-btn toolbar-btn--reset"
+              onClick={() => setOpenToolbarMenu((prev) => (prev === "reset" ? null : "reset"))}
+              aria-expanded={openToolbarMenu === "reset"}
+              aria-haspopup="menu"
+            >
+              Reset ▾
+            </button>
+            {openToolbarMenu === "reset" ? (
+              <div className="toolbar-dropdown" role="menu" aria-label="Reset options">
+                <button
+                  type="button"
+                  className="toolbar-dropdown-item"
+                  onClick={() => {
+                    setOpenToolbarMenu(null);
+                    onRequestResetAll();
+                  }}
+                >
+                  Reset All
+                </button>
+              </div>
+            ) : null}
+          </div>
+        ) : null}
       </div>
 
       <div className="toolbar-group toolbar-group--right">
