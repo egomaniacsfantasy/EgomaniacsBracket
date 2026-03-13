@@ -48,21 +48,29 @@ export interface WrappedData {
     region: string;
   };
 
-  // === CARD 4: WEAKEST LINK ===
-  weakestLink: {
-    gameId: string;
-    round: string;
-    region: string | null;
-    pickedTeamId: string;
-    pickedTeamName: string;
-    pickedTeamSeed: number;
-    pickedTeamLogoUrl: string;
-    opponentTeamId: string;
-    opponentTeamName: string;
-    opponentTeamSeed: number;
-    opponentTeamLogoUrl: string;
-    improvementMultiplier: number;
-    pickedTeamWinProb: number;
+  // === CARD 4: THE PATH ===
+  championPath: {
+    championName: string;
+    championSeed: number;
+    championId: string;
+    championLogoUrl: string;
+    games: Array<{
+      round: string;
+      roundLabel: string;
+      opponentName: string;
+      opponentSeed: number;
+      opponentId: string;
+      opponentLogoUrl: string;
+      winProbability: number;
+    }>;
+    pathProbability: number;
+    toughestGame: {
+      round: string;
+      roundLabel: string;
+      opponentName: string;
+      opponentSeed: number;
+      winProbability: number;
+    };
   };
 
   // === CARD 5: VIRAL SHARE CARD ===
@@ -113,7 +121,7 @@ const ROAST_TEMPLATES: Record<string, string[]> = {
   "Chaos Agent": [
     "{numUpsets} double-digit seeds past the first weekend, {unlikelyRunTeam} on a {unlikelyRunRound} run at {unlikelyRunProb}, and a perfect bracket line longer than a phone number. The gods are entertained.",
     "You didn't fill a bracket — you wrote fan fiction. {champion} at {championOdds}, {unlikelyRunTeam} on a {unlikelyRunRound} run at {unlikelyRunProb}, and {numUpsets} upsets clearing the path.",
-    "Your bracket has the structural integrity of a paper towel in a hurricane. {numUpsets} upsets, a {weakestMultiplier}× weakest link, and {champion} cutting down the nets at {championOdds}. Either you're a genius or you're completely unserious. We'll find out in April.",
+    "Your bracket has the structural integrity of a paper towel in a hurricane. {numUpsets} upsets, a {pathProb} path to the title, and {champion} has to get through {toughestOpponent} in the {toughestRound}. The gods admire the delusion.",
     "{numUpsets} upsets. {unlikelyRunTeam} reaching the {unlikelyRunRound} carried just {unlikelyRunProb} baseline odds. The gods are not responsible for what happens next.",
   ],
 };
@@ -356,70 +364,7 @@ export function computeWrappedData(args: {
   }
 
   // =========================================================================
-  // CARD 4: WEAKEST LINK
-  // =========================================================================
-
-  let weakestGame: ResolvedGame | null = null;
-  let bestMultiplier = 0;
-
-  // First pass: R32+ games only (exclude R64 and FF)
-  for (const game of resolvedGames) {
-    if (!game.winnerId || !game.lockedByUser) continue;
-    if (game.round === "FF" || game.round === "R64") continue;
-    if (!game.teamAId || !game.teamBId) continue;
-
-    const winnerProb = getGameWinProb(game, game.winnerId) ?? 0.5;
-    const multiplier = (1 - winnerProb) / winnerProb;
-
-    if (multiplier > bestMultiplier) {
-      bestMultiplier = multiplier;
-      weakestGame = game;
-    }
-  }
-
-  // If best multiplier < 1.1, fall back to all games excluding boldest
-  if (bestMultiplier < 1.1) {
-    bestMultiplier = 0;
-    weakestGame = null;
-    for (const game of resolvedGames) {
-      if (!game.winnerId || !game.lockedByUser) continue;
-      if (game.round === "FF") continue;
-      if (!game.teamAId || !game.teamBId) continue;
-      if (game.id === boldestGame.id) continue; // exclude boldest pick
-
-      const winnerProb = getGameWinProb(game, game.winnerId) ?? 0.5;
-      const multiplier = (1 - winnerProb) / winnerProb;
-
-      if (multiplier > bestMultiplier) {
-        bestMultiplier = multiplier;
-        weakestGame = game;
-      }
-    }
-  }
-
-  // Ultimate fallback: if still null, use any locked non-FF game that isn't boldest
-  if (!weakestGame) {
-    weakestGame = resolvedGames.find(
-      (g) =>
-        g.winnerId &&
-        g.lockedByUser &&
-        g.round !== "FF" &&
-        g.id !== boldestGame.id &&
-        g.teamAId &&
-        g.teamBId
-    ) ?? boldestGame;
-    const wp = getGameWinProb(weakestGame, weakestGame.winnerId!) ?? 0.5;
-    bestMultiplier = (1 - wp) / wp;
-  }
-
-  const weakestWinnerId = weakestGame.winnerId!;
-  const weakestOpponentId = getOpponentId(weakestGame, weakestWinnerId)!;
-  const weakestPickedTeam = teamsById.get(weakestWinnerId)!;
-  const weakestOpponent = teamsById.get(weakestOpponentId)!;
-  const weakestWinProb = getGameWinProb(weakestGame, weakestWinnerId) ?? 0.5;
-
-  // =========================================================================
-  // CARD 5: CHAMPION, FINAL FOUR, BRACKET LINE
+  // CARD 4+5: CHAMPION, FINAL FOUR, BRACKET LINE, CHAMPION PATH
   // =========================================================================
 
   const champGame = resolvedGames.find((g) => g.round === "CHAMP");
@@ -447,6 +392,53 @@ export function computeWrappedData(args: {
 
   const bracketLikelihood = simResult.likelihoodApprox;
   const perfectBracketLine = formatBracketLine(bracketLikelihood);
+
+  // Champion path: trace the champion's 6-game route to the title
+  const PATH_ROUND_LABELS: Record<string, string> = {
+    R64: "Round of 64",
+    R32: "Round of 32",
+    S16: "Sweet 16",
+    E8: "Elite 8",
+    F4: "Final Four",
+    CHAMP: "Championship",
+  };
+
+  const PATH_ROUNDS: string[] = ["R64", "R32", "S16", "E8", "F4", "CHAMP"];
+
+  const championPathGames: WrappedData["championPath"]["games"] = [];
+
+  for (const round of PATH_ROUNDS) {
+    const game = resolvedGames.find(
+      (g) =>
+        g.round === round &&
+        g.winnerId &&
+        (g.teamAId === championTeamId || g.teamBId === championTeamId)
+    );
+    if (!game || !game.winnerId) continue;
+
+    const opponentId = getOpponentId(game, championTeamId);
+    if (!opponentId) continue;
+    const opponent = teamsById.get(opponentId);
+    if (!opponent) continue;
+
+    const champWinProb = getGameWinProb(game, championTeamId) ?? 0.5;
+
+    championPathGames.push({
+      round,
+      roundLabel: PATH_ROUND_LABELS[round] ?? round,
+      opponentName: opponent.name,
+      opponentSeed: opponent.seed,
+      opponentId: opponentId,
+      opponentLogoUrl: teamLogoUrl(opponent),
+      winProbability: champWinProb,
+    });
+  }
+
+  const pathProbability = championPathGames.reduce((acc, g) => acc * g.winProbability, 1);
+
+  const toughestGameEntry = championPathGames.length > 0
+    ? championPathGames.reduce((worst, g) => (g.winProbability < worst.winProbability ? g : worst))
+    : { round: "R64", roundLabel: "Round of 64", opponentName: "TBD", opponentSeed: 0, winProbability: 0.5 };
 
   // =========================================================================
   // ROAST TEXT
@@ -488,6 +480,8 @@ export function computeWrappedData(args: {
     ? "title"
     : resolvedUnlikelyRun.roundReached;
 
+  const pathProbStr = (pathProbability * 100).toFixed(1) + "%";
+
   const roastText = template
     .replace(/\{champion\}/g, championTeam?.name ?? "Your champion")
     .replace(/\{championOdds\}/g, champOddsStr)
@@ -495,10 +489,9 @@ export function computeWrappedData(args: {
     .replace(/\{unlikelyRunTeam\}/g, resolvedUnlikelyRun.teamName)
     .replace(/\{unlikelyRunRound\}/g, unlikelyRunRoundLabel)
     .replace(/\{unlikelyRunProb\}/g, formatPercent(resolvedUnlikelyRun.baselineProb))
-    .replace(
-      /\{weakestMultiplier\}/g,
-      Math.max(1, bestMultiplier).toFixed(1)
-    )
+    .replace(/\{pathProb\}/g, pathProbStr)
+    .replace(/\{toughestOpponent\}/g, toughestGameEntry.opponentName)
+    .replace(/\{toughestRound\}/g, toughestGameEntry.roundLabel)
     .replace(/\{boldestWinner\}/g, boldestWinner.name)
     .replace(/\{boldestLoser\}/g, boldestLoser.name)
     .replace(
@@ -546,20 +539,20 @@ export function computeWrappedData(args: {
       region: resolvedUnlikelyRun.region,
     },
 
-    weakestLink: {
-      gameId: weakestGame.id,
-      round: weakestGame.round,
-      region: weakestGame.region,
-      pickedTeamId: weakestWinnerId,
-      pickedTeamName: weakestPickedTeam.name,
-      pickedTeamSeed: weakestPickedTeam.seed,
-      pickedTeamLogoUrl: teamLogoUrl(weakestPickedTeam),
-      opponentTeamId: weakestOpponentId,
-      opponentTeamName: weakestOpponent.name,
-      opponentTeamSeed: weakestOpponent.seed,
-      opponentTeamLogoUrl: teamLogoUrl(weakestOpponent),
-      improvementMultiplier: Math.round(bestMultiplier * 10) / 10,
-      pickedTeamWinProb: weakestWinProb,
+    championPath: {
+      championName: championTeam?.name ?? "TBD",
+      championSeed: championTeam?.seed ?? 0,
+      championId: championTeamId,
+      championLogoUrl: championTeam ? teamLogoUrl(championTeam) : "",
+      games: championPathGames,
+      pathProbability,
+      toughestGame: {
+        round: toughestGameEntry.round,
+        roundLabel: toughestGameEntry.roundLabel,
+        opponentName: toughestGameEntry.opponentName,
+        opponentSeed: toughestGameEntry.opponentSeed,
+        winProbability: toughestGameEntry.winProbability,
+      },
     },
 
     champion: {

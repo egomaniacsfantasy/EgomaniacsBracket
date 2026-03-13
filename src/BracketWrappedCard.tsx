@@ -45,7 +45,7 @@ export function BracketWrappedCard({
     identity,
     boldestPick,
     unlikelyRun,
-    weakestLink,
+    championPath,
     champion,
     finalFour,
     perfectBracketLine,
@@ -57,11 +57,12 @@ export function BracketWrappedCard({
     champion.teamLogoUrl,
     unlikelyRun.teamLogoUrl,
     boldestPick.winnerLogoUrl,
-    weakestLink.pickedTeamLogoUrl,
+    championPath.championLogoUrl,
     ...finalFour.slice(0, 2).map((t) => t.teamLogoUrl),
   ].filter(Boolean);
 
   return (
+    <div className={standalone ? "bw-card-wrapper" : undefined}>
     <div className="bw-card-wrap" id="wrapped-export-target">
       {standalone && onClose ? (
         <button className="bw-close" onClick={onClose} aria-label="Close">
@@ -203,26 +204,22 @@ export function BracketWrappedCard({
             </span>
           </div>
 
-          {/* Weakest */}
-          <div className="bw-card-hl bw-card-hl--weakest">
-            <div className="bw-card-hl-logos">
-              <img src={weakestLink.pickedTeamLogoUrl} alt="" className="bw-card-hl-logo-front" />
-              <img src={weakestLink.opponentTeamLogoUrl} alt="" className="bw-card-hl-logo-back" />
-            </div>
+          {/* The Path */}
+          <div className="bw-card-hl bw-card-hl--path">
+            <img
+              src={championPath.championLogoUrl}
+              alt={championPath.championName}
+              className="bw-card-hl-logo-front bw-card-hl-logo--path"
+            />
             <div className="bw-card-hl-info">
-              <span className="bw-card-hl-tag bw-card-hl-tag--amber">WARNING WEAKEST LINK</span>
+              <span className="bw-card-hl-tag bw-card-hl-tag--amber">{"\uD83C\uDFC6"} THE PATH</span>
               <span className="bw-card-hl-matchup">
-                #{weakestLink.pickedTeamSeed} {weakestLink.pickedTeamName} over #
-                {weakestLink.opponentTeamSeed} {weakestLink.opponentTeamName}
+                {championPath.championName} → {championPath.toughestGame.roundLabel}: {championPath.toughestGame.opponentName}
               </span>
-              <span className="bw-card-hl-detail">
-                {ROUND_LABELS[weakestLink.round] ?? weakestLink.round}{" "}
-                {weakestLink.region ?? ""} {(weakestLink.pickedTeamWinProb * 100).toFixed(0)}% win
-                prob
-              </span>
+              <span className="bw-card-hl-detail">toughest test on the road to the title</span>
             </div>
-            <span className="bw-card-hl-number bw-card-hl-number--green">
-              {weakestLink.improvementMultiplier.toFixed(1)}x
+            <span className="bw-card-hl-number bw-card-hl-number--amber">
+              {(championPath.pathProbability * 100).toFixed(1)}%
             </span>
           </div>
         </div>
@@ -235,25 +232,28 @@ export function BracketWrappedCard({
           <p className="bw-card-roast-text">{roastText}</p>
         </div>
 
+        {/* Separator line above footer */}
+        <div className="bw-card-separator" />
+
         {/* 8. Footer */}
         <div className="bw-card-footer">
           <span className="bw-card-footer-url">bracket.oddsgods.net</span>
           <span className="bw-card-footer-promo">💰 Best bracket wins $100 💰</span>
         </div>
       </div>
-
-      {standalone ? (
-        <div className="bw-card-actions">
-          {onSaveCard ? (
-            <button className="bw-btn bw-btn--primary" onClick={onSaveCard}>
-              Share Card 📤
-            </button>
-          ) : null}
-          <button className="bw-btn bw-btn--secondary" onClick={handleCopyLink}>
-            {linkCopied ? "Copied!" : "Copy Link"}
+    </div>
+    {standalone ? (
+      <div className="bw-card-actions">
+        {onSaveCard ? (
+          <button className="bw-btn bw-btn--primary" onClick={onSaveCard}>
+            Share Card 📤
           </button>
-        </div>
-      ) : null}
+        ) : null}
+        <button className="bw-btn bw-btn--secondary" onClick={handleCopyLink}>
+          {linkCopied ? "Copied!" : "Copy Link"}
+        </button>
+      </div>
+    ) : null}
     </div>
   );
 }

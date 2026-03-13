@@ -13632,53 +13632,105 @@ body.walkthrough-active .odds-value--changed::after {
 }
 
 /* ────────────────────────────────────────────────────────────────────────────
-   SCREEN 4: WEAKEST LINK
+   SCREEN 4: THE PATH OF MOST RESISTANCE
    ──────────────────────────────────────────────────────────────────────────── */
 
-.bw-content--weakest {
+.bw-content--path {
   background:
-    radial-gradient(ellipse 90% 70% at 50% 50%, rgba(248,113,113,0.08) 0%, transparent 55%),
-    radial-gradient(ellipse 50% 30% at 60% 80%, rgba(255,200,87,0.04) 0%, transparent 40%);
-  padding: 40px 20px;
+    radial-gradient(ellipse 100% 70% at 50% 40%, rgba(184,125,24,0.12) 0%, transparent 55%),
+    radial-gradient(ellipse 50% 40% at 70% 70%, rgba(255,200,87,0.05) 0%, transparent 40%);
+  padding: 30px 20px;
   border-radius: 16px;
 }
 
-.bw-weakest-title {
-  font-family: "Instrument Serif", serif;
-  font-size: 28px;
-  color: #f0e6d0;
-  margin: 0;
-  text-align: center;
+.bw-path-champion {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  margin-bottom: 16px;
 }
-.bw-weakest-title em {
-  color: #ff4444;
-  font-style: italic;
+.bw-path-champion-logo {
+  width: 56px;
+  height: 56px;
+  object-fit: contain;
+  filter: drop-shadow(0 0 20px rgba(184,125,24,0.4));
+}
+.bw-path-champion-name {
+  font-family: "Instrument Serif", serif;
+  font-size: 24px;
+  color: var(--text);
+}
+.bw-path-champion-seed {
+  font-family: "Space Grotesk", sans-serif;
+  font-size: 10px;
+  font-weight: 500;
+  color: var(--text-soft);
 }
 
-.bw-your-pick-badge {
+.bw-path-games {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  margin-bottom: 16px;
+}
+
+.bw-path-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 32px;
+  border-bottom: 1px solid rgba(240,230,208,0.04);
+  padding: 0 4px;
+}
+.bw-path-row--toughest {
+  border-left: 3px solid var(--red, #f87171);
+  background: rgba(248,113,113,0.04);
+}
+
+.bw-path-round {
   font-family: "Space Grotesk", sans-serif;
-  font-size: 7px;
-  font-weight: 800;
-  letter-spacing: 0.12em;
+  font-size: 8px;
+  font-weight: 700;
   text-transform: uppercase;
-  color: #f87171;
-  background: rgba(248,113,113,0.12);
-  padding: 2px 6px;
-  border-radius: 3px;
+  color: var(--text-soft);
+  width: 55px;
+  text-align: right;
+  flex-shrink: 0;
 }
 
-.bw-multiplier {
-  font-family: "Instrument Serif", serif;
-  font-size: 72px;
-  color: #4ade80;
-  text-shadow: 0 0 50px rgba(74,222,128,0.2);
-  line-height: 1;
+.bw-path-opp-logo {
+  width: 28px;
+  height: 28px;
+  object-fit: contain;
+  filter: drop-shadow(0 1px 3px rgba(0,0,0,0.3));
+  flex-shrink: 0;
 }
-.bw-multiplier-label {
+
+.bw-path-opp {
+  flex: 1;
+  min-width: 0;
   font-family: "Space Grotesk", sans-serif;
-  font-size: 11px;
+  font-size: 10px;
   font-weight: 600;
-  color: rgba(239,228,207,0.7);
+  color: var(--text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.bw-path-vs {
+  font-family: "Instrument Serif", serif;
+  font-style: italic;
+  font-size: 10px;
+  color: var(--text-soft);
+}
+
+.bw-path-prob {
+  font-family: "Instrument Serif", serif;
+  font-size: 16px;
+  flex-shrink: 0;
+  text-align: right;
+  min-width: 36px;
 }
 
 /* ────────────────────────────────────────────────────────────────────────────
@@ -13737,7 +13789,7 @@ body.walkthrough-active .odds-value--changed::after {
 }
 .bw-card-topbar { margin-bottom: 10px; }
 .bw-card-champ-row { margin-bottom: 12px; }
-.bw-card-chaos-strip { margin-bottom: 10px; }
+.bw-card-chaos-strip { margin-bottom: 14px; }
 .bw-card-f4-strip { margin-bottom: 10px; }
 .bw-card-bracket-line { margin-bottom: 12px; }
 .bw-card-highlights { margin-bottom: 10px; }
@@ -13808,7 +13860,7 @@ body.walkthrough-active .odds-value--changed::after {
   gap: 8px;
   border-top: 1px solid rgba(184,125,24,0.08);
   border-bottom: 1px solid rgba(184,125,24,0.08);
-  padding: 6px 0;
+  padding: 10px 0;
 }
 .bw-card-chaos-left {
   display: flex;
@@ -13889,7 +13941,7 @@ body.walkthrough-active .odds-value--changed::after {
   align-items: center;
   gap: 3px;
   background: rgba(255,255,255,0.02);
-  border: 1px solid rgba(240,230,208,0.05);
+  border: 1px solid rgba(240,230,208,0.03);
   border-radius: 4px;
   padding: 2px 5px;
   flex: 0 0 auto;
@@ -13967,10 +14019,14 @@ body.walkthrough-active .odds-value--changed::after {
   border-radius: 0 6px 6px 0;
   background: rgba(184,125,24,0.04);
 }
-/* Weakest (dashed border) */
-.bw-card-hl--weakest {
-  border: 1px dashed rgba(248,113,113,0.2);
-  background: rgba(255,255,255,0.01);
+/* Path (bottom border) */
+.bw-card-hl--path {
+  background: rgba(184,125,24,0.03);
+  border-bottom: 2px solid rgba(184,125,24,0.2);
+  border-radius: 6px 6px 2px 2px;
+}
+.bw-card-hl-logo--path {
+  filter: drop-shadow(0 0 8px rgba(184,125,24,0.3)) drop-shadow(0 2px 4px rgba(0,0,0,0.35));
 }
 
 .bw-card-hl-logos {
@@ -14067,12 +14123,12 @@ body.walkthrough-active .odds-value--changed::after {
   background: linear-gradient(135deg, rgba(184,125,24,0.06) 0%, rgba(184,125,24,0.02) 100%);
   border-radius: 8px;
   border: 1px solid rgba(184,125,24,0.1);
-  padding: 9px 12px;
+  padding: 7px 10px 14px 10px;
 }
 .bw-card-roast-quote {
   position: absolute;
   top: 2px;
-  left: 6px;
+  left: 8px;
   font-family: "Instrument Serif", serif;
   font-size: 32px;
   color: rgba(184,125,24,0.2);
@@ -14087,6 +14143,14 @@ body.walkthrough-active .odds-value--changed::after {
   line-height: 1.35;
   padding-left: 16px;
   margin: 0;
+}
+
+/* Separator line above footer */
+.bw-card-separator {
+  width: 40px;
+  height: 1px;
+  background: rgba(184,125,24,0.1);
+  margin: 8px auto;
 }
 
 /* Card footer */
@@ -14109,14 +14173,21 @@ body.walkthrough-active .odds-value--changed::after {
   color: #e7bf72;
 }
 
+/* Card wrapper (buttons outside card) */
+.bw-card-wrapper {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+}
+
 /* Card standalone actions */
 .bw-card-actions {
-  position: relative;
-  z-index: 1;
   display: flex;
   gap: 10px;
   justify-content: center;
-  padding: 16px;
+  width: 100%;
+  max-width: 420px;
 }
 
 /* ── Toolbar wrapped button ── */

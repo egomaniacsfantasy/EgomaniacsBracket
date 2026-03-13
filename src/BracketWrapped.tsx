@@ -44,7 +44,7 @@ export function BracketWrapped({ data, onClose }: BracketWrappedProps) {
   const frameRef = useRef<HTMLDivElement>(null);
   const [scale, setScale] = useState(1);
 
-  const { identity, boldestPick, unlikelyRun, weakestLink, champion, finalFour } = data;
+  const { identity, boldestPick, unlikelyRun, championPath, champion, finalFour } = data;
 
   // Compute scale factor for card frame (desktop only — mobile uses natural sizing)
   const isMobile = typeof window !== "undefined" && window.innerWidth < 768;
@@ -70,7 +70,7 @@ export function BracketWrapped({ data, onClose }: BracketWrappedProps) {
     champion.teamLogoUrl,
     boldestPick.winnerLogoUrl,
     unlikelyRun.teamLogoUrl,
-    weakestLink.pickedTeamLogoUrl,
+    championPath.championLogoUrl,
     ...finalFour.slice(0, 2).map((t) => t.teamLogoUrl),
   ].filter(Boolean);
 
@@ -212,7 +212,7 @@ export function BracketWrapped({ data, onClose }: BracketWrappedProps) {
             {screen === 0 && <Screen1Identity identity={identity} />}
             {screen === 1 && <Screen2Boldest boldestPick={boldestPick} />}
             {screen === 2 && <Screen3Unlikely unlikelyRun={unlikelyRun} />}
-            {screen === 3 && <Screen4Weakest weakestLink={weakestLink} />}
+            {screen === 3 && <Screen4Path championPath={championPath} />}
             {screen === 4 && (
               <div className="bw-screen5-wrap">
                 <BracketWrappedCard data={data} />
@@ -396,53 +396,69 @@ function Screen3Unlikely({ unlikelyRun }: { unlikelyRun: WrappedData["unlikelyRu
 }
 
 // ---------------------------------------------------------------------------
-// Screen 4: The Weakest Link
+// Screen 4: The Path of Most Resistance
 // ---------------------------------------------------------------------------
 
-function Screen4Weakest({ weakestLink }: { weakestLink: WrappedData["weakestLink"] }) {
-  return (
-    <div className="bw-content bw-content--weakest">
-      <span className="bw-heading bw-heading--red">WARNING: WEAKEST LINK</span>
-      <h2 className="bw-weakest-title">
-        This pick is <em>costing</em> you.
-      </h2>
-      <span className="bw-round-tag">
-        {ROUND_LABELS[weakestLink.round] ?? weakestLink.round}
-        {weakestLink.region ? ` · ${weakestLink.region.toUpperCase()}` : ""}
-      </span>
+function Screen4Path({ championPath }: { championPath: WrappedData["championPath"] }) {
+  const probColor = (p: number) => {
+    if (p >= 0.75) return "var(--green, #4ade80)";
+    if (p >= 0.5) return "#f0e6d0";
+    return "var(--red, #f87171)";
+  };
 
-      <div className="bw-matchup bw-matchup--sm">
-        <div className="bw-matchup-team bw-matchup-team--winner">
-          <img
-            src={weakestLink.pickedTeamLogoUrl}
-            alt={weakestLink.pickedTeamName}
-            className="bw-matchup-logo bw-matchup-logo--weakest-picked"
-          />
-          <span className="bw-matchup-name">{weakestLink.pickedTeamName}</span>
-          <span className="bw-your-pick-badge">YOUR PICK</span>
-        </div>
-        <span className="bw-matchup-over">over</span>
-        <div className="bw-matchup-team bw-matchup-team--loser">
-          <img
-            src={weakestLink.opponentTeamLogoUrl}
-            alt={weakestLink.opponentTeamName}
-            className="bw-matchup-logo bw-matchup-logo--loser"
-            style={{ width: 52, height: 52 }}
-          />
-          <span className="bw-matchup-name bw-matchup-name--loser">
-            {weakestLink.opponentTeamName}
-          </span>
-        </div>
+  return (
+    <div className="bw-content bw-content--path">
+      <span className="bw-heading bw-heading--amber">THE PATH OF MOST RESISTANCE</span>
+
+      <div className="bw-path-champion">
+        <img
+          src={championPath.championLogoUrl}
+          alt={championPath.championName}
+          className="bw-path-champion-logo"
+        />
+        <span className="bw-path-champion-name">{championPath.championName}</span>
+        <span className="bw-path-champion-seed">#{championPath.championSeed} seed</span>
       </div>
 
-      <span className="bw-multiplier">
-        {weakestLink.improvementMultiplier.toFixed(1)}x
-      </span>
-      <span className="bw-multiplier-label">better odds if you flip this one pick</span>
+      <div className="bw-path-games">
+        {championPath.games.map((game) => {
+          const isToughest = game.round === championPath.toughestGame.round;
+          return (
+            <div
+              key={game.round}
+              className={`bw-path-row ${isToughest ? "bw-path-row--toughest" : ""}`}
+            >
+              <span className="bw-path-round">{game.round}</span>
+              <img
+                src={game.opponentLogoUrl}
+                alt={game.opponentName}
+                className="bw-path-opp-logo"
+              />
+              <span className="bw-path-opp">
+                <span className="bw-path-vs">vs</span> {game.opponentName}
+              </span>
+              <span
+                className="bw-path-prob"
+                style={{ color: probColor(game.winProbability) }}
+              >
+                {(game.winProbability * 100).toFixed(0)}%
+              </span>
+            </div>
+          );
+        })}
+      </div>
+
+      <div className="bw-prob-display">
+        <span className="bw-prob-number bw-prob-number--amber">
+          {(championPath.pathProbability * 100).toFixed(1)}
+          <span className="bw-prob-pct">%</span>
+        </span>
+        <span className="bw-prob-label">chance this exact path happens</span>
+      </div>
 
       <p className="bw-context-line">
-        The model gives {weakestLink.pickedTeamName} a{" "}
-        {(weakestLink.pickedTeamWinProb * 100).toFixed(0)}% chance here.
+        The model says {championPath.championName}'s toughest test is{" "}
+        {championPath.toughestGame.opponentName} in the {championPath.toughestGame.roundLabel}.
       </p>
     </div>
   );
