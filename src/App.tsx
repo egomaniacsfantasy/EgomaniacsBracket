@@ -56,6 +56,7 @@ const ONBOARDING_STORAGE_KEY = "oddsGods_onboardingDismissed";
 const HINTS_STORAGE_KEY = "oddsGods_hintsShown";
 const FIRST_PICK_NUDGE_SESSION_KEY = "oddsGods_firstPickCascadeNudgeSeen";
 const PROMO_DISMISSED_KEY = "bracketlab-promo-dismissed";
+const DESKTOP_FIRST_SEEN_KEY = "bracketlab-desktop-first-seen";
 const ODDS_FORMAT_STORAGE_KEY = "bracketlab-odds-format";
 const STAGGERED_SIM_DELAY_MS = 2000;
 const MIN_STAGGERED_SIM_DELAY_MS = 1000;
@@ -556,7 +557,7 @@ function App() {
     typeof window !== "undefined" ? window.matchMedia("(max-width: 767px)").matches : false
   );
   const [mobileTab, setMobileTab] = useState<MobileTab>("bracket");
-  const [mobileSection, setMobileSection] = useState<MobileSection>("South");
+  const [mobileSection, setMobileSection] = useState<MobileSection>("East");
   const [mobileRound, setMobileRound] = useState<MobileRegionRound>("FF");
   const [mobileFfRound, setMobileFfRound] = useState<MobileFfRound>("F4");
   const [liveOddsChangedIds, setLiveOddsChangedIds] = useState<Set<string>>(new Set());
@@ -579,6 +580,7 @@ function App() {
     if (window.matchMedia("(max-width: 767px)").matches) return false;
     return window.localStorage.getItem(ONBOARDING_STORAGE_KEY) !== "true";
   });
+  const [showDesktopFirst, setShowDesktopFirst] = useState(false);
   const [showMobileOnboarding, setShowMobileOnboarding] = useState(false);
   const [walkthroughActive, setWalkthroughActive] = useState(false);
   const [walkthroughStep, setWalkthroughStep] = useState(0);
@@ -768,12 +770,15 @@ function App() {
     if (typeof window === "undefined") return;
     const dismissed = window.localStorage.getItem(ONBOARDING_STORAGE_KEY) === "true";
     if (isMobile) {
+      const desktopFirstSeen = window.localStorage.getItem(DESKTOP_FIRST_SEEN_KEY) === "1";
       setWelcomeGateOpen(false);
-      setShowMobileOnboarding(!dismissed);
+      setShowDesktopFirst(!desktopFirstSeen);
+      setShowMobileOnboarding(desktopFirstSeen && !dismissed);
       setWalkthroughActive(false);
       return;
     }
 
+    setShowDesktopFirst(false);
     setShowMobileOnboarding(false);
     setWelcomeGateOpen(!dismissed);
   }, [isMobile]);
@@ -988,6 +993,24 @@ function App() {
     setShowMobileOnboarding(false);
     setWelcomeGateOpen(false);
     if (typeof window !== "undefined") {
+      window.localStorage.setItem(ONBOARDING_STORAGE_KEY, "true");
+    }
+  }, []);
+
+  const continuePastDesktopFirst = useCallback(() => {
+    const dismissed = typeof window !== "undefined" && window.localStorage.getItem(ONBOARDING_STORAGE_KEY) === "true";
+    setShowDesktopFirst(false);
+    if (typeof window !== "undefined") {
+      window.localStorage.setItem(DESKTOP_FIRST_SEEN_KEY, "1");
+    }
+    setShowMobileOnboarding(!dismissed);
+  }, []);
+
+  const dismissDesktopFirst = useCallback(() => {
+    setShowDesktopFirst(false);
+    setShowMobileOnboarding(false);
+    if (typeof window !== "undefined") {
+      window.localStorage.setItem(DESKTOP_FIRST_SEEN_KEY, "1");
       window.localStorage.setItem(ONBOARDING_STORAGE_KEY, "true");
     }
   }, []);
@@ -2422,7 +2445,7 @@ function App() {
   );
   const allPlayInDecided = playInGames.length === 0 || decidedPlayInCount === playInGames.length;
   const pointsTrackingEnabled = false;
-  const onboardingFlowReady = !showMobileOnboarding && !walkthroughActive;
+  const onboardingFlowReady = !showDesktopFirst && !showMobileOnboarding && !walkthroughActive;
   const showMobileFirstFourButton = isMobile && playInGames.length > 0;
   const mobileFirstFourProgress = playInGames.length > 0 ? `${decidedPlayInCount}/${playInGames.length}` : null;
   const leftSemi = finalGames.find((g) => g.id === "F4-Left-0") ?? null;
@@ -2457,6 +2480,13 @@ function App() {
     setShowFirstFourModal(true);
     firstFourAutoShownRef.current = true;
   }, [allPlayInDecided, onboardingFlowReady]);
+
+  useEffect(() => {
+    if (!allPlayInDecided) return;
+    if (mobileSection === "FF") return;
+    if (mobileRound !== "FF") return;
+    setMobileRound("R64");
+  }, [allPlayInDecided, mobileRound, mobileSection]);
 
   useEffect(() => {
     if (mobileSection === "FF") return;
@@ -2996,13 +3026,13 @@ function App() {
   }, [isMobile, mainView, mobileTab]);
 
   useEffect(() => {
-    if (welcomeGateOpen || showMobileOnboarding) {
+    if (welcomeGateOpen || showDesktopFirst || showMobileOnboarding) {
       document.body.classList.add("og-onboarding-open");
     } else {
       document.body.classList.remove("og-onboarding-open");
     }
     return () => document.body.classList.remove("og-onboarding-open");
-  }, [showMobileOnboarding, welcomeGateOpen]);
+  }, [showDesktopFirst, showMobileOnboarding, welcomeGateOpen]);
 
   useEffect(() => {
     if (!walkthroughActive) {
@@ -3118,6 +3148,15 @@ function App() {
       setAuthModalOpen(true);
     }
   };
+
+  const handleFirstFourModalClose = useCallback(() => {
+    setShowFirstFourModal(false);
+    if (!isMobile || !allPlayInDecided) return;
+    setMobileTab("bracket");
+    setMobileSection((current) => (current === "FF" ? "East" : current));
+    setMobileRound("R64");
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }, [allPlayInDecided, isMobile]);
 
   const showChaosInToolbar = !isMobile && chaosScore !== null;
   const showInlineFirstFour = playInGames.length > 0 && !allPlayInDecided;
@@ -3906,7 +3945,6 @@ function App() {
         {isMobile ? (
           <section className="eg-mobile-shell">
             {showToolbar ? <div className="mobile-toolbar-wrapper">{toolbar}</div> : null}
-            {showToolbar ? chaosTrackerBar : null}
             {isAuthenticated && submissionsLocked && showToolbar ? (
               <div className="bracket-lock-banner">🔒 Submissions locked at tip-off. Tournament is live — check the leaderboard.</div>
             ) : null}
@@ -4321,6 +4359,13 @@ function App() {
         onSignUp={handlePromoSignUp}
       />
 
+      {showDesktopFirst ? (
+        <DesktopFirstModal
+          onContinue={continuePastDesktopFirst}
+          onSkip={dismissDesktopFirst}
+        />
+      ) : null}
+
       {showMobileOnboarding ? (
         <MobileOnboarding
           onStartFirstFour={startMobileOnboardingFromFirstFour}
@@ -4397,7 +4442,7 @@ function App() {
           }}
           onRandomize={handleRandomizeFirstFour}
           onOpenMatchupStats={openMatchupStats}
-          onClose={() => setShowFirstFourModal(false)}
+          onClose={handleFirstFourModalClose}
         />
       ) : null}
 
@@ -4499,6 +4544,33 @@ function PromoCTA({
         </button>
         <button className="promo-cta-skip" onClick={onDismiss}>
           Maybe later
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function DesktopFirstModal({
+  onContinue,
+  onSkip,
+}: {
+  onContinue: () => void;
+  onSkip: () => void;
+}) {
+  return (
+    <div className="dfm-overlay" onClick={onSkip}>
+      <div className="dfm-card" onClick={(event) => event.stopPropagation()}>
+        <div className="dfm-icon" aria-hidden="true">💻</div>
+        <h2 className="dfm-headline">Bracket Lab works best on desktop.</h2>
+        <p className="dfm-body">
+          The mobile version is usable, but the full bracket canvas and odds workflow were built for larger screens.
+        </p>
+        <p className="dfm-sub">Continue on mobile if you want the walkthrough anyway.</p>
+        <button className="dfm-btn" onClick={onContinue}>
+          Continue on mobile
+        </button>
+        <button className="dfm-skip" onClick={onSkip}>
+          Skip walkthrough
         </button>
       </div>
     </div>
