@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 
 const LANDING_URL = "https://oddsgods.net";
 
-export type TopNavView = "bracket" | "leaderboard" | "conferences" | "rankings";
+export type TopNavView = "bracket" | "leaderboard" | "conferences" | "rankings" | "predictor";
 
 type TopNavBarProps = {
   activeView: TopNavView;
@@ -12,6 +12,7 @@ type TopNavBarProps = {
   onSelectLeaderboard: () => void;
   onSelectConferences: () => void;
   onSelectRankings: () => void;
+  onSelectPredictor: () => void;
   onSignIn: () => void;
   onSignOut: () => void;
   showBeta?: boolean;
@@ -32,6 +33,7 @@ export function TopNavBar({
   onSelectLeaderboard,
   onSelectConferences,
   onSelectRankings,
+  onSelectPredictor,
   onSignIn,
   onSignOut,
   showBeta = false,
@@ -45,6 +47,7 @@ export function TopNavBar({
     { id: "leaderboard", label: "Leaderboard", onSelect: onSelectLeaderboard },
     { id: "conferences", label: "Conf. Tourneys", onSelect: onSelectConferences },
     { id: "rankings", label: "Rankings", onSelect: onSelectRankings },
+    { id: "predictor", label: "Predictor", onSelect: onSelectPredictor },
   ];
 
   useEffect(() => {

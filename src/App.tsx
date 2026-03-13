@@ -3025,6 +3025,8 @@ function App() {
         ? "conferences"
         : mobileTab === "rankings"
           ? "rankings"
+          : mobileTab === "predictor"
+            ? "predictor"
           : "bracket"
     : mainView === "leaderboard"
       ? "leaderboard"
@@ -3032,6 +3034,8 @@ function App() {
         ? "conferences"
         : mainView === "rankings"
           ? "rankings"
+          : mainView === "predictor"
+            ? "predictor"
           : "bracket";
 
   const switchTopNavView = (view: TopNavView) => {
@@ -3090,6 +3094,15 @@ function App() {
           onSelect: openFirstFourFromToolbar,
         }]
       : []),
+    {
+      id: "predictor",
+      label: "Predictor",
+      onSelect: () => {
+        setOpenToolbarMenu(null);
+        if (isMobile) setMobileTab("predictor");
+        else setMainView("predictor");
+      },
+    },
     {
       id: "copy-link",
       label: linkCopied ? "✓ Copied!" : "Copy Link",
@@ -3255,6 +3268,20 @@ function App() {
           title={isAuthenticated ? "View and manage your groups" : "Sign in to view and manage groups"}
         >
           Groups
+        </button>
+
+        <button
+          type="button"
+          onClick={() => {
+            if (isMobile) setMobileTab("predictor");
+            else setMainView("predictor");
+          }}
+          className={`eg-btn toolbar-btn--predictor ${
+            (isMobile ? mobileTab === "predictor" : mainView === "predictor") ? "toolbar-btn--active-view" : ""
+          }`}
+          title="Open head-to-head matchup predictor"
+        >
+          Predictor
         </button>
 
         <button
@@ -3822,6 +3849,7 @@ function App() {
           onSelectLeaderboard={() => switchTopNavView("leaderboard")}
           onSelectConferences={() => switchTopNavView("conferences")}
           onSelectRankings={() => switchTopNavView("rankings")}
+          onSelectPredictor={() => switchTopNavView("predictor")}
           onSignIn={() => setAuthModalOpen(true)}
           onSignOut={() => signOut()}
         />
@@ -3910,6 +3938,10 @@ function App() {
             ) : mobileTab === "rankings" ? (
               <div className="mobile-futures-view">
                 <ExpandedRankings displayMode={displayMode} isMobile={isMobile} />
+              </div>
+            ) : mobileTab === "predictor" ? (
+              <div className="mobile-futures-view">
+                <MatchupPredictor displayMode={displayMode} />
               </div>
             ) : (
               <div className="mobile-futures-view">

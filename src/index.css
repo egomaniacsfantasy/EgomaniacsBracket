@@ -12642,7 +12642,8 @@ body.walkthrough-active .odds-value--changed::after {
 
 /* Conference & Rankings toolbar button styles */
 .toolbar-btn--conferences,
-.toolbar-btn--rankings {
+.toolbar-btn--rankings,
+.toolbar-btn--predictor {
   font-size: 0.82rem;
 }
 
