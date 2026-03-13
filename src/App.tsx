@@ -3962,7 +3962,7 @@ function App() {
         <header className={`eg-header ${isMobile ? "mobile-hidden" : ""}`}>
           <h1>The Bracket Lab</h1>
           <p className="eg-subtitle">
-            March Madness what-if odds. Click picks to update futures in real time based on your picks.
+            The bracket that thinks back. Lock a pick. See who it helps, who it hurts, and what it costs.
           </p>
         </header>
         {isMobile ? (
