@@ -45,6 +45,7 @@ import type { OddsDisplayMode, Region, ResolvedGame, SimulationOutput } from "./
 import { computeWrappedData, type WrappedData } from "./lib/wrappedData";
 import { BracketWrapped } from "./BracketWrapped";
 import { BracketWrappedCard } from "./BracketWrappedCard";
+import { MobileOnboarding } from "./MobileOnboarding";
 import { OverflowMenu, type OverflowMenuItem } from "./OverflowMenu";
 import { TopNavBar, type TopNavView } from "./TopNavBar";
 import type { UserGroup } from "./groupStorage";
@@ -55,7 +56,6 @@ const ONBOARDING_STORAGE_KEY = "oddsGods_onboardingDismissed";
 const HINTS_STORAGE_KEY = "oddsGods_hintsShown";
 const FIRST_PICK_NUDGE_SESSION_KEY = "oddsGods_firstPickCascadeNudgeSeen";
 const PROMO_DISMISSED_KEY = "bracketlab-promo-dismissed";
-const DESKTOP_FIRST_SEEN_KEY = "bracketlab-desktop-first-seen";
 const ODDS_FORMAT_STORAGE_KEY = "bracketlab-odds-format";
 const STAGGERED_SIM_DELAY_MS = 2000;
 const MIN_STAGGERED_SIM_DELAY_MS = 1000;
@@ -96,6 +96,29 @@ const URL_REGION_ORDER: Region[] = ["South", "West", "East", "Midwest"];
 const URL_ROUND_ORDER: ResolvedGame["round"][] = ["FF", "R64", "R32", "S16", "E8", "F4", "CHAMP"];
 const URL_EXPECTED_GAME_COUNT = gameTemplates.length;
 const URL_EXPECTED_BITS = URL_EXPECTED_GAME_COUNT * 2;
+const MOBILE_TAB_BODY_CLASSES = [
+  "mobile-tab-bracket",
+  "mobile-tab-futures",
+  "mobile-tab-leaderboard",
+  "mobile-tab-leaders",
+  "mobile-tab-conferences",
+  "mobile-tab-conf",
+  "mobile-tab-rankings",
+  "mobile-tab-ranks",
+  "mobile-tab-predictor",
+] as const;
+
+const MOBILE_BODY_CLASSES_BY_TAB: Record<
+  "bracket" | "futures" | "leaderboard" | "conferences" | "rankings" | "predictor",
+  readonly string[]
+> = {
+  bracket: ["mobile-tab-bracket"],
+  futures: ["mobile-tab-futures"],
+  leaderboard: ["mobile-tab-leaderboard", "mobile-tab-leaders"],
+  conferences: ["mobile-tab-conferences", "mobile-tab-conf"],
+  rankings: ["mobile-tab-rankings", "mobile-tab-ranks"],
+  predictor: ["mobile-tab-predictor"],
+};
 
 const getRecommendedSimRuns = (): number => {
   if (typeof window === "undefined") return DEFAULT_SIM_RUNS;
@@ -553,9 +576,10 @@ function App() {
   const [staggeredSimDelayMs, setStaggeredSimDelayMs] = useState(STAGGERED_SIM_DELAY_MS);
   const [welcomeGateOpen, setWelcomeGateOpen] = useState(() => {
     if (typeof window === "undefined") return false;
+    if (window.matchMedia("(max-width: 767px)").matches) return false;
     return window.localStorage.getItem(ONBOARDING_STORAGE_KEY) !== "true";
   });
-  const [showDesktopFirst, setShowDesktopFirst] = useState(false);
+  const [showMobileOnboarding, setShowMobileOnboarding] = useState(false);
   const [walkthroughActive, setWalkthroughActive] = useState(false);
   const [walkthroughStep, setWalkthroughStep] = useState(0);
   const [walkthroughTargetEl, setWalkthroughTargetEl] = useState<HTMLElement | null>(null);
@@ -718,16 +742,10 @@ function App() {
   }, [isMobile, mainView, mobileTab]);
 
   useEffect(() => {
-    if (!isMobile) {
-      document.body.classList.remove("mobile-tab-futures");
-      return;
-    }
-    if (mobileTab === "futures") {
-      document.body.classList.add("mobile-tab-futures");
-    } else {
-      document.body.classList.remove("mobile-tab-futures");
-    }
-    return () => document.body.classList.remove("mobile-tab-futures");
+    document.body.classList.remove(...MOBILE_TAB_BODY_CLASSES);
+    if (!isMobile) return () => document.body.classList.remove(...MOBILE_TAB_BODY_CLASSES);
+    document.body.classList.add(...MOBILE_BODY_CLASSES_BY_TAB[mobileTab]);
+    return () => document.body.classList.remove(...MOBILE_TAB_BODY_CLASSES);
   }, [isMobile, mobileTab]);
 
   useEffect(() => {
@@ -748,17 +766,16 @@ function App() {
 
   useEffect(() => {
     if (typeof window === "undefined") return;
-    if (!isMobile) {
-      setShowDesktopFirst(false);
-      setWelcomeGateOpen(window.localStorage.getItem(ONBOARDING_STORAGE_KEY) !== "true");
+    const dismissed = window.localStorage.getItem(ONBOARDING_STORAGE_KEY) === "true";
+    if (isMobile) {
+      setWelcomeGateOpen(false);
+      setShowMobileOnboarding(!dismissed);
+      setWalkthroughActive(false);
       return;
     }
 
-    // Mobile now uses the same 5-step walkthrough after the desktop-first gate.
-    setWelcomeGateOpen(window.localStorage.getItem(ONBOARDING_STORAGE_KEY) !== "true");
-    setWalkthroughActive(false);
-    const desktopFirstSeen = window.localStorage.getItem(DESKTOP_FIRST_SEEN_KEY) === "1";
-    setShowDesktopFirst(!desktopFirstSeen);
+    setShowMobileOnboarding(false);
+    setWelcomeGateOpen(!dismissed);
   }, [isMobile]);
 
   useEffect(() => {
@@ -966,6 +983,21 @@ function App() {
     }
     setAuthModalOpen(true);
   };
+
+  const dismissMobileOnboarding = useCallback(() => {
+    setShowMobileOnboarding(false);
+    setWelcomeGateOpen(false);
+    if (typeof window !== "undefined") {
+      window.localStorage.setItem(ONBOARDING_STORAGE_KEY, "true");
+    }
+  }, []);
+
+  const startMobileOnboardingFromFirstFour = useCallback(() => {
+    dismissMobileOnboarding();
+    setMobileTab("bracket");
+    setShowFirstFourModal(true);
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }, [dismissMobileOnboarding]);
 
   const completeWalkthrough = () => {
     trackEvent("onboarding_completed");
@@ -2390,7 +2422,9 @@ function App() {
   );
   const allPlayInDecided = playInGames.length === 0 || decidedPlayInCount === playInGames.length;
   const pointsTrackingEnabled = false;
-  const onboardingFlowReady = !showDesktopFirst && !walkthroughActive;
+  const onboardingFlowReady = !showMobileOnboarding && !walkthroughActive;
+  const showMobileFirstFourButton = isMobile && playInGames.length > 0;
+  const mobileFirstFourProgress = playInGames.length > 0 ? `${decidedPlayInCount}/${playInGames.length}` : null;
   const leftSemi = finalGames.find((g) => g.id === "F4-Left-0") ?? null;
   const rightSemi = finalGames.find((g) => g.id === "F4-Right-0") ?? null;
   const titleGame = finalGames.find((g) => g.id === "CHAMP-0") ?? null;
@@ -2918,10 +2952,9 @@ function App() {
   }, [walkthroughActive]);
 
   useEffect(() => {
-    if (!welcomeGateOpen || walkthroughActive) return;
-    if (isMobile && showDesktopFirst) return;
+    if (!welcomeGateOpen || walkthroughActive || isMobile) return;
     startWalkthrough();
-  }, [isMobile, showDesktopFirst, startWalkthrough, walkthroughActive, welcomeGateOpen]);
+  }, [isMobile, startWalkthrough, walkthroughActive, welcomeGateOpen]);
 
   useEffect(() => {
     const inWalkthroughSession = welcomeGateOpen || walkthroughActive;
@@ -2963,13 +2996,13 @@ function App() {
   }, [isMobile, mainView, mobileTab]);
 
   useEffect(() => {
-    if (welcomeGateOpen) {
+    if (welcomeGateOpen || showMobileOnboarding) {
       document.body.classList.add("og-onboarding-open");
     } else {
       document.body.classList.remove("og-onboarding-open");
     }
     return () => document.body.classList.remove("og-onboarding-open");
-  }, [welcomeGateOpen]);
+  }, [showMobileOnboarding, welcomeGateOpen]);
 
   useEffect(() => {
     if (!walkthroughActive) {
@@ -3087,8 +3120,8 @@ function App() {
   };
 
   const showChaosInToolbar = !isMobile && chaosScore !== null;
-  const showChaosInOverflow = isMobile && chaosScore !== null;
   const showInlineFirstFour = playInGames.length > 0 && !allPlayInDecided;
+  const showToolbarFirstFour = isMobile ? showMobileFirstFourButton : showInlineFirstFour;
   const firstFourInlineProgress = playInGames.length > 0 ? `${decidedPlayInCount}/${playInGames.length}` : null;
 
   const overflowPrimaryItems: OverflowMenuItem[] = [
@@ -3116,7 +3149,7 @@ function App() {
           },
         }]
       : []),
-    ...(!showInlineFirstFour
+    ...(!showToolbarFirstFour
       ? [{
           id: "first-four",
           label: playInGames.length > 0
@@ -3168,7 +3201,8 @@ function App() {
           label: "Replay Tour",
           onSelect: () => {
             setOpenToolbarMenu(null);
-            startWalkthrough({ replay: true });
+            if (isMobile) setShowMobileOnboarding(true);
+            else startWalkthrough({ replay: true });
           },
         }]
       : []),
@@ -3186,24 +3220,6 @@ function App() {
     },
   ];
 
-  const mobileOverflowChaos = showChaosInOverflow ? (
-    <button
-      type="button"
-      className="chaos-pill chaos-pill--overflow"
-      data-level={chaosPillLevel}
-      title={`Chaos Score: ${chaosScore?.toFixed(1)} across ${pickCount} games. Higher = more unlikely bracket.`}
-      onClick={() => {
-        setOpenToolbarMenu(null);
-        onChaosPillTap();
-      }}
-    >
-      <span className="chaos-pill-emoji">{chaosLabelData?.emoji ?? "📋"}</span>
-      <span className="chaos-pill-label">{chaosLabelData?.label ?? "Chalk"}</span>
-      <span className="chaos-pill-score">{chaosScore?.toFixed(1)}</span>
-      {chaosPercentile !== null ? <span className="chaos-pill-pct">Top {Math.max(1, Math.round(100 - chaosPercentile))}%</span> : null}
-    </button>
-  ) : null;
-
   const toolbar = (
     <div className="eg-main-actions toolbar">
       <div className="toolbar-group toolbar-group--left">
@@ -3215,7 +3231,7 @@ function App() {
           ↩ Undo
         </button>
 
-        <div className="toolbar-dropdown-wrap" ref={simMenuRef}>
+        <div className="toolbar-dropdown-wrap toolbar-dropdown-wrap--sim" ref={simMenuRef}>
           <button
             type="button"
             className="eg-btn toolbar-btn--simulate"
@@ -3252,7 +3268,7 @@ function App() {
           ) : null}
         </div>
 
-        <div className="toolbar-dropdown-wrap" ref={resetMenuRef}>
+        <div className="toolbar-dropdown-wrap toolbar-dropdown-wrap--reset" ref={resetMenuRef}>
           <button
             type="button"
             className="eg-btn toolbar-btn--reset"
@@ -3280,7 +3296,7 @@ function App() {
       </div>
 
       <div className="toolbar-group toolbar-group--right">
-        {showInlineFirstFour ? (
+        {showToolbarFirstFour ? (
           <button
             type="button"
             onClick={openFirstFourFromToolbar}
@@ -3288,7 +3304,9 @@ function App() {
             title="Pick the First Four winners to lock in the Round of 64 field"
           >
             <span>First Four</span>
-            {firstFourInlineProgress ? <span className="toolbar-btn-badge">{firstFourInlineProgress}</span> : null}
+            {(isMobile ? mobileFirstFourProgress : firstFourInlineProgress)
+              ? <span className="toolbar-btn-badge">{isMobile ? mobileFirstFourProgress : firstFourInlineProgress}</span>
+              : null}
           </button>
         ) : null}
 
@@ -3303,19 +3321,21 @@ function App() {
           </button>
         ) : null}
 
-        <button
-          type="button"
-          onClick={() => {
-            if (isMobile) setMobileTab("predictor");
-            else setMainView("predictor");
-          }}
-          className={`eg-btn toolbar-btn--predictor ${
-            (isMobile ? mobileTab === "predictor" : mainView === "predictor") ? "toolbar-btn--active-view" : ""
-          }`}
-          title="Open head-to-head matchup predictor"
-        >
-          Predictor
-        </button>
+        {!isMobile ? (
+          <button
+            type="button"
+            onClick={() => {
+              if (isMobile) setMobileTab("predictor");
+              else setMainView("predictor");
+            }}
+            className={`eg-btn toolbar-btn--predictor ${
+              (isMobile ? mobileTab === "predictor" : mainView === "predictor") ? "toolbar-btn--active-view" : ""
+            }`}
+            title="Open head-to-head matchup predictor"
+          >
+            Predictor
+          </button>
+        ) : null}
 
         {!isMobile ? (
           <button
@@ -3413,7 +3433,7 @@ function App() {
           </button>
         ) : null}
 
-        <div className="toolbar-dropdown-wrap toolbar-dropdown-wrap--right" ref={overflowMenuRef}>
+        <div className="toolbar-dropdown-wrap toolbar-dropdown-wrap--overflow toolbar-dropdown-wrap--right" ref={overflowMenuRef}>
           <button
             type="button"
             className="eg-btn toolbar-btn--overflow"
@@ -3428,7 +3448,6 @@ function App() {
             <OverflowMenu
               primaryItems={overflowPrimaryItems}
               secondaryItems={overflowSecondaryItems}
-              chaosNode={mobileOverflowChaos}
             />
           ) : null}
         </div>
@@ -3483,24 +3502,6 @@ function App() {
           </div>
         </div>
       </div>
-    ) : null;
-
-  const mobileChaosBadge =
-    chaosScore !== null ? (
-      <button
-        type="button"
-        className={`chaos-pill chaos-pill--mobile ${chaosScoreChanged ? "chaos-score-pill--changed" : ""}`}
-        data-level={chaosPillLevel}
-        title={`Chaos Score: ${chaosScore.toFixed(1)} across ${pickCount} games. Higher = more unlikely bracket.`}
-        onClick={onChaosPillTap}
-      >
-        <span className="chaos-pill-emoji">{chaosLabelData?.emoji ?? "📋"}</span>
-        <span className="chaos-pill-label">{chaosLabelData?.label ?? "Chalk"}</span>
-        <span className="chaos-pill-score">{chaosScore.toFixed(1)}</span>
-        {chaosPercentile !== null ? (
-          <span className="chaos-pill-pct">Top {Math.max(1, Math.round(100 - chaosPercentile))}%</span>
-        ) : null}
-      </button>
     ) : null;
 
   const championGame = games.find((game) => game.round === "CHAMP");
@@ -3931,7 +3932,6 @@ function App() {
                       onUndoPick={onUndoGame}
                       onEditProb={openProbabilityPopup}
                       onOpenMatchupStats={openMatchupStats}
-                      mobileChaosBadge={mobileChaosBadge}
                     />
                   ) : (
                     <MobileRegionView
@@ -3957,7 +3957,6 @@ function App() {
                       onUndoPick={onUndoGame}
                       onEditProb={openProbabilityPopup}
                       onOpenMatchupStats={openMatchupStats}
-                      mobileChaosBadge={mobileChaosBadge}
                     />
                   )}
                 </div>
@@ -4321,6 +4320,13 @@ function App() {
         onDismiss={handlePromoDismiss}
         onSignUp={handlePromoSignUp}
       />
+
+      {showMobileOnboarding ? (
+        <MobileOnboarding
+          onStartFirstFour={startMobileOnboardingFromFirstFour}
+          onSkip={dismissMobileOnboarding}
+        />
+      ) : null}
 
       {walkthroughActive && walkthroughCascadePhase === "animating" && walkthroughCascadeCaption ? (
         <div className="cascade-caption">{walkthroughCascadeCaption}</div>
@@ -5288,7 +5294,6 @@ function MobileRegionView({
   onUndoPick,
   onEditProb,
   onOpenMatchupStats,
-  mobileChaosBadge,
 }: {
   region: Region;
   activeRound: MobileRegionRound;
@@ -5312,7 +5317,6 @@ function MobileRegionView({
   onUndoPick: (gameId: string) => void;
   onEditProb: (game: ResolvedGame, anchorEl: HTMLElement) => void;
   onOpenMatchupStats: (game: ResolvedGame) => void;
-  mobileChaosBadge?: React.ReactNode;
 }) {
   const roundOrder: Array<{ id: MobileRegionRound; label: string }> = [
     { id: "FF", label: "FF" },
@@ -5356,7 +5360,6 @@ function MobileRegionView({
         deltaByRound={roundDeltas}
         onRoundChange={(roundId) => onRoundChange(roundId as MobileRegionRound)}
       />
-      {mobileChaosBadge}
       <CascadeFirstPickNudge
         visible={firstPickNudgeVisible}
         changedRounds={firstPickChangedRounds}
@@ -5424,7 +5427,6 @@ function MobileFinalFourView({
   onUndoPick,
   onEditProb,
   onOpenMatchupStats,
-  mobileChaosBadge,
 }: {
   activeRound: MobileFfRound;
   pointsTrackingEnabled: boolean;
@@ -5442,7 +5444,6 @@ function MobileFinalFourView({
   onUndoPick: (gameId: string) => void;
   onEditProb: (game: ResolvedGame, anchorEl: HTMLElement) => void;
   onOpenMatchupStats: (game: ResolvedGame) => void;
-  mobileChaosBadge?: React.ReactNode;
 }) {
   const rounds: Array<{ id: MobileFfRound; label: string }> = [
     { id: "F4", label: "F4" },
@@ -5503,7 +5504,6 @@ function MobileFinalFourView({
         }}
         onRoundChange={(roundId) => onRoundChange(roundId as MobileFfRound)}
       />
-      {mobileChaosBadge}
       {activeRound === "F4"
         ? semifinals.map((game) => (
             <MobileMatchupCard
