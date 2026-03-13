@@ -61,6 +61,8 @@ const ODDS_FORMAT_STORAGE_KEY = "bracketlab-odds-format";
 const STAGGERED_SIM_DELAY_MS = 2000;
 const MIN_STAGGERED_SIM_DELAY_MS = 1000;
 const MAX_STAGGERED_SIM_DELAY_MS = 5000;
+const BUG_REPORT_MAILTO =
+  "mailto:feedback@oddsgods.net?subject=BracketLab%20Bug%20Report&body=What%20happened%3A%0A%0AWhat%20I%20was%20trying%20to%20do%3A%0A%0ADevice%2FBrowser%3A%0A";
 
 const regionSections: Region[][] = BRACKET_HALVES.map((half) => [...half.regions]);
 const mobileRegionOrder: Region[] = ["East", "West", "Midwest", "South"];
@@ -3149,6 +3151,11 @@ function App() {
     }
   };
 
+  const openBugReport = () => {
+    setOpenToolbarMenu(null);
+    window.location.href = BUG_REPORT_MAILTO;
+  };
+
   const handleFirstFourModalClose = useCallback(() => {
     setShowFirstFourModal(false);
     if (!isMobile || !allPlayInDecided) return;
@@ -3214,6 +3221,13 @@ function App() {
         void onCopyShareLink();
       },
     },
+    ...(isMobile
+      ? [{
+          id: "report-bug",
+          label: "🐛 Report a Bug",
+          onSelect: openBugReport,
+        }]
+      : []),
     ...(wrappedData
       ? [{
           id: "wrapped",
@@ -3442,6 +3456,18 @@ function App() {
             US
           </button>
         </div>
+
+        {!isMobile ? (
+          <a
+            href={BUG_REPORT_MAILTO}
+            className="bug-report-link bug-report-link--toolbar"
+            target="_blank"
+            rel="noopener"
+            onClick={() => setOpenToolbarMenu(null)}
+          >
+            🐛 Report a Bug
+          </a>
+        ) : null}
 
         {!isMobile ? (
           <button

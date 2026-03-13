@@ -78,6 +78,7 @@ const ALL_CONFS = Array.from(new Set(D1_TEAMS.map((t) => t.conf))).sort();
 
 type TrendPoint = { daynum: number; value: number };
 const TREND_DISPLAY_START_DAYNUM = 40;
+const MASSEY_RANKINGS_URL = "https://masseyratings.com/ranks";
 
 function formatAxisValue(value: number, metric: RankingMetric): string {
   if (RANK_LIKE_METRICS.has(metric.key)) return `${Math.round(value)}`;
@@ -328,6 +329,16 @@ export function ExpandedRankings({
   return (
     <div className="rank-page">
       <h2 className="rank-title">D1 Team Rankings</h2>
+      <div className="rankings-massey-badge">
+        <span className="rankings-massey-icon">📊</span>
+        <span className="rankings-massey-text">
+          Odds Gods rankings are featured on{" "}
+          <a href={MASSEY_RANKINGS_URL} target="_blank" rel="noopener">
+            Massey Ratings
+          </a>{" "}
+          — one of college basketball&apos;s most trusted composite indexes.
+        </span>
+      </div>
 
       <div className="rank-controls">
         <select

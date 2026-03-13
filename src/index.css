@@ -12673,6 +12673,40 @@ body.walkthrough-active .odds-value--changed::after {
   margin: 0 0 16px;
 }
 
+.rankings-massey-badge {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 16px;
+  background: rgba(184, 125, 24, 0.06);
+  border: 1px solid rgba(184, 125, 24, 0.15);
+  border-radius: 8px;
+  margin-bottom: 16px;
+}
+
+.rankings-massey-icon {
+  font-size: 18px;
+  flex-shrink: 0;
+}
+
+.rankings-massey-text {
+  font-family: "Space Grotesk", sans-serif;
+  font-size: 13px;
+  color: rgba(240, 230, 208, 0.7);
+  line-height: 1.4;
+}
+
+.rankings-massey-text a {
+  color: #e7bf72;
+  text-decoration: none;
+  font-weight: 600;
+  border-bottom: 1px solid rgba(184, 125, 24, 0.3);
+}
+
+.rankings-massey-text a:hover {
+  border-bottom-color: #e7bf72;
+}
+
 .rank-controls {
   display: flex;
   gap: 10px;
@@ -12996,6 +13030,15 @@ body.walkthrough-active .odds-value--changed::after {
   .rank-controls {
     flex-direction: column;
     gap: 8px;
+  }
+
+  .rankings-massey-badge {
+    margin: 0 16px 12px;
+    padding: 10px 14px;
+  }
+
+  .rankings-massey-text {
+    font-size: 12px;
   }
 
   .rank-search {
@@ -14840,6 +14883,24 @@ body.walkthrough-active .odds-value--changed::after {
 
 .toolbar-dropdown-item--accent {
   color: #e7bf72;
+}
+
+.bug-report-link {
+  font-family: "Space Grotesk", sans-serif;
+  font-size: 11px;
+  color: rgba(240, 230, 208, 0.35);
+  text-decoration: none;
+  letter-spacing: 0.05em;
+  transition: color 0.2s;
+  white-space: nowrap;
+}
+
+.bug-report-link:hover {
+  color: rgba(240, 230, 208, 0.6);
+}
+
+.bug-report-link--toolbar {
+  align-self: center;
 }
 
 .toolbar-dropdown-divider {
