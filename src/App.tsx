@@ -4068,7 +4068,7 @@ function App() {
           onSaveCard={async () => {
             const { exportWrappedCard } = await import("./lib/wrappedExport");
             try {
-              await exportWrappedCard(wrappedData);
+              await exportWrappedCard();
               trackEvent("wrapped_card_saved", { trigger: "standalone", chaosLabel: wrappedData.identity.chaosLabel, champion: wrappedData.champion.teamName });
             } catch (err) {
               console.error("Failed to export wrapped card:", err);
