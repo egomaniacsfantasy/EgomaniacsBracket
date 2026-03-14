@@ -22,14 +22,16 @@ function getChaosTier(score: number | null) {
 export function GroupChaosTab({
   standings,
   currentUserId,
+  canPreviewHidden = false,
 }: {
   standings: RankedStanding[];
   currentUserId: string | undefined;
+  canPreviewHidden?: boolean;
 }) {
-  const allBracketsLocked = areAllGroupBracketsLocked(standings);
+  const allBracketsLocked = areAllGroupBracketsLocked(standings, canPreviewHidden);
   const chaosRankings = useMemo(() => {
     const withScores = standings
-      .filter((entry) => canSeeDetails(entry, currentUserId))
+      .filter((entry) => canSeeDetails(entry, currentUserId, canPreviewHidden))
       .map((s) => ({
         ...s,
         chaosScore: s.picks && Object.keys(s.picks).length > 0 ? computeChaosScoreForPicks(s.picks as LockedPicks) : null,
@@ -38,7 +40,7 @@ export function GroupChaosTab({
     return withScores
       .filter((s) => s.chaosScore !== null)
       .sort((a, b) => (b.chaosScore || 0) - (a.chaosScore || 0));
-  }, [currentUserId, standings]);
+  }, [canPreviewHidden, currentUserId, standings]);
 
   if (!allBracketsLocked) {
     return (

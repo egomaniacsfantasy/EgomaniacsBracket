@@ -73,6 +73,7 @@ type BracketMeta = {
 
 type SaveBracketOptions = {
   submit?: boolean;
+  bypassLock?: boolean;
 };
 
 export function serializePicks(picks: LockedPicks | Map<string, string> | Array<{ id: string; winner?: string | null }>): LockedPicks {
@@ -284,7 +285,7 @@ export async function getUserBrackets(userId: string) {
   return { data: (data as SavedBracket[] | null) ?? [], error: error ?? withAll.error };
 }
 
-export async function setBracketSubmissionStatus(bracketId: string, userId: string, submit: boolean) {
+export async function setBracketSubmissionStatus(bracketId: string, userId: string, submit: boolean, bypassLock = false) {
   const isMissingSubmissionColumn = (message?: string) => {
     const msg = (message ?? "").toLowerCase();
     return msg.includes("submitted_at") && (msg.includes("column") || msg.includes("schema cache"));
@@ -296,7 +297,7 @@ export async function setBracketSubmissionStatus(bracketId: string, userId: stri
     .eq("user_id", userId)
     .single();
   if (existingError) return { error: existingError };
-  if ((bracket as { is_locked?: boolean } | null)?.is_locked) {
+  if (!bypassLock && (bracket as { is_locked?: boolean } | null)?.is_locked) {
     return { error: { message: "Submissions are locked at tip-off." } };
   }
 

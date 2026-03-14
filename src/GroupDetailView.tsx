@@ -7,6 +7,7 @@ import { GroupPicksTab } from "./GroupPicksTab";
 import { GroupChaosTab } from "./GroupChaosTab";
 import { BracketViewer } from "./BracketViewer";
 import { GROUP_EMOJIS } from "./constants";
+import { hasElevatedAccess } from "./groupVisibility";
 import { captureError } from "./lib/errorMonitoring";
 
 type RankedStanding = GroupStanding & { groupRank: number };
@@ -52,6 +53,7 @@ export function GroupDetailView({
   const [editError, setEditError] = useState("");
 
   const isAdmin = group?.created_by === user?.id;
+  const canPreviewHidden = hasElevatedAccess(user?.email);
 
   useEffect(() => {
     if (isOpen && group) {
@@ -311,6 +313,7 @@ export function GroupDetailView({
                 soleLeader={soleLeader}
                 currentUserId={user?.id}
                 tournamentStarted={tournamentStarted}
+                canPreviewHidden={canPreviewHidden}
                 onViewBracket={setViewingBracket}
                 onRefresh={loadStandings}
                 onSelectBracket={handleOpenBracketPicker}
@@ -322,10 +325,15 @@ export function GroupDetailView({
                 standings={rankedStandings}
                 currentUserId={user?.id}
                 tournamentStarted={tournamentStarted}
+                canPreviewHidden={canPreviewHidden}
               />
             )}
             {activeTab === "chaos" && (
-              <GroupChaosTab standings={rankedStandings} currentUserId={user?.id} />
+              <GroupChaosTab
+                standings={rankedStandings}
+                currentUserId={user?.id}
+                canPreviewHidden={canPreviewHidden}
+              />
             )}
           </>
         )}

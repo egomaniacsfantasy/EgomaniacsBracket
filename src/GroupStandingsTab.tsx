@@ -2,6 +2,7 @@ import { useMemo } from "react";
 import { computeChaosScoreForPicks } from "./bracketStorage";
 import { teamsById } from "./data/teams";
 import { resolveGames, type LockedPicks } from "./lib/bracket";
+import { teamLogoUrl } from "./lib/logo";
 import { canSeeDetails } from "./groupVisibility";
 import type { GroupStanding } from "./groupStorage";
 
@@ -33,7 +34,7 @@ function getTeamInfo(teamId: string) {
   return {
     name: team.name,
     seed: team.seed,
-    logoUrl: ("logoUrl" in team ? (team as { logoUrl?: string }).logoUrl : undefined) ?? null,
+    logoUrl: teamLogoUrl(team),
   };
 }
 
@@ -42,6 +43,7 @@ export function GroupStandingsTab({
   soleLeader,
   currentUserId,
   tournamentStarted,
+  canPreviewHidden = false,
   onViewBracket,
   onRefresh,
   onSelectBracket,
@@ -51,6 +53,7 @@ export function GroupStandingsTab({
   soleLeader: string | null;
   currentUserId: string | undefined;
   tournamentStarted: boolean;
+  canPreviewHidden?: boolean;
   onViewBracket: (info: { bracketId: string; displayName: string; bracketName: string }) => void;
   onRefresh: () => void;
   onSelectBracket?: () => void;
@@ -126,7 +129,7 @@ export function GroupStandingsTab({
         {standings.map((entry) => {
           const isCurrentUser = entry.user_id === currentUserId;
           const hasBracket = entry.bracket_id != null;
-          const canSee = canSeeDetails(entry, currentUserId);
+          const canSee = canSeeDetails(entry, currentUserId, canPreviewHidden);
           const isLeader = Boolean(tournamentStarted && hasBracket && soleLeader === entry.user_id);
           const championId = hasBracket && canSee ? getChampionPick(entry.picks) : null;
           const championInfo = championId ? getTeamInfo(championId) : null;

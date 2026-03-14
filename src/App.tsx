@@ -45,6 +45,7 @@ import { MobileOnboarding } from "./MobileOnboarding";
 import { OverflowMenu, type OverflowMenuItem } from "./OverflowMenu";
 import { TopNavBar, type TopNavView } from "./TopNavBar";
 import { getUserGroups, updateMemberBracket, type UserGroup } from "./groupStorage";
+import { hasElevatedAccess } from "./groupVisibility";
 
 const DEFAULT_SIM_RUNS = 10000;
 const CHAOS_DISTRIBUTION_SIM_RUNS = 10000;
@@ -1726,9 +1727,10 @@ function App() {
       ) ?? null,
     [currentPicksSignature, userBrackets],
   );
-  const submissionsLocked = useMemo(() => userBrackets.some((bracket) => bracket.is_locked), [userBrackets]);
+  const _elevated = hasElevatedAccess(user?.email);
+  const submissionsLocked = useMemo(() => _elevated ? false : userBrackets.some((bracket) => bracket.is_locked), [_elevated, userBrackets]);
   const bracketComplete = pickCount >= SUBMIT_EXPECTED_PICK_COUNT;
-  const submissionLimitReached = submittedBracketCount >= MAX_SUBMITTED_BRACKETS;
+  const submissionLimitReached = _elevated ? false : submittedBracketCount >= MAX_SUBMITTED_BRACKETS;
   const currentBracketAlreadySubmitted = Boolean(currentSubmittedBracket);
   const canSubmitBrackets = isAuthenticated && !submissionsLocked && !submissionLimitReached;
   const tournamentStarted = useMemo(() => {

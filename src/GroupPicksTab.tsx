@@ -17,16 +17,18 @@ const ROUND_LABELS = [
 export function GroupPicksTab({
   standings,
   currentUserId,
+  canPreviewHidden = false,
 }: {
   standings: RankedStanding[];
   currentUserId: string | undefined;
   tournamentStarted: boolean;
+  canPreviewHidden?: boolean;
 }) {
   const [expandedRound, setExpandedRound] = useState<string>("R64");
-  const allBracketsLocked = areAllGroupBracketsLocked(standings);
+  const allBracketsLocked = areAllGroupBracketsLocked(standings, canPreviewHidden);
   const visibleStandings = useMemo(
-    () => standings.filter((entry) => canSeeDetails(entry, currentUserId)),
-    [currentUserId, standings],
+    () => standings.filter((entry) => canSeeDetails(entry, currentUserId, canPreviewHidden)),
+    [canPreviewHidden, currentUserId, standings],
   );
 
   const agreementData = useMemo(() => {
