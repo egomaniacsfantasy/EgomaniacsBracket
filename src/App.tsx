@@ -4156,7 +4156,6 @@ function App() {
                 </section>
 
                 <section className="eg-finals-card bracket-finals">
-                  <h2 className="ff-section-header">Final Four & Championship</h2>
                   <div className="ff-championship-section">
                     <FinalsSemifinalCard
                       game={leftSemi}
@@ -6022,7 +6021,7 @@ function FinalsSemifinalCard({
         />
       ) : (
         <div className="ff-panel ff-panel--ranking">
-          <div className="ff-panel-subheader">CHAMPIONSHIP ODDS</div>
+          <div className="ff-panel-subheader">ODDS TO MAKE CHAMPIONSHIP</div>
           <div className="ff-ranking-list">
             {ranked.map(({ team, prob }) => {
               const locked = prob >= 1;
@@ -6154,7 +6153,7 @@ function FinalsChampionshipCard({
         />
       ) : (
         <div className="ff-panel ff-panel--championship-ranking">
-          <div className="ff-panel-subheader">TITLE ODDS</div>
+          <div className="ff-panel-subheader">CHAMPIONSHIP ODDS</div>
           <div className="ff-ranking-list">
             {ranked.map(({ team, prob }) => {
               const locked = prob >= 1;

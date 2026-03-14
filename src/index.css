@@ -3650,7 +3650,7 @@ button.lb-row {
 .eg-finals-card {
   margin-top: 8px;
   margin-bottom: 8px;
-  padding: 16px;
+  padding: 12px 16px 14px;
   min-height: 0;
   max-width: 100%;
   margin-left: 0;
@@ -3661,22 +3661,12 @@ button.lb-row {
   z-index: 3;
 }
 
-.ff-section-header {
-  font-family: var(--font-mono);
-  font-size: 11px;
-  letter-spacing: 0.18em;
-  color: var(--text-tertiary);
-  text-transform: uppercase;
-  text-align: center;
-  margin: 0 0 16px;
-}
-
 .ff-championship-section {
   display: flex;
   align-items: flex-start;
   justify-content: flex-start;
-  gap: 24px;
-  padding: 8px 0 10px;
+  gap: 20px;
+  padding: 0 0 6px;
   width: 100%;
   max-width: 100%;
   box-sizing: border-box;
@@ -3686,10 +3676,10 @@ button.lb-row {
   background: rgba(255, 255, 255, 0.01);
   border: 1px solid rgba(255, 255, 255, 0.06);
   border-radius: 10px;
-  padding: 16px;
+  padding: 12px;
   width: 100%;
   align-self: flex-start;
-  margin-top: 32px;
+  margin-top: 24px;
 }
 
 .ff-panel--ranking,
@@ -3706,7 +3696,7 @@ button.lb-row {
   letter-spacing: 0.14em;
   text-transform: uppercase;
   color: var(--text-tertiary);
-  padding: 8px 16px 4px;
+  padding: 6px 12px 2px;
 }
 
 .ff-ranking-list {
@@ -3895,8 +3885,8 @@ button.lb-row {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 2px;
-  margin-bottom: 12px;
+  gap: 1px;
+  margin-bottom: 6px;
 }
 
 .semifinal-label {
@@ -4000,15 +3990,15 @@ button.lb-row {
 }
 
 .championship-panel {
-  gap: 12px;
+  gap: 10px;
 }
 
 .championship-container {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 20px;
-  padding: 24px;
+  gap: 10px;
+  padding: 18px 20px 16px;
   background: rgba(184, 125, 24, 0.03);
   border: 1px solid rgba(184, 125, 24, 0.2);
   border-radius: 12px;
@@ -4034,21 +4024,25 @@ button.lb-row {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 8px;
-  margin-bottom: 24px;
+  gap: 10px;
+  min-height: 38px;
+  margin: 2px 0 4px;
+  text-align: center;
 }
 
 .championship-trophy {
-  font-size: 20px;
+  font-size: 24px;
+  line-height: 1;
 }
 
 .championship-label {
   font-family: var(--font-mono);
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0.2em;
+  font-size: 14px;
+  font-weight: 800;
+  letter-spacing: 0.15em;
   color: var(--text-amber);
   text-transform: uppercase;
+  text-shadow: 0 0 20px rgba(184, 125, 24, 0.15);
 }
 
 .championship-matchup {
@@ -4061,7 +4055,7 @@ button.lb-row {
   background: rgba(255, 255, 255, 0.03);
   border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 10px;
-  padding: 24px 20px;
+  padding: 16px 18px;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -6629,58 +6623,6 @@ body {
   gap: 12px;
 }
 
-.auth-modal-google-btn {
-  width: 100%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 10px;
-  padding: 12px 16px;
-  background: rgba(255, 255, 255, 0.06);
-  border: 1px solid rgba(255, 255, 255, 0.15);
-  border-radius: 8px;
-  color: var(--text-primary);
-  font-family: var(--font-mono);
-  font-size: 13px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: background 140ms, border-color 140ms;
-}
-
-.auth-modal-google-btn:hover {
-  background: rgba(255, 255, 255, 0.1);
-  border-color: rgba(255, 255, 255, 0.25);
-}
-
-.auth-modal-google-btn:disabled {
-  opacity: 0.5;
-  cursor: default;
-}
-
-.auth-modal-google-icon {
-  flex-shrink: 0;
-}
-
-.auth-modal-divider {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  margin: 4px 0;
-}
-
-.auth-modal-divider-line {
-  flex: 1;
-  height: 1px;
-  background: rgba(255, 255, 255, 0.08);
-}
-
-.auth-modal-divider-text {
-  font-family: var(--font-mono);
-  font-size: 11px;
-  color: var(--text-tertiary);
-  text-transform: lowercase;
-}
-
 .auth-modal-label {
   font-family: var(--font-mono);
   font-size: 10px;
@@ -6720,15 +6662,6 @@ body {
   display: flex;
   flex-direction: column;
   gap: 4px;
-}
-
-.auth-modal-google-note {
-  font-family: var(--font-mono);
-  font-size: 11px;
-  color: rgba(240, 230, 208, 0.52);
-  line-height: 1.45;
-  text-align: center;
-  margin: -2px 0 2px;
 }
 
 .auth-modal-submit {
