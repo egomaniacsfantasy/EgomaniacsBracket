@@ -13,47 +13,15 @@ let loadingPromise: Promise<void> | null = null;
 
 type TeamOption = { id: number; name: string; conf: string };
 type VenueCode = "N" | "H" | "A";
-type PredictorBackgroundToken = {
-  text: string;
-  left: string;
-  top: string;
-  size: number;
-  duration: number;
-  delay: number;
-};
 
 const bracketTeamByName = new Map(bracketTeams.map((team) => [team.name, team]));
-
-const PREDICTOR_BACKGROUND_TOKENS: ReadonlyArray<PredictorBackgroundToken> = [
-  { text: "KP #4", left: "6%", top: "8%", size: 12, duration: 34, delay: -8 },
-  { text: "AdjEM 28.4", left: "18%", top: "18%", size: 13, duration: 42, delay: -16 },
-  { text: "NET #12", left: "31%", top: "10%", size: 12, duration: 29, delay: -4 },
-  { text: "ELO 1842", left: "43%", top: "22%", size: 14, duration: 38, delay: -19 },
-  { text: "+380", left: "57%", top: "12%", size: 12, duration: 31, delay: -6 },
-  { text: "72.4%", left: "68%", top: "18%", size: 15, duration: 44, delay: -12 },
-  { text: "BARTHAG .942", left: "79%", top: "9%", size: 11, duration: 36, delay: -22 },
-  { text: "SOS +9.8", left: "88%", top: "20%", size: 12, duration: 39, delay: -14 },
-  { text: "AdjD 91.3", left: "10%", top: "32%", size: 13, duration: 45, delay: -27 },
-  { text: ".387 eFGA", left: "23%", top: "40%", size: 11, duration: 33, delay: -10 },
-  { text: "3P 38.1%", left: "36%", top: "34%", size: 12, duration: 41, delay: -24 },
-  { text: "TOV 14.7", left: "49%", top: "43%", size: 12, duration: 30, delay: -7 },
-  { text: "ORB 31.2", left: "62%", top: "37%", size: 12, duration: 35, delay: -18 },
-  { text: "-262", left: "75%", top: "45%", size: 15, duration: 43, delay: -30 },
-  { text: "Q1 9-3", left: "86%", top: "34%", size: 11, duration: 32, delay: -5 },
-  { text: "NET #28", left: "8%", top: "58%", size: 12, duration: 40, delay: -25 },
-  { text: "AdjO 121.5", left: "18%", top: "68%", size: 13, duration: 27, delay: -9 },
-  { text: "6.8 pace", left: "30%", top: "60%", size: 11, duration: 46, delay: -31 },
-  { text: "ATS 18-11", left: "42%", top: "74%", size: 12, duration: 37, delay: -13 },
-  { text: "Luck .046", left: "54%", top: "65%", size: 11, duration: 28, delay: -3 },
-  { text: "ELO SOS 17", left: "66%", top: "77%", size: 12, duration: 34, delay: -20 },
-  { text: "1.07 PPP", left: "78%", top: "63%", size: 13, duration: 41, delay: -15 },
-  { text: "Bench 28%", left: "88%", top: "71%", size: 11, duration: 29, delay: -2 },
-  { text: "Seed 5", left: "12%", top: "84%", size: 12, duration: 45, delay: -28 },
-  { text: "NCSOS #21", left: "27%", top: "88%", size: 11, duration: 36, delay: -17 },
-  { text: "FT Rate .302", left: "46%", top: "90%", size: 12, duration: 42, delay: -21 },
-  { text: "Def Reb 74.1", left: "64%", top: "88%", size: 13, duration: 33, delay: -11 },
-  { text: "WAB +6.4", left: "82%", top: "86%", size: 12, duration: 39, delay: -26 },
-];
+const PREDICTOR_LIGHTNING_DECORATIONS = [
+  { src: "/assets/lightning/lightning_bolt_1.png", className: "pred-lightning-deco pred-lightning-deco--tl" },
+  { src: "/assets/lightning/lightning_strike_horizontal.png", className: "pred-lightning-deco pred-lightning-deco--tr" },
+  { src: "/assets/lightning/lightning_bolt_5.png", className: "pred-lightning-deco pred-lightning-deco--mr" },
+  { src: "/assets/lightning/lightning_bolt_7.png", className: "pred-lightning-deco pred-lightning-deco--bl" },
+  { src: "/assets/lightning/lightning_bolt_3.png", className: "pred-lightning-deco pred-lightning-deco--br" },
+] as const;
 
 async function loadPredictorData(): Promise<void> {
   if (predictorTeamsCache) return;
@@ -155,23 +123,646 @@ function PredictorTeamMark({
 }
 
 function PredictorBackground() {
+  const sceneRef = useRef<HTMLDivElement>(null);
+  const ambientCanvasRef = useRef<HTMLCanvasElement>(null);
+  const textCanvasRef = useRef<HTMLCanvasElement>(null);
+  const boltCanvasRef = useRef<HTMLCanvasElement>(null);
+
+  useEffect(() => {
+    const scene = sceneRef.current;
+    const ambientCanvas = ambientCanvasRef.current;
+    const textCanvas = textCanvasRef.current;
+    const boltCanvas = boltCanvasRef.current;
+    const section = scene?.parentElement;
+    if (
+      !(scene instanceof HTMLDivElement) ||
+      !(section instanceof HTMLElement) ||
+      !(ambientCanvas instanceof HTMLCanvasElement) ||
+      !(textCanvas instanceof HTMLCanvasElement) ||
+      !(boltCanvas instanceof HTMLCanvasElement)
+    ) {
+      return;
+    }
+
+    const ambientCtx = ambientCanvas.getContext("2d");
+    const textCtx = textCanvas.getContext("2d");
+    const boltCtx = boltCanvas.getContext("2d");
+    if (!ambientCtx || !textCtx || !boltCtx) return;
+
+    type BackgroundRect = { x: number; y: number; w: number; h: number };
+    type BackgroundFragment = {
+      category: string;
+      text: string;
+      x: number;
+      y: number;
+      size: number;
+      baseOpacity: number;
+      currentOpacity: number;
+      maxOpacity: number;
+      fontType: "mono" | "serif";
+      rotation: number;
+      litUntil: number;
+    };
+    type BoltBranch = { points: Array<[number, number]>; width: number };
+    type ActiveBolt = { main: Array<[number, number]>; branches: BoltBranch[]; alpha: number };
+
+    const categoryPools = {
+      odds: [
+        "-110", "+3300", "-450", "+220", "-175", "+550", "EVEN", "-3040", "+1400",
+        "-800", "+290", "-115", "+6500", "-2200", "+380", "-330", "+4500", "-650",
+        "+105", "-190", "+180", "-240", "+3300", "-1800",
+      ],
+      lines: [
+        "DUKE ML -110", "HOU -450", "UK +220", "O/U 148.5", "NOVA -3.5",
+        "KU ML -175", "BAMA +7", "OU 151.0", "TENN -330", "AUB +14.5",
+        "ILL ML +310", "UCONN -6.5", "MSU +3 -108", "UF +380", "UNC -1.5",
+      ],
+      implied: [
+        "45.3 WIN%", "61.2%", "28.6% IMP", "73.4%", "19.2% IMP",
+        "50.0%", "88.1%", "33.3%", "12.8% TITLE", "67.9%", "7.4% IMP", "94.2%",
+      ],
+      basketball: [
+        "KP #4", "AdjEM 28.4", "AdjO 118.2", "AdjD 89.4", "BPI 94.3",
+        "67.8 eFG%", "38.4 3P%", "NET #12", "SEED 1", "T-Rank 8",
+        "Barttorvik 3", "ELO 1842", "SOS .614", "72.4 PPG", "58.2 OPP",
+        "+14.2 NET", "31.8 PACE", "103.4 ORTG", "22-6 SU", "18-10 ATS",
+        "BARTHAG .942", "WAB +4.2", "LUCK +0.038",
+      ],
+      roman: [
+        "XIV", "XLVIII", "IX", "MMXXV", "XCIX", "IV", "LXIII", "LVII",
+        "XXXII", "XVI", "XLII", "LI", "VII", "XCVIII", "MMXXIV", "LXVI",
+      ],
+      greek: ["Σ", "Δ", "μ", "σ", "π", "Ω", "β", "λ", "φ", "θ"],
+      latin: [
+        "ALEA IACTA EST", "SORS", "EVENTUS", "PROBABILITAS", "CALCULUS", "FATA",
+        "FORTES FORTUNA", "FATA VIAM INVENIENT", "RATIO", "NUMERUS", "CASUS",
+      ],
+    } as const;
+
+    const categoryStyle = {
+      greek: { font: "serif" as const, min: 28, max: 36, base: 0.055, maxOpacity: 0.09 },
+      odds: { font: "mono" as const, min: 8, max: 15, base: 0.05, maxOpacity: 0.085 },
+      roman: { font: "serif" as const, min: 12, max: 34, base: 0.045, maxOpacity: 0.08 },
+      implied: { font: "mono" as const, min: 8, max: 13, base: 0.045, maxOpacity: 0.075 },
+      lines: { font: "mono" as const, min: 8, max: 12, base: 0.04, maxOpacity: 0.07 },
+      basketball: { font: "mono" as const, min: 8, max: 11, base: 0.038, maxOpacity: 0.068 },
+      latin: { font: "serif" as const, min: 7, max: 13, base: 0.035, maxOpacity: 0.06 },
+    };
+
+    const reducedMotionQuery = window.matchMedia("(prefers-reduced-motion: reduce)");
+    const legacyReducedMotionQuery = reducedMotionQuery as MediaQueryList & {
+      addListener?: (listener: () => void) => void;
+      removeListener?: (listener: () => void) => void;
+    };
+    const FIXED_SEED = 31337;
+
+    let reducedMotion = reducedMotionQuery.matches;
+    let width = 0;
+    let height = 0;
+    let dpr = 1;
+    let noiseTime = 0;
+    let lastTs = 0;
+    let running = false;
+    let ambientRafId = 0;
+    let textRafId = 0;
+    let boltRafId = 0;
+    let boltTimeoutId = 0;
+    let resizeTimeoutId = 0;
+    let activeBolt: ActiveBolt | null = null;
+    let fragments: BackgroundFragment[] = [];
+    let safeZones: BackgroundRect[] = [];
+    let textNeedsRender = true;
+    let illuminationActive = false;
+    let resizeObserver: ResizeObserver | null = null;
+
+    const seededRng = (seed: number) => {
+      let s = seed % 2147483647;
+      if (s <= 0) s += 2147483646;
+      return () => {
+        s = (s * 16807) % 2147483647;
+        return (s - 1) / 2147483646;
+      };
+    };
+
+    const hash2d = (x: number, y: number) => {
+      const n = Math.sin(x * 127.1 + y * 311.7) * 43758.5453123;
+      return n - Math.floor(n);
+    };
+
+    const smoothstep = (value: number) => value * value * (3 - 2 * value);
+
+    const valueNoise2d = (x: number, y: number) => {
+      const x0 = Math.floor(x);
+      const y0 = Math.floor(y);
+      const xf = x - x0;
+      const yf = y - y0;
+
+      const v00 = hash2d(x0, y0);
+      const v10 = hash2d(x0 + 1, y0);
+      const v01 = hash2d(x0, y0 + 1);
+      const v11 = hash2d(x0 + 1, y0 + 1);
+
+      const u = smoothstep(xf);
+      const v = smoothstep(yf);
+      const xa = v00 * (1 - u) + v10 * u;
+      const xb = v01 * (1 - u) + v11 * u;
+      return xa * (1 - v) + xb * v;
+    };
+
+    const noise2d = (x: number, y: number) => valueNoise2d(x, y) * 2 - 1;
+
+    const overlapsAny = (rect: BackgroundRect, occupied: BackgroundRect[]) =>
+      occupied.some((other) => !(rect.x + rect.w < other.x || other.x + other.w < rect.x || rect.y + rect.h < other.y || other.y + other.h < rect.y));
+
+    const inSafeZone = (rect: BackgroundRect) => safeZones.some((zone) => overlapsAny(rect, [zone]));
+
+    const pickBucket = (rand: number) => {
+      if (rand < 0.22) return "left";
+      if (rand < 0.44) return "right";
+      if (rand < 0.59) return "top";
+      if (rand < 0.74) return "bottom";
+      return "middle";
+    };
+
+    const pickPointInBucket = (bucket: string, rng: () => number) => {
+      if (bucket === "left") return { x: width * rng() * 0.12, y: height * rng() };
+      if (bucket === "right") return { x: width * (0.88 + rng() * 0.12), y: height * rng() };
+      if (bucket === "top") return { x: width * rng(), y: height * rng() * 0.12 };
+      if (bucket === "bottom") return { x: width * rng(), y: height * (0.88 + rng() * 0.12) };
+      return { x: width * (0.14 + rng() * 0.72), y: height * (0.1 + rng() * 0.8) };
+    };
+
+    const measureFragmentRect = (fragment: BackgroundFragment): BackgroundRect => {
+      const fontFamily =
+        fragment.fontType === "mono"
+          ? '"IBM Plex Mono", "SFMono-Regular", Menlo, monospace'
+          : '"Instrument Serif", Georgia, serif';
+      textCtx.save();
+      textCtx.font = `${fragment.size}px ${fontFamily}`;
+      const metrics = textCtx.measureText(fragment.text);
+      textCtx.restore();
+      const widthPx = metrics.width + 5;
+      const heightPx = fragment.size + 3;
+      return {
+        x: fragment.x - 2,
+        y: fragment.y - heightPx + 2,
+        w: widthPx + 5,
+        h: heightPx + 3,
+      };
+    };
+
+    const buildCategorySequence = (count: number, rng: () => number) => {
+      const weighted = [
+        "odds", "odds", "lines", "lines", "implied", "implied",
+        "basketball", "basketball", "roman", "greek", "latin",
+      ] as const;
+      return Array.from({ length: count }, () => weighted[Math.floor(rng() * weighted.length)]);
+    };
+
+    const fragmentCountForViewport = () => {
+      if (width < 768) return 30 + Math.floor(width % 11);
+      if (width < 1200) return 55 + Math.floor(width % 16);
+      return 80 + Math.floor(width % 21);
+    };
+
+    const buildSafeZones = (): BackgroundRect[] => {
+      const zones: BackgroundRect[] = [];
+      const sectionRect = section.getBoundingClientRect();
+
+      section
+        .querySelectorAll(".pred-header, .pred-arena, .pred-venue-wrap, .pred-results, .pred-empty-state, .pred-footer, .pred-status")
+        .forEach((element) => {
+          if (!(element instanceof HTMLElement)) return;
+          const rect = element.getBoundingClientRect();
+          if (rect.width < 2 || rect.height < 2) return;
+          zones.push({
+            x: rect.left - sectionRect.left - 28,
+            y: rect.top - sectionRect.top - 18,
+            w: rect.width + 56,
+            h: rect.height + 36,
+          });
+        });
+
+      zones.push({ x: width * 0.16, y: height * 0.12, w: width * 0.68, h: height * 0.72 });
+      zones.push({ x: 0, y: height * 0.28, w: width * 0.18, h: height * 0.34 });
+      zones.push({ x: width * 0.82, y: height * 0.22, w: width * 0.18, h: height * 0.38 });
+      return zones;
+    };
+
+    const createFragments = (): BackgroundFragment[] => {
+      const rng = seededRng(FIXED_SEED + width * 31 + height * 17);
+      const count = fragmentCountForViewport();
+      const sequence = buildCategorySequence(count, rng);
+      const occupied: BackgroundRect[] = [];
+      const output: BackgroundFragment[] = [];
+
+      let greekCount = 0;
+      let romanLargeCount = 0;
+      let latinPhraseCount = 0;
+
+      for (let index = 0; index < sequence.length; index += 1) {
+        const category = sequence[index];
+        const style = categoryStyle[category];
+        if (!style) continue;
+        if (category === "greek" && greekCount >= 4) continue;
+        if (category === "latin" && latinPhraseCount >= 5) continue;
+
+        let placed = false;
+        for (let attempt = 0; attempt < 180; attempt += 1) {
+          const bucket = pickBucket(rng());
+          const point = pickPointInBucket(bucket, rng);
+          const text = categoryPools[category][Math.floor(rng() * categoryPools[category].length)];
+          const size = style.min + rng() * (style.max - style.min);
+          const baseOpacity = Math.min(style.maxOpacity, style.base + rng() * 0.025);
+          const rotation = -3 + rng() * 6;
+          const fragment: BackgroundFragment = {
+            category,
+            text,
+            x: point.x,
+            y: point.y,
+            size,
+            baseOpacity,
+            currentOpacity: baseOpacity,
+            maxOpacity: style.maxOpacity,
+            fontType: style.font,
+            rotation,
+            litUntil: 0,
+          };
+          const rect = measureFragmentRect(fragment);
+          if (rect.x < 0 || rect.y < 0 || rect.x + rect.w > width || rect.y + rect.h > height) continue;
+          if (inSafeZone(rect) || overlapsAny(rect, occupied)) continue;
+
+          occupied.push(rect);
+          output.push(fragment);
+          placed = true;
+          if (category === "greek") greekCount += 1;
+          if (category === "latin" && /\s/.test(text)) latinPhraseCount += 1;
+          if (category === "roman" && size >= 28) romanLargeCount += 1;
+          if (category === "roman" && romanLargeCount > 4) {
+            output.pop();
+            occupied.pop();
+            romanLargeCount -= 1;
+            placed = false;
+            continue;
+          }
+          break;
+        }
+        if (!placed) continue;
+      }
+
+      return output;
+    };
+
+    const clearBoltLayer = () => boltCtx.clearRect(0, 0, width, height);
+
+    const renderTextLayer = () => {
+      textCtx.clearRect(0, 0, width, height);
+      if (!fragments.length) return;
+
+      fragments.forEach((fragment) => {
+        const fontFamily =
+          fragment.fontType === "mono"
+            ? '"IBM Plex Mono", "SFMono-Regular", Menlo, monospace'
+            : '"Instrument Serif", Georgia, serif';
+        textCtx.save();
+        textCtx.translate(fragment.x, fragment.y);
+        textCtx.rotate((fragment.rotation * Math.PI) / 180);
+        textCtx.globalAlpha = fragment.currentOpacity;
+        textCtx.fillStyle = "#f0e6d0";
+        textCtx.font = `${fragment.size}px ${fontFamily}`;
+        textCtx.textBaseline = "alphabetic";
+
+        if (fragment.fontType === "serif") {
+          const chars = fragment.text.split("");
+          let cursor = 0;
+          const spacing = fragment.size * 0.18;
+          chars.forEach((char) => {
+            textCtx.fillText(char, cursor, 0);
+            cursor += textCtx.measureText(char).width + spacing;
+          });
+        } else {
+          textCtx.fillText(fragment.text, 0, 0);
+        }
+        textCtx.restore();
+      });
+
+      textNeedsRender = false;
+    };
+
+    const resizeCanvases = () => {
+      dpr = Math.max(1, Math.min(2, window.devicePixelRatio || 1));
+      width = Math.max(1, Math.floor(section.clientWidth));
+      height = Math.max(window.innerHeight, section.scrollHeight);
+
+      [ambientCanvas, textCanvas, boltCanvas].forEach((canvas) => {
+        canvas.width = Math.floor(width * dpr);
+        canvas.height = Math.floor(height * dpr);
+        canvas.style.width = `${width}px`;
+        canvas.style.height = `${height}px`;
+      });
+
+      ambientCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      textCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      boltCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      safeZones = buildSafeZones();
+      fragments = createFragments();
+      textNeedsRender = true;
+      renderTextLayer();
+    };
+
+    const drawAmbient = (timestamp: number) => {
+      if (!running) return;
+      if (lastTs === 0) lastTs = timestamp;
+      const delta = Math.min(64, timestamp - lastTs);
+      lastTs = timestamp;
+      noiseTime += delta;
+
+      ambientCtx.clearRect(0, 0, width, height);
+      const layers = reducedMotion ? 3 : 4;
+
+      for (let index = 0; index < layers; index += 1) {
+        const x = width * (0.3 + 0.4 * noise2d(index * 10.3, noiseTime * 0.0003));
+        const y = height * (0.2 + 0.6 * noise2d(index * 10.3 + 100, noiseTime * 0.0002));
+        const radius = 320 + 160 * noise2d(index * 10.3 + 200, noiseTime * 0.0004);
+        const gradient = ambientCtx.createRadialGradient(x, y, 0, x, y, radius);
+        const baseAlpha = reducedMotion ? 0.02 : 0.04;
+        const midAlpha = reducedMotion ? 0.01 : 0.02;
+        gradient.addColorStop(0, `rgba(180, 140, 40, ${baseAlpha})`);
+        gradient.addColorStop(0.4, `rgba(160, 120, 20, ${midAlpha})`);
+        gradient.addColorStop(1, "rgba(0, 0, 0, 0)");
+
+        ambientCtx.fillStyle = gradient;
+        ambientCtx.beginPath();
+        ambientCtx.ellipse(x, y, radius, radius * 0.6, 0, 0, Math.PI * 2);
+        ambientCtx.fill();
+      }
+
+      ambientRafId = window.requestAnimationFrame(drawAmbient);
+    };
+
+    const stepTextIllumination = () => {
+      if (!running || !illuminationActive) return;
+      const now = performance.now();
+      let stillActive = false;
+
+      fragments.forEach((fragment) => {
+        if (fragment.currentOpacity > fragment.baseOpacity) {
+          if (now > fragment.litUntil) {
+            fragment.currentOpacity *= 0.92;
+            if (fragment.currentOpacity < fragment.baseOpacity) {
+              fragment.currentOpacity = fragment.baseOpacity;
+            } else {
+              stillActive = true;
+            }
+          } else {
+            stillActive = true;
+          }
+        }
+      });
+
+      textNeedsRender = true;
+      renderTextLayer();
+      illuminationActive = stillActive;
+      if (illuminationActive) {
+        textRafId = window.requestAnimationFrame(stepTextIllumination);
+      } else {
+        textRafId = 0;
+      }
+    };
+
+    const generateBolt = (startX: number, startY: number, endX: number, endY: number, roughness = 2.5): Array<[number, number]> => {
+      const distance = Math.hypot(endX - startX, endY - startY);
+      if (distance < 4) return [[startX, startY], [endX, endY]];
+
+      const midX = (startX + endX) / 2 + (Math.random() - 0.5) * roughness * distance * 0.4;
+      const midY = (startY + endY) / 2 + (Math.random() - 0.5) * roughness * distance * 0.2;
+
+      const left = generateBolt(startX, startY, midX, midY, roughness * 0.6);
+      const right = generateBolt(midX, midY, endX, endY, roughness * 0.6);
+      left.pop();
+      return left.concat(right);
+    };
+
+    const drawBolt = (points: Array<[number, number]>, alpha: number, widthPx = 1) => {
+      if (!points.length) return;
+
+      boltCtx.beginPath();
+      boltCtx.moveTo(points[0][0], points[0][1]);
+      for (let index = 1; index < points.length; index += 1) {
+        boltCtx.lineTo(points[index][0], points[index][1]);
+      }
+
+      boltCtx.strokeStyle = `rgba(220, 180, 80, ${alpha * 0.15})`;
+      boltCtx.lineWidth = widthPx * 6;
+      boltCtx.shadowBlur = 20;
+      boltCtx.shadowColor = "rgba(220, 180, 80, 0.3)";
+      boltCtx.stroke();
+
+      boltCtx.strokeStyle = `rgba(240, 220, 140, ${alpha * 0.6})`;
+      boltCtx.lineWidth = widthPx;
+      boltCtx.shadowBlur = 8;
+      boltCtx.stroke();
+
+      boltCtx.strokeStyle = `rgba(255, 245, 220, ${alpha * 0.3})`;
+      boltCtx.lineWidth = widthPx * 0.4;
+      boltCtx.shadowBlur = 0;
+      boltCtx.stroke();
+    };
+
+    const screenFlash = () => {
+      const flash = document.createElement("div");
+      flash.className = "pred-lightning-flash";
+      scene.appendChild(flash);
+      window.setTimeout(() => flash.remove(), 150);
+    };
+
+    const illuminateNearbyText = (points: Array<[number, number]>) => {
+      if (!fragments.length || !points.length || reducedMotion) return;
+      const sampleStep = Math.max(1, Math.floor(points.length / 36));
+      let touched = false;
+
+      fragments.forEach((fragment) => {
+        let nearBolt = false;
+        for (let index = 0; index < points.length; index += sampleStep) {
+          const [boltX, boltY] = points[index];
+          if (Math.hypot(fragment.x - boltX, fragment.y - boltY) < 180) {
+            nearBolt = true;
+            break;
+          }
+        }
+
+        if (nearBolt) {
+          const boosted = Math.min(fragment.maxOpacity, fragment.baseOpacity * 3);
+          fragment.currentOpacity = Math.max(fragment.currentOpacity, boosted);
+          fragment.litUntil = performance.now() + 60;
+          touched = true;
+        }
+      });
+
+      if (touched) {
+        illuminationActive = true;
+        textNeedsRender = true;
+        renderTextLayer();
+        if (!textRafId) {
+          textRafId = window.requestAnimationFrame(stepTextIllumination);
+        }
+      }
+    };
+
+    const renderBoltFrame = () => {
+      if (!running || !activeBolt) return;
+      const currentBolt = activeBolt;
+      clearBoltLayer();
+      drawBolt(currentBolt.main, currentBolt.alpha, 1.2);
+      currentBolt.branches.forEach((branch) => {
+        drawBolt(branch.points, currentBolt.alpha * 0.6, branch.width);
+      });
+
+      currentBolt.alpha -= 0.08;
+      if (currentBolt.alpha > 0) {
+        boltRafId = window.requestAnimationFrame(renderBoltFrame);
+      } else {
+        activeBolt = null;
+        clearBoltLayer();
+      }
+    };
+
+    const scheduleNextBolt = () => {
+      if (!running || reducedMotion) return;
+      const nextDelay = 4500 + Math.random() * 6500;
+      boltTimeoutId = window.setTimeout(triggerLightningEvent, nextDelay);
+    };
+
+    const triggerLightningEvent = () => {
+      if (!running || reducedMotion || document.hidden) return;
+
+      const startFromTop = Math.random() > 0.32;
+      const startX = startFromTop ? width * (0.1 + Math.random() * 0.8) : Math.random() > 0.5 ? 0 : width;
+      const startY = startFromTop ? 0 : height * (0.12 + Math.random() * 0.48);
+      const endX = startX + (Math.random() - 0.5) * width * 0.3;
+      const endY = height * (0.3 + Math.random() * 0.5);
+
+      const mainBolt = generateBolt(startX, startY, endX, endY);
+      const branches: BoltBranch[] = [];
+      const branchCount = 2 + Math.floor(Math.random() * 3);
+
+      for (let branchIndex = 0; branchIndex < branchCount; branchIndex += 1) {
+        const branchStartIndex = Math.floor(mainBolt.length * (0.3 + Math.random() * 0.4));
+        const point = mainBolt[Math.max(0, Math.min(mainBolt.length - 1, branchStartIndex))];
+        if (!point) continue;
+        const [branchX, branchY] = point;
+        const branchEndX = branchX + (Math.random() - 0.5) * 200;
+        const branchEndY = branchY + Math.random() * 150;
+        branches.push({
+          points: generateBolt(branchX, branchY, branchEndX, branchEndY, 1.8),
+          width: 0.5 + Math.random() * 0.3,
+        });
+      }
+
+      activeBolt = { main: mainBolt, branches, alpha: 1 };
+      const allBoltPoints = mainBolt.concat(...branches.map((branch) => branch.points));
+      illuminateNearbyText(allBoltPoints);
+      screenFlash();
+      if (boltRafId) window.cancelAnimationFrame(boltRafId);
+      boltRafId = window.requestAnimationFrame(renderBoltFrame);
+      scheduleNextBolt();
+    };
+
+    const stopAnimations = () => {
+      running = false;
+      if (ambientRafId) window.cancelAnimationFrame(ambientRafId);
+      if (textRafId) window.cancelAnimationFrame(textRafId);
+      if (boltRafId) window.cancelAnimationFrame(boltRafId);
+      if (boltTimeoutId) window.clearTimeout(boltTimeoutId);
+      ambientRafId = 0;
+      textRafId = 0;
+      boltRafId = 0;
+      boltTimeoutId = 0;
+      lastTs = 0;
+      activeBolt = null;
+      illuminationActive = false;
+      clearBoltLayer();
+    };
+
+    const startAnimations = () => {
+      if (running) return;
+      running = true;
+      ambientCanvas.style.opacity = reducedMotion ? "0.5" : "1";
+      textCanvas.style.opacity = "1";
+      boltCanvas.style.opacity = reducedMotion ? "0" : "1";
+      ambientRafId = window.requestAnimationFrame(drawAmbient);
+      if (textNeedsRender) renderTextLayer();
+      if (!reducedMotion) {
+        const firstDelay = 1200 + Math.random() * 2200;
+        boltTimeoutId = window.setTimeout(triggerLightningEvent, firstDelay);
+      }
+    };
+
+    const onResize = () => {
+      if (resizeTimeoutId) window.clearTimeout(resizeTimeoutId);
+      resizeTimeoutId = window.setTimeout(() => {
+        resizeCanvases();
+        renderTextLayer();
+      }, 140);
+    };
+
+    const onVisibilityChange = () => {
+      if (document.hidden) {
+        stopAnimations();
+      } else {
+        startAnimations();
+      }
+    };
+
+    const handleReducedMotionChange = () => {
+      reducedMotion = reducedMotionQuery.matches;
+      stopAnimations();
+      resizeCanvases();
+      startAnimations();
+    };
+
+    resizeCanvases();
+    startAnimations();
+
+    resizeObserver = new ResizeObserver(onResize);
+    resizeObserver.observe(section);
+    const content = section.querySelector(".pred-content");
+    if (content instanceof HTMLElement) {
+      resizeObserver.observe(content);
+    }
+
+    window.addEventListener("resize", onResize);
+    document.addEventListener("visibilitychange", onVisibilityChange);
+    if ("addEventListener" in reducedMotionQuery) {
+      reducedMotionQuery.addEventListener("change", handleReducedMotionChange);
+    } else {
+      legacyReducedMotionQuery.addListener?.(handleReducedMotionChange);
+    }
+
+    return () => {
+      stopAnimations();
+      if (resizeTimeoutId) window.clearTimeout(resizeTimeoutId);
+      resizeObserver?.disconnect();
+      window.removeEventListener("resize", onResize);
+      document.removeEventListener("visibilitychange", onVisibilityChange);
+      if ("removeEventListener" in reducedMotionQuery) {
+        reducedMotionQuery.removeEventListener("change", handleReducedMotionChange);
+      } else {
+        legacyReducedMotionQuery.removeListener?.(handleReducedMotionChange);
+      }
+      scene.querySelectorAll(".pred-lightning-flash").forEach((flash) => flash.remove());
+    };
+  }, []);
+
   return (
-    <div className="pred-bg-layer" aria-hidden="true">
-      {PREDICTOR_BACKGROUND_TOKENS.map((token) => (
-        <span
-          className="pred-bg-number"
-          key={`${token.text}-${token.left}-${token.top}`}
-          style={{
-            left: token.left,
-            top: token.top,
-            fontSize: `${token.size}px`,
-            animationDuration: `${token.duration}s`,
-            animationDelay: `${token.delay}s`,
-          }}
-        >
-          {token.text}
-        </span>
+    <div className="pred-bg-scene" ref={sceneRef} aria-hidden="true">
+      <canvas className="pred-lightning-ambient" ref={ambientCanvasRef} />
+      <div className="pred-grain" />
+      {PREDICTOR_LIGHTNING_DECORATIONS.map((decoration) => (
+        <img key={decoration.src} className={decoration.className} src={decoration.src} alt="" />
       ))}
+      <canvas className="pred-lightning-text" ref={textCanvasRef} />
+      <canvas className="pred-lightning-bolts" ref={boltCanvasRef} />
     </div>
   );
 }
