@@ -13322,6 +13322,10 @@ body.walkthrough-active .odds-value--changed::after {
   border-color: rgba(184, 125, 24, 0.2);
 }
 
+.pred-selector-card--editing {
+  z-index: 20;
+}
+
 .pred-selector-head {
   display: flex;
   align-items: center;
@@ -13436,7 +13440,7 @@ body.walkthrough-active .odds-value--changed::after {
   top: calc(100% + 10px);
   left: 0;
   right: 0;
-  z-index: 35;
+  z-index: 100;
   background: #0e0c09;
   border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 8px;
@@ -13446,6 +13450,17 @@ body.walkthrough-active .odds-value--changed::after {
 .pred-search-results {
   max-height: 240px;
   overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(184, 125, 24, 0.3) transparent;
+}
+
+.pred-search-results::-webkit-scrollbar {
+  width: 4px;
+}
+
+.pred-search-results::-webkit-scrollbar-thumb {
+  background: rgba(184, 125, 24, 0.3);
+  border-radius: 2px;
 }
 
 .pred-search-option {
@@ -13463,7 +13478,8 @@ body.walkthrough-active .odds-value--changed::after {
 }
 
 .pred-search-option:hover,
-.pred-search-option.is-selected {
+.pred-search-option.is-selected,
+.pred-search-option.is-highlighted {
   background: rgba(184, 125, 24, 0.08);
 }
 
@@ -13542,7 +13558,9 @@ body.walkthrough-active .odds-value--changed::after {
 .pred-venue-wrap {
   display: flex;
   justify-content: center;
-  margin-top: 24px;
+  margin-top: 16px;
+  position: relative;
+  z-index: 1;
 }
 
 .pred-venue-toggle {
@@ -13559,6 +13577,11 @@ body.walkthrough-active .odds-value--changed::after {
   font-size: 12px;
   font-weight: 600;
   cursor: pointer;
+  min-width: 0;
+  max-width: 180px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
   transition: background 0.2s ease, color 0.2s ease, border-color 0.2s ease;
 }
 
@@ -13833,6 +13856,11 @@ body.walkthrough-active .odds-value--changed::after {
   text-align: center;
 }
 
+.pred-empty-state {
+  margin-top: 40px;
+  padding: 48px 20px;
+}
+
 .pred-empty-icon {
   font-size: 32px;
   opacity: 0.4;
@@ -13855,6 +13883,19 @@ body.walkthrough-active .odds-value--changed::after {
 
 .pred-status--error {
   color: #f87171;
+}
+
+.predictor-page .eg-header,
+.predictor-page .hero-header,
+.predictor-page .live-odds-strip,
+.predictor-page .live-odds-band {
+  display: none !important;
+}
+
+.eg-shell--predictor-view .bg-canvas,
+.eg-shell--predictor-view .bg-glow,
+.eg-shell--predictor-view .bg-shape {
+  display: none !important;
 }
 
 @media (max-width: 767px) {
@@ -13910,7 +13951,18 @@ body.walkthrough-active .odds-value--changed::after {
   }
 
   .pred-venue-btn {
-    padding: 8px 14px;
+    max-width: 104px;
+    padding: 8px 12px;
+    font-size: 11px;
+  }
+
+  .pred-search-dropdown {
+    position: static;
+    margin-top: 8px;
+  }
+
+  .pred-search-results {
+    max-height: 180px;
   }
 
   .pred-results {

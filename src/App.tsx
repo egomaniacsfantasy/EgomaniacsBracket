@@ -3090,6 +3090,9 @@ function App() {
   const showToolbar = isMobile
     ? mobileTab === "bracket" || mobileTab === "futures"
     : mainView === "bracket" || mainView === "futures";
+  const predictorViewActive = isMobile ? mobileTab === "predictor" : mainView === "predictor";
+  const showDesktopLiveOddsBand = !isMobile && mainView !== "predictor";
+  const showDesktopBracketHero = !isMobile && mainView !== "predictor";
   const topNavActiveView: TopNavView = isMobile
     ? mobileTab === "leaderboard"
       ? "leaderboard"
@@ -3926,7 +3929,7 @@ function App() {
   );
 
   return (
-    <div className={`eg-shell ${compactDesktop ? "compact-desktop" : ""}`}>
+    <div className={`eg-shell ${compactDesktop ? "compact-desktop" : ""} ${predictorViewActive ? "eg-shell--predictor-view" : ""}`}>
       <div className="bg-glow" aria-hidden="true" />
       <canvas id="bg-stats" className="bg-canvas" aria-hidden="true" />
       <canvas id="bg-lightning" className="bg-canvas" aria-hidden="true" />
@@ -3949,7 +3952,7 @@ function App() {
           onSignIn={() => setAuthModalOpen(true)}
           onSignOut={() => signOut()}
         />
-        {!isMobile ? (
+        {showDesktopLiveOddsBand ? (
           <div className="live-odds-band">
             <LiveOddsStrip
               topContenders={liveOddsTopContenders}
@@ -3959,7 +3962,10 @@ function App() {
             />
           </div>
         ) : null}
-        <header className={`eg-header ${isMobile ? "mobile-hidden" : ""}`}>
+        <header
+          className={`eg-header ${showDesktopBracketHero ? "" : "mobile-hidden"}`}
+          style={showDesktopBracketHero ? undefined : { display: "none" }}
+        >
           <h1>The Bracket Lab</h1>
           <p className="eg-subtitle">
             The bracket that thinks back. Lock a pick. See who it helps, who it hurts, and what it costs.
@@ -4454,7 +4460,9 @@ function App() {
 
       {/* DesktopFirstModal disabled — mobile experience is fully supported */}
 
-      {showFirstFourModal && onboardingFlowReady ? (
+      {showFirstFourModal &&
+      onboardingFlowReady &&
+      (isMobile ? mobileTab === "bracket" : mainView === "bracket") ? (
         <FirstFourModal
           playInGames={playInGames}
           gameWinProbs={simResult.gameWinProbs}

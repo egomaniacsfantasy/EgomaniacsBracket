@@ -130,10 +130,12 @@ function TeamSelector({
 }) {
   const [query, setQuery] = useState("");
   const [editing, setEditing] = useState(selectedId === null);
-  const [open, setOpen] = useState(selectedId === null);
+  const [open, setOpen] = useState(false);
+  const [highlightedIndex, setHighlightedIndex] = useState(-1);
   const deferredQuery = useDeferredValue(query);
   const containerRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const blurTimeoutRef = useRef<number | null>(null);
 
   const selected = useMemo(
     () => teams.find((team) => team.id === selectedId) ?? null,
@@ -159,19 +161,96 @@ function TeamSelector({
       .slice(0, 50);
   }, [deferredQuery, excludeId, teams]);
 
+  useEffect(() => {
+    if (!open) {
+      setHighlightedIndex(-1);
+      return;
+    }
+    setHighlightedIndex((current) => {
+      if (filtered.length === 0) return -1;
+      if (current >= 0 && current < filtered.length) return current;
+      return 0;
+    });
+  }, [filtered, open]);
+
+  useEffect(() => {
+    return () => {
+      if (blurTimeoutRef.current !== null) {
+        window.clearTimeout(blurTimeoutRef.current);
+      }
+    };
+  }, []);
+
   const revealSearch = () => {
+    if (blurTimeoutRef.current !== null) {
+      window.clearTimeout(blurTimeoutRef.current);
+      blurTimeoutRef.current = null;
+    }
     setEditing(true);
     setOpen(true);
+    setHighlightedIndex(filtered.length > 0 ? 0 : -1);
     setQuery("");
     window.requestAnimationFrame(() => inputRef.current?.focus());
   };
 
+  const closeSearch = (keepEditing = selectedId === null) => {
+    if (blurTimeoutRef.current !== null) {
+      window.clearTimeout(blurTimeoutRef.current);
+      blurTimeoutRef.current = null;
+    }
+    setOpen(false);
+    setHighlightedIndex(-1);
+    setQuery("");
+    setEditing(keepEditing);
+  };
+
   const handleBlur = (event: React.FocusEvent<HTMLDivElement>) => {
     if (containerRef.current?.contains(event.relatedTarget as Node | null)) return;
-    setOpen(false);
-    setQuery("");
-    if (selectedId !== null) {
-      setEditing(false);
+    blurTimeoutRef.current = window.setTimeout(() => {
+      closeSearch(selectedId === null);
+    }, 120);
+  };
+
+  const handleFocus = () => {
+    if (blurTimeoutRef.current !== null) {
+      window.clearTimeout(blurTimeoutRef.current);
+      blurTimeoutRef.current = null;
+    }
+    setOpen(true);
+  };
+
+  const handleSelect = (id: number) => {
+    onSelect(id);
+    closeSearch(false);
+  };
+
+  const handleKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
+    if (event.key === "Escape") {
+      event.preventDefault();
+      closeSearch(selectedId === null);
+      inputRef.current?.blur();
+      return;
+    }
+
+    if (filtered.length === 0) return;
+
+    if (event.key === "ArrowDown") {
+      event.preventDefault();
+      setOpen(true);
+      setHighlightedIndex((current) => (current < 0 ? 0 : Math.min(current + 1, filtered.length - 1)));
+      return;
+    }
+
+    if (event.key === "ArrowUp") {
+      event.preventDefault();
+      setOpen(true);
+      setHighlightedIndex((current) => (current <= 0 ? 0 : current - 1));
+      return;
+    }
+
+    if (event.key === "Enter" && open && highlightedIndex >= 0 && highlightedIndex < filtered.length) {
+      event.preventDefault();
+      handleSelect(filtered[highlightedIndex].id);
     }
   };
 
@@ -214,7 +293,8 @@ function TeamSelector({
               type="text"
               value={query}
               placeholder="Search teams..."
-              onFocus={() => setOpen(true)}
+              onFocus={handleFocus}
+              onKeyDown={handleKeyDown}
               onChange={(event) => {
                 setQuery(event.target.value);
                 setOpen(true);
@@ -226,18 +306,14 @@ function TeamSelector({
                   {filtered.length === 0 ? (
                     <div className="pred-search-empty">No teams found.</div>
                   ) : (
-                    filtered.map((team) => (
+                    filtered.map((team, index) => (
                       <button
                         key={team.id}
-                        className={`pred-search-option ${team.id === selectedId ? "is-selected" : ""}`}
+                        className={`pred-search-option ${team.id === selectedId ? "is-selected" : ""} ${index === highlightedIndex ? "is-highlighted" : ""}`}
                         type="button"
                         onMouseDown={(event) => event.preventDefault()}
-                        onClick={() => {
-                          onSelect(team.id);
-                          setEditing(false);
-                          setOpen(false);
-                          setQuery("");
-                        }}
+                        onMouseEnter={() => setHighlightedIndex(index)}
+                        onClick={() => handleSelect(team.id)}
                       >
                         <PredictorTeamMark teamName={team.name} fallbackLabel={team.name[0] ?? slot} size="mini" />
                         <span className="pred-search-option-name">{team.name}</span>
@@ -255,11 +331,23 @@ function TeamSelector({
   );
 }
 
-function VenueToggle({ loc, onChange }: { loc: VenueCode; onChange: (next: VenueCode) => void }) {
+const venueTeamLabel = (team: TeamOption | null, fallback: string): string => (team ? `@ ${team.name}` : fallback);
+
+function VenueToggle({
+  loc,
+  teamA,
+  teamB,
+  onChange,
+}: {
+  loc: VenueCode;
+  teamA: TeamOption | null;
+  teamB: TeamOption | null;
+  onChange: (next: VenueCode) => void;
+}) {
   const venues: Array<{ code: VenueCode; label: string }> = [
     { code: "N", label: "Neutral" },
-    { code: "H", label: "A Home" },
-    { code: "A", label: "B Home" },
+    { code: "H", label: venueTeamLabel(teamA, "Home") },
+    { code: "A", label: venueTeamLabel(teamB, "Away") },
   ];
 
   return (
@@ -447,7 +535,7 @@ export function MatchupPredictor({ displayMode: _displayMode }: { displayMode: O
             <TeamSelector slot="B" teams={teams} selectedId={teamBId} excludeId={teamAId} onSelect={setTeamBId} />
           </div>
 
-          <VenueToggle loc={loc} onChange={setLoc} />
+          {teamA && teamB ? <VenueToggle loc={loc} teamA={teamA} teamB={teamB} onChange={setLoc} /> : null}
 
           {probA !== null && teamA && teamB ? (
             <PredictorResults teamA={teamA} teamB={teamB} probA={probA} />
