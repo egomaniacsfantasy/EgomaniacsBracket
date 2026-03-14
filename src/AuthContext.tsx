@@ -28,50 +28,80 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   const fetchProfile = async (userId: string, authUser?: User | null) => {
-    const { data } = await supabase.from("profiles").select("display_name").eq("id", userId).single();
-    const profileData = (data as Profile | null) ?? null;
-    const googleName = authUser?.user_metadata?.full_name as string | undefined;
+    try {
+      const { data } = await supabase.from("profiles").select("display_name").eq("id", userId).single();
+      const profileData = (data as Profile | null) ?? null;
+      const googleName = authUser?.user_metadata?.full_name as string | undefined;
 
-    if (profileData && (!profileData.display_name || profileData.display_name === "Anonymous") && googleName) {
-      await supabase.from("profiles").update({ display_name: googleName }).eq("id", userId);
-      setProfile({ ...profileData, display_name: googleName });
-      return;
+      if (profileData && (!profileData.display_name || profileData.display_name === "Anonymous") && googleName) {
+        await supabase.from("profiles").update({ display_name: googleName }).eq("id", userId);
+        setProfile({ ...profileData, display_name: googleName });
+        return;
+      }
+
+      setProfile(profileData);
+    } catch (error) {
+      captureError("auth_fetch_profile", error);
+      setProfile(null);
     }
-
-    setProfile(profileData);
   };
 
   useEffect(() => {
     let mounted = true;
 
-    supabase.auth.getSession().then(async ({ data: { session } }) => {
-      if (!mounted) return;
-      setUser(session?.user ?? null);
-      if (session?.user) {
-        await fetchProfile(session.user.id, session.user);
+    const initAuth = async () => {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!mounted) return;
+        setUser(session?.user ?? null);
+        if (session?.user) {
+          await fetchProfile(session.user.id, session.user);
+        } else {
+          setProfile(null);
+        }
+      } catch (error) {
+        captureError("auth_get_session", error);
+        if (!mounted) return;
+        setUser(null);
+        setProfile(null);
+      } finally {
+        if (mounted) {
+          setLoading(false);
+        }
       }
-      setLoading(false);
-    });
+    };
+
+    void initAuth();
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      setUser(session?.user ?? null);
-      if (session?.user) {
-        await fetchProfile(session.user.id, session.user);
-        if (event === "SIGNED_IN") {
-          const pendingRaw = window.sessionStorage.getItem("pendingBracketSave");
-          if (pendingRaw) {
-            window.sessionStorage.removeItem("pendingBracketSave");
-            try {
-              const pendingPicks = JSON.parse(pendingRaw) as Record<string, string>;
-              await saveBracket(session.user.id, pendingPicks, "My Bracket");
-            } catch (error) {
-              captureError("auth_pending_bracket_save", error);
-              // ignore bad pending payload
+      if (!mounted) return;
+      try {
+        setUser(session?.user ?? null);
+        if (session?.user) {
+          await fetchProfile(session.user.id, session.user);
+          if (event === "SIGNED_IN") {
+            const pendingRaw = window.sessionStorage.getItem("pendingBracketSave");
+            if (pendingRaw) {
+              window.sessionStorage.removeItem("pendingBracketSave");
+              try {
+                const pendingPicks = JSON.parse(pendingRaw) as Record<string, string>;
+                await saveBracket(session.user.id, pendingPicks, "My Bracket");
+              } catch (error) {
+                captureError("auth_pending_bracket_save", error);
+                // ignore bad pending payload
+              }
             }
           }
+        } else {
+          setProfile(null);
         }
-      } else {
+      } catch (error) {
+        captureError("auth_state_change", error);
         setProfile(null);
+      } finally {
+        if (mounted) {
+          setLoading(false);
+        }
       }
     });
 

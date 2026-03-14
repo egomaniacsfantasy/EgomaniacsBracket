@@ -166,10 +166,32 @@ export async function getUserGroups(userId: string) {
     group_id: string;
     role: "admin" | "member";
     bracket_id: string | null;
-    groups: GroupRow;
+    groups: GroupRow | GroupRow[] | null;
   }>;
 
-  const groupIds = rows.map((m) => m.groups.id);
+  const normalizedRows = rows
+    .map((membership) => {
+      const groupValue = Array.isArray(membership.groups)
+        ? membership.groups[0] ?? null
+        : membership.groups;
+      if (!groupValue?.id) return null;
+      return {
+        ...membership,
+        groups: groupValue,
+      };
+    })
+    .filter((membership): membership is {
+      group_id: string;
+      role: "admin" | "member";
+      bracket_id: string | null;
+      groups: GroupRow;
+    } => Boolean(membership));
+
+  if (normalizedRows.length === 0) {
+    return { data: [] as UserGroup[], error: null };
+  }
+
+  const groupIds = normalizedRows.map((m) => m.groups.id);
 
   const { data: counts } = await supabase.from("group_members").select("group_id").in("group_id", groupIds);
 
@@ -178,7 +200,7 @@ export async function getUserGroups(userId: string) {
     countMap[c.group_id] = (countMap[c.group_id] || 0) + 1;
   });
 
-  const groups: UserGroup[] = rows.map((m) => ({
+  const groups: UserGroup[] = normalizedRows.map((m) => ({
     ...m.groups,
     role: m.role,
     bracketId: m.bracket_id,

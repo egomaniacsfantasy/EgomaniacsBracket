@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useAuth } from "./AuthContext";
 import { getUserGroups, type UserGroup } from "./groupStorage";
+import { captureError } from "./lib/errorMonitoring";
 
 export function GroupsHub({
   isOpen,
@@ -29,9 +30,18 @@ export function GroupsHub({
   async function loadGroups() {
     if (!user) return;
     setLoading(true);
-    const { data } = await getUserGroups(user.id);
-    setGroups(data);
-    setLoading(false);
+    try {
+      const { data, error } = await getUserGroups(user.id);
+      if (error) {
+        captureError("groups_hub_load", error);
+      }
+      setGroups(data);
+    } catch (error) {
+      captureError("groups_hub_load", error);
+      setGroups([]);
+    } finally {
+      setLoading(false);
+    }
   }
 
   if (!isOpen) return null;
@@ -132,9 +142,18 @@ export function GroupsHubInline({
   async function loadGroups() {
     if (!user) return;
     setLoading(true);
-    const { data } = await getUserGroups(user.id);
-    setGroups(data);
-    setLoading(false);
+    try {
+      const { data, error } = await getUserGroups(user.id);
+      if (error) {
+        captureError("groups_hub_inline_load", error);
+      }
+      setGroups(data);
+    } catch (error) {
+      captureError("groups_hub_inline_load", error);
+      setGroups([]);
+    } finally {
+      setLoading(false);
+    }
   }
 
   if (!user) {
