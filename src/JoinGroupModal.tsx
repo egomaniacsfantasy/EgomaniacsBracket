@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useAuth } from "./AuthContext";
 import { getGroupByCode, joinGroup, type GroupRow } from "./groupStorage";
 import { getUserBrackets, type SavedBracket } from "./bracketStorage";
@@ -23,20 +23,9 @@ export function JoinGroupModal({
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
-  useEffect(() => {
-    if (!isOpen || !initialCode || step !== "code" || !user) return;
-
-    setCode(initialCode);
-    const timeoutId = window.setTimeout(() => {
-      void handleLookup(initialCode);
-    }, 100);
-
-    return () => window.clearTimeout(timeoutId);
-  }, [initialCode, isOpen, step, user]);
-
-  async function handleLookup(codeOverride?: string) {
-    const lookupCode = codeOverride || code;
-    if (!lookupCode.trim() || !user) return;
+  const lookupGroup = useCallback(async (lookupCodeRaw: string) => {
+    const lookupCode = lookupCodeRaw.trim().toUpperCase();
+    if (!lookupCode || !user) return;
     setLoading(true);
     setError("");
 
@@ -60,6 +49,21 @@ export function JoinGroupModal({
     }
 
     setStep("bracket");
+  }, [user]);
+
+  useEffect(() => {
+    if (!isOpen || !initialCode || step !== "code" || !user) return;
+
+    const timeoutId = window.setTimeout(() => {
+      setCode(initialCode);
+      void lookupGroup(initialCode);
+    }, 100);
+
+    return () => window.clearTimeout(timeoutId);
+  }, [initialCode, isOpen, lookupGroup, step, user]);
+
+  async function handleLookup(codeOverride?: string) {
+    await lookupGroup(codeOverride || code);
   }
 
   async function handleJoin() {

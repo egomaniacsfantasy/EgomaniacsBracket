@@ -31,8 +31,8 @@ export function GroupChaosTab({
     const withScores = standings
       .filter((entry) => canSeeDetails(entry, currentUserId))
       .map((s) => ({
-      ...s,
-      chaosScore: s.picks && Object.keys(s.picks).length > 0 ? computeChaosScoreForPicks(s.picks as LockedPicks) : null,
+        ...s,
+        chaosScore: s.picks && Object.keys(s.picks).length > 0 ? computeChaosScoreForPicks(s.picks as LockedPicks) : null,
       }));
 
     return withScores
