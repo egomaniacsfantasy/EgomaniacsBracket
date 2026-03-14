@@ -2118,8 +2118,9 @@ function App() {
     }
 
     if (!bracketComplete) {
+      const remaining = SUBMIT_EXPECTED_PICK_COUNT - pickCount;
       setSaveStatus("error");
-      setSaveErrorText(`Complete all ${SUBMIT_EXPECTED_PICK_COUNT} picks before submitting.`);
+      setSaveErrorText(`Complete all ${SUBMIT_EXPECTED_PICK_COUNT} picks before submitting. ${remaining} pick${remaining !== 1 ? "s" : ""} remaining.`);
       queueSaveStatusReset(3000, true);
       return null;
     }
@@ -3338,14 +3339,15 @@ function App() {
   const showInlineFirstFour = playInGames.length > 0 && !allPlayInDecided;
   const showToolbarFirstFour = isMobile ? showMobileFirstFourButton : showInlineFirstFour;
   const showToolbarGroups = !isMobile || (isMobile && !showToolbarFirstFour);
-  const showToolbarSubmitAction = !isMobile || bracketComplete || currentBracketAlreadySubmitted || saveStatus !== null;
+  const showToolbarSubmitAction = true;
   const firstFourInlineProgress = playInGames.length > 0 ? `${decidedPlayInCount}/${playInGames.length}` : null;
+  const remainingPicks = SUBMIT_EXPECTED_PICK_COUNT - pickCount;
   const submitButtonTitle = !isAuthenticated
     ? "Sign in to submit your bracket"
     : currentBracketAlreadySubmitted
       ? "This bracket is already submitted"
     : !bracketComplete
-      ? `Complete all ${SUBMIT_EXPECTED_PICK_COUNT} picks to submit`
+      ? `${remainingPicks} pick${remainingPicks !== 1 ? "s" : ""} remaining`
       : submissionsLocked
         ? "Submissions locked at tip-off"
         : submissionLimitReached
@@ -3357,13 +3359,15 @@ function App() {
       ? "✓ Submitted"
       : saveStatus === "error"
         ? (saveErrorText?.toLowerCase().includes("complete all")
-            ? `Complete ${SUBMIT_EXPECTED_PICK_COUNT} picks`
+            ? `${remainingPicks} picks left`
             : saveErrorText?.includes(String(MAX_SUBMITTED_BRACKETS))
               ? `Limit reached (${MAX_SUBMITTED_BRACKETS}/${MAX_SUBMITTED_BRACKETS})`
               : saveErrorText?.toLowerCase().includes("locked")
                 ? "Submissions locked"
                 : "Error — try again")
-        : `Submit Bracket ${isAuthenticated ? `(${submittedBracketCount}/${MAX_SUBMITTED_BRACKETS})` : ""}`;
+        : bracketComplete
+          ? `Submit${isAuthenticated ? ` (${submittedBracketCount}/${MAX_SUBMITTED_BRACKETS})` : ""}`
+          : `${pickCount}/${SUBMIT_EXPECTED_PICK_COUNT} picks`;
 
   const overflowPrimaryItems: OverflowMenuItem[] = [
     ...(isMobile
@@ -3375,16 +3379,6 @@ function App() {
             onRequestResetAll();
           },
         },
-        ...(!showToolbarSubmitAction
-          ? [{
-          id: "submit-bracket",
-          label: submitButtonLabel,
-          onSelect: () => {
-            setOpenToolbarMenu(null);
-            void onSaveBracket();
-          },
-        }]
-          : []),
         ...(!showToolbarGroups
           ? [{
               id: "groups",
@@ -3583,7 +3577,11 @@ function App() {
         {isMobile && showToolbarSubmitAction ? (
           <button
             onClick={() => void onSaveBracket()}
-            className="eg-btn toolbar-btn--save toolbar-btn--save-action"
+            className={`eg-btn toolbar-btn--save toolbar-btn--save-action${
+              bracketComplete && !currentBracketAlreadySubmitted && saveStatus !== "saving" && saveStatus !== "saved"
+                ? " toolbar-btn--save-ready"
+                : ""
+            }`}
             disabled={saveStatus === "saving" || (isAuthenticated && !canSubmitBrackets)}
             title={submitButtonTitle}
           >
@@ -3673,7 +3671,11 @@ function App() {
         {!isMobile ? (
           <button
             onClick={() => void onSaveBracket()}
-            className="eg-btn toolbar-btn--save toolbar-btn--save-action"
+            className={`eg-btn toolbar-btn--save toolbar-btn--save-action${
+              bracketComplete && !currentBracketAlreadySubmitted && saveStatus !== "saving" && saveStatus !== "saved"
+                ? " toolbar-btn--save-ready"
+                : ""
+            }`}
             disabled={saveStatus === "saving" || (isAuthenticated && !canSubmitBrackets)}
             title={submitButtonTitle}
           >

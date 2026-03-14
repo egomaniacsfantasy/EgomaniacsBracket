@@ -85,7 +85,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
               window.sessionStorage.removeItem("pendingBracketSave");
               try {
                 const pendingPicks = JSON.parse(pendingRaw) as Record<string, string>;
-                await saveBracket(session.user.id, pendingPicks, "My Bracket");
+                await saveBracket(session.user.id, pendingPicks, "My Bracket", null, undefined, { submit: false });
               } catch (error) {
                 captureError("auth_pending_bracket_save", error);
                 // ignore bad pending payload
