@@ -227,20 +227,25 @@ export async function getGroupByCode(inviteCode: string) {
 }
 
 export async function updateMemberBracket(groupId: string, userId: string, bracketId: string) {
-  const { data, error } = await supabase
+  const { error } = await supabase
     .from("group_members")
     .update({ bracket_id: bracketId })
     .eq("group_id", groupId)
-    .eq("user_id", userId)
-    .select("group_id, user_id, bracket_id")
-    .maybeSingle();
+    .eq("user_id", userId);
 
   if (error) return { data: null, error };
-  if (!data || (data as { bracket_id?: string | null }).bracket_id !== bracketId) {
+
+  const { data: groups, error: reloadError } = await getUserGroups(userId);
+  if (reloadError) {
+    return { data: null, error: reloadError };
+  }
+
+  const updatedGroup = groups.find((group) => group.id === groupId) ?? null;
+  if (!updatedGroup || updatedGroup.bracketId !== bracketId) {
     return { data: null, error: { message: "Could not update your group bracket. Please try again." } };
   }
 
-  return { data, error: null };
+  return { data: updatedGroup, error: null };
 }
 
 export async function leaveGroup(groupId: string, userId: string) {
