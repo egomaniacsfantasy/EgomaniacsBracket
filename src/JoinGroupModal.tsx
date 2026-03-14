@@ -8,20 +8,23 @@ export function JoinGroupModal({
   onClose,
   onGroupJoined,
   initialCode,
+  onRequestAuth,
 }: {
   isOpen: boolean;
   onClose: () => void;
-  onGroupJoined?: (group: GroupRow) => void;
+  onGroupJoined?: (group: GroupRow, hadBracket: boolean) => void;
   initialCode?: string | null;
+  onRequestAuth?: () => void;
 }) {
   const { user } = useAuth();
-  const [step, setStep] = useState<"code" | "preview" | "bracket" | "done">("code");
+  const [step, setStep] = useState<"code" | "bracket" | "done">("code");
   const [code, setCode] = useState(initialCode || "");
   const [group, setGroup] = useState<GroupRow | null>(null);
   const [brackets, setBrackets] = useState<SavedBracket[]>([]);
   const [selectedBracket, setSelectedBracket] = useState<string | null>(null);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [joinedWithoutBracket, setJoinedWithoutBracket] = useState(false);
 
   const lookupGroup = useCallback(async (lookupCodeRaw: string) => {
     const lookupCode = lookupCodeRaw.trim().toUpperCase();
@@ -43,21 +46,22 @@ export function JoinGroupModal({
     setLoading(false);
 
     if (userBrackets.length === 0) {
-      setError("You need at least one saved bracket to join a group. Save your current bracket first!");
-      setStep("preview");
+      // No brackets yet — auto-join without a bracket
+      const { error: joinError } = await joinGroup(data.invite_code, user.id, null);
+      if (joinError) {
+        setError(joinError.message);
+        return;
+      }
+      setJoinedWithoutBracket(true);
+      setStep("done");
+      onGroupJoined?.(data, false);
       return;
     }
 
     setStep("bracket");
-  }, [user]);
+  }, [user, onGroupJoined]);
 
-  // Always pre-fill the code input when initialCode changes
-  useEffect(() => {
-    if (!isOpen || !initialCode || step !== "code") return;
-    setCode(initialCode);
-  }, [initialCode, isOpen, step]);
-
-  // Auto-lookup once user is available
+  // Auto-lookup once user is available (key prop ensures initialCode is baked into state on mount)
   useEffect(() => {
     if (!isOpen || !initialCode || step !== "code" || !user) return;
 
@@ -68,8 +72,13 @@ export function JoinGroupModal({
     return () => window.clearTimeout(timeoutId);
   }, [initialCode, isOpen, lookupGroup, step, user]);
 
-  async function handleLookup(codeOverride?: string) {
-    await lookupGroup(codeOverride || code);
+  function handleLookup() {
+    if (!user) {
+      // Not logged in — request auth first
+      onRequestAuth?.();
+      return;
+    }
+    void lookupGroup(code);
   }
 
   async function handleJoin() {
@@ -84,9 +93,10 @@ export function JoinGroupModal({
       return;
     }
 
+    setJoinedWithoutBracket(false);
     setStep("done");
     setLoading(false);
-    onGroupJoined?.(group);
+    onGroupJoined?.(group, true);
   }
 
   function handleClose() {
@@ -97,6 +107,7 @@ export function JoinGroupModal({
     setSelectedBracket(null);
     setError("");
     setLoading(false);
+    setJoinedWithoutBracket(false);
     onClose();
   }
 
@@ -141,26 +152,10 @@ export function JoinGroupModal({
 
             <button
               className="group-cta-btn"
-              onClick={() => handleLookup()}
+              onClick={handleLookup}
               disabled={code.trim().length < 4 || loading}
             >
               {loading ? "Looking up..." : "Find Group"}
-            </button>
-          </>
-        )}
-
-        {step === "preview" && group && (
-          <>
-            <div className="group-modal-header">
-              <span className="group-modal-icon">{group.emoji ?? "👥"}</span>
-              <h2 className="group-modal-title">{group.name}</h2>
-              <p className="group-modal-subtitle">You need a saved bracket to join</p>
-            </div>
-            <div className="group-modal-body">
-              <p className="group-error">{error}</p>
-            </div>
-            <button className="group-cta-btn" onClick={handleClose}>
-              Go Back &amp; Save a Bracket
             </button>
           </>
         )}
@@ -219,10 +214,14 @@ export function JoinGroupModal({
             <div className="group-modal-header">
               <span className="group-modal-icon">🎉</span>
               <h2 className="group-modal-title">You&apos;re In!</h2>
-              <p className="group-modal-subtitle">You&apos;ve joined {group?.name}</p>
+              <p className="group-modal-subtitle">
+                {joinedWithoutBracket
+                  ? `You've joined ${group?.name}! Now fill out your bracket and submit it.`
+                  : `You've joined ${group?.name}`}
+              </p>
             </div>
             <button className="group-cta-btn" onClick={handleClose}>
-              View Group
+              {joinedWithoutBracket ? "Start My Bracket" : "View Group"}
             </button>
           </>
         )}

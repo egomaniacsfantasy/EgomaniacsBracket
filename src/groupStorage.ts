@@ -73,7 +73,7 @@ export async function createGroup(userId: string, groupName: string, emoji: stri
   return { data: group as GroupRow, error: null };
 }
 
-export async function joinGroup(inviteCode: string, userId: string, bracketId: string) {
+export async function joinGroup(inviteCode: string, userId: string, bracketId: string | null) {
   const { data: group, error: lookupError } = await supabase
     .from("groups")
     .select("id, name, is_active")
@@ -106,7 +106,7 @@ export async function joinGroup(inviteCode: string, userId: string, bracketId: s
     .insert({
       group_id: g.id,
       user_id: userId,
-      bracket_id: bracketId,
+      ...(bracketId ? { bracket_id: bracketId } : {}),
       role: "member",
     })
     .select()

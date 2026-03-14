@@ -659,6 +659,7 @@ function App() {
   const [saveStatus, setSaveStatus] = useState<null | "saving" | "saved" | "error">(null);
   const [saveErrorText, setSaveErrorText] = useState<string | null>(null);
   const [authModalOpen, setAuthModalOpen] = useState(false);
+  const [authModalContext, setAuthModalContext] = useState<import("./AuthModal").AuthContext>("default");
   const [myBracketsOpen, setMyBracketsOpen] = useState(false);
   const [groupsHubOpen, setGroupsHubOpen] = useState(false);
   const [createGroupOpen, setCreateGroupOpen] = useState(false);
@@ -2213,11 +2214,29 @@ function App() {
       return null;
     }
     await refreshUserBrackets();
-    await maybePromptForGroupAssignment((data as SavedBracket | null) ?? null);
+
+    const savedBracket = (data as SavedBracket | null) ?? null;
+
+    // Auto-assign bracket to pending invite group (joined via invite link without a bracket)
+    const pendingRaw = sessionStorage.getItem("pendingInviteGroup");
+    if (pendingRaw && savedBracket) {
+      sessionStorage.removeItem("pendingInviteGroup");
+      try {
+        const pending = JSON.parse(pendingRaw) as { id: string; name: string };
+        await updateMemberBracket(pending.id, user.id, savedBracket.id);
+        showAppToast(`Your bracket was submitted to ${pending.name}!`, 4000, "success");
+      } catch {
+        // Fall through to normal group assignment prompt
+        await maybePromptForGroupAssignment(savedBracket);
+      }
+    } else {
+      await maybePromptForGroupAssignment(savedBracket);
+    }
+
     setSaveStatus("saved");
     setSaveErrorText(null);
     queueSaveStatusReset(2000);
-    return (data as SavedBracket | null) ?? null;
+    return savedBracket;
   };
 
   const onLoadSavedBracket = (bracket: SavedBracket) => {
@@ -4483,7 +4502,7 @@ function App() {
         onCancel={() => setResetModalConfig(null)}
       />
 
-      <AuthModal isOpen={authModalOpen} onClose={() => setAuthModalOpen(false)} />
+      <AuthModal isOpen={authModalOpen} onClose={() => { setAuthModalOpen(false); setAuthModalContext("default"); }} context={authModalContext} />
 
       <MyBracketsModal
         isOpen={myBracketsOpen}
@@ -4522,19 +4541,29 @@ function App() {
       />
 
       <JoinGroupModal
+        key={joinCode || ""}
         isOpen={joinGroupOpen}
         onClose={() => {
           setJoinGroupOpen(false);
           setJoinCode(null);
           sessionStorage.removeItem("pendingJoinCode");
         }}
-        onGroupJoined={() => {
+        onGroupJoined={(group, hadBracket) => {
           setJoinGroupOpen(false);
           setJoinCode(null);
           sessionStorage.removeItem("pendingJoinCode");
-          setGroupsHubOpen(true);
+          if (hadBracket) {
+            setGroupsHubOpen(true);
+          } else {
+            // Joined without a bracket — store pending group for auto-assign on submit
+            sessionStorage.setItem("pendingInviteGroup", JSON.stringify({ id: group.id, name: group.name }));
+          }
         }}
         initialCode={joinCode || undefined}
+        onRequestAuth={() => {
+          setAuthModalContext("join");
+          setAuthModalOpen(true);
+        }}
       />
 
       {groupAssignmentPrompt ? (
