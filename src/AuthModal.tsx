@@ -83,6 +83,37 @@ function getAuthCopy(context: AuthContext, mode: string) {
   }
 }
 
+function getEmbeddedBrowserLabel(userAgent: string): string | null {
+  const knownInAppBrowsers: Array<{ pattern: RegExp; label: string }> = [
+    { pattern: /Snapchat/i, label: "Snapchat" },
+    { pattern: /Instagram/i, label: "Instagram" },
+    { pattern: /FBAN|FBAV|FB_IAB|FBIOS|Messenger/i, label: "Facebook or Messenger" },
+    { pattern: /TikTok|musical_ly/i, label: "TikTok" },
+    { pattern: /LinkedInApp/i, label: "LinkedIn" },
+    { pattern: /Line\//i, label: "LINE" },
+    { pattern: /MicroMessenger/i, label: "WeChat" },
+    { pattern: /Pinterest/i, label: "Pinterest" },
+    { pattern: /GSA\/|GoogleApp/i, label: "the Google app" },
+    { pattern: /Discord/i, label: "Discord" },
+    { pattern: /Slack/i, label: "Slack" },
+  ];
+
+  for (const browser of knownInAppBrowsers) {
+    if (browser.pattern.test(userAgent)) return browser.label;
+  }
+
+  const isIosWebView =
+    /iPhone|iPad|iPod/i.test(userAgent) &&
+    /AppleWebKit/i.test(userAgent) &&
+    !/Safari|CriOS|FxiOS|EdgiOS/i.test(userAgent);
+  if (isIosWebView) return "this in-app browser";
+
+  const isAndroidWebView = /Android/i.test(userAgent) && /\bwv\b/i.test(userAgent);
+  if (isAndroidWebView) return "this in-app browser";
+
+  return null;
+}
+
 function PasswordInput({
   value,
   onChange,
@@ -141,6 +172,8 @@ export function AuthModal({
   const [displayNameHint, setDisplayNameHint] = useState("");
   const [displayNameChecking, setDisplayNameChecking] = useState(false);
   const modalRef = useRef<HTMLDivElement | null>(null);
+  const embeddedBrowserLabel =
+    typeof window !== "undefined" ? getEmbeddedBrowserLabel(window.navigator.userAgent) : null;
 
   useEffect(() => {
     if (!isOpen) return;
@@ -224,11 +257,15 @@ export function AuthModal({
 
   const handleGoogleSignIn = async () => {
     setError("");
+    if (embeddedBrowserLabel) {
+      setError(`Google sign-in is blocked inside ${embeddedBrowserLabel}. Open Odds Gods in Safari or Chrome, or use email below.`);
+      return;
+    }
     setSubmitting(true);
     const authResult = await signInWithGoogle();
     setSubmitting(false);
     if (authResult.error) {
-      setError("Google sign-in failed. Please try again.");
+      setError("Google sign-in failed. If you're in an in-app browser, open Odds Gods in Safari or Chrome and try again.");
     }
   };
 
@@ -358,6 +395,11 @@ export function AuthModal({
               </svg>
               Continue with Google
             </button>
+            {embeddedBrowserLabel ? (
+              <p className="auth-modal-google-note">
+                Google blocks sign-in inside {embeddedBrowserLabel}. Open Odds Gods in Safari or Chrome, or use email below.
+              </p>
+            ) : null}
 
             <div className="auth-modal-divider">
               <span className="auth-modal-divider-line" />
@@ -475,6 +517,11 @@ export function AuthModal({
               </svg>
               Continue with Google
             </button>
+            {embeddedBrowserLabel ? (
+              <p className="auth-modal-google-note">
+                Google blocks sign-in inside {embeddedBrowserLabel}. Open Odds Gods in Safari or Chrome, or use email below.
+              </p>
+            ) : null}
 
             <div className="auth-modal-divider">
               <span className="auth-modal-divider-line" />

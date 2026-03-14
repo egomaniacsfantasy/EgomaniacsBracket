@@ -2,12 +2,11 @@ import { useState } from "react";
 
 type MobileOnboardingProps = {
   onStartFirstFour: () => void;
-  onSkip: () => void;
 };
 
 const SCREEN_COUNT = 3;
 
-export function MobileOnboarding({ onStartFirstFour, onSkip }: MobileOnboardingProps) {
+export function MobileOnboarding({ onStartFirstFour }: MobileOnboardingProps) {
   const [screen, setScreen] = useState(0);
 
   const goBack = () => {
@@ -103,16 +102,6 @@ export function MobileOnboarding({ onStartFirstFour, onSkip }: MobileOnboardingP
             }}
           >
             Let&apos;s go →
-          </button>
-          <button
-            type="button"
-            className="mob-skip"
-            onClick={(event) => {
-              event.stopPropagation();
-              onSkip();
-            }}
-          >
-            Skip walkthrough
           </button>
         </div>
       ) : null}

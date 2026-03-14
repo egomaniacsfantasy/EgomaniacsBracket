@@ -3213,6 +3213,20 @@ button.lb-row {
     color: var(--text-secondary);
   }
 
+  .eg-round-col--e8 .chip-code-line--e8 {
+    display: block;
+    min-width: 0;
+  }
+
+  .eg-round-col--e8 .chip-code--e8 {
+    display: block;
+    min-width: 0;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
   .eg-round-col--e8 .eg-compact-chip.result-win {
     background: linear-gradient(90deg, rgba(184, 125, 24, 0.12) 0%, rgba(184, 125, 24, 0.04) 100%);
   }
@@ -6708,6 +6722,15 @@ body {
   gap: 4px;
 }
 
+.auth-modal-google-note {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: rgba(240, 230, 208, 0.52);
+  line-height: 1.45;
+  text-align: center;
+  margin: -2px 0 2px;
+}
+
 .auth-modal-submit {
   width: 100%;
   padding: 11px;
@@ -8443,6 +8466,10 @@ body.walkthrough-active .eg-title-choice:hover {
     order: 3;
   }
 
+  .toolbar-btn--groups {
+    order: 3;
+  }
+
   .toolbar-dropdown-wrap--overflow {
     order: 4;
   }
@@ -8722,11 +8749,17 @@ body.walkthrough-active .eg-title-choice:hover {
   }
 
   .matchup-stats-icon--mobile {
-    top: 8px;
-    right: 8px;
+    position: static;
+    top: auto;
+    right: auto;
+    left: auto;
+    align-self: center;
+    flex-shrink: 0;
     display: inline-flex !important;
     opacity: 1 !important;
     visibility: visible !important;
+    width: 20px;
+    height: 20px;
     color: rgba(240, 230, 208, 0.9);
     border-color: rgba(240, 230, 208, 0.28);
     background: rgba(255, 255, 255, 0.09);
@@ -8737,7 +8770,7 @@ body.walkthrough-active .eg-title-choice:hover {
     display: flex;
     align-items: center;
     gap: 10px;
-    padding: 15px 28px 15px 14px;
+    padding: 15px 14px;
     background: none;
     border: none;
     cursor: pointer;
@@ -8843,15 +8876,24 @@ body.walkthrough-active .eg-title-choice:hover {
     display: flex;
     align-items: center;
     justify-content: space-between;
+    gap: 12px;
     padding: 8px 14px;
     border-top: 1px solid rgba(255, 255, 255, 0.05);
     min-height: 40px;
+  }
+
+  .m-card-footer-left {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    min-width: 0;
   }
 
   .m-winner-label {
     font-family: var(--font-mono);
     font-size: 11px;
     color: rgba(184, 125, 24, 0.75);
+    min-width: 0;
   }
 
   .m-undo-btn {
@@ -10083,7 +10125,7 @@ body.walkthrough-active .eg-title-choice:hover {
   .mob-cta {
     position: relative;
     z-index: 3;
-    margin-top: 24px;
+    margin-top: 20px;
     background: #b87d18;
     color: #080603;
     font-family: "Space Grotesk", sans-serif;
@@ -10123,14 +10165,14 @@ body.walkthrough-active .eg-title-choice:hover {
     background: #1a1712;
     border: 1px solid rgba(184, 125, 24, 0.3);
     border-radius: 16px;
-    padding: 36px 28px 28px;
+    padding: 32px 26px 24px;
     max-width: 340px;
     width: 100%;
     text-align: center;
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 14px;
+    gap: 12px;
     animation: dfm-in 300ms ease-out;
   }
 
@@ -10155,14 +10197,6 @@ body.walkthrough-active .eg-title-choice:hover {
     margin: 0;
   }
 
-  .dfm-sub {
-    font-family: var(--font-mono);
-    font-size: 11px;
-    color: var(--text-amber);
-    font-style: italic;
-    margin: 0;
-  }
-
   .dfm-btn {
     width: 100%;
     padding: 14px;
@@ -10175,7 +10209,7 @@ body.walkthrough-active .eg-title-choice:hover {
     font-weight: 700;
     letter-spacing: 0.03em;
     cursor: pointer;
-    margin-top: 4px;
+    margin-top: 2px;
     transition: filter 150ms;
   }
 

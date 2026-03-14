@@ -2448,7 +2448,7 @@ function App() {
   const allPlayInDecided = playInGames.length === 0 || decidedPlayInCount === playInGames.length;
   const pointsTrackingEnabled = false;
   const onboardingFlowReady = !showDesktopFirst && !showMobileOnboarding && !walkthroughActive;
-  const showMobileFirstFourButton = isMobile && playInGames.length > 0;
+  const showMobileFirstFourButton = isMobile && playInGames.length > 0 && !allPlayInDecided;
   const mobileFirstFourProgress = playInGames.length > 0 ? `${decidedPlayInCount}/${playInGames.length}` : null;
   const leftSemi = finalGames.find((g) => g.id === "F4-Left-0") ?? null;
   const rightSemi = finalGames.find((g) => g.id === "F4-Right-0") ?? null;
@@ -3171,6 +3171,7 @@ function App() {
   const showChaosInToolbar = !isMobile && chaosScore !== null;
   const showInlineFirstFour = playInGames.length > 0 && !allPlayInDecided;
   const showToolbarFirstFour = isMobile ? showMobileFirstFourButton : showInlineFirstFour;
+  const showToolbarGroups = !isMobile || (isMobile && !showToolbarFirstFour);
   const firstFourInlineProgress = playInGames.length > 0 ? `${decidedPlayInCount}/${playInGames.length}` : null;
 
   const overflowPrimaryItems: OverflowMenuItem[] = [
@@ -3197,14 +3198,16 @@ function App() {
             onSaveBracket();
           },
         },
-        {
-          id: "groups",
-          label: "Groups",
-          onSelect: () => {
-            setOpenToolbarMenu(null);
-            openGroupsFromToolbar();
-          },
-        }]
+        ...(!showToolbarGroups
+          ? [{
+              id: "groups",
+              label: "Groups",
+              onSelect: () => {
+                setOpenToolbarMenu(null);
+                openGroupsFromToolbar();
+              },
+            }]
+          : [])]
       : []),
     ...(!showToolbarFirstFour
       ? [{
@@ -3379,7 +3382,7 @@ function App() {
           </button>
         ) : null}
 
-        {!isMobile ? (
+        {showToolbarGroups ? (
           <button
             type="button"
             onClick={openGroupsFromToolbar}
@@ -4398,7 +4401,6 @@ function App() {
       {showMobileOnboarding ? (
         <MobileOnboarding
           onStartFirstFour={startMobileOnboardingFromFirstFour}
-          onSkip={dismissMobileOnboarding}
         />
       ) : null}
 
@@ -4596,7 +4598,6 @@ function DesktopFirstModal({
         <p className="dfm-body">
           The mobile version is usable, but the full bracket canvas and odds workflow were built for larger screens.
         </p>
-        <p className="dfm-sub">Continue on mobile if you want the walkthrough anyway.</p>
         <button className="dfm-btn" onClick={onContinue}>
           Continue on mobile
         </button>
@@ -5746,18 +5747,6 @@ function MobileMatchupCard({
   return (
     <div className={`m-card ${isPicked ? "m-card--picked" : ""}`} ref={cardRef} data-game-id={game.id} data-seeds={dataSeeds}>
       <button
-        type="button"
-        className="matchup-stats-icon matchup-stats-icon--mobile"
-        onClick={(event) => {
-          event.stopPropagation();
-          onOpenMatchupStats(game);
-        }}
-        title="View matchup stats"
-        aria-label="View matchup stats"
-      >
-        {"i"}
-      </button>
-      <button
         className={`m-team ${game.winnerId === teamA.id ? "m-team--winner" : ""} ${
           game.winnerId && game.winnerId !== teamA.id ? "m-team--loser" : ""
         }`}
@@ -5806,14 +5795,41 @@ function MobileMatchupCard({
       <div className="m-card-footer">
         {isPicked ? (
           <>
-            <span className="m-winner-label">✓ {(game.winnerId === teamA.id ? teamA.name : teamB.name)} advances</span>
+            <div className="m-card-footer-left">
+              <button
+                type="button"
+                className="matchup-stats-icon matchup-stats-icon--mobile"
+                onClick={(event) => {
+                  event.stopPropagation();
+                  onOpenMatchupStats(game);
+                }}
+                title="View matchup stats"
+                aria-label="View matchup stats"
+              >
+                {"i"}
+              </button>
+              <span className="m-winner-label">✓ {(game.winnerId === teamA.id ? teamA.name : teamB.name)} advances</span>
+            </div>
             <button className="m-undo-btn" onClick={() => onUndoPick(game.id)}>
               Undo
             </button>
           </>
         ) : (
           <>
-            <span />
+            <div className="m-card-footer-left">
+              <button
+                type="button"
+                className="matchup-stats-icon matchup-stats-icon--mobile"
+                onClick={(event) => {
+                  event.stopPropagation();
+                  onOpenMatchupStats(game);
+                }}
+                title="View matchup stats"
+                aria-label="View matchup stats"
+              >
+                {"i"}
+              </button>
+            </div>
             <button
               className="m-edit-prob-btn"
               onClick={() => {
@@ -6759,7 +6775,8 @@ function GameCard({
                 const { primary, secondary } = formatOddsDisplay(candidate.prob, displayMode);
                 const showLogo = true;
                 const normalizedTeamName = normalizeTeamName(team.name);
-                const teamLabel = game.round === "E8" ? abbreviationForTeam(normalizedTeamName) : normalizedTeamName;
+                const useEliteEightFullName = game.round === "E8";
+                const teamLabel = normalizedTeamName;
                 const outcome =
                   game.lockedByUser && game.winnerId
                     ? game.winnerId === team.id
@@ -6815,8 +6832,14 @@ function GameCard({
                       </TeamHoverAnchor>
                     ) : null}
                     <TeamHoverAnchor teamName={team.name} logoSrc={teamLogoUrl(team)}>
-                      <span className={`chip-code-line ${showLogo ? "" : "no-logo"}`}>
-                        <AdaptiveTeamLabel className={`chip-code ${showLogo ? "" : "no-logo"}`} fullName={teamLabel} />
+                      <span className={`chip-code-line ${showLogo ? "" : "no-logo"} ${useEliteEightFullName ? "chip-code-line--e8" : ""}`}>
+                        {useEliteEightFullName ? (
+                          <span className={`chip-code ${showLogo ? "" : "no-logo"} chip-code--e8`} title={teamLabel}>
+                            {teamLabel}
+                          </span>
+                        ) : (
+                          <AdaptiveTeamLabel className={`chip-code ${showLogo ? "" : "no-logo"}`} fullName={teamLabel} />
+                        )}
                       </span>
                     </TeamHoverAnchor>
                     <span className="chip-odds-wrap">
