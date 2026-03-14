@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import { teamsById } from "./data/teams";
+import { areAllGroupBracketsLocked, canSeeDetails } from "./groupVisibility";
 import type { GroupStanding } from "./groupStorage";
 
 type RankedStanding = GroupStanding & { groupRank: number };
@@ -22,12 +23,17 @@ export function GroupPicksTab({
   tournamentStarted: boolean;
 }) {
   const [expandedRound, setExpandedRound] = useState<string>("R64");
+  const allBracketsLocked = areAllGroupBracketsLocked(standings);
+  const visibleStandings = useMemo(
+    () => standings.filter((entry) => canSeeDetails(entry, currentUserId)),
+    [currentUserId, standings],
+  );
 
   const agreementData = useMemo(() => {
-    if (standings.length === 0) return {} as Record<string, AgreementInfo>;
+    if (visibleStandings.length === 0) return {} as Record<string, AgreementInfo>;
 
     const allPickKeys = new Set<string>();
-    standings.forEach((s) => {
+    visibleStandings.forEach((s) => {
       if (s.picks && typeof s.picks === "object") {
         Object.keys(s.picks).forEach((k) => allPickKeys.add(k));
       }
@@ -36,7 +42,7 @@ export function GroupPicksTab({
     const data: Record<string, AgreementInfo> = {};
     allPickKeys.forEach((matchupId) => {
       const tally: Record<string, Array<{ userId: string; displayName: string }>> = {};
-      standings.forEach((s) => {
+      visibleStandings.forEach((s) => {
         const pick = s.picks?.[matchupId];
         if (pick) {
           if (!tally[pick]) tally[pick] = [];
@@ -57,7 +63,7 @@ export function GroupPicksTab({
         }))
         .sort((a, b) => b.count - a.count);
 
-      const currentUserPick = standings.find((s) => s.user_id === currentUserId)?.picks?.[matchupId];
+      const currentUserPick = visibleStandings.find((s) => s.user_id === currentUserId)?.picks?.[matchupId];
       const currentUserTeam = teams.find((t) => t.teamId === currentUserPick);
       const isLoneWolf = Boolean(currentUserTeam && currentUserTeam.count === 1 && totalVoters > 1);
 
@@ -70,7 +76,7 @@ export function GroupPicksTab({
     });
 
     return data;
-  }, [standings, currentUserId]);
+  }, [visibleStandings, currentUserId]);
 
   function getMatchupsByRound(roundKey: string) {
     const allKeys = Object.keys(agreementData);
@@ -93,6 +99,16 @@ export function GroupPicksTab({
     const team = teamsById.get(teamId);
     if (team) return `${team.seed} ${team.name}`;
     return teamId;
+  }
+
+  if (!allBracketsLocked) {
+    return (
+      <div className="gd-locked-state">
+        <span className="gd-locked-icon">🔒</span>
+        <h3>Picks are hidden until tipoff</h3>
+        <p>Once brackets lock, you&apos;ll see how your group&apos;s picks compare — who agreed, who went rogue, and who&apos;s the lone wolf.</p>
+      </div>
+    );
   }
 
   return (

@@ -251,21 +251,26 @@ export function BracketWrapped({ data, isBracketSubmitted, onSubmitBracket, onCl
                     ← Review Story
                   </button>
                   {submitState === "submitted" ? (
-                    <div className="bw-screen5-submit-state">
-                      <div className="bw-screen5-submit-success">✓ Bracket submitted</div>
-                      <button className="bw-btn bw-btn--primary bw-screen5-submit-btn" onClick={handleShareCard}>
-                        Share Card
-                      </button>
-                    </div>
-                  ) : (
+                    <div className="bw-screen5-submit-success">✓ Bracket submitted</div>
+                  ) : null}
+                  <div className="bw-screen5-cta-row">
                     <button
-                      className="bw-btn bw-btn--primary bw-screen5-submit-btn"
+                      className={`bw-btn ${
+                        submitState === "submitted" ? "bw-btn--secondary bw-screen5-submit-btn bw-screen5-submit-btn--submitted" : "bw-btn--primary bw-screen5-submit-btn"
+                      }`}
                       onClick={handleSubmitBracket}
-                      disabled={submitState === "submitting"}
+                      disabled={submitState === "submitting" || submitState === "submitted"}
                     >
-                      {submitState === "submitting" ? "Submitting..." : "Submit Bracket"}
+                      {submitState === "submitting"
+                        ? "Submitting..."
+                        : submitState === "submitted"
+                          ? "Bracket Submitted"
+                          : "Submit Bracket"}
                     </button>
-                  )}
+                    <button className="bw-btn bw-btn--secondary bw-screen5-share-btn" onClick={handleShareCard}>
+                      Share Card
+                    </button>
+                  </div>
                 </div>
               </div>
             )}

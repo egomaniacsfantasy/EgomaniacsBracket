@@ -6540,7 +6540,7 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 2000;
+  z-index: 11060;
   animation: fadeIn 150ms ease-out;
 }
 
@@ -14723,13 +14723,20 @@ body.walkthrough-active .odds-value--changed::after {
 }
 
 .pred-result-card,
-.pred-stats-card,
-.pred-empty-state,
-.pred-status {
+.pred-stats-card {
   background: rgba(8, 6, 3, 0.82);
   border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: 16px;
   backdrop-filter: blur(10px);
+}
+
+.pred-empty-state,
+.pred-status {
+  background: transparent;
+  border: none;
+  border-radius: 0;
+  backdrop-filter: none;
+  box-shadow: none;
 }
 
 .pred-result-card,
@@ -15025,14 +15032,14 @@ body.walkthrough-active .odds-value--changed::after {
   align-items: center;
   justify-content: center;
   gap: 10px;
-  min-height: 180px;
+  min-height: 140px;
   padding: 48px 24px;
   text-align: center;
 }
 
 .pred-empty-state {
   margin-top: 40px;
-  padding: 40px 20px 60px;
+  padding: 28px 20px 56px;
 }
 
 .pred-empty-icon {
@@ -15939,11 +15946,25 @@ body.walkthrough-active .odds-value--changed::after {
 }
 
 .bw-screen5-submit-btn {
-  width: 100%;
+  flex: 1.2 1 0;
   min-height: 48px;
   border-radius: 12px;
   font-size: 15px;
   box-shadow: 0 0 20px rgba(184, 125, 24, 0.25);
+}
+
+.bw-screen5-submit-btn--submitted {
+  box-shadow: none;
+  border-color: rgba(240, 230, 208, 0.18);
+  color: rgba(240, 230, 208, 0.68);
+  cursor: default;
+}
+
+.bw-screen5-share-btn {
+  flex: 0.85 1 0;
+  min-height: 48px;
+  border-radius: 12px;
+  font-size: 14px;
 }
 
 .bw-screen5-submit-success {
@@ -15984,6 +16005,11 @@ body.walkthrough-active .odds-value--changed::after {
   .bw-screen5-submit-btn {
     min-height: 44px;
     font-size: 14px;
+  }
+
+  .bw-screen5-share-btn {
+    min-height: 44px;
+    font-size: 13px;
   }
 
   .bw-screen5-submit-success {

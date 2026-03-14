@@ -662,6 +662,7 @@ function App() {
   const [groupsHubOpen, setGroupsHubOpen] = useState(false);
   const [createGroupOpen, setCreateGroupOpen] = useState(false);
   const [joinGroupOpen, setJoinGroupOpen] = useState(false);
+  const [joinCode, setJoinCode] = useState<string | null>(null);
   const [activeGroup, setActiveGroup] = useState<UserGroup | null>(null);
   const [userBrackets, setUserBrackets] = useState<SavedBracket[]>([]);
   const [groupAssignmentPrompt, setGroupAssignmentPrompt] = useState<GroupAssignmentPromptState | null>(null);
@@ -934,6 +935,23 @@ function App() {
   useEffect(() => {
     refreshUserBrackets();
   }, [user]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    const url = new URL(window.location.href);
+    const code = url.searchParams.get("join") ?? url.searchParams.get("code");
+    if (!code) return;
+
+    setJoinCode(code.toUpperCase());
+    url.searchParams.delete("join");
+    url.searchParams.delete("code");
+    window.history.replaceState({}, "", `${url.pathname}${url.search}${url.hash}`);
+  }, []);
+
+  useEffect(() => {
+    if (joinCode) setJoinGroupOpen(true);
+  }, [joinCode]);
 
   useEffect(() => {
     if (isAuthenticated) setAuthModalOpen(false);
@@ -1708,6 +1726,11 @@ function App() {
   const submissionLimitReached = submittedBracketCount >= MAX_SUBMITTED_BRACKETS;
   const currentBracketAlreadySubmitted = Boolean(currentSubmittedBracket);
   const canSubmitBrackets = isAuthenticated && !submissionsLocked && !submissionLimitReached;
+  const tournamentStarted = useMemo(() => {
+    if (userBrackets.some((bracket) => bracket.is_locked)) return true;
+    const tipoff = new Date("2026-03-20T12:00:00-04:00");
+    return new Date() >= tipoff;
+  }, [userBrackets]);
   const pickedChaosGameIds = useMemo(() => getPickedChaosGameIds(games), [games]);
   const chaosPercentile = useMemo(() => {
     if (chaosScore === null || pickedChaosGameIds.length === 0 || !chaosDistribution) return null;
@@ -3334,20 +3357,14 @@ function App() {
 
   const openWrappedFromToolbar = () => {
     if (!wrappedData) return;
-    if (!wrappedSeen) {
-      trackEvent("wrapped_opened", {
-        trigger: "toolbar",
-        chaosLabel: wrappedData.identity.chaosLabel,
-        champion: wrappedData.champion.teamName,
-      });
-      setShowWrappedFlow(true);
-      return;
-    }
-    trackEvent("wrapped_share_card_opened", {
+    trackEvent("wrapped_opened", {
       trigger: "toolbar",
       chaosLabel: wrappedData.identity.chaosLabel,
+      champion: wrappedData.champion.teamName,
+      repeat: wrappedSeen,
     });
-    setShowWrappedCard(true);
+    setShowWrappedCard(false);
+    setShowWrappedFlow(true);
   };
 
   const openFirstFourFromToolbar = () => {
@@ -4499,11 +4516,16 @@ function App() {
 
       <JoinGroupModal
         isOpen={joinGroupOpen}
-        onClose={() => setJoinGroupOpen(false)}
+        onClose={() => {
+          setJoinGroupOpen(false);
+          setJoinCode(null);
+        }}
         onGroupJoined={() => {
           setJoinGroupOpen(false);
+          setJoinCode(null);
           setGroupsHubOpen(true);
         }}
+        initialCode={joinCode || undefined}
       />
 
       {groupAssignmentPrompt ? (
@@ -4521,7 +4543,7 @@ function App() {
         group={activeGroup}
         isOpen={Boolean(activeGroup)}
         onClose={() => setActiveGroup(null)}
-        tournamentStarted={false}
+        tournamentStarted={tournamentStarted}
       />
 
       {statsModalGame ? (

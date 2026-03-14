@@ -36,7 +36,6 @@ export function GroupDetailView({
     bracketName: string;
   } | null>(null);
   const [showSettings, setShowSettings] = useState(false);
-  const [copied, setCopied] = useState(false);
 
   // Bracket picker state for members with no bracket
   const [showBracketPicker, setShowBracketPicker] = useState(false);
@@ -87,9 +86,7 @@ export function GroupDetailView({
     const link = `${window.location.origin}/join.html?code=${group.invite_code}`;
     const message = `Join my group "${group.name}" on The Bracket Lab and compete to see who has the best bracket! 🏀\n${link}`;
     navigator.clipboard.writeText(message).then(() => {
-      setCopied(true);
       setShowInviteToast(true);
-      setTimeout(() => setCopied(false), 2500);
       setTimeout(() => setShowInviteToast(false), 3000);
     });
   }
@@ -106,6 +103,14 @@ export function GroupDetailView({
     } catch {
       // User cancelled share sheet — no action needed
     }
+  }
+
+  async function handleInvite() {
+    if (canNativeShare) {
+      await handleNativeShare();
+      return;
+    }
+    handleCopyInvite();
   }
 
   async function handleLeave() {
@@ -226,32 +231,27 @@ export function GroupDetailView({
 
   return (
     <div className="group-detail-overlay">
-      <div className="group-detail-header">
-        <button className="group-detail-back" onClick={onClose}>
+      <div className="gd-header">
+        <button className="gd-back" onClick={onClose}>
           ← Groups
         </button>
 
-        <div className="group-detail-title-area">
-          <h1 className="group-detail-name">
-            <span className="group-detail-emoji">{group.emoji ?? "👥"}</span>
-            {group.name}
-          </h1>
-          <span className="group-detail-meta">
+        <div className="gd-header-center">
+          <div className="gd-header-title">
+            <span className="gd-header-emoji">{group.emoji ?? "👥"}</span>
+            <h1 className="gd-header-name">{group.name}</h1>
+          </div>
+          <span className="gd-header-members">
             {displayedMemberCount} {displayedMemberCount === 1 ? "member" : "members"}
           </span>
         </div>
 
-        <div className="group-detail-header-actions" style={{ position: "relative" }}>
-          <button className="group-invite-btn" onClick={handleCopyInvite}>
-            {copied ? "✓ Copied!" : "🔗 Invite"}
+        <div className="gd-header-actions">
+          <button className="gd-invite-btn" onClick={() => void handleInvite()}>
+            🔗 Invite
           </button>
-          {canNativeShare && (
-            <button className="group-invite-btn" onClick={handleNativeShare}>
-              📤
-            </button>
-          )}
-          <button className="group-settings-btn" onClick={() => setShowSettings(!showSettings)}>
-            ⋯
+          <button className="gd-settings-btn" onClick={() => setShowSettings(!showSettings)} aria-label="Group settings">
+            ⚙️
           </button>
           {showInviteToast && (
             <div className="invite-toast">
@@ -286,16 +286,16 @@ export function GroupDetailView({
         </div>
       )}
 
-      <div className="group-tab-bar">
+      <div className="gd-tabs">
         {(["standings", "picks", "chaos"] as const).map((tab) => (
           <button
             key={tab}
-            className={`group-tab ${activeTab === tab ? "group-tab--active" : ""}`}
+            className={`gd-tab ${activeTab === tab ? "gd-tab--active" : ""}`}
             onClick={() => setActiveTab(tab)}
           >
-            {tab === "standings" && "🏆 Standings"}
-            {tab === "picks" && "🗺️ Picks"}
-            {tab === "chaos" && "🌀 Chaos"}
+            {tab === "standings" && "Standings"}
+            {tab === "picks" && "Picks"}
+            {tab === "chaos" && "Chaos"}
           </button>
         ))}
       </div>
@@ -314,6 +314,7 @@ export function GroupDetailView({
                 onViewBracket={setViewingBracket}
                 onRefresh={loadStandings}
                 onSelectBracket={handleOpenBracketPicker}
+                onInvite={() => void handleInvite()}
               />
             )}
             {activeTab === "picks" && (

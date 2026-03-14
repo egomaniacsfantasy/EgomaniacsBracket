@@ -1,5 +1,6 @@
 import { useMemo } from "react";
 import { computeChaosScoreForPicks } from "./bracketStorage";
+import { areAllGroupBracketsLocked, canSeeDetails } from "./groupVisibility";
 import type { LockedPicks } from "./lib/bracket";
 import type { GroupStanding } from "./groupStorage";
 
@@ -25,16 +26,29 @@ export function GroupChaosTab({
   standings: RankedStanding[];
   currentUserId: string | undefined;
 }) {
+  const allBracketsLocked = areAllGroupBracketsLocked(standings);
   const chaosRankings = useMemo(() => {
-    const withScores = standings.map((s) => ({
+    const withScores = standings
+      .filter((entry) => canSeeDetails(entry, currentUserId))
+      .map((s) => ({
       ...s,
       chaosScore: s.picks && Object.keys(s.picks).length > 0 ? computeChaosScoreForPicks(s.picks as LockedPicks) : null,
-    }));
+      }));
 
     return withScores
       .filter((s) => s.chaosScore !== null)
       .sort((a, b) => (b.chaosScore || 0) - (a.chaosScore || 0));
-  }, [standings]);
+  }, [currentUserId, standings]);
+
+  if (!allBracketsLocked) {
+    return (
+      <div className="gd-locked-state">
+        <span className="gd-locked-icon">🌪️</span>
+        <h3>Chaos scores hidden until tipoff</h3>
+        <p>Once brackets lock, see who went full chalk and who chose violence.</p>
+      </div>
+    );
+  }
 
   if (chaosRankings.length === 0) {
     return (
@@ -71,7 +85,7 @@ export function GroupChaosTab({
               <div className="group-chaos-name-area">
                 <span className="group-chaos-display-name">
                   {entry.display_name}
-                  {isCurrentUser && <span className="gs-you-badge">YOU</span>}
+                  {isCurrentUser && <span className="gd-player-you">YOU</span>}
                 </span>
                 <span className="group-chaos-bracket-name">{entry.bracket_name}</span>
               </div>

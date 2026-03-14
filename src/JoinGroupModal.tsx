@@ -24,12 +24,15 @@ export function JoinGroupModal({
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    if (isOpen && initialCode) {
-      setCode(initialCode);
-      handleLookup(initialCode);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isOpen, initialCode]);
+    if (!isOpen || !initialCode || step !== "code" || !user) return;
+
+    setCode(initialCode);
+    const timeoutId = window.setTimeout(() => {
+      void handleLookup(initialCode);
+    }, 100);
+
+    return () => window.clearTimeout(timeoutId);
+  }, [initialCode, isOpen, step, user]);
 
   async function handleLookup(codeOverride?: string) {
     const lookupCode = codeOverride || code;
