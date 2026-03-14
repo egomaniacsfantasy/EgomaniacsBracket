@@ -63,8 +63,8 @@ export function BracketWrappedCard({
   ].filter(Boolean);
 
   return (
-    <div className={standalone ? "bw-card-wrapper" : undefined}>
-    <div className="bw-card-wrap" id="wrapped-export-target">
+    <div className={standalone ? "bw-card-wrapper bw-card-wrapper--standalone" : undefined}>
+    <div className={`bw-card-wrap${standalone ? " bw-card-wrap--standalone" : ""}`} id="wrapped-export-target">
       {standalone && onClose ? (
         <button className="bw-close" onClick={onClose} aria-label="Close">
           ✕

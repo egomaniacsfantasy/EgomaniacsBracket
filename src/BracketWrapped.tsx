@@ -6,6 +6,8 @@ import { exportWrappedCard } from "./lib/wrappedExport";
 
 interface BracketWrappedProps {
   data: WrappedData;
+  isBracketSubmitted: boolean;
+  onSubmitBracket: () => Promise<boolean>;
   onClose: () => void;
 }
 
@@ -37,9 +39,9 @@ function unlikelyRunContextLine(teamName: string, roundReached: string, baseline
   return `Before any picks were made, the model gave ${teamName} a ${formatPercent(baselineProb)} chance of ${destination}.`;
 }
 
-export function BracketWrapped({ data, onClose }: BracketWrappedProps) {
+export function BracketWrapped({ data, isBracketSubmitted, onSubmitBracket, onClose }: BracketWrappedProps) {
   const [screen, setScreen] = useState(0);
-  const [linkCopied, setLinkCopied] = useState(false);
+  const [submitState, setSubmitState] = useState<"idle" | "submitting" | "submitted">(isBracketSubmitted ? "submitted" : "idle");
   const hasTrackedRef = useRef<Set<number>>(new Set());
   const frameRef = useRef<HTMLDivElement>(null);
   const [scale, setScale] = useState(1);
@@ -93,21 +95,6 @@ export function BracketWrapped({ data, onClose }: BracketWrappedProps) {
     return () => clearTimeout(timer);
   }, [screen]);
 
-  // Escape key
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") {
-        trackEvent("wrapped_closed", {
-          screen: screen + 1,
-          completed: screen === TOTAL_SCREENS - 1,
-        });
-        onClose();
-      }
-    };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [onClose, screen]);
-
   const goNext = useCallback(() => {
     if (screen < TOTAL_SCREENS - 1) {
       setScreen((s) => s + 1);
@@ -123,6 +110,38 @@ export function BracketWrapped({ data, onClose }: BracketWrappedProps) {
   const goPrev = useCallback(() => {
     if (screen > 0) setScreen((s) => s - 1);
   }, [screen]);
+
+  // Escape key + desktop arrow navigation
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      const target = e.target as HTMLElement | null;
+      if (target?.closest("input, textarea, select, button, a")) return;
+      if (e.key === "Escape") {
+        trackEvent("wrapped_closed", {
+          screen: screen + 1,
+          completed: screen === TOTAL_SCREENS - 1,
+        });
+        onClose();
+        return;
+      }
+      if (window.innerWidth < 768) return;
+      if (e.key === "ArrowLeft") {
+        e.preventDefault();
+        goPrev();
+        return;
+      }
+      if (e.key === "ArrowRight" && screen < TOTAL_SCREENS - 1) {
+        e.preventDefault();
+        goNext();
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [goNext, goPrev, onClose, screen]);
+
+  useEffect(() => {
+    setSubmitState(isBracketSubmitted ? "submitted" : "idle");
+  }, [isBracketSubmitted]);
 
   const handleClick = (e: React.MouseEvent<HTMLDivElement>) => {
     // Don't navigate if clicking a button or interactive element
@@ -145,16 +164,6 @@ export function BracketWrapped({ data, onClose }: BracketWrappedProps) {
     onClose();
   };
 
-  const handleCopyLink = () => {
-    navigator.clipboard.writeText(window.location.href);
-    trackEvent("wrapped_link_copied", {
-      chaosLabel: identity.chaosLabel,
-      champion: champion.teamName,
-    });
-    setLinkCopied(true);
-    setTimeout(() => setLinkCopied(false), 2000);
-  };
-
   const handleShareCard = async () => {
     try {
       await exportWrappedCard();
@@ -164,6 +173,25 @@ export function BracketWrapped({ data, onClose }: BracketWrappedProps) {
       });
     } catch (err) {
       console.error("Failed to export wrapped card:", err);
+    }
+  };
+
+  const handleSubmitBracket = async () => {
+    if (submitState === "submitting") return;
+    if (isBracketSubmitted) {
+      setSubmitState("submitted");
+      return;
+    }
+    setSubmitState("submitting");
+    const submitted = await onSubmitBracket();
+    if (submitted) {
+      trackEvent("wrapped_bracket_submitted", {
+        chaosLabel: identity.chaosLabel,
+        champion: champion.teamName,
+      });
+      setSubmitState("submitted");
+    } else {
+      setSubmitState("idle");
     }
   };
 
@@ -222,14 +250,22 @@ export function BracketWrapped({ data, onClose }: BracketWrappedProps) {
                   >
                     ← Review Story
                   </button>
-                  <div className="bw-screen5-cta-row">
-                    <button className="bw-btn bw-btn--primary" onClick={handleShareCard}>
-                      Share Card
+                  {submitState === "submitted" ? (
+                    <div className="bw-screen5-submit-state">
+                      <div className="bw-screen5-submit-success">✓ Bracket submitted</div>
+                      <button className="bw-btn bw-btn--primary bw-screen5-submit-btn" onClick={handleShareCard}>
+                        Share Card
+                      </button>
+                    </div>
+                  ) : (
+                    <button
+                      className="bw-btn bw-btn--primary bw-screen5-submit-btn"
+                      onClick={handleSubmitBracket}
+                      disabled={submitState === "submitting"}
+                    >
+                      {submitState === "submitting" ? "Submitting..." : "Submit Bracket"}
                     </button>
-                    <button className="bw-btn bw-btn--secondary" onClick={handleCopyLink}>
-                      {linkCopied ? "Copied!" : "Copy Link"}
-                    </button>
-                  </div>
+                  )}
                 </div>
               </div>
             )}

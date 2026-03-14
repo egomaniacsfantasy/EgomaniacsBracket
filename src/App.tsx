@@ -4593,6 +4593,8 @@ function App() {
       {showWrappedFlow && wrappedData ? (
         <BracketWrapped
           data={wrappedData}
+          isBracketSubmitted={currentBracketAlreadySubmitted}
+          onSubmitBracket={async () => Boolean(await onSaveBracket())}
           onClose={() => { setShowWrappedFlow(false); setWrappedSeen(true); }}
         />
       ) : null}

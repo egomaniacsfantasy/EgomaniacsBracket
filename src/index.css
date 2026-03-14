@@ -6912,7 +6912,7 @@ body {
 .group-modal-overlay {
   position: fixed;
   inset: 0;
-  z-index: 3500;
+  z-index: 11050;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -7044,6 +7044,14 @@ body {
   font-family: var(--font-mono);
   font-size: 12px;
   color: #e85d5d;
+  line-height: 1.5;
+}
+
+.group-success {
+  margin: 0;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: #9fe1b4;
   line-height: 1.5;
 }
 
@@ -14177,6 +14185,28 @@ body.walkthrough-active .odds-value--changed::after {
   width: 100%;
 }
 
+.predictor-standalone-shell {
+  position: relative;
+  min-height: 100vh;
+  overflow-x: clip;
+  background:
+    radial-gradient(900px 500px at 76% 15%, rgba(195, 136, 43, 0.08), transparent 60%),
+    linear-gradient(180deg, #0e0c09 0%, #0a0907 100%);
+}
+
+.predictor-standalone-main {
+  width: 100%;
+  min-height: 100vh;
+  margin: 0;
+  padding: 0;
+  max-width: none;
+  position: relative;
+}
+
+.predictor-standalone-body {
+  width: 100%;
+}
+
 .tool-page-footer {
   width: min(1120px, calc(100% - 48px));
   margin: 0 auto;
@@ -15509,6 +15539,10 @@ body.walkthrough-active .odds-value--changed::after {
   transition: opacity 150ms;
 }
 .bw-btn:hover { opacity: 0.85; }
+.bw-btn:disabled {
+  opacity: 0.55;
+  cursor: progress;
+}
 .bw-btn--primary { background: #b87d18; color: #080603; }
 .bw-btn--secondary {
   background: transparent;
@@ -15858,6 +15892,14 @@ body.walkthrough-active .odds-value--changed::after {
   width: min(100%, 420px);
 }
 
+.bw-screen5-submit-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+}
+
 .bw-screen5-review {
   display: inline-flex;
   align-items: center;
@@ -15896,6 +15938,31 @@ body.walkthrough-active .odds-value--changed::after {
   min-width: 0;
 }
 
+.bw-screen5-submit-btn {
+  width: 100%;
+  min-height: 48px;
+  border-radius: 12px;
+  font-size: 15px;
+  box-shadow: 0 0 20px rgba(184, 125, 24, 0.25);
+}
+
+.bw-screen5-submit-success {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 36px;
+  padding: 0 16px;
+  border-radius: 999px;
+  background: rgba(74, 222, 128, 0.08);
+  border: 1px solid rgba(74, 222, 128, 0.18);
+  color: #d7f3de;
+  font-family: "Space Grotesk", sans-serif;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
 @media (max-width: 767px) {
   .bw-screen5-wrap {
     gap: 10px;
@@ -15912,6 +15979,16 @@ body.walkthrough-active .odds-value--changed::after {
     min-height: 28px;
     padding: 0 12px;
     font-size: 10px;
+  }
+
+  .bw-screen5-submit-btn {
+    min-height: 44px;
+    font-size: 14px;
+  }
+
+  .bw-screen5-submit-success {
+    min-height: 34px;
+    font-size: 11px;
   }
 
   .bw-screen5-cta-row {
@@ -15937,15 +16014,8 @@ body.walkthrough-active .odds-value--changed::after {
   border-radius: 12px;
 }
 
-/* When standalone, make it a full-screen overlay */
-.bw-card-wrap:has(> .bw-close) {
-  position: fixed;
-  inset: 0;
-  z-index: 10000;
-  max-width: none;
-  border-radius: 0;
-  display: flex;
-  flex-direction: column;
+.bw-card-wrap--standalone {
+  box-shadow: 0 24px 80px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(184, 125, 24, 0.16);
 }
 
 .bw-card-content {
@@ -16306,6 +16376,19 @@ body.walkthrough-active .odds-value--changed::after {
   gap: 12px;
 }
 
+.bw-card-wrapper--standalone {
+  position: fixed;
+  inset: 0;
+  z-index: 10000;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  padding: 32px 16px 24px;
+  background: rgba(5, 4, 3, 0.94);
+}
+
 /* Card standalone actions */
 .bw-card-actions {
   display: flex;
@@ -16313,6 +16396,20 @@ body.walkthrough-active .odds-value--changed::after {
   justify-content: center;
   width: 100%;
   max-width: 420px;
+}
+
+@media (max-width: 767px) {
+  .bw-card-wrapper--standalone {
+    padding: 20px 12px 16px;
+  }
+
+  .bw-card-wrap--standalone {
+    max-width: 100%;
+  }
+
+  .bw-card-actions {
+    max-width: 100%;
+  }
 }
 
 /* ── Toolbar wrapped button ── */

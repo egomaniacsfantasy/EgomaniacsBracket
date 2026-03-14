@@ -9,7 +9,7 @@ import {
   renameBracket,
   saveBracket,
 } from "./bracketStorage";
-import { getUserGroups, type UserGroup } from "./groupStorage";
+import { getUserGroups, updateMemberBracket, type UserGroup } from "./groupStorage";
 import { gameTemplates } from "./data/bracket";
 import type { LockedPicks } from "./lib/bracket";
 
@@ -33,12 +33,17 @@ export function MyBracketsModal({
   const totalGames = gameTemplates.length;
   const { user } = useAuth();
   const [brackets, setBrackets] = useState<SavedBracket[]>([]);
+  const [userGroups, setUserGroups] = useState<UserGroup[]>([]);
   const [bracketGroups, setBracketGroups] = useState<Record<string, UserGroup[]>>({});
   const [loading, setLoading] = useState(true);
   const [editingName, setEditingName] = useState<string | null>(null);
   const [newName, setNewName] = useState("");
   const [workingAction, setWorkingAction] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
+  const [groupPickerBracketId, setGroupPickerBracketId] = useState<string | null>(null);
+  const [groupPickerSavingGroupId, setGroupPickerSavingGroupId] = useState<string | null>(null);
+  const [groupPickerError, setGroupPickerError] = useState<string | null>(null);
+  const [groupPickerSuccess, setGroupPickerSuccess] = useState<string | null>(null);
 
   const loadBrackets = async () => {
     if (!user) return;
@@ -52,6 +57,7 @@ export function MyBracketsModal({
         return map;
       }, {});
       setBrackets(bracketData);
+      setUserGroups(groupData ?? []);
       setBracketGroups(groupMap);
     } finally {
       setLoading(false);
@@ -109,10 +115,43 @@ export function MyBracketsModal({
     setWorkingAction(null);
   };
 
+  const openGroupPicker = (bracketId: string) => {
+    setGroupPickerBracketId(bracketId);
+    setGroupPickerSavingGroupId(null);
+    setGroupPickerError(null);
+    setGroupPickerSuccess(null);
+  };
+
+  const closeGroupPicker = () => {
+    setGroupPickerBracketId(null);
+    setGroupPickerSavingGroupId(null);
+    setGroupPickerError(null);
+    setGroupPickerSuccess(null);
+  };
+
+  const handleAssignBracketToGroup = async (groupId: string, bracketId: string) => {
+    if (!user) return;
+    setGroupPickerSavingGroupId(groupId);
+    setGroupPickerError(null);
+    setGroupPickerSuccess(null);
+    const { error } = await updateMemberBracket(groupId, user.id, bracketId);
+    if (error) {
+      setGroupPickerError((error as { message?: string })?.message ?? "Could not update the group bracket.");
+      setGroupPickerSavingGroupId(null);
+      return;
+    }
+    await loadBrackets();
+    const bracketName = brackets.find((candidate) => candidate.id === bracketId)?.bracket_name ?? "This bracket";
+    const groupName = userGroups.find((candidate) => candidate.id === groupId)?.name ?? "the group";
+    setGroupPickerSuccess(`${bracketName} is now active for ${groupName}.`);
+    setGroupPickerSavingGroupId(null);
+  };
+
   if (!isOpen) return null;
 
   const submittedCount = brackets.filter((bracket) => Boolean(bracket.submitted_at)).length;
   const submissionsLocked = brackets.some((bracket) => bracket.is_locked);
+  const groupPickerBracket = groupPickerBracketId ? brackets.find((bracket) => bracket.id === groupPickerBracketId) ?? null : null;
 
   return (
     <div className="auth-modal-backdrop" onClick={(event) => event.target === event.currentTarget && onClose()}>
@@ -225,6 +264,15 @@ export function MyBracketsModal({
                         >
                           Rename
                         </button>
+                        {userGroups.length > 0 ? (
+                          <button
+                            className="my-bracket-action-secondary"
+                            disabled={workingAction !== null}
+                            onClick={() => openGroupPicker(bracket.id)}
+                          >
+                            {assignedGroups.length > 0 ? "Change Group Bracket" : "Use in Group"}
+                          </button>
+                        ) : null}
                         <button className="my-bracket-action-danger" disabled={workingAction !== null} onClick={() => handleDelete(bracket.id)}>
                           Delete
                         </button>
@@ -243,6 +291,62 @@ export function MyBracketsModal({
           </div>
         )}
       </div>
+
+      {groupPickerBracket ? (
+        <div className="group-modal-overlay" onClick={closeGroupPicker}>
+          <div className="group-modal" onClick={(event) => event.stopPropagation()}>
+            <button className="group-modal-close-btn" onClick={closeGroupPicker}>
+              ✕
+            </button>
+            <div className="group-modal-header">
+              <span className="group-modal-icon">👥</span>
+              <h2 className="group-modal-title">Use this bracket in your groups</h2>
+              <p className="group-modal-subtitle">
+                Choose which group should use <strong>{groupPickerBracket.bracket_name}</strong>.
+              </p>
+            </div>
+            <div className="group-modal-body">
+              <div className="group-bracket-list">
+                {userGroups.map((group) => {
+                  const isCurrent = group.bracketId === groupPickerBracket.id;
+                  const currentBracketName = group.bracketId
+                    ? brackets.find((candidate) => candidate.id === group.bracketId)?.bracket_name ?? "Another bracket"
+                    : null;
+                  return (
+                    <div key={group.id} className={`group-bracket-option ${isCurrent ? "group-bracket-option--selected" : ""}`}>
+                      <div className="group-bracket-option-info">
+                        <span className="group-bracket-option-name">
+                          <span className="group-assignment-emoji">{group.emoji ?? "👥"}</span>
+                          {group.name}
+                        </span>
+                        <span className="group-bracket-option-meta">
+                          {isCurrent ? "Currently using this bracket" : currentBracketName ? `Currently: ${currentBracketName}` : "No bracket selected yet"}
+                        </span>
+                      </div>
+                      <button
+                        className="group-assignment-btn"
+                        disabled={isCurrent || groupPickerSavingGroupId !== null}
+                        onClick={() => void handleAssignBracketToGroup(group.id, groupPickerBracket.id)}
+                      >
+                        {isCurrent
+                          ? "Current"
+                          : groupPickerSavingGroupId === group.id
+                            ? "Saving..."
+                            : "Use This Bracket"}
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
+              {groupPickerError ? <p className="group-error">{groupPickerError}</p> : null}
+              {groupPickerSuccess ? <p className="group-success">{groupPickerSuccess}</p> : null}
+            </div>
+            <button className="group-secondary-btn group-secondary-btn--full" onClick={closeGroupPicker}>
+              Done
+            </button>
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }

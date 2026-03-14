@@ -4,11 +4,8 @@ import "./index.css";
 
 export function PredictorPage() {
   return (
-    <div className="eg-shell">
-      <div className="bg-glow" aria-hidden="true" />
-      <div className="bg-shape bg-top" aria-hidden="true" />
-      <div className="bg-shape bg-bottom" aria-hidden="true" />
-      <main className="eg-app eg-page-shell">
+    <div className="predictor-standalone-shell">
+      <main className="predictor-standalone-main">
         <TopNavBar
           activeView="predictor"
           authLoading={false}
@@ -22,7 +19,7 @@ export function PredictorPage() {
           onSignIn={() => window.location.assign("/")}
           onSignOut={() => {}}
         />
-        <div className="tool-page-body">
+        <div className="predictor-standalone-body tool-page-body">
           <MatchupPredictor displayMode="implied" />
         </div>
       </main>
