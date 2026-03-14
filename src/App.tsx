@@ -2569,6 +2569,7 @@ function App() {
   const regionE8Status = Object.fromEntries(
     mobileRegionOrder.map((region) => [region, games.some((game) => game.region === region && game.round === "E8" && game.winnerId !== null)])
   ) as Record<Region, boolean>;
+  const previousRegionE8StatusRef = useRef<Record<Region, boolean>>(regionE8Status);
   const allRegionE8Complete = mobileRegionOrder.every((region) =>
     regionE8Status[region]
   );
@@ -2608,6 +2609,30 @@ function App() {
     const preferred = getPreferredMobileRegionRound(games, mobileSection);
     setMobileRound((current) => (isRegionRoundAccessible(games, mobileSection, current) ? current : preferred));
   }, [games, mobileSection]);
+
+  useEffect(() => {
+    const previousRegionE8Status = previousRegionE8StatusRef.current;
+
+    if (!isMobile || mobileSection === "FF" || mobileRound !== "E8") {
+      previousRegionE8StatusRef.current = regionE8Status;
+      return;
+    }
+
+    const regionJustCompletedE8 = !previousRegionE8Status[mobileSection] && regionE8Status[mobileSection];
+    if (!regionJustCompletedE8) {
+      previousRegionE8StatusRef.current = regionE8Status;
+      return;
+    }
+
+    const currentRegionIndex = mobileRegionOrder.indexOf(mobileSection);
+    const nextRegion = currentRegionIndex >= 0 ? mobileRegionOrder[currentRegionIndex + 1] : null;
+    previousRegionE8StatusRef.current = regionE8Status;
+    if (!nextRegion) return;
+
+    setMobileSection(nextRegion);
+    setMobileRound("R64");
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }, [isMobile, mobileRound, mobileSection, regionE8Status]);
 
   useEffect(() => {
     if (mobileSection !== "FF") return;
