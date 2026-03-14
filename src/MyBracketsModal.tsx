@@ -8,8 +8,8 @@ import {
   getUserBrackets,
   renameBracket,
   saveBracket,
-  setBracketSubmissionStatus,
 } from "./bracketStorage";
+import { getUserGroups, type UserGroup } from "./groupStorage";
 import { gameTemplates } from "./data/bracket";
 import type { LockedPicks } from "./lib/bracket";
 
@@ -33,6 +33,7 @@ export function MyBracketsModal({
   const totalGames = gameTemplates.length;
   const { user } = useAuth();
   const [brackets, setBrackets] = useState<SavedBracket[]>([]);
+  const [bracketGroups, setBracketGroups] = useState<Record<string, UserGroup[]>>({});
   const [loading, setLoading] = useState(true);
   const [editingName, setEditingName] = useState<string | null>(null);
   const [newName, setNewName] = useState("");
@@ -42,9 +43,19 @@ export function MyBracketsModal({
   const loadBrackets = async () => {
     if (!user) return;
     setLoading(true);
-    const { data } = await getUserBrackets(user.id);
-    setBrackets(data);
-    setLoading(false);
+    try {
+      const [{ data: bracketData }, { data: groupData }] = await Promise.all([getUserBrackets(user.id), getUserGroups(user.id)]);
+      const groupMap = (groupData ?? []).reduce<Record<string, UserGroup[]>>((map, group) => {
+        if (!group.bracketId) return map;
+        const current = map[group.bracketId] ?? [];
+        map[group.bracketId] = [...current, group];
+        return map;
+      }, {});
+      setBrackets(bracketData);
+      setBracketGroups(groupMap);
+    } finally {
+      setLoading(false);
+    }
   };
 
   useEffect(() => {
@@ -98,38 +109,6 @@ export function MyBracketsModal({
     setWorkingAction(null);
   };
 
-  const handleOverwrite = async (bracketId: string, bracketName: string) => {
-    if (!user) return;
-    if (!window.confirm(`Overwrite "${bracketName}" with your current picks?`)) return;
-    setWorkingAction(`overwrite:${bracketId}`);
-    setActionError(null);
-    const { error } = await saveBracket(user.id, currentPicks, bracketName, bracketId, currentChaosScore, { submit: true });
-    if (error) {
-      setActionError((error as { message?: string })?.message ?? "Overwrite failed.");
-      setWorkingAction(null);
-      return;
-    }
-    await loadBrackets();
-    await onBracketsChanged?.();
-    setWorkingAction(null);
-  };
-
-  const handleUnsubmit = async (bracketId: string) => {
-    if (!user) return;
-    if (!window.confirm("Unsubmit this bracket? You can resubmit until tip-off lock.")) return;
-    setWorkingAction(`unsubmit:${bracketId}`);
-    setActionError(null);
-    const { error } = await setBracketSubmissionStatus(bracketId, user.id, false);
-    if (error) {
-      setActionError((error as { message?: string })?.message ?? "Unsubmit failed.");
-      setWorkingAction(null);
-      return;
-    }
-    await loadBrackets();
-    await onBracketsChanged?.();
-    setWorkingAction(null);
-  };
-
   if (!isOpen) return null;
 
   const submittedCount = brackets.filter((bracket) => Boolean(bracket.submitted_at)).length;
@@ -156,8 +135,12 @@ export function MyBracketsModal({
               const pickCount = Object.keys(bracket.picks ?? {}).length;
               const completionPct = Math.round((pickCount / totalGames) * 100);
               const isEditing = editingName === bracket.id;
+              const assignedGroups = bracketGroups[bracket.id] ?? [];
               return (
-                <div key={bracket.id} className="my-bracket-card-v2">
+                <div
+                  key={bracket.id}
+                  className={`my-bracket-card-v2${assignedGroups.length > 0 ? " my-bracket-card-v2--grouped" : ""}`}
+                >
                   <div className="my-bracket-card-v2-top">
                     {isEditing ? (
                       <div className="my-bracket-rename-v2">
@@ -202,6 +185,21 @@ export function MyBracketsModal({
                     <div className="my-bracket-progress-fill" style={{ width: `${completionPct}%` }} />
                   </div>
 
+                  {assignedGroups.length > 0 ? (
+                    <div className="my-bracket-group-list" aria-label="Groups using this bracket">
+                      {assignedGroups.map((group) => (
+                        <span key={group.id} className="my-bracket-group-chip">
+                          <span className="my-bracket-group-chip-emoji" aria-hidden="true">
+                            {group.emoji ?? "👥"}
+                          </span>
+                          <span className="my-bracket-group-chip-text">
+                            In group: <strong>{group.name}</strong>
+                          </span>
+                        </span>
+                      ))}
+                    </div>
+                  ) : null}
+
                   <div className="my-bracket-meta-v2">Updated {new Date(bracket.updated_at).toLocaleDateString()}</div>
 
                   <div className="my-bracket-actions-v2">
@@ -217,22 +215,6 @@ export function MyBracketsModal({
                     </button>
                     {!bracket.is_locked ? (
                       <>
-                        <button
-                          className="my-bracket-action-secondary"
-                          disabled={workingAction !== null}
-                          onClick={() => handleOverwrite(bracket.id, bracket.bracket_name)}
-                        >
-                          Overwrite
-                        </button>
-                        {bracket.submitted_at ? (
-                          <button
-                            className="my-bracket-action-secondary"
-                            disabled={workingAction !== null}
-                            onClick={() => handleUnsubmit(bracket.id)}
-                          >
-                            Unsubmit
-                          </button>
-                        ) : null}
                         <button
                           className="my-bracket-action-secondary"
                           disabled={workingAction !== null}

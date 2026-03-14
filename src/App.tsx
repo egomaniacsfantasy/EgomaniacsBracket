@@ -303,6 +303,10 @@ type GroupAssignmentPromptState = {
   bracket: SavedBracket;
   groups: UserGroup[];
 };
+type AppToastState = {
+  message: string;
+  tone: "default" | "success";
+};
 type ToolbarMenuId = "sim" | "reset" | "overflow";
 type RegionalRound = "FF" | "R64" | "R32" | "S16" | "E8";
 type ManualRoundExpansionState = Partial<Record<`${Region}-${RegionalRound}`, boolean>>;
@@ -671,7 +675,7 @@ function App() {
   const [topHalfManuallyExpanded, setTopHalfManuallyExpanded] = useState(false);
   const [bottomHalfManuallyExpanded, setBottomHalfManuallyExpanded] = useState(false);
   const [shareToastVisible, setShareToastVisible] = useState(false);
-  const [appToastMessage, setAppToastMessage] = useState<string | null>(null);
+  const [appToast, setAppToast] = useState<AppToastState | null>(null);
   const [shareModalVisible, setShareModalVisible] = useState(false);
   const [shareExporting, setShareExporting] = useState<ShareFormat | null>(null);
   const [chaosScoreChanged, setChaosScoreChanged] = useState(false);
@@ -851,13 +855,13 @@ function App() {
     setUserBrackets(data);
   };
 
-  const showAppToast = useCallback((message: string, durationMs = 2600) => {
-    setAppToastMessage(message);
+  const showAppToast = useCallback((message: string, durationMs = 2600, tone: AppToastState["tone"] = "default") => {
+    setAppToast({ message, tone });
     if (appToastTimerRef.current !== null) {
       window.clearTimeout(appToastTimerRef.current);
     }
     appToastTimerRef.current = window.setTimeout(() => {
-      setAppToastMessage(null);
+      setAppToast(null);
       appToastTimerRef.current = null;
     }, durationMs);
   }, []);
@@ -867,6 +871,13 @@ function App() {
     setGroupAssignmentSavingId(null);
     setGroupAssignmentError(null);
   }, []);
+
+  const closeGroupAssignmentPrompt = useCallback(() => {
+    if (groupAssignmentPrompt) {
+      showAppToast(`✓ ${groupAssignmentPrompt.bracket.bracket_name} submitted`, 2800, "success");
+    }
+    dismissGroupAssignmentPrompt();
+  }, [dismissGroupAssignmentPrompt, groupAssignmentPrompt, showAppToast]);
 
   const maybePromptForGroupAssignment = useCallback(
     async (savedBracket: SavedBracket | null) => {
@@ -906,9 +917,9 @@ function App() {
             ? { ...current, bracketId: groupAssignmentPrompt.bracket.id, memberCount: Math.max(1, current.memberCount) }
             : current,
         );
-        showAppToast(`Added ${groupAssignmentPrompt.bracket.bracket_name} to ${targetGroup.name}`);
+        showAppToast(`Added ${groupAssignmentPrompt.bracket.bracket_name} to ${targetGroup.name}`, 2600, "success");
       } else {
-        showAppToast("Bracket added to group");
+        showAppToast("Bracket added to group", 2600, "success");
       }
       setGroupAssignmentPrompt((current) => {
         if (!current) return null;
@@ -4502,7 +4513,7 @@ function App() {
           savingGroupId={groupAssignmentSavingId}
           error={groupAssignmentError}
           onAssign={(groupId) => void assignBracketToGroup(groupId)}
-          onClose={dismissGroupAssignmentPrompt}
+          onClose={closeGroupAssignmentPrompt}
         />
       ) : null}
 
@@ -4707,7 +4718,7 @@ function App() {
       ) : null}
 
       {shareToastVisible ? <div className="share-toast">Image saved! Share it on social media.</div> : null}
-      {appToastMessage ? <div className="share-toast">{appToastMessage}</div> : null}
+      {appToast ? <div className={`app-toast${appToast.tone === "success" ? " app-toast--success" : ""}`}>{appToast.message}</div> : null}
 
       {shareModalVisible ? (
         <>

@@ -15,14 +15,6 @@ type TeamOption = { id: number; name: string; conf: string };
 type VenueCode = "N" | "H" | "A";
 
 const bracketTeamByName = new Map(bracketTeams.map((team) => [team.name, team]));
-const PREDICTOR_LIGHTNING_DECORATIONS = [
-  { src: "/assets/lightning/lightning_bolt_1.png", className: "pred-lightning-deco pred-lightning-deco--tl" },
-  { src: "/assets/lightning/lightning_strike_horizontal.png", className: "pred-lightning-deco pred-lightning-deco--tr" },
-  { src: "/assets/lightning/lightning_bolt_5.png", className: "pred-lightning-deco pred-lightning-deco--mr" },
-  { src: "/assets/lightning/lightning_bolt_7.png", className: "pred-lightning-deco pred-lightning-deco--bl" },
-  { src: "/assets/lightning/lightning_bolt_3.png", className: "pred-lightning-deco pred-lightning-deco--br" },
-] as const;
-
 async function loadPredictorData(): Promise<void> {
   if (predictorTeamsCache) return;
   if (loadingPromise) return loadingPromise;
@@ -133,10 +125,10 @@ function PredictorBackground() {
     const ambientCanvas = ambientCanvasRef.current;
     const textCanvas = textCanvasRef.current;
     const boltCanvas = boltCanvasRef.current;
-    const section = scene?.parentElement;
+    const predictorPage = scene?.closest(".predictor-page");
     if (
       !(scene instanceof HTMLDivElement) ||
-      !(section instanceof HTMLElement) ||
+      !(predictorPage instanceof HTMLElement) ||
       !(ambientCanvas instanceof HTMLCanvasElement) ||
       !(textCanvas instanceof HTMLCanvasElement) ||
       !(boltCanvas instanceof HTMLCanvasElement)
@@ -173,13 +165,22 @@ function PredictorBackground() {
         "+105", "-190", "+180", "-240", "+3300", "-1800",
       ],
       lines: [
-        "DUKE ML -110", "HOU -450", "UK +220", "O/U 148.5", "NOVA -3.5",
-        "KU ML -175", "BAMA +7", "OU 151.0", "TENN -330", "AUB +14.5",
-        "ILL ML +310", "UCONN -6.5", "MSU +3 -108", "UF +380", "UNC -1.5",
+        "NE ML -110", "KC -450", "BUF +220", "LAR O/U 48.5",
+        "PHI -3.5", "SF ML -175", "DAL +7", "MIA O55.5",
+        "HOU -3300", "DEN +14.5", "ATL ML +310", "LV O/U 42",
+        "IND +6.5", "TEN ML -140", "GB -2.5 -115", "CLE +3 -108",
+        "NYG +380", "BAL -6.5", "SEA +240", "MIN -1.5",
       ],
       implied: [
         "45.3 WIN%", "61.2%", "28.6% IMP", "73.4%", "19.2% IMP",
-        "50.0%", "88.1%", "33.3%", "12.8% TITLE", "67.9%", "7.4% IMP", "94.2%",
+        "50.0%", "88.1%", "33.3%", "12.8% TITLE", "67.9%",
+        "7.4% IMP", "94.2%", "22.4% IMP", "15.1%", "8.3% CHAMP",
+      ],
+      baseball: [
+        ".344 AVG", "1.43 ERA", ".387 OBP", ".612 SLG", "142 wRC+",
+        "3.21 FIP", "0.98 WHIP", "34.2 K%", ".301/.388/.534",
+        "2.88 xFIP", "58.1 GB%", "11.4 K/9", "2.1 BB/9", "186 OPS+",
+        ".278 BABIP", "4.8 WAR", ".412 wOBA", "96.2 EV", "47.3 LA",
       ],
       basketball: [
         "KP #4", "AdjEM 28.4", "AdjO 118.2", "AdjD 89.4", "BPI 94.3",
@@ -188,14 +189,22 @@ function PredictorBackground() {
         "+14.2 NET", "31.8 PACE", "103.4 ORTG", "22-6 SU", "18-10 ATS",
         "BARTHAG .942", "WAB +4.2", "LUCK +0.038",
       ],
+      football: [
+        "4,832 YDS", "38 TD", "118.4 RTG", "71.2 CMP%", "8.4 Y/A",
+        "QBR 84.2", "2,066 RYD", "6.3 YPC", "14.2 YPR", "DVOA +24.8",
+        "EPA/P 0.24", "CPOE +4.1", "ANY/A 8.3", "3rd 48.2%",
+        "RZ TD 84%", "SR 52.3%", "TPRK 4", "PROE +3.8", "WPA 4.22",
+      ],
       roman: [
         "XIV", "XLVIII", "IX", "MMXXV", "XCIX", "IV", "LXIII", "LVII",
-        "XXXII", "XVI", "XLII", "LI", "VII", "XCVIII", "MMXXIV", "LXVI",
+        "XXXII", "XVI", "XLII", "LI", "VII", "XCVIII",
+        "MMXXIV", "LXVI", "XLIV", "LXXXVIII",
       ],
       greek: ["Σ", "Δ", "μ", "σ", "π", "Ω", "β", "λ", "φ", "θ"],
       latin: [
         "ALEA IACTA EST", "SORS", "EVENTUS", "PROBABILITAS", "CALCULUS", "FATA",
-        "FORTES FORTUNA", "FATA VIAM INVENIENT", "RATIO", "NUMERUS", "CASUS",
+        "FORTES FORTUNA", "FATA VIAM INVENIENT", "SORS IMMANIS", "RATIO", "NUMERUS",
+        "VINCULUM", "CASUS", "FORTUNA AUDACES IUVAT",
       ],
     } as const;
 
@@ -205,7 +214,9 @@ function PredictorBackground() {
       roman: { font: "serif" as const, min: 12, max: 34, base: 0.045, maxOpacity: 0.08 },
       implied: { font: "mono" as const, min: 8, max: 13, base: 0.045, maxOpacity: 0.075 },
       lines: { font: "mono" as const, min: 8, max: 12, base: 0.04, maxOpacity: 0.07 },
+      baseball: { font: "mono" as const, min: 8, max: 11, base: 0.038, maxOpacity: 0.068 },
       basketball: { font: "mono" as const, min: 8, max: 11, base: 0.038, maxOpacity: 0.068 },
+      football: { font: "mono" as const, min: 8, max: 11, base: 0.038, maxOpacity: 0.068 },
       latin: { font: "serif" as const, min: 7, max: 13, base: 0.035, maxOpacity: 0.06 },
     };
 
@@ -314,7 +325,7 @@ function PredictorBackground() {
     const buildCategorySequence = (count: number, rng: () => number) => {
       const weighted = [
         "odds", "odds", "lines", "lines", "implied", "implied",
-        "basketball", "basketball", "roman", "greek", "latin",
+        "baseball", "basketball", "football", "roman", "greek", "latin",
       ] as const;
       return Array.from({ length: count }, () => weighted[Math.floor(rng() * weighted.length)]);
     };
@@ -327,25 +338,23 @@ function PredictorBackground() {
 
     const buildSafeZones = (): BackgroundRect[] => {
       const zones: BackgroundRect[] = [];
-      const sectionRect = section.getBoundingClientRect();
 
-      section
+      predictorPage
         .querySelectorAll(".pred-header, .pred-arena, .pred-venue-wrap, .pred-results, .pred-empty-state, .pred-footer, .pred-status")
         .forEach((element) => {
           if (!(element instanceof HTMLElement)) return;
           const rect = element.getBoundingClientRect();
           if (rect.width < 2 || rect.height < 2) return;
           zones.push({
-            x: rect.left - sectionRect.left - 28,
-            y: rect.top - sectionRect.top - 18,
+            x: rect.left - 28,
+            y: rect.top - 18,
             w: rect.width + 56,
             h: rect.height + 36,
           });
         });
 
-      zones.push({ x: width * 0.16, y: height * 0.12, w: width * 0.68, h: height * 0.72 });
-      zones.push({ x: 0, y: height * 0.28, w: width * 0.18, h: height * 0.34 });
-      zones.push({ x: width * 0.82, y: height * 0.22, w: width * 0.18, h: height * 0.38 });
+      zones.push({ x: 0, y: height * 0.2, w: width * 0.55, h: height * 0.6 });
+      zones.push({ x: width * 0.55, y: height * 0.1, w: width * 0.43, h: height * 0.8 });
       return zones;
     };
 
@@ -451,8 +460,8 @@ function PredictorBackground() {
 
     const resizeCanvases = () => {
       dpr = Math.max(1, Math.min(2, window.devicePixelRatio || 1));
-      width = Math.max(1, Math.floor(section.clientWidth));
-      height = Math.max(window.innerHeight, section.scrollHeight);
+      width = window.innerWidth;
+      height = window.innerHeight;
 
       [ambientCanvas, textCanvas, boltCanvas].forEach((canvas) => {
         canvas.width = Math.floor(width * dpr);
@@ -725,8 +734,8 @@ function PredictorBackground() {
     startAnimations();
 
     resizeObserver = new ResizeObserver(onResize);
-    resizeObserver.observe(section);
-    const content = section.querySelector(".pred-content");
+    resizeObserver.observe(predictorPage);
+    const content = predictorPage.querySelector(".pred-content");
     if (content instanceof HTMLElement) {
       resizeObserver.observe(content);
     }
@@ -758,9 +767,6 @@ function PredictorBackground() {
     <div className="pred-bg-scene" ref={sceneRef} aria-hidden="true">
       <canvas className="pred-lightning-ambient" ref={ambientCanvasRef} />
       <div className="pred-grain" />
-      {PREDICTOR_LIGHTNING_DECORATIONS.map((decoration) => (
-        <img key={decoration.src} className={decoration.className} src={decoration.src} alt="" />
-      ))}
       <canvas className="pred-lightning-text" ref={textCanvasRef} />
       <canvas className="pred-lightning-bolts" ref={boltCanvasRef} />
     </div>
