@@ -126,6 +126,7 @@ const URL_REGION_ORDER: Region[] = ["South", "West", "East", "Midwest"];
 const URL_ROUND_ORDER: ResolvedGame["round"][] = ["FF", "R64", "R32", "S16", "E8", "F4", "CHAMP"];
 const URL_EXPECTED_GAME_COUNT = gameTemplates.length;
 const URL_EXPECTED_BITS = URL_EXPECTED_GAME_COUNT * 2;
+const SUBMIT_EXPECTED_PICK_COUNT = gameTemplates.filter((game) => game.round !== "FF").length;
 const MOBILE_TAB_BODY_CLASSES = [
   "mobile-tab-bracket",
   "mobile-tab-futures",
@@ -181,6 +182,13 @@ const canonicalGameTemplates = (() => {
 
 const canonicalGameIds = canonicalGameTemplates.map((game) => game.id);
 const canonicalTemplateById = new Map(canonicalGameTemplates.map((game) => [game.id, game]));
+
+function buildPicksSignature(picks: LockedPicks): string {
+  return Object.entries(sanitizeLockedPicks(picks))
+    .sort(([gameIdA], [gameIdB]) => gameIdA.localeCompare(gameIdB))
+    .map(([gameId, winnerId]) => `${gameId}:${winnerId}`)
+    .join("|");
+}
 
 function bitsToBase64Url(bitString: string): string {
   const padded = bitString.padEnd(Math.ceil(bitString.length / 8) * 8, "0");
@@ -1645,17 +1653,28 @@ function App() {
     const count = games.filter(
       (game) => game.round !== "FF" && Boolean(game.winnerId && game.teamAId && game.teamBId)
     ).length;
-    return Math.min(URL_EXPECTED_GAME_COUNT, count);
+    return Math.min(SUBMIT_EXPECTED_PICK_COUNT, count);
   }, [games]);
 
   const chaosScore = useMemo(() => computeChaosScoreFromGames(games), [games]);
+  const currentPicksSignature = useMemo(() => buildPicksSignature(sanitized), [sanitized]);
   const submittedBracketCount = useMemo(
     () => userBrackets.filter((bracket) => Boolean(bracket.submitted_at)).length,
     [userBrackets]
   );
+  const currentSubmittedBracket = useMemo(
+    () =>
+      userBrackets.find(
+        (bracket) =>
+          Boolean(bracket.submitted_at) &&
+          buildPicksSignature(deserializePicks(bracket.picks)) === currentPicksSignature,
+      ) ?? null,
+    [currentPicksSignature, userBrackets],
+  );
   const submissionsLocked = useMemo(() => userBrackets.some((bracket) => bracket.is_locked), [userBrackets]);
-  const bracketComplete = pickCount >= URL_EXPECTED_GAME_COUNT;
+  const bracketComplete = pickCount >= SUBMIT_EXPECTED_PICK_COUNT;
   const submissionLimitReached = submittedBracketCount >= MAX_SUBMITTED_BRACKETS;
+  const currentBracketAlreadySubmitted = Boolean(currentSubmittedBracket);
   const canSubmitBrackets = isAuthenticated && !submissionsLocked && !submissionLimitReached;
   const pickedChaosGameIds = useMemo(() => getPickedChaosGameIds(games), [games]);
   const chaosPercentile = useMemo(() => {
@@ -2091,9 +2110,16 @@ function App() {
       return null;
     }
 
+    if (currentSubmittedBracket) {
+      setSaveStatus("saved");
+      setSaveErrorText(null);
+      queueSaveStatusReset(2000);
+      return currentSubmittedBracket;
+    }
+
     if (!bracketComplete) {
       setSaveStatus("error");
-      setSaveErrorText(`Complete all ${URL_EXPECTED_GAME_COUNT} picks before submitting.`);
+      setSaveErrorText(`Complete all ${SUBMIT_EXPECTED_PICK_COUNT} picks before submitting.`);
       queueSaveStatusReset(3000, true);
       return null;
     }
@@ -2141,6 +2167,8 @@ function App() {
     setProbPopup(null);
     setShowCompletionCelebration(false);
     setCustomProbByGame({});
+    setSaveStatus(null);
+    setSaveErrorText(null);
     setLockedPicks(picks);
     setMainView("bracket");
     setMobileTab("bracket");
@@ -2180,7 +2208,7 @@ function App() {
     setLinkCopied(true);
     trackEvent("bracket_link_copied", {
       total_picks: Object.keys(sanitized).length,
-      bracket_complete: Object.keys(sanitized).length === URL_EXPECTED_GAME_COUNT,
+      bracket_complete: pickCount === SUBMIT_EXPECTED_PICK_COUNT,
     });
 
     if (copyLinkTimerRef.current !== null) {
@@ -3310,12 +3338,14 @@ function App() {
   const showInlineFirstFour = playInGames.length > 0 && !allPlayInDecided;
   const showToolbarFirstFour = isMobile ? showMobileFirstFourButton : showInlineFirstFour;
   const showToolbarGroups = !isMobile || (isMobile && !showToolbarFirstFour);
-  const showToolbarSubmitAction = !isMobile || bracketComplete || saveStatus !== null;
+  const showToolbarSubmitAction = !isMobile || bracketComplete || currentBracketAlreadySubmitted || saveStatus !== null;
   const firstFourInlineProgress = playInGames.length > 0 ? `${decidedPlayInCount}/${playInGames.length}` : null;
   const submitButtonTitle = !isAuthenticated
     ? "Sign in to submit your bracket"
+    : currentBracketAlreadySubmitted
+      ? "This bracket is already submitted"
     : !bracketComplete
-      ? `Complete all ${URL_EXPECTED_GAME_COUNT} picks to submit`
+      ? `Complete all ${SUBMIT_EXPECTED_PICK_COUNT} picks to submit`
       : submissionsLocked
         ? "Submissions locked at tip-off"
         : submissionLimitReached
@@ -3323,11 +3353,11 @@ function App() {
           : `Submitted: ${submittedBracketCount}/${MAX_SUBMITTED_BRACKETS}`;
   const submitButtonLabel = saveStatus === "saving"
     ? "Submitting..."
-    : saveStatus === "saved"
+    : saveStatus === "saved" || currentBracketAlreadySubmitted
       ? "✓ Submitted"
       : saveStatus === "error"
         ? (saveErrorText?.toLowerCase().includes("complete all")
-            ? `Complete ${URL_EXPECTED_GAME_COUNT} picks`
+            ? `Complete ${SUBMIT_EXPECTED_PICK_COUNT} picks`
             : saveErrorText?.includes(String(MAX_SUBMITTED_BRACKETS))
               ? `Limit reached (${MAX_SUBMITTED_BRACKETS}/${MAX_SUBMITTED_BRACKETS})`
               : saveErrorText?.toLowerCase().includes("locked")
@@ -3760,7 +3790,7 @@ function App() {
     pickCount === 0 || chaosScore === null
       ? 100
       : Math.max(0, Math.min(100, Math.round((1 - chaosScore / Math.max(1, pickCount)) * 100)));
-  const displayedPickCount = Math.min(pickCount, URL_EXPECTED_GAME_COUNT);
+  const displayedPickCount = Math.min(pickCount, SUBMIT_EXPECTED_PICK_COUNT);
   const futuresOddsLabel = (prob: number): string => {
     if (displayMode === "american" && prob <= 0) return "0%";
     return formatOddsDisplay(prob, displayMode).primary;
@@ -4508,7 +4538,7 @@ function App() {
             <p className="chaos-desc">
               Your Chaos Score sums -ln(model win probability) across your picked winners. Higher means a more upset-heavy bracket.
             </p>
-            {chaosPercentile !== null && pickCount === URL_EXPECTED_GAME_COUNT ? (
+            {chaosPercentile !== null && pickCount === SUBMIT_EXPECTED_PICK_COUNT ? (
               <p className="chaos-pct">
                 More upset-heavy than <strong>{Math.round(chaosPercentile)}%</strong> of simulated full brackets.
               </p>
