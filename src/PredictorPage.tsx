@@ -1,5 +1,4 @@
 import { MatchupPredictor } from "./MatchupPredictor";
-import { StandaloneFooter } from "./SiteChrome";
 import { TopNavBar } from "./TopNavBar";
 import "./index.css";
 
@@ -26,7 +25,6 @@ export function PredictorPage() {
         <div className="tool-page-body">
           <MatchupPredictor displayMode="implied" />
         </div>
-        <StandaloneFooter />
       </main>
     </div>
   );
