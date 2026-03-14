@@ -941,12 +941,17 @@ function App() {
 
     const url = new URL(window.location.href);
     const code = url.searchParams.get("join") ?? url.searchParams.get("code");
-    if (!code) return;
-
-    setJoinCode(code.toUpperCase());
-    url.searchParams.delete("join");
-    url.searchParams.delete("code");
-    window.history.replaceState({}, "", `${url.pathname}${url.search}${url.hash}`);
+    if (code) {
+      const upper = code.toUpperCase();
+      setJoinCode(upper);
+      sessionStorage.setItem("pendingJoinCode", upper);
+      url.searchParams.delete("join");
+      url.searchParams.delete("code");
+      window.history.replaceState({}, "", `${url.pathname}${url.search}${url.hash}`);
+    } else {
+      const saved = sessionStorage.getItem("pendingJoinCode");
+      if (saved) setJoinCode(saved);
+    }
   }, []);
 
   useEffect(() => {
@@ -4519,10 +4524,12 @@ function App() {
         onClose={() => {
           setJoinGroupOpen(false);
           setJoinCode(null);
+          sessionStorage.removeItem("pendingJoinCode");
         }}
         onGroupJoined={() => {
           setJoinGroupOpen(false);
           setJoinCode(null);
+          sessionStorage.removeItem("pendingJoinCode");
           setGroupsHubOpen(true);
         }}
         initialCode={joinCode || undefined}

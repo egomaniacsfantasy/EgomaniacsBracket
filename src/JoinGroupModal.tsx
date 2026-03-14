@@ -51,11 +51,17 @@ export function JoinGroupModal({
     setStep("bracket");
   }, [user]);
 
+  // Always pre-fill the code input when initialCode changes
+  useEffect(() => {
+    if (!isOpen || !initialCode || step !== "code") return;
+    setCode(initialCode);
+  }, [initialCode, isOpen, step]);
+
+  // Auto-lookup once user is available
   useEffect(() => {
     if (!isOpen || !initialCode || step !== "code" || !user) return;
 
     const timeoutId = window.setTimeout(() => {
-      setCode(initialCode);
       void lookupGroup(initialCode);
     }, 100);
 
