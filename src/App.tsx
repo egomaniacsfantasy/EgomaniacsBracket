@@ -35,7 +35,7 @@ import { CreateGroupModal } from "./CreateGroupModal";
 import { JoinGroupModal } from "./JoinGroupModal";
 import { GroupsHub } from "./GroupsHub";
 import { GroupDetailView } from "./GroupDetailView";
-import { deserializePicks, getUserBrackets, saveBracket, serializePicks, type SavedBracket } from "./bracketStorage";
+import { MAX_SUBMITTED_BRACKETS, deserializePicks, getUserBrackets, saveBracket, serializePicks, type SavedBracket } from "./bracketStorage";
 import { TEAM_STAT_IMPORTANCE, TEAM_STAT_ORDER, TEAM_STATS_2026, type TeamStatKey } from "./data/teamStats2026";
 import type { OddsDisplayMode, Region, ResolvedGame, SimulationOutput } from "./types";
 import { computeWrappedData, type WrappedData } from "./lib/wrappedData";
@@ -44,7 +44,7 @@ import { BracketWrappedCard } from "./BracketWrappedCard";
 import { MobileOnboarding } from "./MobileOnboarding";
 import { OverflowMenu, type OverflowMenuItem } from "./OverflowMenu";
 import { TopNavBar, type TopNavView } from "./TopNavBar";
-import type { UserGroup } from "./groupStorage";
+import { getUserGroups, updateMemberBracket, type UserGroup } from "./groupStorage";
 
 const DEFAULT_SIM_RUNS = 10000;
 const CHAOS_DISTRIBUTION_SIM_RUNS = 10000;
@@ -293,6 +293,10 @@ type ResetModalConfig = {
   message: string;
   confirmLabel: string;
   onConfirm: () => void;
+};
+type GroupAssignmentPromptState = {
+  bracket: SavedBracket;
+  groups: UserGroup[];
 };
 type ToolbarMenuId = "sim" | "reset" | "overflow";
 type RegionalRound = "FF" | "R64" | "R32" | "S16" | "E8";
@@ -651,6 +655,9 @@ function App() {
   const [joinGroupOpen, setJoinGroupOpen] = useState(false);
   const [activeGroup, setActiveGroup] = useState<UserGroup | null>(null);
   const [userBrackets, setUserBrackets] = useState<SavedBracket[]>([]);
+  const [groupAssignmentPrompt, setGroupAssignmentPrompt] = useState<GroupAssignmentPromptState | null>(null);
+  const [groupAssignmentSavingId, setGroupAssignmentSavingId] = useState<string | null>(null);
+  const [groupAssignmentError, setGroupAssignmentError] = useState<string | null>(null);
   const [leaderboardRefreshKey, setLeaderboardRefreshKey] = useState(0);
   const [hasLoadedDesktopLeaderboard, setHasLoadedDesktopLeaderboard] = useState(false);
   const [promoCTAVisible, setPromoCTAVisible] = useState(false);
@@ -837,6 +844,53 @@ function App() {
     setUserBrackets(data);
   };
 
+  const dismissGroupAssignmentPrompt = useCallback(() => {
+    setGroupAssignmentPrompt(null);
+    setGroupAssignmentSavingId(null);
+    setGroupAssignmentError(null);
+  }, []);
+
+  const maybePromptForGroupAssignment = useCallback(
+    async (savedBracket: SavedBracket | null) => {
+      if (!user || !savedBracket) return;
+      const { data: groups } = await getUserGroups(user.id);
+      const eligibleGroups = groups.filter((group) => !group.bracketId);
+      if (eligibleGroups.length === 0) {
+        dismissGroupAssignmentPrompt();
+        return;
+      }
+      setGroupAssignmentPrompt({
+        bracket: savedBracket,
+        groups: eligibleGroups,
+      });
+      setGroupAssignmentSavingId(null);
+      setGroupAssignmentError(null);
+    },
+    [dismissGroupAssignmentPrompt, user],
+  );
+
+  const assignBracketToGroup = useCallback(
+    async (groupId: string) => {
+      if (!user || !groupAssignmentPrompt) return;
+      setGroupAssignmentSavingId(groupId);
+      setGroupAssignmentError(null);
+      const { error } = await updateMemberBracket(groupId, user.id, groupAssignmentPrompt.bracket.id);
+      if (error) {
+        setGroupAssignmentSavingId(null);
+        setGroupAssignmentError(error.message || "Failed to add bracket to group.");
+        return;
+      }
+      setGroupAssignmentSavingId(null);
+      setGroupAssignmentPrompt((current) => {
+        if (!current) return null;
+        const remainingGroups = current.groups.filter((group) => group.id !== groupId);
+        return remainingGroups.length > 0 ? { ...current, groups: remainingGroups } : null;
+      });
+      setGroupAssignmentError(null);
+    },
+    [groupAssignmentPrompt, user],
+  );
+
   useEffect(() => {
     refreshUserBrackets();
   }, [user]);
@@ -844,6 +898,12 @@ function App() {
   useEffect(() => {
     if (isAuthenticated) setAuthModalOpen(false);
   }, [isAuthenticated]);
+
+  useEffect(() => {
+    if (!user) {
+      dismissGroupAssignmentPrompt();
+    }
+  }, [dismissGroupAssignmentPrompt, user]);
 
   useEffect(() => {
     if (isAuthenticated && promoCTAVisible) setPromoCTAVisible(false);
@@ -1594,7 +1654,8 @@ function App() {
     [userBrackets]
   );
   const submissionsLocked = useMemo(() => userBrackets.some((bracket) => bracket.is_locked), [userBrackets]);
-  const submissionLimitReached = submittedBracketCount >= 25;
+  const bracketComplete = pickCount >= URL_EXPECTED_GAME_COUNT;
+  const submissionLimitReached = submittedBracketCount >= MAX_SUBMITTED_BRACKETS;
   const canSubmitBrackets = isAuthenticated && !submissionsLocked && !submissionLimitReached;
   const pickedChaosGameIds = useMemo(() => getPickedChaosGameIds(games), [games]);
   const chaosPercentile = useMemo(() => {
@@ -2010,46 +2071,62 @@ function App() {
     });
   };
 
-  const onSaveBracket = async () => {
+  const onSaveBracket = async (): Promise<SavedBracket | null> => {
+    const queueSaveStatusReset = (delayMs: number, clearError = false) => {
+      if (saveStatusTimerRef.current !== null) {
+        window.clearTimeout(saveStatusTimerRef.current);
+      }
+      saveStatusTimerRef.current = window.setTimeout(() => {
+        setSaveStatus(null);
+        if (clearError) {
+          setSaveErrorText(null);
+        }
+        saveStatusTimerRef.current = null;
+      }, delayMs);
+    };
+
     if (!isAuthenticated || !user) {
       window.sessionStorage.setItem("pendingBracketSave", JSON.stringify(serializePicks(sanitized)));
       setAuthModalOpen(true);
-      return;
+      return null;
+    }
+
+    if (!bracketComplete) {
+      setSaveStatus("error");
+      setSaveErrorText(`Complete all ${URL_EXPECTED_GAME_COUNT} picks before submitting.`);
+      queueSaveStatusReset(3000, true);
+      return null;
     }
 
     if (submissionsLocked) {
       setSaveStatus("error");
       setSaveErrorText("Submissions are locked at tip-off.");
-      return;
+      queueSaveStatusReset(3000, true);
+      return null;
     }
     if (submissionLimitReached) {
       setSaveStatus("error");
-      setSaveErrorText("Submission limit reached (25/25)");
-      return;
+      setSaveErrorText(`Submission limit reached (${MAX_SUBMITTED_BRACKETS}/${MAX_SUBMITTED_BRACKETS})`);
+      queueSaveStatusReset(3000, true);
+      return null;
     }
 
     setSaveStatus("saving");
-    const defaultName = submittedBracketCount === 0 ? "My Bracket" : `Bracket #${Math.min(25, submittedBracketCount + 1)}`;
-    const { error } = await saveBracket(user.id, sanitized, defaultName, null, chaosScore ?? 0, { submit: true });
+    const defaultName =
+      submittedBracketCount === 0 ? "My Bracket" : `Bracket #${Math.min(MAX_SUBMITTED_BRACKETS, submittedBracketCount + 1)}`;
+    const { data, error } = await saveBracket(user.id, sanitized, defaultName, null, chaosScore ?? 0, { submit: true });
     if (error) {
       setSaveStatus("error");
       setSaveErrorText((error as { message?: string })?.message ?? "Save failed");
-      if (saveStatusTimerRef.current !== null) window.clearTimeout(saveStatusTimerRef.current);
-      saveStatusTimerRef.current = window.setTimeout(() => {
-        setSaveStatus(null);
-        setSaveErrorText(null);
-        saveStatusTimerRef.current = null;
-      }, 3000);
-      return;
+      queueSaveStatusReset(3000, true);
+      return null;
     }
     await refreshUserBrackets();
+    await maybePromptForGroupAssignment((data as SavedBracket | null) ?? null);
     setSaveStatus("saved");
     setSaveErrorText(null);
-    if (saveStatusTimerRef.current !== null) window.clearTimeout(saveStatusTimerRef.current);
-    saveStatusTimerRef.current = window.setTimeout(() => {
-      setSaveStatus(null);
-      saveStatusTimerRef.current = null;
-    }, 2000);
+    queueSaveStatusReset(2000);
+    return (data as SavedBracket | null) ?? null;
   };
 
   const onLoadSavedBracket = (bracket: SavedBracket) => {
@@ -2120,8 +2197,10 @@ function App() {
       await onSaveBracket();
       return;
     }
-    await onSaveBracket();
-    setShowCompletionCelebration(false);
+    const savedBracket = await onSaveBracket();
+    if (savedBracket) {
+      setShowCompletionCelebration(false);
+    }
   };
 
   const onCloseShareModal = () => {
@@ -3206,7 +3285,30 @@ function App() {
   const showInlineFirstFour = playInGames.length > 0 && !allPlayInDecided;
   const showToolbarFirstFour = isMobile ? showMobileFirstFourButton : showInlineFirstFour;
   const showToolbarGroups = !isMobile || (isMobile && !showToolbarFirstFour);
+  const showToolbarSubmitAction = !isMobile || bracketComplete || saveStatus !== null;
   const firstFourInlineProgress = playInGames.length > 0 ? `${decidedPlayInCount}/${playInGames.length}` : null;
+  const submitButtonTitle = !isAuthenticated
+    ? "Sign in to submit your bracket"
+    : !bracketComplete
+      ? `Complete all ${URL_EXPECTED_GAME_COUNT} picks to submit`
+      : submissionsLocked
+        ? "Submissions locked at tip-off"
+        : submissionLimitReached
+          ? `Submission limit reached (${MAX_SUBMITTED_BRACKETS}/${MAX_SUBMITTED_BRACKETS})`
+          : `Submitted: ${submittedBracketCount}/${MAX_SUBMITTED_BRACKETS}`;
+  const submitButtonLabel = saveStatus === "saving"
+    ? "Submitting..."
+    : saveStatus === "saved"
+      ? "✓ Submitted"
+      : saveStatus === "error"
+        ? (saveErrorText?.toLowerCase().includes("complete all")
+            ? `Complete ${URL_EXPECTED_GAME_COUNT} picks`
+            : saveErrorText?.includes(String(MAX_SUBMITTED_BRACKETS))
+              ? `Limit reached (${MAX_SUBMITTED_BRACKETS}/${MAX_SUBMITTED_BRACKETS})`
+              : saveErrorText?.toLowerCase().includes("locked")
+                ? "Submissions locked"
+                : "Error — try again")
+        : `Submit Bracket ${isAuthenticated ? `(${submittedBracketCount}/${MAX_SUBMITTED_BRACKETS})` : ""}`;
 
   const overflowPrimaryItems: OverflowMenuItem[] = [
     ...(isMobile
@@ -3218,20 +3320,16 @@ function App() {
             onRequestResetAll();
           },
         },
-        {
+        ...(!showToolbarSubmitAction
+          ? [{
           id: "submit-bracket",
-          label: saveStatus === "saving"
-            ? "Submitting..."
-            : saveStatus === "saved"
-              ? "✓ Submitted"
-              : saveStatus === "error"
-                ? "Error — try again"
-                : `Submit Bracket ${isAuthenticated ? `(${submittedBracketCount}/25)` : ""}`,
+          label: submitButtonLabel,
           onSelect: () => {
             setOpenToolbarMenu(null);
-            onSaveBracket();
+            void onSaveBracket();
           },
-        },
+        }]
+          : []),
         ...(!showToolbarGroups
           ? [{
               id: "groups",
@@ -3427,6 +3525,17 @@ function App() {
           </button>
         ) : null}
 
+        {isMobile && showToolbarSubmitAction ? (
+          <button
+            onClick={() => void onSaveBracket()}
+            className="eg-btn toolbar-btn--save toolbar-btn--save-action"
+            disabled={saveStatus === "saving" || (isAuthenticated && !canSubmitBrackets)}
+            title={submitButtonTitle}
+          >
+            {submitButtonLabel}
+          </button>
+        ) : null}
+
         {!isMobile ? (
           <button
             onClick={() => {
@@ -3508,30 +3617,12 @@ function App() {
 
         {!isMobile ? (
           <button
-            onClick={onSaveBracket}
+            onClick={() => void onSaveBracket()}
             className="eg-btn toolbar-btn--save toolbar-btn--save-action"
             disabled={saveStatus === "saving" || (isAuthenticated && !canSubmitBrackets)}
-            title={
-              !isAuthenticated
-                ? "Sign in to submit your bracket"
-                : submissionsLocked
-                  ? "Submissions locked at tip-off"
-                  : submissionLimitReached
-                    ? "Submission limit reached (25/25)"
-                    : `Submitted: ${submittedBracketCount}/25`
-            }
+            title={submitButtonTitle}
           >
-            {saveStatus === "saving"
-              ? "Submitting..."
-              : saveStatus === "saved"
-                ? "✓ Submitted"
-                : saveStatus === "error"
-                  ? (saveErrorText?.includes("25")
-                      ? "Submission limit reached (25/25)"
-                      : saveErrorText?.toLowerCase().includes("locked")
-                        ? "Submissions locked"
-                        : "Error — try again")
-                  : `Submit Bracket ${isAuthenticated ? `(${submittedBracketCount}/25)` : ""}`}
+            {submitButtonLabel}
           </button>
         ) : null}
 
@@ -4338,6 +4429,17 @@ function App() {
         }}
       />
 
+      {groupAssignmentPrompt ? (
+        <GroupAssignmentPrompt
+          bracketName={groupAssignmentPrompt.bracket.bracket_name}
+          groups={groupAssignmentPrompt.groups}
+          savingGroupId={groupAssignmentSavingId}
+          error={groupAssignmentError}
+          onAssign={(groupId) => void assignBracketToGroup(groupId)}
+          onClose={dismissGroupAssignmentPrompt}
+        />
+      ) : null}
+
       <GroupDetailView
         group={activeGroup}
         isOpen={Boolean(activeGroup)}
@@ -4622,11 +4724,74 @@ function PromoCTA({
           Submit your bracket and compete against everyone on our leaderboard. The most accurate bracket wins $100
           after the championship.
         </p>
-        <p className="promo-cta-detail">Free to enter. Up to 25 brackets per account.</p>
+        <p className="promo-cta-detail">Free to enter. Up to {MAX_SUBMITTED_BRACKETS} brackets per account.</p>
         <button className="promo-cta-button" onClick={onSignUp}>
           Sign up &amp; save my bracket
         </button>
         <button className="promo-cta-skip" onClick={onDismiss}>
+          Maybe later
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function GroupAssignmentPrompt({
+  bracketName,
+  groups,
+  savingGroupId,
+  error,
+  onAssign,
+  onClose,
+}: {
+  bracketName: string;
+  groups: UserGroup[];
+  savingGroupId: string | null;
+  error: string | null;
+  onAssign: (groupId: string) => void;
+  onClose: () => void;
+}) {
+  return (
+    <div className="group-modal-overlay" onClick={onClose}>
+      <div className="group-modal group-modal--assignment" onClick={(event) => event.stopPropagation()}>
+        <button className="group-modal-close-btn" onClick={onClose}>
+          ✕
+        </button>
+        <div className="group-modal-header">
+          <span className="group-modal-icon">👥</span>
+          <h2 className="group-modal-title">Add this bracket to your groups?</h2>
+          <p className="group-modal-subtitle">
+            <strong>{bracketName}</strong> is submitted. Add it anywhere you have not picked a group bracket yet.
+          </p>
+        </div>
+
+        <div className="group-modal-body">
+          <div className="group-assignment-list">
+            {groups.map((group) => (
+              <div key={group.id} className="group-assignment-row">
+                <div className="group-assignment-info">
+                  <span className="group-assignment-name">
+                    <span className="group-assignment-emoji">{group.emoji ?? "👥"}</span>
+                    {group.name}
+                  </span>
+                  <span className="group-assignment-meta">
+                    {group.memberCount} {group.memberCount === 1 ? "member" : "members"}
+                  </span>
+                </div>
+                <button
+                  className="group-assignment-btn"
+                  disabled={savingGroupId !== null}
+                  onClick={() => onAssign(group.id)}
+                >
+                  {savingGroupId === group.id ? "Adding..." : "Add Bracket"}
+                </button>
+              </div>
+            ))}
+          </div>
+          {error ? <p className="group-error">{error}</p> : null}
+        </div>
+
+        <button className="group-secondary-btn group-secondary-btn--full" onClick={onClose}>
           Maybe later
         </button>
       </div>

@@ -60,6 +60,8 @@ export type LeaderboardEntry = {
   champ_score?: number | null;
 };
 
+export const MAX_SUBMITTED_BRACKETS = 10;
+
 type BracketMeta = {
   champion_name: string | null;
   champion_seed: number | null;
@@ -199,8 +201,8 @@ export async function saveBracket(
       .eq("user_id", userId)
       .not("submitted_at", "is", null);
     if (countError && !isMissingSubmissionColumn(countError.message)) return { data: null, error: countError };
-    if ((count ?? 0) >= 25) {
-      return { data: null, error: { message: "Maximum of 25 submitted brackets per user." } };
+    if ((count ?? 0) >= MAX_SUBMITTED_BRACKETS) {
+      return { data: null, error: { message: `Maximum of ${MAX_SUBMITTED_BRACKETS} submitted brackets per user.` } };
     }
   }
 
@@ -290,8 +292,8 @@ export async function setBracketSubmissionStatus(bracketId: string, userId: stri
       if (isMissingSubmissionColumn(countError.message)) return { error: { message: "Submission system is updating. Please retry in 1 minute." } };
       return { error: countError };
     }
-    if ((count ?? 0) >= 25) {
-      return { error: { message: "Submission limit reached (25/25)." } };
+    if ((count ?? 0) >= MAX_SUBMITTED_BRACKETS) {
+      return { error: { message: `Submission limit reached (${MAX_SUBMITTED_BRACKETS}/${MAX_SUBMITTED_BRACKETS}).` } };
     }
   }
 

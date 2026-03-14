@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, type FormEvent, type MouseEvent } from "react";
 import { useAuth } from "./AuthContext";
+import { MAX_SUBMITTED_BRACKETS } from "./bracketStorage";
 import { supabase } from "./supabaseClient";
 import { captureError } from "./lib/errorMonitoring";
 
@@ -63,7 +64,7 @@ function getAuthCopy(context: AuthContext, mode: string) {
     case "submit":
       return {
         title: "Save your bracket",
-        subtitle: "Create an account to save up to 25 brackets and compete on the leaderboard.",
+        subtitle: `Create an account to save up to ${MAX_SUBMITTED_BRACKETS} brackets and compete on the leaderboard.`,
       };
     case "groups":
       return {

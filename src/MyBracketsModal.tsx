@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useAuth } from "./AuthContext";
 import {
   formatChaosScore,
+  MAX_SUBMITTED_BRACKETS,
   type SavedBracket,
   deleteBracket,
   getUserBrackets,
@@ -81,7 +82,7 @@ export function MyBracketsModal({
     setWorkingAction("submit:new");
     setActionError(null);
     const submittedCount = brackets.filter((bracket) => Boolean(bracket.submitted_at)).length;
-    const name = submittedCount === 0 ? "My Bracket" : `Bracket #${Math.min(25, submittedCount + 1)}`;
+    const name = submittedCount === 0 ? "My Bracket" : `Bracket #${Math.min(MAX_SUBMITTED_BRACKETS, submittedCount + 1)}`;
     const { error } = await saveBracket(user.id, currentPicks, name, null, currentChaosScore, { submit: true });
     if (error) {
       setActionError((error as { message?: string })?.message ?? "Submit failed.");
@@ -135,7 +136,7 @@ export function MyBracketsModal({
         </button>
         <h3 className="auth-modal-title">My Brackets</h3>
         <p className="auth-modal-subtitle">
-          Submitted {submittedCount}/25 brackets. Load a bracket to view it, or submit your current picks.
+          Submitted {submittedCount}/{MAX_SUBMITTED_BRACKETS} brackets. Load a bracket to view it, or submit your current picks.
         </p>
         {submissionsLocked ? <p className="auth-modal-hint auth-modal-hint--error">Submissions locked at tip-off.</p> : null}
         {actionError ? <p className="auth-modal-hint auth-modal-hint--error">{actionError}</p> : null}
