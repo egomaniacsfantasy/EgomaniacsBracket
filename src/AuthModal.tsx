@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type FormEvent, type MouseEvent } from "react";
 import { useAuth } from "./AuthContext";
 import { supabase } from "./supabaseClient";
+import { captureError } from "./lib/errorMonitoring";
 
 export type AuthContext = "submit" | "default" | "groups" | "join";
 
@@ -247,7 +248,8 @@ export function AuthModal({
       }
 
       setMode("forgot-sent");
-    } catch {
+    } catch (error) {
+      captureError("auth_reset_password", error);
       setSubmitting(false);
       setError("Something went wrong. Please try again.");
     }

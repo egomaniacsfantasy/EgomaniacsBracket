@@ -3,6 +3,7 @@ import type { ReactNode } from "react";
 import type { User } from "@supabase/supabase-js";
 import { supabase } from "./supabaseClient";
 import { saveBracket } from "./bracketStorage";
+import { captureError } from "./lib/errorMonitoring";
 
 type Profile = {
   display_name: string | null;
@@ -63,7 +64,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             try {
               const pendingPicks = JSON.parse(pendingRaw) as Record<string, string>;
               await saveBracket(session.user.id, pendingPicks, "My Bracket");
-            } catch {
+            } catch (error) {
+              captureError("auth_pending_bracket_save", error);
               // ignore bad pending payload
             }
           }

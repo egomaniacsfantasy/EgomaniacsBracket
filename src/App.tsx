@@ -1,4 +1,4 @@
-import { Fragment, Suspense, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { Fragment, Suspense, lazy, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import html2canvas from "html2canvas";
 import "./index.css";
@@ -28,9 +28,6 @@ import {
 import { fallbackLogo, teamLogoUrl } from "./lib/logo";
 import { fullTeamName } from "./lib/teamNames";
 import { trackEvent } from "./lib/analytics";
-import { ConferenceTournaments } from "./conferences/ConferenceTournaments";
-import { ExpandedRankings } from "./rankings/ExpandedRankings";
-import { MatchupPredictor } from "./MatchupPredictor";
 import { useAuth } from "./AuthContext";
 import { AuthModal } from "./AuthModal";
 import { MyBracketsModal } from "./MyBracketsModal";
@@ -38,7 +35,6 @@ import { CreateGroupModal } from "./CreateGroupModal";
 import { JoinGroupModal } from "./JoinGroupModal";
 import { GroupsHub } from "./GroupsHub";
 import { GroupDetailView } from "./GroupDetailView";
-import { LeaderboardFullWidth } from "./Leaderboard";
 import { deserializePicks, getUserBrackets, saveBracket, serializePicks, type SavedBracket } from "./bracketStorage";
 import { TEAM_STAT_IMPORTANCE, TEAM_STAT_ORDER, TEAM_STATS_2026, type TeamStatKey } from "./data/teamStats2026";
 import type { OddsDisplayMode, Region, ResolvedGame, SimulationOutput } from "./types";
@@ -68,6 +64,19 @@ const regionSections: Region[][] = BRACKET_HALVES.map((half) => [...half.regions
 const mobileRegionOrder: Region[] = ["East", "West", "Midwest", "South"];
 const invertedRegions = new Set<Region>([regionSections[0][1], regionSections[1][1]]);
 
+const ConferenceTournaments = lazy(() =>
+  import("./conferences/ConferenceTournaments").then((module) => ({ default: module.ConferenceTournaments })),
+);
+const ExpandedRankings = lazy(() =>
+  import("./rankings/ExpandedRankings").then((module) => ({ default: module.ExpandedRankings })),
+);
+const MatchupPredictor = lazy(() =>
+  import("./MatchupPredictor").then((module) => ({ default: module.MatchupPredictor })),
+);
+const LeaderboardFullWidth = lazy(() =>
+  import("./Leaderboard").then((module) => ({ default: module.LeaderboardFullWidth })),
+);
+
 const gameRoundLabel: Record<string, string> = {
   FF: "First Four",
   R64: "Round of 64",
@@ -94,6 +103,24 @@ const MOBILE_ROUND_ORDER: Record<"FF" | "R64" | "R32" | "S16" | "E8", number> = 
   S16: 3,
   E8: 4,
 };
+
+function DeferredViewFallback() {
+  return (
+    <div
+      style={{
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        minHeight: "200px",
+        color: "rgba(240,230,208,0.4)",
+        fontFamily: '"Space Grotesk", sans-serif',
+        fontSize: "13px",
+      }}
+    >
+      Loading...
+    </div>
+  );
+}
 
 const URL_REGION_ORDER: Region[] = ["South", "West", "East", "Midwest"];
 const URL_ROUND_ORDER: ResolvedGame["round"][] = ["FF", "R64", "R32", "S16", "E8", "F4", "CHAMP"];
@@ -625,6 +652,7 @@ function App() {
   const [activeGroup, setActiveGroup] = useState<UserGroup | null>(null);
   const [userBrackets, setUserBrackets] = useState<SavedBracket[]>([]);
   const [leaderboardRefreshKey, setLeaderboardRefreshKey] = useState(0);
+  const [hasLoadedDesktopLeaderboard, setHasLoadedDesktopLeaderboard] = useState(false);
   const [promoCTAVisible, setPromoCTAVisible] = useState(false);
   const [promoShown, setPromoShown] = useState(false);
   const [manuallyExpandedRounds, setManuallyExpandedRounds] = useState<ManualRoundExpansionState>({});
@@ -2051,6 +2079,12 @@ function App() {
     if (!leaderboardVisible) return;
     setLeaderboardRefreshKey((value) => value + 1);
   };
+
+  useEffect(() => {
+    if (!isMobile && mainView === "leaderboard") {
+      setHasLoadedDesktopLeaderboard(true);
+    }
+  }, [isMobile, mainView]);
 
   const onCopyShareLink = async () => {
     if (typeof window === "undefined") return;
@@ -4035,22 +4069,30 @@ function App() {
               <div className="mobile-futures-view">{futuresContent}</div>
             ) : mobileTab === "conferences" ? (
               <div className="mobile-futures-view">
-                <ConferenceTournaments displayMode={displayMode} isMobile={isMobile} />
+                <Suspense fallback={<DeferredViewFallback />}>
+                  <ConferenceTournaments displayMode={displayMode} isMobile={isMobile} />
+                </Suspense>
               </div>
             ) : mobileTab === "rankings" ? (
               <div className="mobile-futures-view">
-                <ExpandedRankings displayMode={displayMode} isMobile={isMobile} />
+                <Suspense fallback={<DeferredViewFallback />}>
+                  <ExpandedRankings displayMode={displayMode} isMobile={isMobile} />
+                </Suspense>
               </div>
             ) : mobileTab === "predictor" ? (
               <div className="mobile-futures-view">
-                <MatchupPredictor displayMode={displayMode} />
+                <Suspense fallback={<DeferredViewFallback />}>
+                  <MatchupPredictor displayMode={displayMode} />
+                </Suspense>
               </div>
             ) : (
               <div className="mobile-futures-view">
-                <LeaderboardFullWidth
-                  isVisible={mobileTab === "leaderboard"}
-                  refreshKey={leaderboardRefreshKey}
-                />
+                <Suspense fallback={<DeferredViewFallback />}>
+                  <LeaderboardFullWidth
+                    isVisible={mobileTab === "leaderboard"}
+                    refreshKey={leaderboardRefreshKey}
+                  />
+                </Suspense>
               </div>
             )}
             <LiveOddsStrip
@@ -4197,21 +4239,31 @@ function App() {
                   </div>
                 </section>
               </div>
-              <div style={{ display: mainView === "leaderboard" ? undefined : "none" }}>
-                <LeaderboardFullWidth
-                  isVisible={mainView === "leaderboard"}
-                  refreshKey={leaderboardRefreshKey}
-                  onClose={() => setMainView("bracket")}
-                />
-              </div>
+              {(mainView === "leaderboard" || hasLoadedDesktopLeaderboard) && (
+                <div style={{ display: mainView === "leaderboard" ? undefined : "none" }}>
+                  <Suspense fallback={<DeferredViewFallback />}>
+                    <LeaderboardFullWidth
+                      isVisible={mainView === "leaderboard"}
+                      refreshKey={leaderboardRefreshKey}
+                      onClose={() => setMainView("bracket")}
+                    />
+                  </Suspense>
+                </div>
+              )}
               {mainView === "conferences" && (
-                <ConferenceTournaments displayMode={displayMode} isMobile={isMobile} />
+                <Suspense fallback={<DeferredViewFallback />}>
+                  <ConferenceTournaments displayMode={displayMode} isMobile={isMobile} />
+                </Suspense>
               )}
               {mainView === "rankings" && (
-                <ExpandedRankings displayMode={displayMode} isMobile={isMobile} />
+                <Suspense fallback={<DeferredViewFallback />}>
+                  <ExpandedRankings displayMode={displayMode} isMobile={isMobile} />
+                </Suspense>
               )}
               {mainView === "predictor" && (
-                <MatchupPredictor displayMode={displayMode} />
+                <Suspense fallback={<DeferredViewFallback />}>
+                  <MatchupPredictor displayMode={displayMode} />
+                </Suspense>
               )}
               <div style={{ display: mainView === "futures" ? undefined : "none" }}>{futuresContent}</div>
             </div>
