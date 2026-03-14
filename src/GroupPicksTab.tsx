@@ -1,7 +1,11 @@
 import { useMemo, useState } from "react";
+import { gameTemplates, regionOrder } from "./data/bracket";
 import { teamsById } from "./data/teams";
 import { areAllGroupBracketsLocked, canSeeDetails } from "./groupVisibility";
 import type { GroupStanding } from "./groupStorage";
+import { resolveGames, type LockedPicks } from "./lib/bracket";
+import { teamLogoUrl } from "./lib/logo";
+import type { GameTemplate } from "./types";
 
 type RankedStanding = GroupStanding & { groupRank: number };
 
@@ -14,6 +18,225 @@ const ROUND_LABELS = [
   { key: "CHAMP", label: "Championship" },
 ] as const;
 
+type RoundKey = (typeof ROUND_LABELS)[number]["key"];
+
+type Voter = {
+  userId: string;
+  displayName: string;
+  isCurrentUser: boolean;
+};
+
+type CardTeam = {
+  id: string | null;
+  name: string;
+  seedLabel: string | null;
+  logoUrl: string | null;
+  variantCount: number;
+};
+
+type MatchupCardData = {
+  matchupId: string;
+  teamA: CardTeam;
+  teamB: CardTeam;
+  totalVoters: number;
+  countA: number;
+  countB: number;
+  pctA: number;
+  pctB: number;
+  votersA: Voter[];
+  votersB: Voter[];
+  isUnanimous: boolean;
+  isLoneWolf: boolean;
+};
+
+const regionalRoundOrder = new Map(regionOrder.map((region, index) => [region, index]));
+
+function incrementCount(counts: Map<string, number>, teamId: string | null) {
+  if (!teamId) return;
+  counts.set(teamId, (counts.get(teamId) ?? 0) + 1);
+}
+
+function compareTeams(teamAId: string, teamBId: string) {
+  const teamA = teamsById.get(teamAId);
+  const teamB = teamsById.get(teamBId);
+  const seedDiff = (teamA?.seed ?? Number.MAX_SAFE_INTEGER) - (teamB?.seed ?? Number.MAX_SAFE_INTEGER);
+  if (seedDiff !== 0) return seedDiff;
+  return (teamA?.name ?? teamAId).localeCompare(teamB?.name ?? teamBId);
+}
+
+function pickRepresentativeTeamId(
+  counts: Map<string, number>,
+  fallbackTeamId: string | null,
+  excludedTeamId?: string | null,
+) {
+  const ranked = [...counts.entries()]
+    .filter(([teamId]) => teamId !== excludedTeamId)
+    .sort((a, b) => b[1] - a[1] || compareTeams(a[0], b[0]));
+
+  if (ranked[0]?.[0]) return ranked[0][0];
+  if (fallbackTeamId && fallbackTeamId !== excludedTeamId) return fallbackTeamId;
+  return null;
+}
+
+function buildCardTeam(teamId: string | null, variantCount: number): CardTeam {
+  if (!teamId) {
+    return {
+      id: null,
+      name: "TBD",
+      seedLabel: null,
+      logoUrl: null,
+      variantCount,
+    };
+  }
+
+  const team = teamsById.get(teamId);
+  if (!team) {
+    return {
+      id: teamId,
+      name: teamId,
+      seedLabel: null,
+      logoUrl: null,
+      variantCount,
+    };
+  }
+
+  return {
+    id: team.id,
+    name: team.name,
+    seedLabel: team.seedLabel ?? String(team.seed),
+    logoUrl: teamLogoUrl(team),
+    variantCount,
+  };
+}
+
+function getTeamMeta(team: CardTeam) {
+  if (!team.id) return "Awaiting prior pick";
+  const details = team.seedLabel ? `#${team.seedLabel} seed` : "Team picked";
+  return team.variantCount > 1 ? `${details} · ${team.variantCount} paths` : details;
+}
+
+function voteLabel(totalVoters: number) {
+  return totalVoters === 1 ? "1 vote" : `${totalVoters} votes`;
+}
+
+function MatchupTeamLogo({ team }: { team: CardTeam }) {
+  const [failed, setFailed] = useState(false);
+
+  if (!team.id) {
+    return <span className="gp-card-logo-placeholder" aria-hidden="true" />;
+  }
+
+  if (failed || !team.logoUrl) {
+    return (
+      <span className="gp-card-logo-fallback" aria-hidden="true">
+        <span className="gp-card-logo-seed">{team.seedLabel ?? "?"}</span>
+      </span>
+    );
+  }
+
+  return (
+    <img
+      src={team.logoUrl}
+      className="gp-card-logo"
+      alt={`${team.name} logo`}
+      loading="lazy"
+      onError={() => setFailed(true)}
+    />
+  );
+}
+
+function MatchupCard({ data }: { data: MatchupCardData }) {
+  return (
+    <div
+      className={[
+        "gp-card",
+        data.isUnanimous ? "gp-card--unanimous" : "",
+        data.isLoneWolf ? "gp-card--lone-wolf" : "",
+      ]
+        .filter(Boolean)
+        .join(" ")}
+    >
+      <div className="gp-card-matchup">
+        <div className="gp-card-team gp-card-team--a">
+          <MatchupTeamLogo team={data.teamA} />
+          <div className="gp-card-team-info">
+            <span className="gp-card-team-name">{data.teamA.name}</span>
+            <span className="gp-card-team-meta">{getTeamMeta(data.teamA)}</span>
+          </div>
+        </div>
+
+        <div className="gp-card-vs">
+          <span className="gp-card-vs-text">vs</span>
+        </div>
+
+        <div className="gp-card-team gp-card-team--b">
+          <div className="gp-card-team-info gp-card-team-info--right">
+            <span className="gp-card-team-name">{data.teamB.name}</span>
+            <span className="gp-card-team-meta">{getTeamMeta(data.teamB)}</span>
+          </div>
+          <MatchupTeamLogo team={data.teamB} />
+        </div>
+      </div>
+
+      {data.totalVoters === 0 ? (
+        <p className="gp-card-empty">No picks yet.</p>
+      ) : (
+        <>
+          <div className="gp-card-bar-section">
+            <div className="gp-card-bar">
+              {data.isUnanimous ? (
+                <div className="gp-card-bar-unanimous" />
+              ) : (
+                <>
+                  <div className="gp-card-bar-a" style={{ width: `${data.pctA}%` }} />
+                  <div className="gp-card-bar-b" style={{ width: `${data.pctB}%` }} />
+                </>
+              )}
+            </div>
+
+            <div className="gp-card-bar-labels">
+              <span className="gp-card-pct gp-card-pct--a">{data.pctA}%</span>
+              <span className="gp-card-count">{voteLabel(data.totalVoters)}</span>
+              <span className="gp-card-pct gp-card-pct--b">{data.pctB}%</span>
+            </div>
+          </div>
+
+          <div className="gp-card-voters">
+            <div className="gp-card-voters-side gp-card-voters-side--a">
+              {data.votersA.map((voter) => (
+                <span
+                  key={`${data.matchupId}-${voter.userId}-a`}
+                  className={`gp-voter ${voter.isCurrentUser ? "gp-voter--you" : ""}`}
+                >
+                  {voter.displayName}
+                </span>
+              ))}
+            </div>
+
+            <div className="gp-card-voters-side gp-card-voters-side--b">
+              {data.votersB.map((voter) => (
+                <span
+                  key={`${data.matchupId}-${voter.userId}-b`}
+                  className={`gp-voter ${voter.isCurrentUser ? "gp-voter--you" : ""}`}
+                >
+                  {voter.displayName}
+                </span>
+              ))}
+            </div>
+          </div>
+        </>
+      )}
+
+      {data.isLoneWolf && (
+        <div className="gp-lone-wolf">
+          <span className="gp-lone-wolf-icon">🐺</span>
+          <span className="gp-lone-wolf-text">You&apos;re the lone wolf</span>
+        </div>
+      )}
+    </div>
+  );
+}
+
 export function GroupPicksTab({
   standings,
   currentUserId,
@@ -24,83 +247,119 @@ export function GroupPicksTab({
   tournamentStarted: boolean;
   canPreviewHidden?: boolean;
 }) {
-  const [expandedRound, setExpandedRound] = useState<string>("R64");
+  const [expandedRound, setExpandedRound] = useState<RoundKey>("R64");
   const allBracketsLocked = areAllGroupBracketsLocked(standings, canPreviewHidden);
   const visibleStandings = useMemo(
     () => standings.filter((entry) => canSeeDetails(entry, currentUserId, canPreviewHidden)),
     [canPreviewHidden, currentUserId, standings],
   );
 
-  const agreementData = useMemo(() => {
-    if (visibleStandings.length === 0) return {} as Record<string, AgreementInfo>;
+  const resolvedStandings = useMemo(
+    () =>
+      visibleStandings.map((entry) => {
+        const picks = entry.picks ?? ({} as LockedPicks);
+        const { games } = resolveGames(picks);
+        return {
+          entry,
+          gamesById: new Map(games.map((game) => [game.id, game])),
+        };
+      }),
+    [visibleStandings],
+  );
 
-    const allPickKeys = new Set<string>();
-    visibleStandings.forEach((s) => {
-      if (s.picks && typeof s.picks === "object") {
-        Object.keys(s.picks).forEach((k) => allPickKeys.add(k));
-      }
-    });
+  const matchupsByRound = useMemo(() => {
+    const grouped = ROUND_LABELS.reduce(
+      (acc, round) => {
+        acc[round.key] = [];
+        return acc;
+      },
+      {} as Record<RoundKey, GameTemplate[]>,
+    );
 
-    const data: Record<string, AgreementInfo> = {};
-    allPickKeys.forEach((matchupId) => {
-      const tally: Record<string, Array<{ userId: string; displayName: string }>> = {};
-      visibleStandings.forEach((s) => {
-        const pick = s.picks?.[matchupId];
-        if (pick) {
-          if (!tally[pick]) tally[pick] = [];
-          tally[pick].push({
-            userId: s.user_id,
-            displayName: s.display_name,
-          });
-        }
+    gameTemplates
+      .filter((template) => template.round !== "FF")
+      .sort((a, b) => {
+        const regionDiff =
+          (regionalRoundOrder.get(a.region ?? "East") ?? Number.MAX_SAFE_INTEGER) -
+          (regionalRoundOrder.get(b.region ?? "East") ?? Number.MAX_SAFE_INTEGER);
+        if (regionDiff !== 0) return regionDiff;
+        return a.slot - b.slot;
+      })
+      .forEach((template) => {
+        grouped[template.round as RoundKey].push(template);
       });
 
-      const totalVoters = Object.values(tally).reduce((sum, arr) => sum + arr.length, 0);
-      const teams = Object.entries(tally)
-        .map(([teamId, voters]) => ({
-          teamId,
-          voters,
-          count: voters.length,
-          pct: totalVoters > 0 ? Math.round((voters.length / totalVoters) * 100) : 0,
-        }))
-        .sort((a, b) => b.count - a.count);
+    return grouped;
+  }, []);
 
-      const currentUserPick = visibleStandings.find((s) => s.user_id === currentUserId)?.picks?.[matchupId];
-      const currentUserTeam = teams.find((t) => t.teamId === currentUserPick);
-      const isLoneWolf = Boolean(currentUserTeam && currentUserTeam.count === 1 && totalVoters > 1);
+  const matchupData = useMemo(() => {
+    const data: Record<string, MatchupCardData> = {};
 
-      data[matchupId] = {
-        teams,
-        totalVoters,
-        isLoneWolf,
-        matchupId,
-      };
-    });
+    gameTemplates
+      .filter((template) => template.round !== "FF")
+      .forEach((template) => {
+        const sideATeams = new Map<string, number>();
+        const sideBTeams = new Map<string, number>();
+        const votersA: Voter[] = [];
+        const votersB: Voter[] = [];
+
+        resolvedStandings.forEach(({ entry, gamesById }) => {
+          const game = gamesById.get(template.id);
+          if (!game) return;
+
+          incrementCount(sideATeams, game.teamAId);
+          incrementCount(sideBTeams, game.teamBId);
+
+          if (!game.winnerId) return;
+
+          const voter = {
+            userId: entry.user_id,
+            displayName: entry.display_name,
+            isCurrentUser: entry.user_id === currentUserId,
+          };
+
+          if (game.winnerId === game.teamAId) votersA.push(voter);
+          if (game.winnerId === game.teamBId) votersB.push(voter);
+        });
+
+        const displayTeamAId = pickRepresentativeTeamId(sideATeams, template.initialTeamIds?.[0] ?? null);
+        const displayTeamBId = pickRepresentativeTeamId(
+          sideBTeams,
+          template.initialTeamIds?.[1] ?? null,
+          displayTeamAId,
+        );
+        const countA = votersA.length;
+        const countB = votersB.length;
+        const totalVoters = countA + countB;
+        const pctA = totalVoters > 0 ? Math.round((countA / totalVoters) * 100) : 0;
+        const pctB = totalVoters > 0 ? 100 - pctA : 0;
+        const currentUserSideCount = votersA.some((voter) => voter.userId === currentUserId)
+          ? countA
+          : votersB.some((voter) => voter.userId === currentUserId)
+            ? countB
+            : 0;
+
+        data[template.id] = {
+          matchupId: template.id,
+          teamA: buildCardTeam(displayTeamAId, sideATeams.size),
+          teamB: buildCardTeam(displayTeamBId, sideBTeams.size),
+          totalVoters,
+          countA,
+          countB,
+          pctA,
+          pctB,
+          votersA,
+          votersB,
+          isUnanimous: totalVoters > 0 && (countA === 0 || countB === 0),
+          isLoneWolf: currentUserSideCount === 1 && totalVoters > 1,
+        };
+      });
 
     return data;
-  }, [visibleStandings, currentUserId]);
+  }, [currentUserId, resolvedStandings]);
 
-  function getMatchupsByRound(roundKey: string) {
-    const allKeys = Object.keys(agreementData);
-    // Game IDs follow pattern: "{Region}-{Round}-{slot}" or "F4-{Side}-{slot}" or "CHAMP-{slot}"
-    return allKeys.filter((k) => {
-      const upper = k.toUpperCase();
-      if (roundKey === "CHAMP") return upper.startsWith("CHAMP");
-      if (roundKey === "F4") return upper.startsWith("F4");
-      // Regional rounds: e.g., "South-R64-0" contains "-R64-"
-      return upper.includes(`-${roundKey}-`);
-    });
-  }
-
-  function getLoneWolfCount(roundKey: string) {
-    const matchups = getMatchupsByRound(roundKey);
-    return matchups.filter((m) => agreementData[m]?.isLoneWolf).length;
-  }
-
-  function getTeamDisplayName(teamId: string): string {
-    const team = teamsById.get(teamId);
-    if (team) return `${team.seed} ${team.name}`;
-    return teamId;
+  function getLoneWolfCount(roundKey: RoundKey) {
+    return (matchupsByRound[roundKey] ?? []).filter((matchup) => matchupData[matchup.id]?.isLoneWolf).length;
   }
 
   if (!allBracketsLocked) {
@@ -113,91 +372,35 @@ export function GroupPicksTab({
     );
   }
 
+  const matchups = matchupsByRound[expandedRound] ?? [];
+  const isFewGames = matchups.length <= 8;
+
   return (
     <div className="group-picks">
-      <p className="group-picks-description">See where your group agrees — and where you stand alone.</p>
-
-      <div className="group-picks-round-pills">
-        {ROUND_LABELS.map((r) => {
-          const loneWolves = getLoneWolfCount(r.key);
+      <div className="gp-rounds">
+        {ROUND_LABELS.map((round) => {
+          const loneWolves = getLoneWolfCount(round.key);
           return (
             <button
-              key={r.key}
-              className={`group-picks-pill ${expandedRound === r.key ? "group-picks-pill--active" : ""}`}
-              onClick={() => setExpandedRound(r.key)}
+              key={round.key}
+              type="button"
+              className={`gp-round-pill ${expandedRound === round.key ? "gp-round-pill--active" : ""}`}
+              onClick={() => setExpandedRound(round.key)}
             >
-              {r.label}
-              {loneWolves > 0 && <span className="group-picks-pill-badge">{loneWolves} 🐺</span>}
+              {round.label}
+              {loneWolves > 0 && <span className="gp-round-badge">{loneWolves}</span>}
             </button>
           );
         })}
       </div>
 
-      <div className="group-picks-list">
-        {getMatchupsByRound(expandedRound).map((matchupId) => {
-          const data = agreementData[matchupId];
-          if (!data || data.totalVoters === 0) return null;
+      <p className="gp-subtitle">See where your group agrees — and where you stand alone.</p>
 
-          return (
-            <div
-              key={matchupId}
-              className={`group-picks-card ${data.isLoneWolf ? "group-picks-card--lone-wolf" : ""}`}
-            >
-              {data.isLoneWolf && <span className="group-picks-lone-wolf-badge">🐺 Lone Wolf</span>}
-
-              {data.teams.map((team) => {
-                const isUnanimous = team.pct === 100;
-
-                return (
-                  <div key={team.teamId} className="group-picks-team-row">
-                    <div className="group-picks-team-info">
-                      <span className="group-picks-team-name">{getTeamDisplayName(team.teamId)}</span>
-                    </div>
-
-                    <div className="group-picks-bar-area">
-                      <div className="group-picks-bar-bg">
-                        <div
-                          className={`group-picks-bar-fill ${isUnanimous ? "group-picks-bar-fill--unanimous" : ""}`}
-                          style={{ width: `${team.pct}%` }}
-                        />
-                      </div>
-                      <span className="group-picks-bar-label">
-                        {team.count}/{data.totalVoters}
-                        {isUnanimous && " ✓"}
-                      </span>
-                    </div>
-
-                    {data.totalVoters <= 12 && (
-                      <div className="group-picks-voters">
-                        {team.voters.map((v) => (
-                          <span
-                            key={v.userId}
-                            className={`group-picks-voter ${v.userId === currentUserId ? "group-picks-voter--you" : ""}`}
-                          >
-                            {v.displayName}
-                          </span>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-          );
-        })}
+      <div className={`gp-cards-grid ${isFewGames ? "gp-cards-grid--few" : ""}`}>
+        {matchups.map((matchup) => (
+          <MatchupCard key={matchup.id} data={matchupData[matchup.id]} />
+        ))}
       </div>
     </div>
   );
 }
-
-type AgreementInfo = {
-  teams: Array<{
-    teamId: string;
-    voters: Array<{ userId: string; displayName: string }>;
-    count: number;
-    pct: number;
-  }>;
-  totalVoters: number;
-  isLoneWolf: boolean;
-  matchupId: string;
-};

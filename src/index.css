@@ -7994,6 +7994,347 @@ body {
   color: rgba(240, 230, 208, 0.62);
 }
 
+.group-picks {
+  gap: 0;
+}
+
+.gp-rounds {
+  display: flex;
+  gap: 4px;
+  padding: 8px 0 16px;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.gp-rounds::-webkit-scrollbar {
+  display: none;
+}
+
+.gp-round-pill {
+  padding: 7px 14px;
+  border-radius: 8px;
+  font-family: "Space Grotesk", sans-serif;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  color: rgba(240, 230, 208, 0.4);
+  background: none;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  cursor: pointer;
+  white-space: nowrap;
+  flex-shrink: 0;
+  transition: all 0.15s ease;
+}
+
+.gp-round-pill:hover {
+  border-color: rgba(184, 125, 24, 0.2);
+  color: rgba(240, 230, 208, 0.6);
+}
+
+.gp-round-pill:focus-visible {
+  outline: 2px solid #e7bf72;
+  outline-offset: 2px;
+}
+
+.gp-round-pill--active {
+  color: #080603;
+  background: #b87d18;
+  border-color: #b87d18;
+}
+
+.gp-round-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 16px;
+  height: 16px;
+  padding: 0 4px;
+  border-radius: 999px;
+  background: rgba(248, 113, 113, 0.2);
+  color: #f87171;
+  font-size: 9px;
+  font-weight: 800;
+  margin-left: 6px;
+  vertical-align: middle;
+}
+
+.gp-subtitle {
+  margin: 0 0 16px;
+  font-family: "Space Grotesk", sans-serif;
+  font-size: 12px;
+  color: rgba(240, 230, 208, 0.3);
+}
+
+.gp-cards-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  align-items: start;
+}
+
+.gp-cards-grid--few {
+  grid-template-columns: 1fr;
+  max-width: 560px;
+}
+
+.gp-card {
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 12px;
+  padding: 16px;
+  transition: border-color 0.15s ease;
+}
+
+.gp-card:hover {
+  border-color: rgba(255, 255, 255, 0.1);
+}
+
+.gp-card--unanimous {
+  border-color: rgba(74, 222, 128, 0.12);
+  background: rgba(74, 222, 128, 0.02);
+}
+
+.gp-card--lone-wolf {
+  border-color: rgba(248, 113, 113, 0.15);
+  background: rgba(248, 113, 113, 0.02);
+}
+
+.gp-card-matchup {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 14px;
+}
+
+.gp-card-team {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex: 1;
+  min-width: 0;
+}
+
+.gp-card-team--b {
+  justify-content: flex-end;
+}
+
+.gp-card-logo,
+.gp-card-logo-fallback,
+.gp-card-logo-placeholder {
+  width: 36px;
+  height: 36px;
+  flex-shrink: 0;
+}
+
+.gp-card-logo {
+  object-fit: contain;
+  filter: drop-shadow(0 1px 4px rgba(0, 0, 0, 0.4));
+}
+
+.gp-card-logo-fallback,
+.gp-card-logo-placeholder {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+}
+
+.gp-card-logo-fallback {
+  background: rgba(184, 125, 24, 0.16);
+  border: 1px solid rgba(184, 125, 24, 0.28);
+}
+
+.gp-card-logo-placeholder {
+  border: 1px dashed rgba(240, 230, 208, 0.18);
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.gp-card-logo-seed {
+  font-family: "Space Grotesk", sans-serif;
+  font-size: 11px;
+  font-weight: 800;
+  color: #e7bf72;
+}
+
+.gp-card-team-info {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+}
+
+.gp-card-team-info--right {
+  align-items: flex-end;
+  text-align: right;
+}
+
+.gp-card-team-name {
+  font-family: "Instrument Serif", serif;
+  font-size: 17px;
+  color: #f0e6d0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.gp-card-team-meta {
+  font-family: "Space Grotesk", sans-serif;
+  font-size: 10px;
+  color: rgba(240, 230, 208, 0.34);
+  font-weight: 600;
+}
+
+.gp-card-vs {
+  flex-shrink: 0;
+  padding: 0 10px;
+}
+
+.gp-card-vs-text {
+  font-family: "Instrument Serif", serif;
+  font-style: italic;
+  font-size: 14px;
+  color: rgba(240, 230, 208, 0.15);
+}
+
+.gp-card-empty {
+  margin: 0;
+  font-family: "Space Grotesk", sans-serif;
+  font-size: 12px;
+  color: rgba(240, 230, 208, 0.36);
+}
+
+.gp-card-bar-section {
+  margin-bottom: 10px;
+}
+
+.gp-card-bar {
+  display: flex;
+  width: 100%;
+  height: 8px;
+  border-radius: 4px;
+  overflow: hidden;
+  gap: 2px;
+  margin-bottom: 6px;
+}
+
+.gp-card-bar-a,
+.gp-card-bar-b,
+.gp-card-bar-unanimous {
+  height: 100%;
+  min-width: 2px;
+  transition: width 0.3s ease-out;
+}
+
+.gp-card-bar-a {
+  border-radius: 4px 0 0 4px;
+  background: linear-gradient(90deg, #b87d18, #e7bf72);
+}
+
+.gp-card-bar-b {
+  border-radius: 0 4px 4px 0;
+  background: linear-gradient(90deg, #5a7dd4, #7da2e8);
+}
+
+.gp-card-bar-unanimous {
+  width: 100%;
+  border-radius: 4px;
+  background: linear-gradient(90deg, #b87d18, #e7bf72);
+}
+
+.gp-card-bar-labels {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.gp-card-pct {
+  font-family: "Space Grotesk", sans-serif;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.gp-card-pct--a {
+  color: #e7bf72;
+}
+
+.gp-card-pct--b {
+  color: #7da2e8;
+}
+
+.gp-card-count {
+  font-family: "Space Grotesk", sans-serif;
+  font-size: 10px;
+  color: rgba(240, 230, 208, 0.24);
+}
+
+.gp-card-voters {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  padding-top: 10px;
+  border-top: 1px solid rgba(255, 255, 255, 0.04);
+}
+
+.gp-card-voters-side {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  flex: 1;
+  min-width: 0;
+}
+
+.gp-card-voters-side--b {
+  justify-content: flex-end;
+}
+
+.gp-voter {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 8px;
+  border-radius: 4px;
+  font-family: "Space Grotesk", sans-serif;
+  font-size: 11px;
+  font-weight: 600;
+  color: rgba(240, 230, 208, 0.5);
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.gp-voter--you {
+  color: #e7bf72;
+  background: rgba(184, 125, 24, 0.12);
+  border: 1px solid rgba(184, 125, 24, 0.2);
+}
+
+.gp-card-voters-side--a .gp-voter {
+  background: rgba(184, 125, 24, 0.06);
+}
+
+.gp-card-voters-side--b .gp-voter {
+  background: rgba(90, 125, 212, 0.06);
+}
+
+.gp-lone-wolf {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 10px;
+  padding: 6px 10px;
+  background: rgba(248, 113, 113, 0.06);
+  border: 1px solid rgba(248, 113, 113, 0.12);
+  border-radius: 6px;
+}
+
+.gp-lone-wolf-icon {
+  font-size: 14px;
+}
+
+.gp-lone-wolf-text {
+  font-family: "Space Grotesk", sans-serif;
+  font-size: 11px;
+  font-weight: 700;
+  color: #f87171;
+}
+
 .group-standings-header-row,
 .group-standings-row {
   display: grid;
@@ -8417,6 +8758,42 @@ body {
 
   .gd-invite-prompt-btn {
     width: 100%;
+  }
+
+  .gp-cards-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .gp-card {
+    padding: 12px;
+  }
+
+  .gp-card-logo,
+  .gp-card-logo-fallback,
+  .gp-card-logo-placeholder {
+    width: 28px;
+    height: 28px;
+  }
+
+  .gp-card-team-name {
+    font-size: 15px;
+  }
+
+  .gp-card-matchup {
+    margin-bottom: 10px;
+  }
+
+  .gp-card-bar {
+    height: 6px;
+  }
+
+  .gp-card-pct {
+    font-size: 12px;
+  }
+
+  .gp-voter {
+    font-size: 10px;
+    padding: 2px 6px;
   }
 
   .group-picks-team-row,
