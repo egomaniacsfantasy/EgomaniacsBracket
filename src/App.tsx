@@ -2209,6 +2209,12 @@ function App() {
     setLeaderboardRefreshKey((value) => value + 1);
   };
 
+  const onBracketsChanged = useCallback(async () => {
+    await refreshUserBrackets();
+    setSaveStatus(null);
+    setSaveErrorText(null);
+  }, [refreshUserBrackets]);
+
   useEffect(() => {
     if (!isMobile && mainView === "leaderboard") {
       setHasLoadedDesktopLeaderboard(true);
@@ -4449,6 +4455,7 @@ function App() {
         onClose={() => setMyBracketsOpen(false)}
         onLoadBracket={onLoadSavedBracket}
         onRenameSuccess={onBracketRenamed}
+        onBracketsChanged={onBracketsChanged}
         currentPicks={sanitized}
         currentChaosScore={chaosScore ?? 0}
       />
@@ -5044,6 +5051,9 @@ function BracketCompletionCelebration({
   onShareCard?: () => void;
   wrappedSeen?: boolean;
 }) {
+  const championTeam = Array.from(teamsById.values()).find((team) => team.name === championName) ?? null;
+  const championLogoSrc = championTeam ? teamLogoUrl(championTeam) : fallbackLogo(championName);
+
   return (
     <div className="completion-overlay" onClick={onClose}>
       <div className="completion-card" onClick={(event) => event.stopPropagation()}>
@@ -5062,25 +5072,28 @@ function BracketCompletionCelebration({
         </div>
         <span className="completion-trophy">🏆</span>
         <h2 className="completion-headline">Your bracket is set.</h2>
+        <div className="completion-champ-logo">
+          <img className="completion-champ-img" src={championLogoSrc} alt={championName} />
+        </div>
         <p className="completion-champ">{championName} wins it all.</p>
         <p className="completion-chaos">
           {chaosEmoji} {chaosLabel}
         </p>
 
         <div className="completion-actions">
-          <button className="completion-btn-primary" onClick={onSave}>
-            Submit Bracket
-          </button>
           {onWrapped && !wrappedSeen ? (
             <button className="completion-btn-wrapped" onClick={onWrapped}>
               🎁 See Your Bracket Wrapped
             </button>
           ) : onShareCard && wrappedSeen ? (
-            <button className="completion-btn-secondary" onClick={onShareCard}>
+            <button className="completion-btn-wrapped" onClick={onShareCard}>
               View Share Card
             </button>
           ) : null}
-          <button className="completion-btn-secondary" onClick={onClose}>
+          <button className="completion-btn-submit" onClick={onSave}>
+            Submit Bracket
+          </button>
+          <button className="completion-btn-keep-editing" onClick={onClose}>
             Keep editing
           </button>
         </div>

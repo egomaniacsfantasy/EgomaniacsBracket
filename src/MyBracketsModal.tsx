@@ -18,6 +18,7 @@ export function MyBracketsModal({
   onClose,
   onLoadBracket,
   onRenameSuccess,
+  onBracketsChanged,
   currentPicks,
   currentChaosScore,
 }: {
@@ -25,6 +26,7 @@ export function MyBracketsModal({
   onClose: () => void;
   onLoadBracket: (bracket: SavedBracket) => void;
   onRenameSuccess?: () => void;
+  onBracketsChanged?: () => void | Promise<void>;
   currentPicks: LockedPicks;
   currentChaosScore: number;
 }) {
@@ -57,6 +59,7 @@ export function MyBracketsModal({
     setActionError(null);
     await deleteBracket(bracketId, user.id);
     await loadBrackets();
+    await onBracketsChanged?.();
     setWorkingAction(null);
   };
 
@@ -73,6 +76,7 @@ export function MyBracketsModal({
     setEditingName(null);
     setNewName("");
     await loadBrackets();
+    await onBracketsChanged?.();
     setWorkingAction(null);
     onRenameSuccess?.();
   };
@@ -90,6 +94,7 @@ export function MyBracketsModal({
       return;
     }
     await loadBrackets();
+    await onBracketsChanged?.();
     setWorkingAction(null);
   };
 
@@ -105,6 +110,7 @@ export function MyBracketsModal({
       return;
     }
     await loadBrackets();
+    await onBracketsChanged?.();
     setWorkingAction(null);
   };
 
@@ -120,6 +126,7 @@ export function MyBracketsModal({
       return;
     }
     await loadBrackets();
+    await onBracketsChanged?.();
     setWorkingAction(null);
   };
 
