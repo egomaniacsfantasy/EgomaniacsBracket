@@ -234,7 +234,7 @@ export function BracketWrapped({ data, isBracketSubmitted, onSubmitBracket, onCl
             ))}
           </div>
           {/* Screen content; key forces remount for animation */}
-          <div className="bw-screen" key={screen}>
+          <div className={`bw-screen ${screen === 4 ? "bw-screen--final" : ""}`} key={screen}>
             {screen === 0 && <Screen1Identity identity={identity} />}
             {screen === 1 && <Screen2Boldest boldestPick={boldestPick} />}
             {screen === 2 && <Screen3Unlikely unlikelyRun={unlikelyRun} />}
@@ -250,9 +250,6 @@ export function BracketWrapped({ data, isBracketSubmitted, onSubmitBracket, onCl
                   >
                     ← Review Story
                   </button>
-                  {submitState === "submitted" ? (
-                    <div className="bw-screen5-submit-success">✓ Bracket submitted</div>
-                  ) : null}
                   <div className="bw-screen5-cta-row">
                     <button
                       className={`bw-btn ${
@@ -264,7 +261,7 @@ export function BracketWrapped({ data, isBracketSubmitted, onSubmitBracket, onCl
                       {submitState === "submitting"
                         ? "Submitting..."
                         : submitState === "submitted"
-                          ? "Bracket Submitted"
+                          ? "Submitted"
                           : "Submit Bracket"}
                     </button>
                     <button className="bw-btn bw-btn--secondary bw-screen5-share-btn" onClick={handleShareCard}>

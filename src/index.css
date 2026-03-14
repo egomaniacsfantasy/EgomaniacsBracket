@@ -15990,6 +15990,10 @@ body.walkthrough-active .odds-value--changed::after {
   box-sizing: border-box;
 }
 
+.bw-screen--final {
+  justify-content: center;
+}
+
 @media (prefers-reduced-motion: no-preference) {
   .bw-screen { animation: bw-fadeUp 400ms ease-out both; }
 }
@@ -16445,7 +16449,7 @@ body.walkthrough-active .odds-value--changed::after {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
   width: min(100%, 420px);
 }
 
@@ -16493,6 +16497,11 @@ body.walkthrough-active .odds-value--changed::after {
 .bw-screen5-cta-row .bw-btn {
   flex: 1 1 0;
   min-width: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  white-space: nowrap;
+  line-height: 1;
 }
 
 .bw-screen5-submit-btn {
@@ -16536,7 +16545,8 @@ body.walkthrough-active .odds-value--changed::after {
 
 @media (max-width: 767px) {
   .bw-screen5-wrap {
-    gap: 10px;
+    gap: 8px;
+    margin: 0;
   }
 
   .bw-screen5-actions {
@@ -16554,7 +16564,7 @@ body.walkthrough-active .odds-value--changed::after {
 
   .bw-screen5-submit-btn {
     min-height: 44px;
-    font-size: 14px;
+    font-size: 13px;
   }
 
   .bw-screen5-share-btn {
@@ -16572,7 +16582,14 @@ body.walkthrough-active .odds-value--changed::after {
   }
 
   .bw-screen5-cta-row .bw-btn {
-    padding: 10px 14px;
+    padding: 10px 12px;
+  }
+
+  .bw-screen--final {
+    justify-content: flex-start;
+    overflow-y: auto;
+    padding-top: 40px;
+    padding-bottom: 24px;
   }
 }
 
