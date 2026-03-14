@@ -2053,8 +2053,10 @@ function App() {
     setShowCompletionCelebration(false);
     if (Object.keys(lockedPicks).length === 0 && Object.keys(customProbByGame).length === 0) return;
     pendingPickMetaRef.current = null;
+    firstFourAutoShownRef.current = false;
     setFirstPickNudgeVisible(false);
     setMajorShiftNudgeVisible(false);
+    setShowFirstFourModal(false);
     pushUndo(lockedPicks);
     simGeneratedGameIdsRef.current.clear();
     setLockedPicks({});
