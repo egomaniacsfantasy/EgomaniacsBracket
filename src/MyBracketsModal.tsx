@@ -246,9 +246,9 @@ export function MyBracketsModal({
               );
             })}
 
-            {submittedCount < 25 && !submissionsLocked ? (
+            {submittedCount < MAX_SUBMITTED_BRACKETS && !submissionsLocked ? (
               <button className="my-bracket-new-btn" disabled={workingAction !== null} onClick={handleSaveNew}>
-                + Submit current bracket as new ({25 - submittedCount} slot{25 - submittedCount !== 1 ? "s" : ""} remaining)
+                + Submit current bracket as new ({MAX_SUBMITTED_BRACKETS - submittedCount} slot{MAX_SUBMITTED_BRACKETS - submittedCount !== 1 ? "s" : ""} remaining)
               </button>
             ) : null}
           </div>

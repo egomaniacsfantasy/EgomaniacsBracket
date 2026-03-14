@@ -131,10 +131,11 @@ export async function saveBracket(
     );
   };
   const roundedChaosScore = Math.round(normalizedChaosScore);
+  const submittedAt = shouldSubmit ? new Date().toISOString() : null;
   const basePayload = {
     picks: serialized,
     bracket_name: bracketName,
-    submitted_at: shouldSubmit ? new Date().toISOString() : null,
+    submitted_at: submittedAt,
     ...meta,
   };
 
@@ -145,17 +146,25 @@ export async function saveBracket(
     const noMeta = {
       picks: serialized,
       bracket_name: bracketName,
+      submitted_at: submittedAt,
       ...withTimestamp,
       chaos_score: normalizedChaosScore,
     };
     const noMetaRounded = {
       picks: serialized,
       bracket_name: bracketName,
+      submitted_at: submittedAt,
       ...withTimestamp,
       chaos_score: roundedChaosScore,
     };
     const metaNoChaos = { ...basePayload, ...withTimestamp };
     const legacy = {
+      picks: serialized,
+      bracket_name: bracketName,
+      submitted_at: submittedAt,
+      ...withTimestamp,
+    };
+    const noMetaNoSubmit = {
       picks: serialized,
       bracket_name: bracketName,
       ...withTimestamp,
@@ -164,7 +173,7 @@ export async function saveBracket(
     if (roundedChaosScore !== normalizedChaosScore) candidates.push(rounded);
     candidates.push(noMeta);
     if (roundedChaosScore !== normalizedChaosScore) candidates.push(noMetaRounded);
-    candidates.push(metaNoChaos, legacy);
+    candidates.push(metaNoChaos, legacy, noMetaNoSubmit);
     return candidates;
   };
 
@@ -239,13 +248,22 @@ export async function getUserBrackets(userId: string) {
     return { data: (withAll.data as SavedBracket[] | null) ?? [], error: null };
   }
 
-  const withMeta = await supabase
+  const withSubmittedAndChaos = await supabase
     .from("brackets")
-    .select("id, user_id, bracket_name, picks, chaos_score, created_at, updated_at, is_locked, champion_name, champion_seed, champion_logo_url, final_four, boldest_pick")
+    .select("id, user_id, bracket_name, picks, chaos_score, created_at, updated_at, is_locked, submitted_at")
     .eq("user_id", userId)
     .order("created_at", { ascending: true });
-  if (!withMeta.error) {
-    return { data: (withMeta.data as SavedBracket[] | null) ?? [], error: null };
+  if (!withSubmittedAndChaos.error) {
+    return { data: (withSubmittedAndChaos.data as SavedBracket[] | null) ?? [], error: null };
+  }
+
+  const withSubmitted = await supabase
+    .from("brackets")
+    .select("id, user_id, bracket_name, picks, created_at, updated_at, is_locked, submitted_at")
+    .eq("user_id", userId)
+    .order("created_at", { ascending: true });
+  if (!withSubmitted.error) {
+    return { data: (withSubmitted.data as SavedBracket[] | null) ?? [], error: null };
   }
 
   const withChaos = await supabase

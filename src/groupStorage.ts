@@ -204,7 +204,7 @@ export async function getUserGroups(userId: string) {
     ...m.groups,
     role: m.role,
     bracketId: m.bracket_id,
-    memberCount: countMap[m.groups.id] || 0,
+    memberCount: Math.max(1, countMap[m.groups.id] || 0),
   }));
 
   return { data: groups, error: null };
@@ -227,13 +227,20 @@ export async function getGroupByCode(inviteCode: string) {
 }
 
 export async function updateMemberBracket(groupId: string, userId: string, bracketId: string) {
-  const { error } = await supabase
+  const { data, error } = await supabase
     .from("group_members")
     .update({ bracket_id: bracketId })
     .eq("group_id", groupId)
-    .eq("user_id", userId);
+    .eq("user_id", userId)
+    .select("group_id, user_id, bracket_id")
+    .maybeSingle();
 
-  return { error };
+  if (error) return { data: null, error };
+  if (!data || (data as { bracket_id?: string | null }).bracket_id !== bracketId) {
+    return { data: null, error: { message: "Could not update your group bracket. Please try again." } };
+  }
+
+  return { data, error: null };
 }
 
 export async function leaveGroup(groupId: string, userId: string) {

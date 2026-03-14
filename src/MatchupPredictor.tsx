@@ -1248,7 +1248,6 @@ export function MatchupPredictor({ displayMode: _displayMode }: { displayMode: O
               <div className="pred-footer-links">
                 <a href="/">Bracket Lab</a>
                 <a href="/rankings">Rankings</a>
-                <a href="mailto:feedback@oddsgods.net?subject=BracketLab%20Bug%20Report">Report a Bug</a>
               </div>
             </footer>
           </>

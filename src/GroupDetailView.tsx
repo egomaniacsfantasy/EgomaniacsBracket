@@ -7,6 +7,7 @@ import { GroupPicksTab } from "./GroupPicksTab";
 import { GroupChaosTab } from "./GroupChaosTab";
 import { BracketViewer } from "./BracketViewer";
 import { GROUP_EMOJIS } from "./constants";
+import { captureError } from "./lib/errorMonitoring";
 
 type RankedStanding = GroupStanding & { groupRank: number };
 
@@ -63,9 +64,18 @@ export function GroupDetailView({
   async function loadStandings() {
     if (!group) return;
     setLoading(true);
-    const { data } = await getGroupStandings(group.id);
-    setStandings(data);
-    setLoading(false);
+    try {
+      const { data, error } = await getGroupStandings(group.id);
+      if (error) {
+        captureError("group_detail_standings_load", error);
+      }
+      setStandings(data);
+    } catch (error) {
+      captureError("group_detail_standings_load", error);
+      setStandings([]);
+    } finally {
+      setLoading(false);
+    }
   }
 
   const [showInviteToast, setShowInviteToast] = useState(false);
@@ -198,6 +208,7 @@ export function GroupDetailView({
     const leaders = rankedStandings.filter((s) => s.groupRank === 1);
     return leaders.length === 1 ? leaders[0].user_id : null;
   }, [rankedStandings]);
+  const displayedMemberCount = Math.max(group?.memberCount ?? 0, standings.length);
 
   if (!isOpen || !group) return null;
 
@@ -226,7 +237,7 @@ export function GroupDetailView({
             {group.name}
           </h1>
           <span className="group-detail-meta">
-            {standings.length} {standings.length === 1 ? "member" : "members"}
+            {displayedMemberCount} {displayedMemberCount === 1 ? "member" : "members"}
           </span>
         </div>
 

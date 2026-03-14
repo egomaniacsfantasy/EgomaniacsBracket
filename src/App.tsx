@@ -57,9 +57,6 @@ const ODDS_FORMAT_STORAGE_KEY = "bracketlab-odds-format";
 const STAGGERED_SIM_DELAY_MS = 2000;
 const MIN_STAGGERED_SIM_DELAY_MS = 1000;
 const MAX_STAGGERED_SIM_DELAY_MS = 5000;
-const BUG_REPORT_MAILTO =
-  "mailto:feedback@oddsgods.net?subject=BracketLab%20Bug%20Report&body=What%20happened%3A%0A%0AWhat%20I%20was%20trying%20to%20do%3A%0A%0ADevice%2FBrowser%3A%0A";
-
 const regionSections: Region[][] = BRACKET_HALVES.map((half) => [...half.regions]);
 const mobileRegionOrder: Region[] = ["East", "West", "Midwest", "South"];
 const invertedRegions = new Set<Region>([regionSections[0][1], regionSections[1][1]]);
@@ -674,6 +671,7 @@ function App() {
   const [topHalfManuallyExpanded, setTopHalfManuallyExpanded] = useState(false);
   const [bottomHalfManuallyExpanded, setBottomHalfManuallyExpanded] = useState(false);
   const [shareToastVisible, setShareToastVisible] = useState(false);
+  const [appToastMessage, setAppToastMessage] = useState<string | null>(null);
   const [shareModalVisible, setShareModalVisible] = useState(false);
   const [shareExporting, setShareExporting] = useState<ShareFormat | null>(null);
   const [chaosScoreChanged, setChaosScoreChanged] = useState(false);
@@ -724,6 +722,7 @@ function App() {
   const promoCTATimerRef = useRef<number | null>(null);
   const firstFourAutoShownRef = useRef(false);
   const shareToastTimerRef = useRef<number | null>(null);
+  const appToastTimerRef = useRef<number | null>(null);
   const shareStoryRef = useRef<HTMLDivElement | null>(null);
   const shareTwitterRef = useRef<HTMLDivElement | null>(null);
   const suppressHashSyncRef = useRef(true);
@@ -852,6 +851,17 @@ function App() {
     setUserBrackets(data);
   };
 
+  const showAppToast = useCallback((message: string, durationMs = 2600) => {
+    setAppToastMessage(message);
+    if (appToastTimerRef.current !== null) {
+      window.clearTimeout(appToastTimerRef.current);
+    }
+    appToastTimerRef.current = window.setTimeout(() => {
+      setAppToastMessage(null);
+      appToastTimerRef.current = null;
+    }, durationMs);
+  }, []);
+
   const dismissGroupAssignmentPrompt = useCallback(() => {
     setGroupAssignmentPrompt(null);
     setGroupAssignmentSavingId(null);
@@ -880,6 +890,7 @@ function App() {
   const assignBracketToGroup = useCallback(
     async (groupId: string) => {
       if (!user || !groupAssignmentPrompt) return;
+      const targetGroup = groupAssignmentPrompt.groups.find((group) => group.id === groupId) ?? null;
       setGroupAssignmentSavingId(groupId);
       setGroupAssignmentError(null);
       const { error } = await updateMemberBracket(groupId, user.id, groupAssignmentPrompt.bracket.id);
@@ -889,6 +900,16 @@ function App() {
         return;
       }
       setGroupAssignmentSavingId(null);
+      if (targetGroup) {
+        setActiveGroup((current) =>
+          current && current.id === targetGroup.id
+            ? { ...current, bracketId: groupAssignmentPrompt.bracket.id, memberCount: Math.max(1, current.memberCount) }
+            : current,
+        );
+        showAppToast(`Added ${groupAssignmentPrompt.bracket.bracket_name} to ${targetGroup.name}`);
+      } else {
+        showAppToast("Bracket added to group");
+      }
       setGroupAssignmentPrompt((current) => {
         if (!current) return null;
         const remainingGroups = current.groups.filter((group) => group.id !== groupId);
@@ -896,7 +917,7 @@ function App() {
       });
       setGroupAssignmentError(null);
     },
-    [groupAssignmentPrompt, user],
+    [groupAssignmentPrompt, showAppToast, user],
   );
 
   useEffect(() => {
@@ -2520,6 +2541,9 @@ function App() {
       if (shareToastTimerRef.current !== null) {
         window.clearTimeout(shareToastTimerRef.current);
       }
+      if (appToastTimerRef.current !== null) {
+        window.clearTimeout(appToastTimerRef.current);
+      }
       if (chaosScoreTimerRef.current !== null) {
         window.clearTimeout(chaosScoreTimerRef.current);
       }
@@ -3321,11 +3345,6 @@ function App() {
     }
   };
 
-  const openBugReport = () => {
-    setOpenToolbarMenu(null);
-    window.location.href = BUG_REPORT_MAILTO;
-  };
-
   const handleFirstFourModalClose = useCallback(() => {
     setShowFirstFourModal(false);
     if (!isMobile || !allPlayInDecided) return;
@@ -3356,7 +3375,7 @@ function App() {
   const submitButtonLabel = saveStatus === "saving"
     ? "Submitting..."
     : saveStatus === "saved" || currentBracketAlreadySubmitted
-      ? "✓ Submitted"
+      ? "Bracket Submitted"
       : saveStatus === "error"
         ? (saveErrorText?.toLowerCase().includes("complete all")
             ? `${remainingPicks} picks left`
@@ -3415,13 +3434,6 @@ function App() {
             setOpenToolbarMenu(null);
             onUndo();
           },
-        }]
-      : []),
-    ...(isMobile
-      ? [{
-          id: "report-bug",
-          label: "🐛 Report a Bug",
-          onSelect: openBugReport,
         }]
       : []),
     ...(wrappedData
@@ -3582,7 +3594,7 @@ function App() {
                 ? " toolbar-btn--save-ready"
                 : ""
             }`}
-            disabled={saveStatus === "saving" || (isAuthenticated && !canSubmitBrackets)}
+            disabled={saveStatus === "saving" || currentBracketAlreadySubmitted || (isAuthenticated && !canSubmitBrackets)}
             title={submitButtonTitle}
           >
             {submitButtonLabel}
@@ -3657,18 +3669,6 @@ function App() {
         </div>
 
         {!isMobile ? (
-          <a
-            href={BUG_REPORT_MAILTO}
-            className="bug-report-link bug-report-link--toolbar"
-            target="_blank"
-            rel="noopener"
-            onClick={() => setOpenToolbarMenu(null)}
-          >
-            🐛 Report a Bug
-          </a>
-        ) : null}
-
-        {!isMobile ? (
           <button
             onClick={() => void onSaveBracket()}
             className={`eg-btn toolbar-btn--save toolbar-btn--save-action${
@@ -3676,7 +3676,7 @@ function App() {
                 ? " toolbar-btn--save-ready"
                 : ""
             }`}
-            disabled={saveStatus === "saving" || (isAuthenticated && !canSubmitBrackets)}
+            disabled={saveStatus === "saving" || currentBracketAlreadySubmitted || (isAuthenticated && !canSubmitBrackets)}
             title={submitButtonTitle}
           >
             {submitButtonLabel}
@@ -4698,6 +4698,7 @@ function App() {
       ) : null}
 
       {shareToastVisible ? <div className="share-toast">Image saved! Share it on social media.</div> : null}
+      {appToastMessage ? <div className="share-toast">{appToastMessage}</div> : null}
 
       {shareModalVisible ? (
         <>
