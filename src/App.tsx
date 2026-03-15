@@ -656,6 +656,11 @@ function App() {
   const [hasLoadedDesktopLeaderboard, setHasLoadedDesktopLeaderboard] = useState(false);
   const [promoCTAVisible, setPromoCTAVisible] = useState(false);
   const [promoShown, setPromoShown] = useState(false);
+  const [promoDismissed, setPromoDismissed] = useState(() => {
+    if (typeof window === "undefined") return false;
+    return window.localStorage.getItem(PROMO_DISMISSED_KEY) === "1";
+  });
+  const [postOnboardingPromoGateOpen, setPostOnboardingPromoGateOpen] = useState(false);
   const [manuallyExpandedRounds, setManuallyExpandedRounds] = useState<ManualRoundExpansionState>({});
   const [topHalfManuallyExpanded, setTopHalfManuallyExpanded] = useState(false);
   const [bottomHalfManuallyExpanded, setBottomHalfManuallyExpanded] = useState(false);
@@ -969,8 +974,10 @@ function App() {
   }, [dismissGroupAssignmentPrompt, user]);
 
   useEffect(() => {
-    if (isAuthenticated && promoCTAVisible) setPromoCTAVisible(false);
-  }, [isAuthenticated, promoCTAVisible]);
+    if (!isAuthenticated) return;
+    if (promoCTAVisible) setPromoCTAVisible(false);
+    if (postOnboardingPromoGateOpen) setPostOnboardingPromoGateOpen(false);
+  }, [isAuthenticated, postOnboardingPromoGateOpen, promoCTAVisible]);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -1115,20 +1122,22 @@ function App() {
     setWelcomeGateOpen(false);
   };
 
-  const maybeShowPromoCTA = () => {
-    if (typeof window === "undefined") return;
-    if (authLoading || isAuthenticated || promoShown) return;
-    if (window.localStorage.getItem(PROMO_DISMISSED_KEY)) return;
+  const maybeShowPromoCTA = useCallback(() => {
+    if (typeof window === "undefined") return false;
+    if (authLoading || isAuthenticated || promoShown || promoDismissed) return false;
     if (promoCTATimerRef.current !== null) window.clearTimeout(promoCTATimerRef.current);
     promoCTATimerRef.current = window.setTimeout(() => {
       setPromoCTAVisible(true);
       setPromoShown(true);
       promoCTATimerRef.current = null;
     }, 800);
-  };
+    return true;
+  }, [authLoading, isAuthenticated, promoDismissed, promoShown]);
 
   const handlePromoDismiss = () => {
     setPromoCTAVisible(false);
+    setPostOnboardingPromoGateOpen(false);
+    setPromoDismissed(true);
     if (typeof window !== "undefined") {
       window.localStorage.setItem(PROMO_DISMISSED_KEY, "1");
     }
@@ -1136,6 +1145,8 @@ function App() {
 
   const handlePromoSignUp = () => {
     setPromoCTAVisible(false);
+    setPostOnboardingPromoGateOpen(false);
+    setPromoDismissed(true);
     if (typeof window !== "undefined") {
       window.localStorage.setItem(PROMO_DISMISSED_KEY, "1");
     }
@@ -1178,7 +1189,7 @@ function App() {
   const completeWalkthrough = () => {
     trackEvent("onboarding_completed");
     closeWalkthrough();
-    maybeShowPromoCTA();
+    setPostOnboardingPromoGateOpen(true);
   };
 
   const skipWalkthrough = () => {
@@ -1186,7 +1197,7 @@ function App() {
       skipped_at_step: walkthroughStep + 1,
     });
     closeWalkthrough();
-    maybeShowPromoCTA();
+    setPostOnboardingPromoGateOpen(true);
   };
 
   const startWalkthrough = (opts?: { replay?: boolean }) => {
@@ -2689,10 +2700,25 @@ function App() {
   }, [displayMode, preTournamentBaseline.futures]);
 
   useEffect(() => {
-    if (!onboardingFlowReady || allPlayInDecided || firstFourAutoShownRef.current) return;
+    if (!postOnboardingPromoGateOpen || authLoading || promoCTAVisible) return;
+    if (maybeShowPromoCTA()) return;
+    setPostOnboardingPromoGateOpen(false);
+  }, [authLoading, maybeShowPromoCTA, postOnboardingPromoGateOpen, promoCTAVisible]);
+
+  useEffect(() => {
+    if (
+      !onboardingFlowReady ||
+      allPlayInDecided ||
+      firstFourAutoShownRef.current ||
+      postOnboardingPromoGateOpen ||
+      promoCTAVisible ||
+      authModalOpen
+    ) {
+      return;
+    }
     setShowFirstFourModal(true);
     firstFourAutoShownRef.current = true;
-  }, [allPlayInDecided, onboardingFlowReady]);
+  }, [allPlayInDecided, authModalOpen, onboardingFlowReady, postOnboardingPromoGateOpen, promoCTAVisible]);
 
   useEffect(() => {
     if (!allPlayInDecided) return;
