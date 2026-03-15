@@ -14166,12 +14166,9 @@ body.walkthrough-active .odds-value--changed::after {
 }
 
 .ft-back-btn {
-  position: fixed;
-  top: 16px;
-  right: 24px;
-  z-index: 1001;
-  display: flex;
+  display: inline-flex;
   align-items: center;
+  justify-content: center;
   gap: 6px;
   padding: 10px 20px;
   background: rgba(184, 125, 24, 0.15);
@@ -14183,6 +14180,8 @@ body.walkthrough-active .odds-value--changed::after {
   font-weight: 700;
   cursor: pointer;
   transition: all 140ms;
+  white-space: nowrap;
+  flex-shrink: 0;
 }
 
 .ft-back-btn:hover {
@@ -14192,7 +14191,6 @@ body.walkthrough-active .odds-value--changed::after {
 
 @media (max-width: 767px) {
   .ft-back-btn {
-    position: static;
     align-self: flex-end;
   }
 
