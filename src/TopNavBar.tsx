@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import BugReportModal, { type BugReportModalProps } from "./BugReportModal";
 
 const LANDING_URL = "https://oddsgods.net";
 
@@ -8,6 +9,7 @@ type TopNavBarProps = {
   activeView: TopNavView;
   authLoading?: boolean;
   isAuthenticated: boolean;
+  bugReportContext?: BugReportModalProps | null;
   onSelectBracket: () => void;
   onSelectLeaderboard: () => void;
   onSelectConferences: () => void;
@@ -29,6 +31,7 @@ export function TopNavBar({
   activeView,
   authLoading = false,
   isAuthenticated,
+  bugReportContext = null,
   onSelectBracket,
   onSelectLeaderboard,
   onSelectConferences,
@@ -100,69 +103,75 @@ export function TopNavBar({
             {action.label}
           </button>
         ))}
-        {authLoading ? (
-          <span className="top-nav-bar__status">...</span>
-        ) : isAuthenticated ? (
-          <>
-            {userLabel ? <span className="top-nav-bar__user">{userLabel}</span> : null}
-            <button type="button" className="top-nav-bar__link" onClick={onSignOut}>
-              Sign Out
-            </button>
-          </>
-        ) : (
-          <button type="button" className="top-nav-bar__link" onClick={onSignIn}>
-            Sign In
-          </button>
-        )}
       </div>
 
-      <div className="top-nav-bar__mobile" ref={mobileMenuRef}>
-        <button
-          type="button"
-          className="top-nav-bar__menu-btn"
-          aria-expanded={mobileMenuOpen}
-          aria-label="Open navigation menu"
-          onClick={() => setMobileMenuOpen((prev) => !prev)}
-        >
-          ☰
-        </button>
-        {mobileMenuOpen ? (
-          <div className="top-nav-bar__mobile-menu" role="menu" aria-label="Bracket navigation menu">
-            {navActions.map((action) => (
-              <button
-                key={action.id}
-                type="button"
-                className={`top-nav-bar__mobile-link ${activeView === action.id ? "is-active" : ""}`}
-                onClick={() => handleMobileSelect(action.onSelect)}
-              >
-                {action.label}
+      <div className="top-nav-bar__actions">
+        {bugReportContext ? <BugReportModal {...bugReportContext} /> : null}
+        <div className="top-nav-bar__desktop-auth">
+          {authLoading ? (
+            <span className="top-nav-bar__status">...</span>
+          ) : isAuthenticated ? (
+            <>
+              {userLabel ? <span className="top-nav-bar__user">{userLabel}</span> : null}
+              <button type="button" className="top-nav-bar__link" onClick={onSignOut}>
+                Sign Out
               </button>
-            ))}
-            <div className="top-nav-bar__mobile-divider" />
-            {authLoading ? (
-              <span className="top-nav-bar__mobile-status">Loading...</span>
-            ) : isAuthenticated ? (
-              <>
-                {userLabel ? <span className="top-nav-bar__mobile-user">{userLabel}</span> : null}
+            </>
+          ) : (
+            <button type="button" className="top-nav-bar__link" onClick={onSignIn}>
+              Sign In
+            </button>
+          )}
+        </div>
+
+        <div className="top-nav-bar__mobile" ref={mobileMenuRef}>
+          <button
+            type="button"
+            className="top-nav-bar__menu-btn"
+            aria-expanded={mobileMenuOpen}
+            aria-label="Open navigation menu"
+            onClick={() => setMobileMenuOpen((prev) => !prev)}
+          >
+            ☰
+          </button>
+          {mobileMenuOpen ? (
+            <div className="top-nav-bar__mobile-menu" role="menu" aria-label="Bracket navigation menu">
+              {navActions.map((action) => (
+                <button
+                  key={action.id}
+                  type="button"
+                  className={`top-nav-bar__mobile-link ${activeView === action.id ? "is-active" : ""}`}
+                  onClick={() => handleMobileSelect(action.onSelect)}
+                >
+                  {action.label}
+                </button>
+              ))}
+              <div className="top-nav-bar__mobile-divider" />
+              {authLoading ? (
+                <span className="top-nav-bar__mobile-status">Loading...</span>
+              ) : isAuthenticated ? (
+                <>
+                  {userLabel ? <span className="top-nav-bar__mobile-user">{userLabel}</span> : null}
+                  <button
+                    type="button"
+                    className="top-nav-bar__mobile-link"
+                    onClick={() => handleMobileSelect(onSignOut)}
+                  >
+                    Sign Out
+                  </button>
+                </>
+              ) : (
                 <button
                   type="button"
                   className="top-nav-bar__mobile-link"
-                  onClick={() => handleMobileSelect(onSignOut)}
+                  onClick={() => handleMobileSelect(onSignIn)}
                 >
-                  Sign Out
+                  Sign In
                 </button>
-              </>
-            ) : (
-              <button
-                type="button"
-                className="top-nav-bar__mobile-link"
-                onClick={() => handleMobileSelect(onSignIn)}
-              >
-                Sign In
-              </button>
-            )}
-          </div>
-        ) : null}
+              )}
+            </div>
+          ) : null}
+        </div>
       </div>
     </nav>
   );

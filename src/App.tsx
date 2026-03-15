@@ -44,6 +44,7 @@ import { BracketWrappedCard } from "./BracketWrappedCard";
 import { MobileOnboarding } from "./MobileOnboarding";
 import { OverflowMenu, type OverflowMenuItem } from "./OverflowMenu";
 import { TopNavBar, type TopNavView } from "./TopNavBar";
+import type { BugReportModalProps } from "./BugReportModal";
 import { getUserGroups, updateMemberBracket, type UserGroup } from "./groupStorage";
 import { hasElevatedAccess } from "./groupVisibility";
 
@@ -3374,7 +3375,7 @@ function App() {
           ? "rankings"
           : mobileTab === "predictor"
             ? "predictor"
-          : "bracket"
+        : "bracket"
     : mainView === "leaderboard"
       ? "leaderboard"
       : mainView === "conferences"
@@ -3383,7 +3384,41 @@ function App() {
           ? "rankings"
           : mainView === "predictor"
             ? "predictor"
-          : "bracket";
+        : "bracket";
+  const bugReportContext = useMemo<BugReportModalProps>(
+    () => ({
+      activeRegion:
+        isMobile && mobileTab === "bracket"
+          ? (mobileSection === "FF" ? "Final Four" : mobileSection)
+          : undefined,
+      activeRound:
+        isMobile && mobileTab === "bracket"
+          ? (mobileSection === "FF" ? mobileFfRound : mobileRound)
+          : undefined,
+      activeTab: isMobile ? mobileTab : mainView,
+      pickCount,
+      chaosScore,
+      displayMode,
+      isFuturesOpen: isMobile ? mobileTab === "futures" : mainView === "futures",
+      isSimRunning: staggeredSimRunning || isUpdating,
+      bracketHash: Object.keys(sanitized).length > 0 ? encodeBracketState(sanitized) : null,
+      isMobile,
+    }),
+    [
+      chaosScore,
+      displayMode,
+      isMobile,
+      isUpdating,
+      mainView,
+      mobileFfRound,
+      mobileRound,
+      mobileSection,
+      mobileTab,
+      pickCount,
+      sanitized,
+      staggeredSimRunning,
+    ],
+  );
 
   const switchTopNavView = (view: TopNavView) => {
     if (isMobile) {
@@ -4212,6 +4247,7 @@ function App() {
         <TopNavBar
           activeView={topNavActiveView}
           authLoading={authLoading}
+          bugReportContext={bugReportContext}
           isAuthenticated={isAuthenticated}
           userLabel={userLabel}
           showBeta
