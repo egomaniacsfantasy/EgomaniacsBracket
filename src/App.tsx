@@ -88,17 +88,6 @@ const URL_ROUND_ORDER: ResolvedGame["round"][] = ["FF", "R64", "R32", "S16", "E8
 const URL_EXPECTED_GAME_COUNT = gameTemplates.length;
 const URL_EXPECTED_BITS = URL_EXPECTED_GAME_COUNT * 2;
 
-const getRecommendedSimRuns = (): number => {
-  if (typeof window === "undefined") return DEFAULT_SIM_RUNS;
-  const nav = navigator as Navigator & { deviceMemory?: number };
-  const cores = nav.hardwareConcurrency ?? 4;
-  const memory = nav.deviceMemory ?? 4;
-  const isMobileViewport = window.matchMedia("(max-width: 767px)").matches;
-
-  if (isMobileViewport || memory <= 4 || cores <= 4) return 1500;
-  if (memory <= 8 || cores <= 8) return 2500;
-  return DEFAULT_SIM_RUNS;
-};
 
 const canonicalGameTemplates = (() => {
   const regional: typeof gameTemplates = [];
