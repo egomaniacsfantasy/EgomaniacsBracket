@@ -26,6 +26,9 @@ export type UserGroup = GroupRow & {
   role: "admin" | "member";
   bracketId: string | null;
   memberCount: number;
+  championName: string | null;
+  championSeed: number | null;
+  championLogoUrl: string | null;
 };
 
 export type GroupStanding = {
@@ -224,6 +227,11 @@ export async function getUserGroups(userId: string) {
             invite_code,
             created_by,
             created_at
+          ),
+          brackets:bracket_id (
+            champion_name,
+            champion_seed,
+            champion_logo_url
           )
         `
         )
@@ -244,6 +252,18 @@ export async function getUserGroups(userId: string) {
     role: "admin" | "member";
     bracket_id: string | null;
     groups: GroupRow | GroupRow[] | null;
+    brackets:
+      | {
+          champion_name?: string | null;
+          champion_seed?: number | null;
+          champion_logo_url?: string | null;
+        }
+      | Array<{
+          champion_name?: string | null;
+          champion_seed?: number | null;
+          champion_logo_url?: string | null;
+        }>
+      | null;
   }>;
 
   const normalizedRows = rows
@@ -251,10 +271,14 @@ export async function getUserGroups(userId: string) {
       const groupValue = Array.isArray(membership.groups)
         ? membership.groups[0] ?? null
         : membership.groups;
+      const bracketValue = Array.isArray(membership.brackets)
+        ? membership.brackets[0] ?? null
+        : membership.brackets;
       if (!groupValue?.id) return null;
       return {
         ...membership,
         groups: groupValue,
+        brackets: bracketValue,
       };
     })
     .filter((membership): membership is {
@@ -262,6 +286,11 @@ export async function getUserGroups(userId: string) {
       role: "admin" | "member";
       bracket_id: string | null;
       groups: GroupRow;
+      brackets: {
+        champion_name?: string | null;
+        champion_seed?: number | null;
+        champion_logo_url?: string | null;
+      } | null;
     } => Boolean(membership));
 
   if (normalizedRows.length === 0) {
@@ -296,6 +325,9 @@ export async function getUserGroups(userId: string) {
     role: m.role,
     bracketId: m.bracket_id,
     memberCount: Math.max(1, countMap[m.groups.id] ?? cachedMemberCounts[m.groups.id] ?? 1),
+    championName: m.brackets?.champion_name ?? null,
+    championSeed: m.brackets?.champion_seed ?? null,
+    championLogoUrl: m.brackets?.champion_logo_url ?? null,
   }));
 
   writeCachedValue(cacheKey, groups);

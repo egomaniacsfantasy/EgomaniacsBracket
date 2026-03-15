@@ -1,60 +1,79 @@
 import { useMemo, useState } from "react";
-import { gameTemplates, regionOrder } from "./data/bracket";
+import { gameTemplates } from "./data/bracket";
 import { teamsById } from "./data/teams";
 import { areAllGroupBracketsLocked, canSeeDetails } from "./groupVisibility";
 import type { GroupStanding } from "./groupStorage";
 import { resolveGames, type LockedPicks } from "./lib/bracket";
 import { teamLogoUrl } from "./lib/logo";
-import type { GameTemplate } from "./types";
+import type { GameTemplate, Region } from "./types";
 
 type RankedStanding = GroupStanding & { groupRank: number };
+type RegionTab = "east" | "south" | "west" | "midwest" | "finalfour";
+type RegionalRound = "R64" | "R32" | "S16" | "E8";
+type FinalFourRound = "FF1" | "FF2" | "champion";
+type RoundTab = RegionalRound | FinalFourRound;
 
-const ROUND_LABELS = [
-  { key: "R64", label: "Round of 64" },
-  { key: "R32", label: "Round of 32" },
-  { key: "S16", label: "Sweet 16" },
-  { key: "E8", label: "Elite 8" },
-  { key: "F4", label: "Final Four" },
-  { key: "CHAMP", label: "Championship" },
-] as const;
-
-type RoundKey = (typeof ROUND_LABELS)[number]["key"];
-
-type Voter = {
+type MemberPick = {
   userId: string;
   displayName: string;
   isCurrentUser: boolean;
 };
 
-type CardTeam = {
-  id: string | null;
-  name: string;
-  seedLabel: string | null;
+type SlotTeamGroup = {
+  teamId: string;
+  teamName: string;
+  teamSeedLabel: string | null;
   logoUrl: string | null;
-  variantCount: number;
+  members: MemberPick[];
 };
 
-type MatchupCardData = {
-  matchupId: string;
-  teamA: CardTeam;
-  teamB: CardTeam;
-  totalVoters: number;
-  countA: number;
-  countB: number;
-  pctA: number;
-  pctB: number;
-  votersA: Voter[];
-  votersB: Voter[];
+type SlotCardData = {
+  id: string;
+  label: string;
+  groups: SlotTeamGroup[];
+  totalMembers: number;
   isUnanimous: boolean;
-  isLoneWolf: boolean;
 };
 
-const regionalRoundOrder = new Map(regionOrder.map((region, index) => [region, index]));
+const REGION_OPTIONS: Array<{ id: RegionTab; label: string }> = [
+  { id: "east", label: "East" },
+  { id: "south", label: "South" },
+  { id: "west", label: "West" },
+  { id: "midwest", label: "Midwest" },
+  { id: "finalfour", label: "Final Four" },
+];
 
-function incrementCount(counts: Map<string, number>, teamId: string | null) {
-  if (!teamId) return;
-  counts.set(teamId, (counts.get(teamId) ?? 0) + 1);
-}
+const REGIONAL_ROUNDS: Array<{ id: RegionalRound; label: string }> = [
+  { id: "R64", label: "R64" },
+  { id: "R32", label: "R32" },
+  { id: "S16", label: "S16" },
+  { id: "E8", label: "E8" },
+];
+
+const FINAL_FOUR_ROUNDS: Array<{ id: FinalFourRound; label: string }> = [
+  { id: "FF1", label: "FF1" },
+  { id: "FF2", label: "FF2" },
+  { id: "champion", label: "Champion" },
+];
+
+const REGION_BY_TAB: Record<Exclude<RegionTab, "finalfour">, Region> = {
+  east: "East",
+  south: "South",
+  west: "West",
+  midwest: "Midwest",
+};
+
+const TEMPLATE_BY_ID = new Map(gameTemplates.map((template) => [template.id, template]));
+const SLOT_SEED_MATCHUPS: Array<[number, number]> = [
+  [1, 16],
+  [8, 9],
+  [5, 12],
+  [4, 13],
+  [6, 11],
+  [3, 14],
+  [7, 10],
+  [2, 15],
+];
 
 function compareTeams(teamAId: string, teamBId: string) {
   const teamA = teamsById.get(teamAId);
@@ -64,176 +83,88 @@ function compareTeams(teamAId: string, teamBId: string) {
   return (teamA?.name ?? teamAId).localeCompare(teamB?.name ?? teamBId);
 }
 
-function pickRepresentativeTeamId(
-  counts: Map<string, number>,
-  fallbackTeamId: string | null,
-  excludedTeamId?: string | null,
-) {
-  const ranked = [...counts.entries()]
-    .filter(([teamId]) => teamId !== excludedTeamId)
-    .sort((a, b) => b[1] - a[1] || compareTeams(a[0], b[0]));
-
-  if (ranked[0]?.[0]) return ranked[0][0];
-  if (fallbackTeamId && fallbackTeamId !== excludedTeamId) return fallbackTeamId;
-  return null;
+function getDisplayInitials(name: string) {
+  return name
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0]?.toUpperCase() ?? "")
+    .join("") || "?";
 }
 
-function buildCardTeam(teamId: string | null, variantCount: number): CardTeam {
-  if (!teamId) {
-    return {
-      id: null,
-      name: "TBD",
-      seedLabel: null,
-      logoUrl: null,
-      variantCount,
-    };
+function getSlotTemplates(regionTab: RegionTab, roundTab: RoundTab): GameTemplate[] {
+  if (regionTab === "finalfour") {
+    const templateId = roundTab === "FF1" ? "F4-Left-0" : roundTab === "FF2" ? "F4-Right-0" : "CHAMP-0";
+    const template = TEMPLATE_BY_ID.get(templateId);
+    return template ? [template] : [];
   }
 
+  const round = roundTab === "R64" || roundTab === "R32" || roundTab === "S16" || roundTab === "E8" ? roundTab : "R64";
+  const region = REGION_BY_TAB[regionTab];
+  return gameTemplates
+    .filter((template) => template.region === region && template.round === round)
+    .sort((templateA, templateB) => templateA.slot - templateB.slot);
+}
+
+function getSlotLabel(template: GameTemplate) {
+  if (template.round === "R64") {
+    const matchup = SLOT_SEED_MATCHUPS[template.slot];
+    return matchup ? `${matchup[0]} vs ${matchup[1]}` : `Slot ${template.slot + 1}`;
+  }
+  if (template.round === "R32") {
+    return `Slot ${template.slot * 2 + 1} vs ${template.slot * 2 + 2}`;
+  }
+  if (template.round === "S16") {
+    return `Sweet 16 • ${template.slot + 1}`;
+  }
+  if (template.round === "E8") {
+    return "Elite 8";
+  }
+  if (template.round === "F4") {
+    return template.id === "F4-Left-0" ? "East vs South" : "West vs Midwest";
+  }
+  return "Champion";
+}
+
+function getGridVariant(regionTab: RegionTab, roundTab: RoundTab) {
+  if (regionTab === "finalfour" && roundTab === "champion") return "champion";
+  if (regionTab === "finalfour") return "single";
+  if (roundTab === "R64") return "r64";
+  if (roundTab === "R32") return "r32";
+  if (roundTab === "S16") return "s16";
+  return "single";
+}
+
+function buildSlotTeamGroup(teamId: string, members: MemberPick[]): SlotTeamGroup {
   const team = teamsById.get(teamId);
-  if (!team) {
-    return {
-      id: teamId,
-      name: teamId,
-      seedLabel: null,
-      logoUrl: null,
-      variantCount,
-    };
-  }
-
   return {
-    id: team.id,
-    name: team.name,
-    seedLabel: team.seedLabel ?? String(team.seed),
-    logoUrl: teamLogoUrl(team),
-    variantCount,
+    teamId,
+    teamName: team?.name ?? teamId,
+    teamSeedLabel: team?.seedLabel ?? (team ? String(team.seed) : null),
+    logoUrl: team ? teamLogoUrl(team) : null,
+    members,
   };
 }
 
-function getTeamMeta(team: CardTeam) {
-  if (!team.id) return "Awaiting prior pick";
-  const details = team.seedLabel ? `#${team.seedLabel} seed` : "Team picked";
-  return team.variantCount > 1 ? `${details} · ${team.variantCount} paths` : details;
-}
-
-function voteLabel(totalVoters: number) {
-  return totalVoters === 1 ? "1 vote" : `${totalVoters} votes`;
-}
-
-function MatchupTeamLogo({ team }: { team: CardTeam }) {
+function SlotTeamLogo({ group }: { group: SlotTeamGroup }) {
   const [failed, setFailed] = useState(false);
 
-  if (!team.id) {
-    return <span className="gp-card-logo-placeholder" aria-hidden="true" />;
-  }
-
-  if (failed || !team.logoUrl) {
+  if (!group.logoUrl || failed) {
     return (
-      <span className="gp-card-logo-fallback" aria-hidden="true">
-        <span className="gp-card-logo-seed">{team.seedLabel ?? "?"}</span>
+      <span className="grp-picks-team-logo-fallback" aria-hidden="true">
+        {group.teamSeedLabel ?? "?"}
       </span>
     );
   }
 
   return (
     <img
-      src={team.logoUrl}
-      className="gp-card-logo"
-      alt={`${team.name} logo`}
+      src={group.logoUrl}
+      alt={`${group.teamName} logo`}
+      className="grp-picks-team-logo"
       loading="lazy"
       onError={() => setFailed(true)}
     />
-  );
-}
-
-function MatchupCard({ data }: { data: MatchupCardData }) {
-  return (
-    <div
-      className={[
-        "gp-card",
-        data.isUnanimous ? "gp-card--unanimous" : "",
-        data.isLoneWolf ? "gp-card--lone-wolf" : "",
-      ]
-        .filter(Boolean)
-        .join(" ")}
-    >
-      <div className="gp-card-matchup">
-        <div className="gp-card-team gp-card-team--a">
-          <MatchupTeamLogo team={data.teamA} />
-          <div className="gp-card-team-info">
-            <span className="gp-card-team-name">{data.teamA.name}</span>
-            <span className="gp-card-team-meta">{getTeamMeta(data.teamA)}</span>
-          </div>
-        </div>
-
-        <div className="gp-card-vs">
-          <span className="gp-card-vs-text">vs</span>
-        </div>
-
-        <div className="gp-card-team gp-card-team--b">
-          <div className="gp-card-team-info gp-card-team-info--right">
-            <span className="gp-card-team-name">{data.teamB.name}</span>
-            <span className="gp-card-team-meta">{getTeamMeta(data.teamB)}</span>
-          </div>
-          <MatchupTeamLogo team={data.teamB} />
-        </div>
-      </div>
-
-      {data.totalVoters === 0 ? (
-        <p className="gp-card-empty">No picks yet.</p>
-      ) : (
-        <>
-          <div className="gp-card-bar-section">
-            <div className="gp-card-bar">
-              {data.isUnanimous ? (
-                <div className="gp-card-bar-unanimous" />
-              ) : (
-                <>
-                  <div className="gp-card-bar-a" style={{ width: `${data.pctA}%` }} />
-                  <div className="gp-card-bar-b" style={{ width: `${data.pctB}%` }} />
-                </>
-              )}
-            </div>
-
-            <div className="gp-card-bar-labels">
-              <span className="gp-card-pct gp-card-pct--a">{data.pctA}%</span>
-              <span className="gp-card-count">{voteLabel(data.totalVoters)}</span>
-              <span className="gp-card-pct gp-card-pct--b">{data.pctB}%</span>
-            </div>
-          </div>
-
-          <div className="gp-card-voters">
-            <div className="gp-card-voters-side gp-card-voters-side--a">
-              {data.votersA.map((voter) => (
-                <span
-                  key={`${data.matchupId}-${voter.userId}-a`}
-                  className={`gp-voter ${voter.isCurrentUser ? "gp-voter--you" : ""}`}
-                >
-                  {voter.displayName}
-                </span>
-              ))}
-            </div>
-
-            <div className="gp-card-voters-side gp-card-voters-side--b">
-              {data.votersB.map((voter) => (
-                <span
-                  key={`${data.matchupId}-${voter.userId}-b`}
-                  className={`gp-voter ${voter.isCurrentUser ? "gp-voter--you" : ""}`}
-                >
-                  {voter.displayName}
-                </span>
-              ))}
-            </div>
-          </div>
-        </>
-      )}
-
-      {data.isLoneWolf && (
-        <div className="gp-lone-wolf">
-          <span className="gp-lone-wolf-icon">🐺</span>
-          <span className="gp-lone-wolf-text">You&apos;re the lone wolf</span>
-        </div>
-      )}
-    </div>
   );
 }
 
@@ -247,7 +178,9 @@ export function GroupPicksTab({
   tournamentStarted: boolean;
   canPreviewHidden?: boolean;
 }) {
-  const [expandedRound, setExpandedRound] = useState<RoundKey>("R64");
+  const [selectedRegion, setSelectedRegion] = useState<RegionTab>("east");
+  const [selectedRound, setSelectedRound] = useState<RoundTab>("R64");
+
   const allBracketsLocked = areAllGroupBracketsLocked(standings, canPreviewHidden);
   const visibleStandings = useMemo(
     () => standings.filter((entry) => canSeeDetails(entry, currentUserId, canPreviewHidden)),
@@ -267,138 +200,139 @@ export function GroupPicksTab({
     [visibleStandings],
   );
 
-  const matchupsByRound = useMemo(() => {
-    const grouped = ROUND_LABELS.reduce(
-      (acc, round) => {
-        acc[round.key] = [];
-        return acc;
-      },
-      {} as Record<RoundKey, GameTemplate[]>,
-    );
+  const slotTemplates = useMemo(
+    () => getSlotTemplates(selectedRegion, selectedRound),
+    [selectedRegion, selectedRound],
+  );
 
-    gameTemplates
-      .filter((template) => template.round !== "FF")
-      .sort((a, b) => {
-        const regionDiff =
-          (regionalRoundOrder.get(a.region ?? "East") ?? Number.MAX_SAFE_INTEGER) -
-          (regionalRoundOrder.get(b.region ?? "East") ?? Number.MAX_SAFE_INTEGER);
-        if (regionDiff !== 0) return regionDiff;
-        return a.slot - b.slot;
-      })
-      .forEach((template) => {
-        grouped[template.round as RoundKey].push(template);
-      });
-
-    return grouped;
-  }, []);
-
-  const matchupData = useMemo(() => {
-    const data: Record<string, MatchupCardData> = {};
-
-    gameTemplates
-      .filter((template) => template.round !== "FF")
-      .forEach((template) => {
-        const sideATeams = new Map<string, number>();
-        const sideBTeams = new Map<string, number>();
-        const votersA: Voter[] = [];
-        const votersB: Voter[] = [];
+  const slotCards = useMemo<SlotCardData[]>(
+    () =>
+      slotTemplates.map((template) => {
+        const groupsByTeam = new Map<string, MemberPick[]>();
 
         resolvedStandings.forEach(({ entry, gamesById }) => {
-          const game = gamesById.get(template.id);
-          if (!game) return;
+          const winnerId = gamesById.get(template.id)?.winnerId;
+          if (!winnerId) return;
 
-          incrementCount(sideATeams, game.teamAId);
-          incrementCount(sideBTeams, game.teamBId);
-
-          if (!game.winnerId) return;
-
-          const voter = {
+          const member: MemberPick = {
             userId: entry.user_id,
             displayName: entry.display_name,
             isCurrentUser: entry.user_id === currentUserId,
           };
 
-          if (game.winnerId === game.teamAId) votersA.push(voter);
-          if (game.winnerId === game.teamBId) votersB.push(voter);
+          const members = groupsByTeam.get(winnerId);
+          if (members) {
+            members.push(member);
+            return;
+          }
+          groupsByTeam.set(winnerId, [member]);
         });
 
-        const displayTeamAId = pickRepresentativeTeamId(sideATeams, template.initialTeamIds?.[0] ?? null);
-        const displayTeamBId = pickRepresentativeTeamId(
-          sideBTeams,
-          template.initialTeamIds?.[1] ?? null,
-          displayTeamAId,
-        );
-        const countA = votersA.length;
-        const countB = votersB.length;
-        const totalVoters = countA + countB;
-        const pctA = totalVoters > 0 ? Math.round((countA / totalVoters) * 100) : 0;
-        const pctB = totalVoters > 0 ? 100 - pctA : 0;
-        const currentUserSideCount = votersA.some((voter) => voter.userId === currentUserId)
-          ? countA
-          : votersB.some((voter) => voter.userId === currentUserId)
-            ? countB
-            : 0;
+        const groups = [...groupsByTeam.entries()]
+          .map(([teamId, members]) => buildSlotTeamGroup(teamId, members))
+          .sort((groupA, groupB) => {
+            const memberDiff = groupB.members.length - groupA.members.length;
+            if (memberDiff !== 0) return memberDiff;
+            return compareTeams(groupA.teamId, groupB.teamId);
+          });
 
-        data[template.id] = {
-          matchupId: template.id,
-          teamA: buildCardTeam(displayTeamAId, sideATeams.size),
-          teamB: buildCardTeam(displayTeamBId, sideBTeams.size),
-          totalVoters,
-          countA,
-          countB,
-          pctA,
-          pctB,
-          votersA,
-          votersB,
-          isUnanimous: totalVoters > 0 && (countA === 0 || countB === 0),
-          isLoneWolf: currentUserSideCount === 1 && totalVoters > 1,
+        const totalMembers = groups.reduce((sum, group) => sum + group.members.length, 0);
+
+        return {
+          id: template.id,
+          label: getSlotLabel(template),
+          groups,
+          totalMembers,
+          isUnanimous: groups.length === 1 && totalMembers > 1,
         };
-      });
+      }),
+    [currentUserId, resolvedStandings, slotTemplates],
+  );
 
-    return data;
-  }, [currentUserId, resolvedStandings]);
-
-  function getLoneWolfCount(roundKey: RoundKey) {
-    return (matchupsByRound[roundKey] ?? []).filter((matchup) => matchupData[matchup.id]?.isLoneWolf).length;
-  }
+  const roundOptions = selectedRegion === "finalfour" ? FINAL_FOUR_ROUNDS : REGIONAL_ROUNDS;
+  const gridVariant = getGridVariant(selectedRegion, selectedRound);
 
   if (!allBracketsLocked) {
     return (
       <div className="gd-locked-state">
         <span className="gd-locked-icon">🔒</span>
         <h3>Picks are hidden until tipoff</h3>
-        <p>Once brackets lock, you&apos;ll see how your group&apos;s picks compare — who agreed, who went rogue, and who&apos;s the lone wolf.</p>
+        <p>Once brackets lock, you&apos;ll see how your group&apos;s picks compare - who agreed, who went rogue, and who&apos;s the lone wolf.</p>
       </div>
     );
   }
 
-  const matchups = matchupsByRound[expandedRound] ?? [];
-  const isFewGames = matchups.length <= 8;
-
   return (
-    <div className="group-picks">
-      <div className="gp-rounds">
-        {ROUND_LABELS.map((round) => {
-          const loneWolves = getLoneWolfCount(round.key);
-          return (
-            <button
-              key={round.key}
-              type="button"
-              className={`gp-round-pill ${expandedRound === round.key ? "gp-round-pill--active" : ""}`}
-              onClick={() => setExpandedRound(round.key)}
-            >
-              {round.label}
-              {loneWolves > 0 && <span className="gp-round-badge">{loneWolves}</span>}
-            </button>
-          );
-        })}
+    <div className="group-picks grp-picks">
+      <div className="grp-picks-region-row" role="tablist" aria-label="Pick region">
+        {REGION_OPTIONS.map((region) => (
+          <button
+            key={region.id}
+            type="button"
+            role="tab"
+            aria-selected={selectedRegion === region.id}
+            className={`grp-picks-pill ${selectedRegion === region.id ? "grp-picks-pill--active" : ""}`}
+            onClick={() => {
+              setSelectedRegion(region.id);
+              setSelectedRound(region.id === "finalfour" ? "champion" : "R64");
+            }}
+          >
+            {region.label}
+          </button>
+        ))}
       </div>
 
-      <p className="gp-subtitle">See where your group agrees — and where you stand alone.</p>
+      <div className="grp-picks-round-row" role="tablist" aria-label="Pick round">
+        {roundOptions.map((round) => (
+          <button
+            key={round.id}
+            type="button"
+            role="tab"
+            aria-selected={selectedRound === round.id}
+            className={`grp-picks-pill grp-picks-pill--round ${selectedRound === round.id ? "grp-picks-pill--active" : ""}`}
+            onClick={() => setSelectedRound(round.id)}
+          >
+            {round.label}
+          </button>
+        ))}
+      </div>
 
-      <div className={`gp-cards-grid ${isFewGames ? "gp-cards-grid--few" : ""}`}>
-        {matchups.map((matchup) => (
-          <MatchupCard key={matchup.id} data={matchupData[matchup.id]} />
+      <div className={`grp-picks-slot-grid grp-picks-slot-grid--${gridVariant}`}>
+        {slotCards.map((slotCard) => (
+          <article key={slotCard.id} className="grp-picks-slot-card">
+            <div className="grp-picks-slot-label">{slotCard.label}</div>
+
+            {slotCard.groups.length === 0 ? (
+              <p className="grp-picks-slot-empty">No picks yet.</p>
+            ) : (
+              <div className="grp-picks-slot-groups">
+                {slotCard.groups.map((group) => (
+                  <div key={`${slotCard.id}-${group.teamId}`} className="grp-picks-team-group">
+                    <div className="grp-picks-team-row">
+                      <SlotTeamLogo group={group} />
+                      <span className="grp-picks-team-name">{group.teamName}</span>
+                      {slotCard.isUnanimous ? <span className="grp-picks-unanimous">UNANIMOUS</span> : null}
+                      {group.teamSeedLabel ? <span className="grp-picks-team-seed">#{group.teamSeedLabel}</span> : null}
+                    </div>
+
+                    <div className="grp-picks-member-row">
+                      {group.members.map((member) => (
+                        <span
+                          key={`${slotCard.id}-${group.teamId}-${member.userId}`}
+                          className={`grp-picks-member-chip ${member.isCurrentUser ? "grp-picks-member-chip--you" : ""}`}
+                        >
+                          <span className="grp-picks-member-avatar" aria-hidden="true">
+                            {getDisplayInitials(member.displayName)}
+                          </span>
+                          <span className="grp-picks-member-name">{member.displayName}</span>
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </article>
         ))}
       </div>
     </div>
