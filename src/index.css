@@ -12931,6 +12931,27 @@ body.walkthrough-step-make-pick .wt-spotlight-target .eg-compact-chip {
   cursor: pointer;
 }
 
+/* Glow on the 15-seed to encourage picking the upset */
+body.walkthrough-step-make-pick .wt-spotlight-target .eg-team-row[data-team-seed="15"],
+body.walkthrough-step-make-pick .wt-spotlight-target .m-team[data-team-seed="15"] {
+  box-shadow: 0 0 12px 3px rgba(184, 125, 24, 0.55), 0 0 24px 6px rgba(184, 125, 24, 0.25);
+  border-radius: 6px;
+  animation: walkthrough-upset-glow 2s ease-in-out infinite;
+}
+
+@keyframes walkthrough-upset-glow {
+  0%, 100% { box-shadow: 0 0 12px 3px rgba(184, 125, 24, 0.55), 0 0 24px 6px rgba(184, 125, 24, 0.25); }
+  50% { box-shadow: 0 0 18px 5px rgba(184, 125, 24, 0.7), 0 0 32px 10px rgba(184, 125, 24, 0.35); }
+}
+
+/* Dim the 2-seed to hint it's not clickable */
+body.walkthrough-step-make-pick .wt-spotlight-target .eg-team-row[data-team-seed="2"],
+body.walkthrough-step-make-pick .wt-spotlight-target .m-team[data-team-seed="2"] {
+  opacity: 0.4;
+  pointer-events: none !important;
+  cursor: default;
+}
+
 .walkthrough-tooltip--centered {
   position: fixed !important;
   top: 50% !important;

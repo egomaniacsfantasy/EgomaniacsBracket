@@ -438,8 +438,6 @@ const DEFAULT_HINTS_SHOWN: HintsShown = {
 };
 
 const ONBOARDING_UPSET_REGION: Region = "South";
-const ONBOARDING_UPSET_WINNER = "Merrimack";
-const ONBOARDING_UPSET_LOSER = "Florida";
 
 const WALKTHROUGH_STEPS: WalkthroughStepConfig[] = [
   {
@@ -523,16 +521,7 @@ const formatDelta = (delta: number, displayMode: OddsDisplayMode): string => {
 };
 
 const findOnboardingUpsetMatchupId = (games: ResolvedGame[]): string => {
-  const byNames = games.find((game) => {
-    if (game.round !== "R64" || game.region !== ONBOARDING_UPSET_REGION || !game.teamAId || !game.teamBId) return false;
-    const teamA = teamsById.get(game.teamAId);
-    const teamB = teamsById.get(game.teamBId);
-    if (!teamA || !teamB) return false;
-    const names = new Set([teamA.name, teamB.name]);
-    return names.has(ONBOARDING_UPSET_WINNER) && names.has(ONBOARDING_UPSET_LOSER);
-  });
-  if (byNames) return byNames.id;
-  const bySeed = games.find((game) => {
+  const match = games.find((game) => {
     if (game.round !== "R64" || game.region !== ONBOARDING_UPSET_REGION || !game.teamAId || !game.teamBId) return false;
     const teamA = teamsById.get(game.teamAId);
     const teamB = teamsById.get(game.teamBId);
@@ -540,7 +529,7 @@ const findOnboardingUpsetMatchupId = (games: ResolvedGame[]): string => {
     const seeds = new Set([teamA.seedLabel, teamB.seedLabel]);
     return seeds.has("15") && seeds.has("2");
   });
-  return bySeed?.id ?? "South-R64-2";
+  return match?.id ?? "South-R64-2";
 };
 
 const ROUND_TO_DATA_ATTR: Record<"R32" | "S16" | "E8", string> = {
@@ -743,6 +732,22 @@ function App() {
     () => (walkthroughMatchupId ? games.find((game) => game.id === walkthroughMatchupId) ?? null : null),
     [games, walkthroughMatchupId]
   );
+  const walkthroughUpsetInfo = useMemo(() => {
+    if (!walkthroughMatchup) return null;
+    const teamA = walkthroughMatchup.teamAId ? teamsById.get(walkthroughMatchup.teamAId) : null;
+    const teamB = walkthroughMatchup.teamBId ? teamsById.get(walkthroughMatchup.teamBId) : null;
+    if (!teamA || !teamB) return null;
+    const isTeamAUpset = teamA.seedLabel === "15" || teamA.seed === 15;
+    const winner = isTeamAUpset ? teamA : teamB;
+    const loser = isTeamAUpset ? teamB : teamA;
+    return {
+      winnerName: winner.name,
+      winnerSeed: seedLabel(winner),
+      loserName: loser.name,
+      loserSeed: seedLabel(loser),
+      region: walkthroughMatchup.region,
+    };
+  }, [walkthroughMatchup]);
 
   useEffect(() => {
     staggeredDelayRef.current = staggeredSimDelayMs;
@@ -1902,11 +1907,7 @@ function App() {
       const pickedTeam = teamsById.get(teamId);
       const isForcedUpsetPick =
         game.id === walkthroughMatchupId &&
-        Boolean(
-          pickedTeam &&
-            (pickedTeam.name === ONBOARDING_UPSET_WINNER ||
-              (pickedTeam.seedLabel === "15" && pickedTeam.region === ONBOARDING_UPSET_REGION))
-        );
+        Boolean(pickedTeam && pickedTeam.seedLabel === "15" && pickedTeam.region === ONBOARDING_UPSET_REGION);
       if (!isForcedUpsetPick) return;
       setWalkthroughCascadePathByRound(getOnboardingPathByRound(game.id));
       walkthroughBeforeTeamOddsRef.current = new Map(
@@ -2743,10 +2744,15 @@ function App() {
     if (!currentWalkthroughStep) return null;
 
     if (currentWalkthroughStep.id === "upset-pick") {
+      const winnerName = walkthroughUpsetInfo?.winnerName ?? "the 15 seed";
+      const winnerSeed = walkthroughUpsetInfo?.winnerSeed ?? "15";
+      const loserName = walkthroughUpsetInfo?.loserName ?? "the 2 seed";
+      const loserSeed = walkthroughUpsetInfo?.loserSeed ?? "2";
+      const region = walkthroughUpsetInfo?.region ?? ONBOARDING_UPSET_REGION;
       return {
         ...currentWalkthroughStep,
         heading: "Pick the upset.",
-        body: "Tap #15 Merrimack to knock off #2 Florida. Then watch what happens to every team in the South.",
+        body: `Tap #${winnerSeed} ${winnerName} to knock off #${loserSeed} ${loserName}. Then watch what happens to every team in the ${region}.`,
         ctaText: "Pick a team",
       };
     }
@@ -2760,14 +2766,16 @@ function App() {
     }
 
     if (currentWalkthroughStep.id === "futures-panel") {
+      const winnerName = walkthroughUpsetInfo?.winnerName ?? "the 15 seed";
+      const loserName = walkthroughUpsetInfo?.loserName ?? "the 2 seed";
       return {
         ...currentWalkthroughStep,
-        body: "Notice how Merrimack appears and Florida drops. Red/green deltas show exactly how much your upset shifted each team. Scroll to see the pre-tournament baseline.",
+        body: `Notice how ${winnerName} appears and ${loserName} drops. Red/green deltas show exactly how much your upset shifted each team. Scroll to see the pre-tournament baseline.`,
       };
     }
 
     return currentWalkthroughStep;
-  }, [currentWalkthroughStep, walkthroughCascadePhase]);
+  }, [currentWalkthroughStep, walkthroughCascadePhase, walkthroughUpsetInfo]);
   const walkthroughCtaLabel =
     currentWalkthroughStep?.id === "upset-pick"
       ? "Pick a team"
@@ -2836,7 +2844,7 @@ function App() {
       };
       window.requestAnimationFrame(tick);
     };
-    const loserName = ONBOARDING_UPSET_LOSER;
+    const loserName = walkthroughUpsetInfo?.loserName ?? "the 2 seed";
     const steps: Array<{
       round: "R32" | "S16" | "E8";
       spotlightAt: number;
@@ -2852,8 +2860,8 @@ function App() {
         fadeAt: 1600,
         fadeMs: 1200,
         oddsAt: 3300,
-        preCaption: "Florida was projected here. Now they're gone.",
-        postCaption: "The remaining teams just absorbed Florida's odds.",
+        preCaption: `${loserName} was projected here. Now they're gone.`,
+        postCaption: `The remaining teams just absorbed ${loserName}'s odds.`,
       },
       {
         round: "S16",
@@ -2862,7 +2870,7 @@ function App() {
         fadeMs: 1000,
         oddsAt: 7500,
         preCaption: "Now watch the Sweet 16.",
-        postCaption: "Connecticut and Purdue just got a much easier path.",
+        postCaption: "The remaining teams just got a much easier path.",
       },
       {
         round: "E8",
@@ -2967,6 +2975,7 @@ function App() {
     walkthroughCascadePhase,
     walkthroughCascadePathByRound,
     walkthroughMatchupId,
+    walkthroughUpsetInfo,
   ]);
 
   useEffect(() => {
@@ -3018,12 +3027,14 @@ function App() {
         if (currentWalkthroughStep.id === "futures-panel") {
           setMainView("futures");
           window.setTimeout(() => {
-            const merrimackRow = document.querySelector<HTMLElement>(`.ft-card[data-team-name="${ONBOARDING_UPSET_WINNER}"]`);
-            const floridaRow = document.querySelector<HTMLElement>(`.ft-card[data-team-name="${ONBOARDING_UPSET_LOSER}"]`);
-            const target = merrimackRow ?? floridaRow;
+            const winnerName = walkthroughUpsetInfo?.winnerName;
+            const loserName = walkthroughUpsetInfo?.loserName;
+            const winnerRow = winnerName ? document.querySelector<HTMLElement>(`.ft-card[data-team-name="${winnerName}"]`) : null;
+            const loserRow = loserName ? document.querySelector<HTMLElement>(`.ft-card[data-team-name="${loserName}"]`) : null;
+            const target = winnerRow ?? loserRow;
             target?.scrollIntoView({ behavior: "smooth", block: "center" });
-            merrimackRow?.classList.add("futures-row--onboarding-highlight");
-            floridaRow?.classList.add("futures-row--onboarding-highlight");
+            winnerRow?.classList.add("futures-row--onboarding-highlight");
+            loserRow?.classList.add("futures-row--onboarding-highlight");
           }, 350);
         }
         if (currentWalkthroughStep.id === "ready") {
@@ -3109,6 +3120,7 @@ function App() {
     walkthroughCascadePathByRound,
     walkthroughMatchup,
     walkthroughMatchupId,
+    walkthroughUpsetInfo,
   ]);
 
   useEffect(() => {
