@@ -502,6 +502,7 @@ export const CONF_KNOWN_RESULTS: Record<string, Record<string, number>> = {
     "aec-QF-3": 1436, // Vermont (2) def Bryant (7)
     "aec-SF-0": 1420, // UMBC (1) def MA Lowell (4)
     "aec-SF-1": 1436, // Vermont (2) def NJIT (3)
+    "aec-F-0":  1420, // UMBC (1) def Vermont (2) — CHAMPION
   },
   a_sun: {
     "a_sun-R1-0": 1468, // Bellarmine (8) def Jacksonville (9)
@@ -776,15 +777,6 @@ export const CONF_KNOWN_RESULTS: Record<string, Record<string, number>> = {
     "wac-SF-0": 1430, // Utah Valley (1) def UT Arlington (4)
     "wac-SF-1": 1465, // Cal Baptist (2) def Utah Tech (3)
     "wac-F-0":  1465, // Cal Baptist (2) def Utah Valley (1) — CHAMPION
-  },
-  aec: {
-    "aec-QF-0": 1420, // UMBC (1) def New Hampshire (8)
-    "aec-QF-1": 1262, // MA Lowell (4) def Albany (5)
-    "aec-QF-2": 1312, // NJIT (3) def Maine (6)
-    "aec-QF-3": 1436, // Vermont (2) def Bryant (7)
-    "aec-SF-0": 1420, // UMBC (1) def MA Lowell (4)
-    "aec-SF-1": 1436, // Vermont (2) def NJIT (3)
-    "aec-F-0":  1420, // UMBC (1) def Vermont (2) — CHAMPION
   },
   ivy: {
     "ivy-SF-0": 1463, // Yale (1) def Cornell (4)
