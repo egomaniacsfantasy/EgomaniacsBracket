@@ -2,8 +2,9 @@ import { useEffect, useMemo, useState } from "react";
 import { gameTemplates } from "./data/bracket";
 import { teamsById } from "./data/teams";
 import { supabase } from "./supabaseClient";
+import { useAuth } from "./AuthContext";
+import { hasElevatedAccess } from "./groupVisibility";
 
-const ADMIN_PASSWORD = "oddsgods2026";
 const POINTS: Record<number, number> = { 64: 10, 32: 20, 16: 40, 8: 80, 4: 160, 2: 320 };
 const ROUND_TO_INT: Record<string, number> = { R64: 64, R32: 32, S16: 16, E8: 8, F4: 4, CHAMP: 2 };
 const TOTAL_GAMES = gameTemplates.length;
@@ -24,32 +25,25 @@ type MatchupRow = {
 };
 
 export function AdminPage() {
-  const [authenticated, setAuthenticated] = useState(false);
-  const [passwordInput, setPasswordInput] = useState("");
+  const { user, loading } = useAuth();
   const [resultsRefresh, setResultsRefresh] = useState(0);
   const [scoringStatus, setScoringStatus] = useState("");
   const [lockStatus, setLockStatus] = useState("");
 
-  if (!authenticated) {
+  if (loading) {
     return (
       <div style={{ padding: 40, maxWidth: 400, margin: "0 auto", fontFamily: "monospace", color: "#f0e6d0" }}>
         <h2 style={{ color: "#b87d18" }}>Bracket Lab Admin</h2>
-        <input
-          type="password"
-          placeholder="Admin password"
-          value={passwordInput}
-          onChange={(event) => setPasswordInput(event.target.value)}
-          onKeyDown={(event) => {
-            if (event.key === "Enter" && passwordInput === ADMIN_PASSWORD) setAuthenticated(true);
-          }}
-          style={{ padding: 10, width: "100%", fontSize: 16, background: "#1a1510", color: "#fff", border: "1px solid #333", borderRadius: 6 }}
-        />
-        <button
-          onClick={() => passwordInput === ADMIN_PASSWORD && setAuthenticated(true)}
-          style={{ marginTop: 10, padding: "10px 20px", background: "#b87d18", color: "#000", border: "none", borderRadius: 6, cursor: "pointer", fontWeight: "bold" }}
-        >
-          Enter
-        </button>
+        <p style={{ color: "#888" }}>Loading...</p>
+      </div>
+    );
+  }
+
+  if (!hasElevatedAccess(user?.email)) {
+    return (
+      <div style={{ padding: 40, maxWidth: 400, margin: "0 auto", fontFamily: "monospace", color: "#f0e6d0" }}>
+        <h2 style={{ color: "#b87d18" }}>Bracket Lab Admin</h2>
+        <p style={{ color: "#888" }}>Not authorized.</p>
       </div>
     );
   }
