@@ -15,6 +15,7 @@ type AuthContextValue = {
   loading: boolean;
   signUp: (email: string, displayName: string, password: string) => Promise<{ data: unknown; error: unknown }>;
   signIn: (email: string, password: string) => Promise<{ data: unknown; error: unknown }>;
+  signInWithGoogle: () => Promise<{ data: unknown; error: unknown }>;
   isDisplayNameAvailable: (displayName: string, excludeUserId?: string | null) => Promise<{ available: boolean; error: unknown }>;
   signOut: () => Promise<void>;
   isAuthenticated: boolean;
@@ -192,6 +193,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return { data, error };
   };
 
+  const signInWithGoogle = async () => {
+    const { data, error } = await supabase.auth.signInWithOAuth({
+      provider: "google",
+      options: {
+        redirectTo: window.location.origin,
+      },
+    });
+    return { data, error };
+  };
+
   const isDisplayNameAvailable = async (displayName: string, excludeUserId?: string | null) => {
     const normalized = displayName.trim();
     if (!normalized) return { available: false, error: { message: "Display name is required." } };
@@ -221,6 +232,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         loading,
         signUp,
         signIn,
+        signInWithGoogle,
         isDisplayNameAvailable,
         signOut,
         isAuthenticated: Boolean(user),

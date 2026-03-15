@@ -6714,6 +6714,64 @@ body {
   gap: 12px;
 }
 
+.auth-modal-google-btn {
+  width: 100%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 11px 14px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(240, 230, 208, 0.14);
+  border-radius: 6px;
+  color: var(--text-primary);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  cursor: pointer;
+  transition: border-color 140ms ease, background 140ms ease;
+}
+
+.auth-modal-google-btn:hover {
+  border-color: rgba(184, 125, 24, 0.45);
+  background: rgba(184, 125, 24, 0.08);
+}
+
+.auth-modal-google-btn:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+
+.auth-modal-google-icon {
+  flex-shrink: 0;
+}
+
+.auth-modal-google-note {
+  margin-top: -4px;
+}
+
+.auth-modal-divider {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 2px 0;
+}
+
+.auth-modal-divider-line {
+  flex: 1;
+  height: 1px;
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.auth-modal-divider-text {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: rgba(240, 230, 208, 0.3);
+}
+
 .auth-modal-label {
   font-family: var(--font-mono);
   font-size: 10px;
