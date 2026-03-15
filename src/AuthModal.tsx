@@ -142,6 +142,8 @@ export function AuthModal({
   const [signinPassword, setSigninPassword] = useState("");
   const [displayNameHint, setDisplayNameHint] = useState("");
   const [displayNameChecking, setDisplayNameChecking] = useState(false);
+  const [resendStatus, setResendStatus] = useState("");
+  const [resendingConfirmation, setResendingConfirmation] = useState(false);
   const modalRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
@@ -156,6 +158,8 @@ export function AuthModal({
     setSigninPassword("");
     setDisplayNameHint("");
     setDisplayNameChecking(false);
+    setResendStatus("");
+    setResendingConfirmation(false);
   }, [isOpen]);
 
   useEffect(() => {
@@ -193,9 +197,46 @@ export function AuthModal({
     if (event.target === event.currentTarget) onClose();
   };
 
+  const handleResendConfirmation = async (nextSubmittedMode: "signup" | "signin" = submittedMode) => {
+    if (!email.trim()) {
+      setError("Enter your email address.");
+      return;
+    }
+
+    setError("");
+    setResendStatus("");
+    setResendingConfirmation(true);
+
+    try {
+      const { error: resendError } = await supabase.auth.resend({
+        type: "signup",
+        email: email.trim(),
+        options: {
+          emailRedirectTo: window.location.origin,
+        },
+      });
+
+      setResendingConfirmation(false);
+
+      if (resendError) {
+        setError(getFriendlyAuthError(resendError));
+        return;
+      }
+
+      setSubmittedMode(nextSubmittedMode);
+      setMode("check-email");
+      setResendStatus("Confirmation email sent again.");
+    } catch (error) {
+      captureError("auth_resend_confirmation", error);
+      setResendingConfirmation(false);
+      setError("Something went wrong. Please try again.");
+    }
+  };
+
   const handleSignUp = async (event: FormEvent) => {
     event.preventDefault();
     setError("");
+    setResendStatus("");
     if (!email.trim()) return setError("Email is required");
     if (!displayName.trim()) return setError("Display name is required");
     if (displayName.trim().length > 30) return setError("Display name must be 30 characters or less");
@@ -213,6 +254,7 @@ export function AuthModal({
   const handleSignIn = async (event: FormEvent) => {
     event.preventDefault();
     setError("");
+    setResendStatus("");
     if (!email.trim()) return setError("Email is required");
     if (!signinPassword) return setError("Password is required");
 
@@ -276,6 +318,21 @@ export function AuthModal({
               {submittedMode === "signup" ? "create your account" : "log in"}.
             </p>
             <p className="auth-modal-hint">Don&apos;t see it? Check your spam folder.</p>
+            {resendStatus ? <p className="auth-modal-hint">{resendStatus}</p> : null}
+            {error ? <p className="auth-modal-hint auth-modal-hint--error">{error}</p> : null}
+            <p className="auth-modal-hint">
+              Still nothing?{" "}
+              <button
+                className="auth-modal-error-link"
+                type="button"
+                onClick={() => {
+                  void handleResendConfirmation(submittedMode);
+                }}
+                disabled={resendingConfirmation}
+              >
+                {resendingConfirmation ? "Sending..." : "Resend confirmation email"}
+              </button>
+            </p>
           </div>
         ) : mode === "forgot" ? (
           <div className="auth-modal-forgot">
@@ -385,6 +442,18 @@ export function AuthModal({
                     Go to log in →
                   </button>
                 ) : null}
+                {error.includes("confirmation link") ? (
+                  <button
+                    className="auth-modal-error-link"
+                    type="button"
+                    onClick={() => {
+                      void handleResendConfirmation("signup");
+                    }}
+                    disabled={resendingConfirmation}
+                  >
+                    {resendingConfirmation ? "Sending..." : "Resend confirmation email →"}
+                  </button>
+                ) : null}
                 {error.includes("Try signing up") ? (
                   <button
                     className="auth-modal-error-link"
@@ -471,6 +540,18 @@ export function AuthModal({
                     }}
                   >
                     Go to log in →
+                  </button>
+                ) : null}
+                {error.includes("confirmation link") ? (
+                  <button
+                    className="auth-modal-error-link"
+                    type="button"
+                    onClick={() => {
+                      void handleResendConfirmation("signin");
+                    }}
+                    disabled={resendingConfirmation}
+                  >
+                    {resendingConfirmation ? "Sending..." : "Resend confirmation email →"}
                   </button>
                 ) : null}
                 {error.includes("Try signing up") ? (
