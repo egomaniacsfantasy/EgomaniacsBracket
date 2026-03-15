@@ -40,6 +40,7 @@ function getTeamInfo(teamId: string) {
 
 export function GroupStandingsTab({
   standings,
+  groupMemberCount,
   soleLeader,
   currentUserId,
   tournamentStarted,
@@ -50,6 +51,7 @@ export function GroupStandingsTab({
   onInvite,
 }: {
   standings: RankedStanding[];
+  groupMemberCount: number;
   soleLeader: string | null;
   currentUserId: string | undefined;
   tournamentStarted: boolean;
@@ -106,17 +108,25 @@ export function GroupStandingsTab({
     return map;
   }, [standings, tournamentStarted]);
 
+  const standingsCount = standings.length;
+
   return (
     <div className="gd-standings">
-      {standings.length <= 3 && (
+      {groupMemberCount <= 3 && (
         <div className="gd-invite-prompt">
           <div className="gd-invite-prompt-left">
             <span className="gd-invite-prompt-emoji">👥</span>
             <div>
               <p className="gd-invite-prompt-title">
-                {standings.length === 1 ? "Just you so far." : `${standings.length} members.`}
+                {groupMemberCount === 1 ? "1 member in this group." : `${groupMemberCount} members in this group.`}
               </p>
-              <p className="gd-invite-prompt-sub">Get your friends in here before tipoff.</p>
+              <p className="gd-invite-prompt-sub">
+                {standingsCount === 0
+                  ? "No brackets are showing in the standings yet."
+                  : standingsCount === 1
+                    ? "1 bracket is showing in the standings so far."
+                    : `${standingsCount} brackets are showing in the standings so far.`}
+              </p>
             </div>
           </div>
           <button className="gd-invite-prompt-btn" onClick={onInvite}>
@@ -124,6 +134,14 @@ export function GroupStandingsTab({
           </button>
         </div>
       )}
+
+      {standings.length === 0 ? (
+        <div className="gd-empty-state">
+          <span className="gd-empty-state-icon">📋</span>
+          <h3>No brackets in the standings yet</h3>
+          <p>Members can still be in the group before their brackets show up here. Check the Members tab to see everyone in the room.</p>
+        </div>
+      ) : null}
 
       <div className="gd-standings-list">
         {standings.map((entry) => {

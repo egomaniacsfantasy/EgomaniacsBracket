@@ -52,6 +52,19 @@ export type GroupStanding = {
   score_updated_at: string | null;
 };
 
+export type GroupMember = {
+  id: string;
+  user_id: string;
+  role: "admin" | "member";
+  joined_at: string;
+  bracket_id: string | null;
+  display_name: string;
+  bracket_name: string | null;
+  has_assigned_bracket: boolean;
+  has_submitted_bracket: boolean;
+  is_locked: boolean;
+};
+
 const GROUP_QUERY_TIMEOUT_MS = 10000;
 
 async function withTimeout<T>(promiseLike: PromiseLike<T>, timeoutMs: number, message: string): Promise<T> {
@@ -254,6 +267,88 @@ export async function getGroupStandings(groupId: string) {
   const { data, error } = await supabase.from("group_standings").select("*").eq("group_id", groupId);
 
   return { data: (data as GroupStanding[] | null) ?? [], error };
+}
+
+export async function getGroupMembers(groupId: string) {
+  let memberships: unknown = null;
+  let membershipsError: { message?: string } | null = null;
+
+  try {
+    const result = await withTimeout(
+      supabase
+        .from("group_members")
+        .select(
+          `
+          id,
+          user_id,
+          role,
+          joined_at,
+          bracket_id,
+          profiles:user_id (
+            display_name
+          ),
+          brackets:bracket_id (
+            bracket_name,
+            is_locked,
+            submitted_at
+          )
+        `
+        )
+        .eq("group_id", groupId),
+      GROUP_QUERY_TIMEOUT_MS,
+      "Timed out loading group members. Please try again."
+    );
+    memberships = result.data;
+    membershipsError = result.error;
+  } catch (error) {
+    return { data: [] as GroupMember[], error: { message: (error as Error).message } };
+  }
+
+  if (membershipsError) {
+    return { data: [] as GroupMember[], error: membershipsError };
+  }
+
+  const rows = ((memberships ?? []) as unknown[]) as Array<{
+    id: string;
+    user_id: string;
+    role: "admin" | "member";
+    joined_at: string;
+    bracket_id: string | null;
+    profiles: { display_name?: string | null } | Array<{ display_name?: string | null }> | null;
+    brackets: {
+      bracket_name?: string | null;
+      is_locked?: boolean | null;
+      submitted_at?: string | null;
+    } | Array<{
+      bracket_name?: string | null;
+      is_locked?: boolean | null;
+      submitted_at?: string | null;
+    }> | null;
+  }>;
+
+  const members = rows.map((membership) => {
+    const profileValue = Array.isArray(membership.profiles)
+      ? membership.profiles[0] ?? null
+      : membership.profiles;
+    const bracketValue = Array.isArray(membership.brackets)
+      ? membership.brackets[0] ?? null
+      : membership.brackets;
+
+    return {
+      id: membership.id,
+      user_id: membership.user_id,
+      role: membership.role,
+      joined_at: membership.joined_at,
+      bracket_id: membership.bracket_id,
+      display_name: String(profileValue?.display_name ?? "Anonymous"),
+      bracket_name: bracketValue?.bracket_name ?? null,
+      has_assigned_bracket: Boolean(membership.bracket_id),
+      has_submitted_bracket: Boolean(bracketValue?.submitted_at),
+      is_locked: Boolean(bracketValue?.is_locked),
+    } satisfies GroupMember;
+  });
+
+  return { data: members, error: null };
 }
 
 export async function getGroupByCode(inviteCode: string) {

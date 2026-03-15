@@ -645,6 +645,7 @@ function App() {
   const [authModalContext, setAuthModalContext] = useState<import("./AuthModal").AuthContext>("default");
   const [myBracketsOpen, setMyBracketsOpen] = useState(false);
   const [groupsHubOpen, setGroupsHubOpen] = useState(false);
+  const [groupsHubRefreshKey, setGroupsHubRefreshKey] = useState(0);
   const [createGroupOpen, setCreateGroupOpen] = useState(false);
   const [joinGroupOpen, setJoinGroupOpen] = useState(false);
   const [joinCode, setJoinCode] = useState<string | null>(null);
@@ -3446,26 +3447,17 @@ function App() {
     setShowFirstFourModal(true);
   };
 
-  const openGroupsFromToolbar = async () => {
+  const openGroupsFromToolbar = () => {
     setOpenToolbarMenu(null);
     if (!isAuthenticated || !user) {
+      setAuthModalContext("groups");
       setAuthModalOpen(true);
       return;
     }
 
-    // Open hub immediately, then promote to direct group view if the user has one group.
+    setActiveGroup(null);
+    setGroupsHubRefreshKey((current) => current + 1);
     setGroupsHubOpen(true);
-
-    try {
-      const { data: groups, error } = await getUserGroups(user.id);
-      if (error) return;
-      if (groups.length === 1) {
-        setGroupsHubOpen(false);
-        setActiveGroup(groups[0]);
-      }
-    } catch {
-      // Keep hub open as fallback.
-    }
   };
 
   const handleFirstFourModalClose = useCallback(() => {
@@ -4577,17 +4569,15 @@ function App() {
 
       <GroupsHub
         isOpen={groupsHubOpen}
+        refreshToken={groupsHubRefreshKey}
         onClose={() => setGroupsHubOpen(false)}
         onCreateGroup={() => {
-          setGroupsHubOpen(false);
           setCreateGroupOpen(true);
         }}
         onJoinGroup={() => {
-          setGroupsHubOpen(false);
           setJoinGroupOpen(true);
         }}
         onOpenGroup={(group) => {
-          setGroupsHubOpen(false);
           setActiveGroup(group);
         }}
       />
@@ -4596,8 +4586,8 @@ function App() {
         isOpen={createGroupOpen}
         onClose={() => setCreateGroupOpen(false)}
         onGroupCreated={() => {
-          setCreateGroupOpen(false);
           setGroupsHubOpen(true);
+          setGroupsHubRefreshKey((current) => current + 1);
         }}
       />
 
@@ -4610,12 +4600,13 @@ function App() {
           sessionStorage.removeItem("pendingJoinCode");
         }}
         onGroupJoined={(group, hadBracket) => {
-          setJoinGroupOpen(false);
           setJoinCode(null);
           sessionStorage.removeItem("pendingJoinCode");
           if (hadBracket) {
             setGroupsHubOpen(true);
+            setGroupsHubRefreshKey((current) => current + 1);
           } else {
+            setGroupsHubOpen(false);
             // Joined without a bracket — store pending group for auto-assign on submit
             sessionStorage.setItem("pendingInviteGroup", JSON.stringify({ id: group.id, name: group.name }));
           }
@@ -4641,7 +4632,10 @@ function App() {
       <GroupDetailView
         group={activeGroup}
         isOpen={Boolean(activeGroup)}
-        onClose={() => setActiveGroup(null)}
+        onClose={() => {
+          setActiveGroup(null);
+          setGroupsHubRefreshKey((current) => current + 1);
+        }}
         tournamentStarted={tournamentStarted}
       />
 

@@ -221,7 +221,7 @@ export function JoinGroupModal({
               </p>
             </div>
             <button className="group-cta-btn" onClick={handleClose}>
-              {joinedWithoutBracket ? "Start My Bracket" : "View Group"}
+              {joinedWithoutBracket ? "Start My Bracket" : "Back to Groups"}
             </button>
           </>
         )}

@@ -1,7 +1,18 @@
 import { useState, useEffect, useMemo } from "react";
 import { useAuth } from "./AuthContext";
-import { getGroupStandings, leaveGroup, deleteGroup, updateMemberBracket, updateGroup, type GroupStanding, type UserGroup } from "./groupStorage";
+import {
+  getGroupMembers,
+  getGroupStandings,
+  leaveGroup,
+  deleteGroup,
+  updateMemberBracket,
+  updateGroup,
+  type GroupMember,
+  type GroupStanding,
+  type UserGroup,
+} from "./groupStorage";
 import { getUserBrackets, type SavedBracket } from "./bracketStorage";
+import { GroupMembersTab } from "./GroupMembersTab";
 import { GroupStandingsTab } from "./GroupStandingsTab";
 import { GroupPicksTab } from "./GroupPicksTab";
 import { GroupChaosTab } from "./GroupChaosTab";
@@ -28,8 +39,9 @@ export function GroupDetailView({
   onGroupUpdated?: (updated: { name: string; emoji: string }) => void;
 }) {
   const { user } = useAuth();
-  const [activeTab, setActiveTab] = useState<"standings" | "picks" | "chaos">("standings");
+  const [activeTab, setActiveTab] = useState<"standings" | "members" | "picks" | "chaos">("standings");
   const [standings, setStandings] = useState<GroupStanding[]>([]);
+  const [members, setMembers] = useState<GroupMember[]>([]);
   const [loading, setLoading] = useState(true);
   const [viewingBracket, setViewingBracket] = useState<{
     bracketId: string;
@@ -57,23 +69,31 @@ export function GroupDetailView({
 
   useEffect(() => {
     if (isOpen && group) {
-      loadStandings();
+      void loadGroupData();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen, group]);
 
-  async function loadStandings() {
+  async function loadGroupData() {
     if (!group) return;
     setLoading(true);
     try {
-      const { data, error } = await getGroupStandings(group.id);
-      if (error) {
-        captureError("group_detail_standings_load", error);
+      const [{ data: standingsData, error: standingsError }, { data: membersData, error: membersError }] = await Promise.all([
+        getGroupStandings(group.id),
+        getGroupMembers(group.id),
+      ]);
+      if (standingsError) {
+        captureError("group_detail_standings_load", standingsError);
       }
-      setStandings(data);
+      if (membersError) {
+        captureError("group_detail_members_load", membersError);
+      }
+      setStandings(standingsData);
+      setMembers(membersData);
     } catch (error) {
       captureError("group_detail_standings_load", error);
       setStandings([]);
+      setMembers([]);
     } finally {
       setLoading(false);
     }
@@ -188,7 +208,7 @@ export function GroupDetailView({
     setShowBracketPicker(false);
     setSelectedBracket(null);
     setBracketPickerLoading(false);
-    await loadStandings();
+    await loadGroupData();
   }
 
   const rankedStandings: RankedStanding[] = useMemo(() => {
@@ -215,7 +235,7 @@ export function GroupDetailView({
     const leaders = rankedStandings.filter((s) => s.groupRank === 1);
     return leaders.length === 1 ? leaders[0].user_id : null;
   }, [rankedStandings]);
-  const displayedMemberCount = Math.max(group?.memberCount ?? 0, standings.length);
+  const displayedMemberCount = members.length > 0 ? members.length : Math.max(group?.memberCount ?? 0, standings.length);
 
   if (!isOpen || !group) return null;
 
@@ -289,13 +309,14 @@ export function GroupDetailView({
       )}
 
       <div className="gd-tabs">
-        {(["standings", "picks", "chaos"] as const).map((tab) => (
+        {(["standings", "members", "picks", "chaos"] as const).map((tab) => (
           <button
             key={tab}
             className={`gd-tab ${activeTab === tab ? "gd-tab--active" : ""}`}
             onClick={() => setActiveTab(tab)}
           >
             {tab === "standings" && "Standings"}
+            {tab === "members" && "Members"}
             {tab === "picks" && "Picks"}
             {tab === "chaos" && "Chaos"}
           </button>
@@ -310,14 +331,22 @@ export function GroupDetailView({
             {activeTab === "standings" && (
               <GroupStandingsTab
                 standings={rankedStandings}
+                groupMemberCount={displayedMemberCount}
                 soleLeader={soleLeader}
                 currentUserId={user?.id}
                 tournamentStarted={tournamentStarted}
                 canPreviewHidden={canPreviewHidden}
                 onViewBracket={setViewingBracket}
-                onRefresh={loadStandings}
+                onRefresh={loadGroupData}
                 onSelectBracket={handleOpenBracketPicker}
                 onInvite={() => void handleInvite()}
+              />
+            )}
+            {activeTab === "members" && (
+              <GroupMembersTab
+                members={members}
+                currentUserId={user?.id}
+                onSelectBracket={handleOpenBracketPicker}
               />
             )}
             {activeTab === "picks" && (
