@@ -130,6 +130,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         emailRedirectTo: window.location.origin,
       },
     });
+
+    // Supabase returns success with empty identities when the email already
+    // exists (confirmed or unconfirmed). In that case no confirmation email
+    // is sent, so we need to explicitly resend it for unconfirmed users.
+    if (!error && data?.user && Array.isArray((data.user as Record<string, unknown>).identities) && ((data.user as Record<string, unknown>).identities as unknown[]).length === 0) {
+      // Try to resend the confirmation email so the user actually receives it
+      const { error: resendError } = await supabase.auth.resend({
+        type: "signup",
+        email,
+        options: { emailRedirectTo: window.location.origin },
+      });
+      if (resendError) {
+        // If resend also fails, the account likely already exists and is confirmed
+        return { data: null, error: { message: "This email already has an account. Try logging in instead." } };
+      }
+      // Resend succeeded — return the original data so the UI shows "check your email"
+      return { data, error: null };
+    }
+
     return { data, error };
   };
 
