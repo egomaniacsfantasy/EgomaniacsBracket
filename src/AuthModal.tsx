@@ -6,7 +6,7 @@ import { captureError } from "./lib/errorMonitoring";
 
 export type AuthContext = "submit" | "default" | "groups" | "join";
 
-type Mode = "signup" | "signin" | "check-email" | "forgot" | "forgot-sent";
+type Mode = "signup" | "signin" | "verify-otp" | "check-email" | "forgot" | "forgot-sent";
 
 function getFriendlyAuthError(error: { message?: string } | null | undefined): string {
   const raw = error?.message ?? "";
@@ -47,18 +47,26 @@ function getFriendlyAuthError(error: { message?: string } | null | undefined): s
   }
 
   if (msg.includes("not confirmed") || msg.includes("confirm")) {
-    return "Please check your email and click the confirmation link first.";
+    return "Your email isn't confirmed yet. Check for a verification code or resend one below.";
   }
 
   if (msg.includes("network") || msg.includes("fetch")) {
     return "Connection error. Please check your internet and try again.";
   }
 
+  if (msg.includes("otp") && msg.includes("expired")) {
+    return "That code has expired. Resend a new one and try again.";
+  }
+
+  if (msg.includes("otp") || msg.includes("token")) {
+    return "Invalid code. Please check and try again.";
+  }
+
   return raw || "Something went wrong. Please try again.";
 }
 
 function getAuthCopy(context: AuthContext, mode: string) {
-  if (mode === "check-email" || mode === "forgot" || mode === "forgot-sent") return null;
+  if (mode === "check-email" || mode === "verify-otp" || mode === "forgot" || mode === "forgot-sent") return null;
 
   switch (context) {
     case "submit":
@@ -122,6 +130,83 @@ function PasswordInput({
   );
 }
 
+const OTP_LENGTH = 6;
+
+function OtpInput({
+  value,
+  onChange,
+  disabled,
+}: {
+  value: string;
+  onChange: (code: string) => void;
+  disabled: boolean;
+}) {
+  const inputsRef = useRef<(HTMLInputElement | null)[]>([]);
+
+  useEffect(() => {
+    inputsRef.current[0]?.focus();
+  }, []);
+
+  const handleChange = (index: number, char: string) => {
+    // Handle paste of full code
+    if (char.length > 1) {
+      const digits = char.replace(/\D/g, "").slice(0, OTP_LENGTH);
+      onChange(digits);
+      const focusIdx = Math.min(digits.length, OTP_LENGTH - 1);
+      inputsRef.current[focusIdx]?.focus();
+      return;
+    }
+
+    const digit = char.replace(/\D/g, "");
+    const chars = value.split("");
+    chars[index] = digit;
+    const next = chars.join("").slice(0, OTP_LENGTH);
+    onChange(next);
+
+    if (digit && index < OTP_LENGTH - 1) {
+      inputsRef.current[index + 1]?.focus();
+    }
+  };
+
+  const handleKeyDown = (index: number, e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "Backspace" && !value[index] && index > 0) {
+      inputsRef.current[index - 1]?.focus();
+      const chars = value.split("");
+      chars[index - 1] = "";
+      onChange(chars.join(""));
+    }
+  };
+
+  const handlePaste = (e: React.ClipboardEvent) => {
+    e.preventDefault();
+    const pasted = e.clipboardData.getData("text").replace(/\D/g, "").slice(0, OTP_LENGTH);
+    onChange(pasted);
+    const focusIdx = Math.min(pasted.length, OTP_LENGTH - 1);
+    inputsRef.current[focusIdx]?.focus();
+  };
+
+  return (
+    <div className="otp-input-row">
+      {Array.from({ length: OTP_LENGTH }).map((_, i) => (
+        <input
+          key={i}
+          ref={(el) => { inputsRef.current[i] = el; }}
+          className="otp-digit"
+          type="text"
+          inputMode="numeric"
+          maxLength={1}
+          value={value[i] ?? ""}
+          disabled={disabled}
+          onChange={(e) => handleChange(i, e.target.value)}
+          onKeyDown={(e) => handleKeyDown(i, e)}
+          onPaste={handlePaste}
+          autoComplete="one-time-code"
+        />
+      ))}
+    </div>
+  );
+}
+
 export function AuthModal({
   isOpen,
   onClose,
@@ -144,6 +229,8 @@ export function AuthModal({
   const [displayNameChecking, setDisplayNameChecking] = useState(false);
   const [resendStatus, setResendStatus] = useState("");
   const [resendingConfirmation, setResendingConfirmation] = useState(false);
+  const [otpCode, setOtpCode] = useState("");
+  const [verifyingOtp, setVerifyingOtp] = useState(false);
   const modalRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
@@ -160,6 +247,8 @@ export function AuthModal({
     setDisplayNameChecking(false);
     setResendStatus("");
     setResendingConfirmation(false);
+    setOtpCode("");
+    setVerifyingOtp(false);
   }, [isOpen]);
 
   useEffect(() => {
@@ -197,7 +286,7 @@ export function AuthModal({
     if (event.target === event.currentTarget) onClose();
   };
 
-  const handleResendConfirmation = async (nextSubmittedMode: "signup" | "signin" = submittedMode) => {
+  const handleResendCode = async () => {
     if (!email.trim()) {
       setError("Enter your email address.");
       return;
@@ -223,12 +312,46 @@ export function AuthModal({
         return;
       }
 
-      setSubmittedMode(nextSubmittedMode);
-      setMode("check-email");
-      setResendStatus("Confirmation email sent again.");
-    } catch (error) {
-      captureError("auth_resend_confirmation", error);
+      setOtpCode("");
+      setResendStatus("New code sent! Check your email.");
+    } catch (err) {
+      captureError("auth_resend_otp", err);
       setResendingConfirmation(false);
+      setError("Something went wrong. Please try again.");
+    }
+  };
+
+  const handleVerifyOtp = async (event?: FormEvent) => {
+    event?.preventDefault();
+    const code = otpCode.trim();
+    if (code.length !== OTP_LENGTH) {
+      setError(`Enter the ${OTP_LENGTH}-digit code from your email.`);
+      return;
+    }
+
+    setError("");
+    setResendStatus("");
+    setVerifyingOtp(true);
+
+    try {
+      const { error: verifyError } = await supabase.auth.verifyOtp({
+        email: email.trim(),
+        token: code,
+        type: "signup",
+      });
+
+      setVerifyingOtp(false);
+
+      if (verifyError) {
+        setError(getFriendlyAuthError(verifyError));
+        return;
+      }
+
+      // Success — user is now verified and logged in
+      onClose();
+    } catch (err) {
+      captureError("auth_verify_otp", err);
+      setVerifyingOtp(false);
       setError("Something went wrong. Please try again.");
     }
   };
@@ -248,7 +371,8 @@ export function AuthModal({
     setSubmitting(false);
     if (authError) return setError(getFriendlyAuthError(authError as { message?: string }));
     setSubmittedMode("signup");
-    setMode("check-email");
+    setOtpCode("");
+    setMode("verify-otp");
   };
 
   const handleSignIn = async (event: FormEvent) => {
@@ -262,7 +386,11 @@ export function AuthModal({
     const authResult = await signIn(email.trim(), signinPassword);
     const authError = authResult.error;
     setSubmitting(false);
-    if (authError) return setError(getFriendlyAuthError(authError as { message?: string }));
+    if (authError) {
+      const friendlyMsg = getFriendlyAuthError(authError as { message?: string });
+      setError(friendlyMsg);
+      return;
+    }
     onClose();
   };
 
@@ -291,12 +419,19 @@ export function AuthModal({
       }
 
       setMode("forgot-sent");
-    } catch (error) {
-      captureError("auth_reset_password", error);
+    } catch (err) {
+      captureError("auth_reset_password", err);
       setSubmitting(false);
       setError("Something went wrong. Please try again.");
     }
   };
+
+  // Auto-submit when all 6 digits entered
+  useEffect(() => {
+    if (mode === "verify-otp" && otpCode.length === OTP_LENGTH && !verifyingOtp) {
+      void handleVerifyOtp();
+    }
+  }, [otpCode, mode]);
 
   if (!isOpen) return null;
 
@@ -309,7 +444,49 @@ export function AuthModal({
           ✕
         </button>
 
-        {mode === "check-email" ? (
+        {mode === "verify-otp" ? (
+          <div className="auth-modal-verify-otp">
+            <span className="auth-modal-icon">✉</span>
+            <h3 className="auth-modal-title">Enter your code</h3>
+            <p className="auth-modal-subtitle">
+              We sent a {OTP_LENGTH}-digit code to <strong>{email}</strong>
+            </p>
+            <form onSubmit={handleVerifyOtp}>
+              <OtpInput
+                value={otpCode}
+                onChange={setOtpCode}
+                disabled={verifyingOtp}
+              />
+              {error ? <div className="auth-modal-error"><span>{error}</span></div> : null}
+              {resendStatus ? <p className="auth-modal-hint auth-modal-hint--success">{resendStatus}</p> : null}
+              <button
+                className="auth-modal-submit"
+                type="submit"
+                disabled={verifyingOtp || otpCode.length !== OTP_LENGTH}
+              >
+                {verifyingOtp ? "Verifying..." : "Verify"}
+              </button>
+            </form>
+            <p className="auth-modal-hint">
+              Didn&apos;t get it? Check spam, or{" "}
+              <button
+                className="auth-modal-error-link"
+                type="button"
+                onClick={() => { void handleResendCode(); }}
+                disabled={resendingConfirmation}
+              >
+                {resendingConfirmation ? "Sending..." : "resend code"}
+              </button>
+            </p>
+            <button
+              className="auth-modal-mode-toggle"
+              onClick={() => { setMode("signup"); setError(""); setOtpCode(""); }}
+              type="button"
+            >
+              &larr; Back to sign up
+            </button>
+          </div>
+        ) : mode === "check-email" ? (
           <div className="auth-modal-check-email">
             <span className="auth-modal-icon">✉</span>
             <h3 className="auth-modal-title">Check your email</h3>
@@ -326,7 +503,7 @@ export function AuthModal({
                 className="auth-modal-error-link"
                 type="button"
                 onClick={() => {
-                  void handleResendConfirmation(submittedMode);
+                  void handleResendCode();
                 }}
                 disabled={resendingConfirmation}
               >
@@ -442,16 +619,18 @@ export function AuthModal({
                     Go to log in →
                   </button>
                 ) : null}
-                {error.includes("confirmation link") ? (
+                {error.includes("isn't confirmed") ? (
                   <button
                     className="auth-modal-error-link"
                     type="button"
                     onClick={() => {
-                      void handleResendConfirmation("signup");
+                      setOtpCode("");
+                      setMode("verify-otp");
+                      void handleResendCode();
                     }}
                     disabled={resendingConfirmation}
                   >
-                    {resendingConfirmation ? "Sending..." : "Resend confirmation email →"}
+                    {resendingConfirmation ? "Sending..." : "Resend verification code →"}
                   </button>
                 ) : null}
                 {error.includes("Try signing up") ? (
@@ -542,16 +721,18 @@ export function AuthModal({
                     Go to log in →
                   </button>
                 ) : null}
-                {error.includes("confirmation link") ? (
+                {error.includes("isn't confirmed") ? (
                   <button
                     className="auth-modal-error-link"
                     type="button"
                     onClick={() => {
-                      void handleResendConfirmation("signin");
+                      setOtpCode("");
+                      setMode("verify-otp");
+                      void handleResendCode();
                     }}
                     disabled={resendingConfirmation}
                   >
-                    {resendingConfirmation ? "Sending..." : "Resend confirmation email →"}
+                    {resendingConfirmation ? "Sending..." : "Resend verification code →"}
                   </button>
                 ) : null}
                 {error.includes("Try signing up") ? (
