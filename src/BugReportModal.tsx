@@ -6,6 +6,7 @@ import {
   type KeyboardEvent as ReactKeyboardEvent,
   type MouseEvent as ReactMouseEvent,
 } from "react";
+import { createPortal } from "react-dom";
 import { supabase } from "./supabaseClient";
 import { useAuth } from "./AuthContext";
 import { trackEvent } from "./lib/analytics";
@@ -67,7 +68,11 @@ export default function BugReportModal({
     if (!isOpen) return;
 
     focusTimerRef.current = window.setTimeout(() => {
-      textareaRef.current?.focus();
+      try {
+        textareaRef.current?.focus({ preventScroll: true });
+      } catch {
+        textareaRef.current?.focus();
+      }
       focusTimerRef.current = null;
     }, 80);
 
@@ -100,6 +105,12 @@ export default function BugReportModal({
     window.addEventListener("keydown", handleWindowKeyDown);
     return () => window.removeEventListener("keydown", handleWindowKeyDown);
   }, [handleClose, isOpen]);
+
+  useEffect(() => {
+    if (!isOpen || typeof document === "undefined") return;
+    document.body.classList.add("br-modal-open");
+    return () => document.body.classList.remove("br-modal-open");
+  }, [isOpen]);
 
   const isOnCooldown = useCallback(() => {
     try {
@@ -225,30 +236,7 @@ export default function BugReportModal({
     [handleSubmit]
   );
 
-  return (
-    <>
-      <button
-        className="br-nav-button"
-        onClick={handleOpen}
-        aria-label="Report a bug"
-        title="Report a bug"
-        type="button"
-      >
-        <svg
-          className="br-nav-icon"
-          viewBox="0 0 16 16"
-          fill="none"
-          xmlns="http://www.w3.org/2000/svg"
-          aria-hidden="true"
-        >
-          <path
-            d="M8 1.5C6.34 1.5 5 2.84 5 4.5V5H3.5L2.5 6.5H4.5V7.5H2V9H4.5V10.5L2.5 12H5V12.5C5 14.16 6.34 15.5 8 15.5C9.66 15.5 11 14.16 11 12.5V12H13.5L11.5 10.5V9H14V7.5H11.5V6.5H13.5L12.5 5H11V4.5C11 2.84 9.66 1.5 8 1.5ZM7 5V4.5C7 3.95 7.45 3.5 8 3.5C8.55 3.5 9 3.95 9 4.5V5H7ZM7 7H9V13H7V7Z"
-            fill="currentColor"
-          />
-        </svg>
-      </button>
-
-      {isOpen ? (
+  const modal = isOpen ? (
         <div
           className="br-overlay"
           ref={overlayRef}
@@ -257,9 +245,12 @@ export default function BugReportModal({
           aria-modal="true"
           aria-label="Report a bug"
         >
-          <div className="br-modal">
+          <div className="br-modal" onClick={(event) => event.stopPropagation()}>
             <div className="br-header">
-              <h2 className="br-title">Report a Bug</h2>
+              <div className="br-heading-group">
+                <h2 className="br-title">Report a Bug</h2>
+                <p className="br-subtitle">Tell us what broke. We will attach the current bracket context automatically.</p>
+              </div>
               <button className="br-close" onClick={handleClose} aria-label="Close" type="button">
                 <svg viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
                   <path
@@ -285,7 +276,7 @@ export default function BugReportModal({
                     />
                   </svg>
                 </span>
-                <p className="br-success-text">Thanks. We are on it.</p>
+                <p className="br-success-text">Bug report sent.</p>
               </div>
             ) : (
               <>
@@ -320,10 +311,10 @@ export default function BugReportModal({
                   )}
                 </div>
 
-                <p className="br-context-note">
-                  We will include your browser info, screen size, and current bracket state so the team can
-                  reproduce the issue faster.
-                </p>
+                <div className="br-context-note">
+                  <span className="br-context-chip">Context included</span>
+                  <p>Browser, viewport, current tab, region, round, and bracket state will be attached automatically.</p>
+                </div>
 
                 <div className="br-actions">
                   <button
@@ -353,7 +344,32 @@ export default function BugReportModal({
             )}
           </div>
         </div>
-      ) : null}
+  ) : null;
+
+  return (
+    <>
+      <button
+        className="eg-btn toolbar-btn--bug br-trigger"
+        onClick={handleOpen}
+        aria-label="Report a bug"
+        title="Report a bug"
+        type="button"
+      >
+        <svg
+          className="br-trigger-icon"
+          viewBox="0 0 16 16"
+          fill="none"
+          xmlns="http://www.w3.org/2000/svg"
+          aria-hidden="true"
+        >
+          <path
+            d="M8 1.5C6.34 1.5 5 2.84 5 4.5V5H3.5L2.5 6.5H4.5V7.5H2V9H4.5V10.5L2.5 12H5V12.5C5 14.16 6.34 15.5 8 15.5C9.66 15.5 11 14.16 11 12.5V12H13.5L11.5 10.5V9H14V7.5H11.5V6.5H13.5L12.5 5H11V4.5C11 2.84 9.66 1.5 8 1.5ZM7 5V4.5C7 3.95 7.45 3.5 8 3.5C8.55 3.5 9 3.95 9 4.5V5H7ZM7 7H9V13H7V7Z"
+            fill="currentColor"
+          />
+        </svg>
+        <span className="br-trigger-label">Report a Bug</span>
+      </button>
+      {modal && typeof document !== "undefined" ? createPortal(modal, document.body) : null}
     </>
   );
 }

@@ -44,7 +44,7 @@ import { BracketWrappedCard } from "./BracketWrappedCard";
 import { MobileOnboarding } from "./MobileOnboarding";
 import { OverflowMenu, type OverflowMenuItem } from "./OverflowMenu";
 import { TopNavBar, type TopNavView } from "./TopNavBar";
-import type { BugReportModalProps } from "./BugReportModal";
+import BugReportModal, { type BugReportModalProps } from "./BugReportModal";
 import { getUserGroups, updateMemberBracket, type UserGroup } from "./groupStorage";
 import { hasElevatedAccess } from "./groupVisibility";
 
@@ -3679,6 +3679,8 @@ function App() {
             ) : null}
           </div>
         ) : null}
+
+        <BugReportModal {...bugReportContext} />
       </div>
 
       <div className="toolbar-group toolbar-group--right">
@@ -4247,7 +4249,6 @@ function App() {
         <TopNavBar
           activeView={topNavActiveView}
           authLoading={authLoading}
-          bugReportContext={bugReportContext}
           isAuthenticated={isAuthenticated}
           userLabel={userLabel}
           showBeta

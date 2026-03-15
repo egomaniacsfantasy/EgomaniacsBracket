@@ -1,5 +1,4 @@
 import { useEffect, useRef, useState } from "react";
-import BugReportModal, { type BugReportModalProps } from "./BugReportModal";
 
 const LANDING_URL = "https://oddsgods.net";
 
@@ -9,7 +8,6 @@ type TopNavBarProps = {
   activeView: TopNavView;
   authLoading?: boolean;
   isAuthenticated: boolean;
-  bugReportContext?: BugReportModalProps | null;
   onSelectBracket: () => void;
   onSelectLeaderboard: () => void;
   onSelectConferences: () => void;
@@ -31,7 +29,6 @@ export function TopNavBar({
   activeView,
   authLoading = false,
   isAuthenticated,
-  bugReportContext = null,
   onSelectBracket,
   onSelectLeaderboard,
   onSelectConferences,
@@ -106,7 +103,6 @@ export function TopNavBar({
       </div>
 
       <div className="top-nav-bar__actions">
-        {bugReportContext ? <BugReportModal {...bugReportContext} /> : null}
         <div className="top-nav-bar__desktop-auth">
           {authLoading ? (
             <span className="top-nav-bar__status">...</span>
