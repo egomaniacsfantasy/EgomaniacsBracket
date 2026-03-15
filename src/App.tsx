@@ -3377,8 +3377,10 @@ function App() {
   const predictorViewActive = isMobile ? visibleMobileTab === "predictor" : visibleMainView === "predictor";
   const showDesktopLiveOddsBand = !isMobile && visibleMainView !== "predictor";
   const showDesktopBracketHero = !isMobile && visibleMainView !== "predictor";
-  const topNavActiveView: TopNavView = isMobile
-    ? visibleMobileTab === "leaderboard"
+  const topNavActiveView: TopNavView = activeGroup || groupsHubOpen
+    ? "groups"
+    : isMobile
+      ? visibleMobileTab === "leaderboard"
       ? "leaderboard"
       : visibleMobileTab === "rankings"
           ? "rankings"
@@ -3428,6 +3430,13 @@ function App() {
   );
 
   const switchTopNavView = (view: TopNavView) => {
+    if (view === "groups") {
+      openGroupsHub();
+      return;
+    }
+
+    setGroupsHubOpen(false);
+    setActiveGroup(null);
     if (isMobile) {
       setMobileTab(view === "bracket" ? "bracket" : view);
     } else {
@@ -3453,7 +3462,7 @@ function App() {
     setShowFirstFourModal(true);
   };
 
-  const openGroupsFromToolbar = () => {
+  const openGroupsHub = () => {
     setOpenToolbarMenu(null);
     if (!isAuthenticated || !user) {
       setAuthModalContext("groups");
@@ -3478,7 +3487,6 @@ function App() {
   const showChaosInToolbar = !isMobile && chaosScore !== null;
   const showInlineFirstFour = playInGames.length > 0 && !allPlayInDecided;
   const showToolbarFirstFour = isMobile ? showMobileFirstFourButton : showInlineFirstFour;
-  const showToolbarGroups = !isMobile || (isMobile && !showToolbarFirstFour);
   const showToolbarSubmitAction = true;
   const firstFourInlineProgress = playInGames.length > 0 ? `${decidedPlayInCount}/${playInGames.length}` : null;
   const remainingPicks = SUBMIT_EXPECTED_PICK_COUNT - pickCount;
@@ -3516,17 +3524,7 @@ function App() {
             setOpenToolbarMenu(null);
             onRequestResetAll();
           },
-        },
-        ...(!showToolbarGroups
-          ? [{
-              id: "groups",
-              label: "Groups",
-              onSelect: () => {
-                setOpenToolbarMenu(null);
-                openGroupsFromToolbar();
-              },
-            }]
-          : [])]
+        }]
       : []),
     ...(!showToolbarFirstFour
       ? [{
@@ -3693,17 +3691,6 @@ function App() {
             {(isMobile ? mobileFirstFourProgress : firstFourInlineProgress)
               ? <span className="toolbar-btn-badge">{isMobile ? mobileFirstFourProgress : firstFourInlineProgress}</span>
               : null}
-          </button>
-        ) : null}
-
-        {showToolbarGroups ? (
-          <button
-            type="button"
-            onClick={openGroupsFromToolbar}
-            className="eg-btn toolbar-btn--groups"
-            title={isAuthenticated ? "View and manage your groups" : "Sign in to view and manage groups"}
-          >
-            Groups
           </button>
         ) : null}
 
@@ -4252,6 +4239,7 @@ function App() {
           showBeta
           onSelectBracket={() => switchTopNavView("bracket")}
           onSelectLeaderboard={() => switchTopNavView("leaderboard")}
+          onSelectGroups={() => switchTopNavView("groups")}
           onSelectRankings={() => switchTopNavView("rankings")}
           onSelectPredictor={() => switchTopNavView("predictor")}
           onSignIn={() => setAuthModalOpen(true)}

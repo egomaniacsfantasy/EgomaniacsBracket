@@ -9,6 +9,7 @@ import {
   getLeaderboard,
 } from "./bracketStorage";
 import { hasElevatedAccess } from "./groupVisibility";
+import { captureError } from "./lib/errorMonitoring";
 
 type ParsedLeaderboardEntry = LeaderboardEntry & {
   finalFourParsed: LeaderboardFinalFourTeam[];
@@ -427,13 +428,20 @@ export function LeaderboardFullWidth({
   const { user } = useAuth();
   const [entries, setEntries] = useState<LeaderboardEntry[]>([]);
   const [adminDeleteError, setAdminDeleteError] = useState<string | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [deletingBracketId, setDeletingBracketId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const canAdminDelete = hasElevatedAccess(user?.email);
 
   const loadLeaderboard = async () => {
-    setLoading(true);
-    const { data } = await getLeaderboard(200);
+    setLoading(entries.length === 0);
+    const { data, error } = await getLeaderboard(200);
+    if (error) {
+      captureError("leaderboard_load", error);
+      setLoadError((error as { message?: string })?.message ?? "Leaderboard is taking longer than expected.");
+    } else {
+      setLoadError(null);
+    }
     setEntries(data ?? []);
     setLoading(false);
   };
@@ -511,6 +519,7 @@ export function LeaderboardFullWidth({
           ) : null}
         </div>
         {adminDeleteError ? <div className="lb-admin-error">{adminDeleteError}</div> : null}
+        {loadError ? <div className="lb-admin-error">{loadError}</div> : null}
 
         <LBPrizeHero />
 

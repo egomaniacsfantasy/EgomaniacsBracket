@@ -66,6 +66,40 @@ export type GroupMember = {
 };
 
 const GROUP_QUERY_TIMEOUT_MS = 10000;
+const GROUP_COUNTS_QUERY_TIMEOUT_MS = 3500;
+const USER_GROUPS_CACHE_PREFIX = "og_user_groups_v1";
+const GROUP_STANDINGS_CACHE_PREFIX = "og_group_standings_v1";
+const GROUP_MEMBERS_CACHE_PREFIX = "og_group_members_v1";
+
+type CachedValue<T> = {
+  savedAt: number;
+  value: T;
+};
+
+function readCachedValue<T>(key: string): T | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const raw = window.localStorage.getItem(key);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as CachedValue<T> | T;
+    if (parsed && typeof parsed === "object" && "value" in parsed) {
+      return (parsed as CachedValue<T>).value;
+    }
+    return parsed as T;
+  } catch {
+    return null;
+  }
+}
+
+function writeCachedValue<T>(key: string, value: T) {
+  if (typeof window === "undefined") return;
+  try {
+    const payload: CachedValue<T> = { value, savedAt: Date.now() };
+    window.localStorage.setItem(key, JSON.stringify(payload));
+  } catch {
+    // Ignore storage failures.
+  }
+}
 
 async function withTimeout<T>(promiseLike: PromiseLike<T>, timeoutMs: number, message: string): Promise<T> {
   let timer: ReturnType<typeof setTimeout> | null = null;
@@ -170,6 +204,8 @@ export async function joinOwnGroup(groupId: string, userId: string, bracketId: s
 }
 
 export async function getUserGroups(userId: string) {
+  const cacheKey = `${USER_GROUPS_CACHE_PREFIX}:${userId}`;
+  const cachedGroups = readCachedValue<UserGroup[]>(cacheKey);
   let memberships: unknown = null;
   let membershipsError: { message?: string } | null = null;
   try {
@@ -198,10 +234,10 @@ export async function getUserGroups(userId: string) {
     memberships = result.data;
     membershipsError = result.error;
   } catch (error) {
-    return { data: [] as UserGroup[], error: { message: (error as Error).message } };
+    return { data: cachedGroups ?? [], error: { message: (error as Error).message } };
   }
 
-  if (membershipsError) return { data: [] as UserGroup[], error: membershipsError };
+  if (membershipsError) return { data: cachedGroups ?? [], error: membershipsError };
 
   const rows = ((memberships ?? []) as unknown) as Array<{
     group_id: string;
@@ -229,16 +265,18 @@ export async function getUserGroups(userId: string) {
     } => Boolean(membership));
 
   if (normalizedRows.length === 0) {
+    writeCachedValue(cacheKey, []);
     return { data: [] as UserGroup[], error: null };
   }
 
   const groupIds = normalizedRows.map((m) => m.groups.id);
+  const cachedMemberCounts = Object.fromEntries((cachedGroups ?? []).map((group) => [group.id, group.memberCount]));
 
   let counts: Array<{ group_id: string }> = [];
   try {
     const countsResult = await withTimeout(
       supabase.from("group_members").select("group_id").in("group_id", groupIds),
-      GROUP_QUERY_TIMEOUT_MS,
+      GROUP_COUNTS_QUERY_TIMEOUT_MS,
       "Timed out loading group member counts."
     );
     if (!countsResult.error) {
@@ -257,19 +295,39 @@ export async function getUserGroups(userId: string) {
     ...m.groups,
     role: m.role,
     bracketId: m.bracket_id,
-    memberCount: Math.max(1, countMap[m.groups.id] || 0),
+    memberCount: Math.max(1, countMap[m.groups.id] ?? cachedMemberCounts[m.groups.id] ?? 1),
   }));
 
+  writeCachedValue(cacheKey, groups);
   return { data: groups, error: null };
 }
 
 export async function getGroupStandings(groupId: string) {
-  const { data, error } = await supabase.from("group_standings").select("*").eq("group_id", groupId);
+  const cacheKey = `${GROUP_STANDINGS_CACHE_PREFIX}:${groupId}`;
+  const cachedStandings = readCachedValue<GroupStanding[]>(cacheKey);
 
-  return { data: (data as GroupStanding[] | null) ?? [], error };
+  try {
+    const result = await withTimeout(
+      supabase.from("group_standings").select("*").eq("group_id", groupId),
+      GROUP_QUERY_TIMEOUT_MS,
+      "Timed out loading group standings. Please try again."
+    );
+
+    if (result.error) {
+      return { data: cachedStandings ?? [], error: result.error };
+    }
+
+    const standings = (result.data as GroupStanding[] | null) ?? [];
+    writeCachedValue(cacheKey, standings);
+    return { data: standings, error: null };
+  } catch (error) {
+    return { data: cachedStandings ?? [], error: { message: (error as Error).message } };
+  }
 }
 
 export async function getGroupMembers(groupId: string) {
+  const cacheKey = `${GROUP_MEMBERS_CACHE_PREFIX}:${groupId}`;
+  const cachedMembers = readCachedValue<GroupMember[]>(cacheKey);
   let memberships: unknown = null;
   let membershipsError: { message?: string } | null = null;
 
@@ -301,11 +359,11 @@ export async function getGroupMembers(groupId: string) {
     memberships = result.data;
     membershipsError = result.error;
   } catch (error) {
-    return { data: [] as GroupMember[], error: { message: (error as Error).message } };
+    return { data: cachedMembers ?? [], error: { message: (error as Error).message } };
   }
 
   if (membershipsError) {
-    return { data: [] as GroupMember[], error: membershipsError };
+    return { data: cachedMembers ?? [], error: membershipsError };
   }
 
   const rows = ((memberships ?? []) as unknown[]) as Array<{
@@ -348,6 +406,7 @@ export async function getGroupMembers(groupId: string) {
     } satisfies GroupMember;
   });
 
+  writeCachedValue(cacheKey, members);
   return { data: members, error: null };
 }
 

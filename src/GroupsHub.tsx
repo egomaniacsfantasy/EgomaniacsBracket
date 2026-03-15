@@ -21,12 +21,14 @@ export function GroupsHub({
   const { user } = useAuth();
   const [groups, setGroups] = useState<UserGroup[]>([]);
   const [loading, setLoading] = useState(true);
+  const [errorMsg, setErrorMsg] = useState("");
 
   useEffect(() => {
     if (!isOpen) return;
     if (!user) {
       setGroups([]);
       setLoading(false);
+      setErrorMsg("");
       return;
     }
     void loadGroups();
@@ -36,15 +38,18 @@ export function GroupsHub({
   async function loadGroups() {
     if (!user) return;
     setLoading(true);
+    setErrorMsg("");
     try {
       const { data, error } = await getUserGroups(user.id);
       if (error) {
         captureError("groups_hub_load", error);
+        setErrorMsg(error.message || "Groups are taking longer than expected.");
       }
       setGroups(data);
     } catch (error) {
       captureError("groups_hub_load", error);
       setGroups([]);
+      setErrorMsg((error as { message?: string })?.message ?? "Groups are taking longer than expected.");
     } finally {
       setLoading(false);
     }
@@ -76,6 +81,7 @@ export function GroupsHub({
 
       <div className="groups-hub-screen-body">
         <div className="groups-hub-screen-content">
+          {errorMsg ? <p className="group-error">{errorMsg}</p> : null}
           {loading ? (
             <div className="groups-hub-loading">
               <span className="groups-hub-spinner">Loading groups...</span>

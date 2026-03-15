@@ -76,6 +76,53 @@ type SaveBracketOptions = {
   bypassLock?: boolean;
 };
 
+const LEADERBOARD_QUERY_TIMEOUT_MS = 8000;
+const LEADERBOARD_CACHE_PREFIX = "og_leaderboard_cache_v1";
+
+type CachedValue<T> = {
+  savedAt: number;
+  value: T;
+};
+
+function readCachedValue<T>(key: string): T | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const raw = window.localStorage.getItem(key);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as CachedValue<T> | T;
+    if (parsed && typeof parsed === "object" && "value" in parsed) {
+      return (parsed as CachedValue<T>).value;
+    }
+    return parsed as T;
+  } catch {
+    return null;
+  }
+}
+
+function writeCachedValue<T>(key: string, value: T) {
+  if (typeof window === "undefined") return;
+  try {
+    const payload: CachedValue<T> = { value, savedAt: Date.now() };
+    window.localStorage.setItem(key, JSON.stringify(payload));
+  } catch {
+    // Ignore storage failures.
+  }
+}
+
+async function withTimeout<T>(promiseLike: PromiseLike<T>, timeoutMs: number, message: string): Promise<T> {
+  let timer: ReturnType<typeof setTimeout> | null = null;
+  try {
+    return await Promise.race<T>([
+      Promise.resolve(promiseLike),
+      new Promise<T>((_, reject) => {
+        timer = setTimeout(() => reject(new Error(message)), timeoutMs);
+      }),
+    ]);
+  } finally {
+    if (timer !== null) clearTimeout(timer);
+  }
+}
+
 export function serializePicks(picks: LockedPicks | Map<string, string> | Array<{ id: string; winner?: string | null }>): LockedPicks {
   if (picks instanceof Map) return Object.fromEntries(picks);
   if (Array.isArray(picks)) {
@@ -359,70 +406,109 @@ export async function renameBracket(bracketId: string, userId: string, newName: 
 }
 
 export async function getLeaderboard(limit = 50) {
-  const primary = await supabase
-    .from("bracket_scores")
-    .select(
-      `
-      rank,
-      total_score,
-      correct_picks,
-      possible_picks,
-      max_remaining,
-      r64_score,
-      r32_score,
-      s16_score,
-      e8_score,
-      f4_score,
-      champ_score,
-      bracket_id,
-      user_id,
-      updated_at,
-      brackets!inner(bracket_name, chaos_score, champion_name, champion_seed, champion_logo_url, champion_eliminated, final_four, boldest_pick, submitted_at),
-      profiles!inner(display_name)
-      `
-    )
-    .not("brackets.submitted_at", "is", null)
-    .order("total_score", { ascending: false })
-    .order("correct_picks", { ascending: false })
-    .limit(limit);
+  const cacheKey = `${LEADERBOARD_CACHE_PREFIX}:${limit}`;
+  const cachedEntries = readCachedValue<LeaderboardEntry[]>(cacheKey);
 
-  if (primary.error) {
-    const { data, error } = await supabase
-      .from("leaderboard")
-      .select("*")
-      .limit(limit);
-    return { data: (data as LeaderboardEntry[] | null) ?? [], error };
+  try {
+    const viewResult = await withTimeout(
+      supabase
+        .from("leaderboard")
+        .select("*")
+        .order("total_score", { ascending: false })
+        .order("correct_picks", { ascending: false })
+        .limit(limit),
+      LEADERBOARD_QUERY_TIMEOUT_MS,
+      "Timed out loading the leaderboard. Please try again."
+    );
+
+    if (!viewResult.error) {
+      const entries = (viewResult.data as LeaderboardEntry[] | null) ?? [];
+      writeCachedValue(cacheKey, entries);
+      return { data: entries, error: null };
+    }
+  } catch (error) {
+    return {
+      data: cachedEntries ?? [],
+      error: { message: (error as Error).message },
+    };
   }
 
-  const mapped = ((primary.data as Array<Record<string, unknown>> | null) ?? []).map((row) => {
-    const b = (row.brackets as Record<string, unknown>) ?? {};
-    const p = (row.profiles as Record<string, unknown>) ?? {};
+  try {
+    const primary = await withTimeout(
+      supabase
+        .from("bracket_scores")
+        .select(
+          `
+          rank,
+          total_score,
+          correct_picks,
+          possible_picks,
+          max_remaining,
+          r64_score,
+          r32_score,
+          s16_score,
+          e8_score,
+          f4_score,
+          champ_score,
+          bracket_id,
+          user_id,
+          updated_at,
+          brackets!inner(bracket_name, chaos_score, champion_name, champion_seed, champion_logo_url, champion_eliminated, final_four, boldest_pick, submitted_at),
+          profiles!inner(display_name)
+          `
+        )
+        .not("brackets.submitted_at", "is", null)
+        .order("total_score", { ascending: false })
+        .order("correct_picks", { ascending: false })
+        .limit(limit),
+      LEADERBOARD_QUERY_TIMEOUT_MS,
+      "Timed out loading the leaderboard. Please try again."
+    );
+
+    if (primary.error) {
+      return {
+        data: cachedEntries ?? [],
+        error: primary.error,
+      };
+    }
+
+    const mapped = ((primary.data as Array<Record<string, unknown>> | null) ?? []).map((row) => {
+      const b = (row.brackets as Record<string, unknown>) ?? {};
+      const p = (row.profiles as Record<string, unknown>) ?? {};
+      return {
+        rank: row.rank as number | null | undefined,
+        bracket_id: String(row.bracket_id ?? ""),
+        user_id: String(row.user_id ?? ""),
+        display_name: String(p.display_name ?? "Anonymous"),
+        bracket_name: String(b.bracket_name ?? "Bracket"),
+        chaos_score: (b.chaos_score as number | null | undefined) ?? null,
+        champion_name: (b.champion_name as string | null | undefined) ?? null,
+        champion_seed: (b.champion_seed as number | null | undefined) ?? null,
+        champion_logo_url: (b.champion_logo_url as string | null | undefined) ?? null,
+        champion_eliminated: Boolean(b.champion_eliminated),
+        final_four: (b.final_four as LeaderboardFinalFourTeam[] | string | null | undefined) ?? null,
+        boldest_pick: (b.boldest_pick as LeaderboardBoldestPick | string | null | undefined) ?? null,
+        total_score: Number(row.total_score ?? 0),
+        correct_picks: Number(row.correct_picks ?? 0),
+        possible_picks: (row.possible_picks as number | null | undefined) ?? null,
+        max_remaining: (row.max_remaining as number | null | undefined) ?? null,
+        r64_score: (row.r64_score as number | null | undefined) ?? null,
+        r32_score: (row.r32_score as number | null | undefined) ?? null,
+        s16_score: (row.s16_score as number | null | undefined) ?? null,
+        e8_score: (row.e8_score as number | null | undefined) ?? null,
+        f4_score: (row.f4_score as number | null | undefined) ?? null,
+        champ_score: (row.champ_score as number | null | undefined) ?? null,
+      } satisfies LeaderboardEntry;
+    });
+
+    writeCachedValue(cacheKey, mapped);
+    return { data: mapped, error: null };
+  } catch (error) {
     return {
-      rank: row.rank as number | null | undefined,
-      bracket_id: String(row.bracket_id ?? ""),
-      user_id: String(row.user_id ?? ""),
-      display_name: String(p.display_name ?? "Anonymous"),
-      bracket_name: String(b.bracket_name ?? "Bracket"),
-      chaos_score: (b.chaos_score as number | null | undefined) ?? null,
-      champion_name: (b.champion_name as string | null | undefined) ?? null,
-      champion_seed: (b.champion_seed as number | null | undefined) ?? null,
-      champion_logo_url: (b.champion_logo_url as string | null | undefined) ?? null,
-      champion_eliminated: Boolean(b.champion_eliminated),
-      final_four: (b.final_four as LeaderboardFinalFourTeam[] | string | null | undefined) ?? null,
-      boldest_pick: (b.boldest_pick as LeaderboardBoldestPick | string | null | undefined) ?? null,
-      total_score: Number(row.total_score ?? 0),
-      correct_picks: Number(row.correct_picks ?? 0),
-      possible_picks: (row.possible_picks as number | null | undefined) ?? null,
-      max_remaining: (row.max_remaining as number | null | undefined) ?? null,
-      r64_score: (row.r64_score as number | null | undefined) ?? null,
-      r32_score: (row.r32_score as number | null | undefined) ?? null,
-      s16_score: (row.s16_score as number | null | undefined) ?? null,
-      e8_score: (row.e8_score as number | null | undefined) ?? null,
-      f4_score: (row.f4_score as number | null | undefined) ?? null,
-      champ_score: (row.champ_score as number | null | undefined) ?? null,
-    } satisfies LeaderboardEntry;
-  });
-  return { data: mapped, error: null };
+      data: cachedEntries ?? [],
+      error: { message: (error as Error).message },
+    };
+  }
 }
 
 export async function getUserScores(userId: string) {

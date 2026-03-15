@@ -43,6 +43,7 @@ export function GroupDetailView({
   const [standings, setStandings] = useState<GroupStanding[]>([]);
   const [members, setMembers] = useState<GroupMember[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState("");
   const [viewingBracket, setViewingBracket] = useState<{
     bracketId: string;
     displayName: string;
@@ -77,26 +78,39 @@ export function GroupDetailView({
   async function loadGroupData() {
     if (!group) return;
     setLoading(true);
-    try {
-      const [{ data: standingsData, error: standingsError }, { data: membersData, error: membersError }] = await Promise.all([
-        getGroupStandings(group.id),
-        getGroupMembers(group.id),
-      ]);
-      if (standingsError) {
-        captureError("group_detail_standings_load", standingsError);
+    setLoadError("");
+    const [standingsResult, membersResult] = await Promise.allSettled([
+      getGroupStandings(group.id),
+      getGroupMembers(group.id),
+    ]);
+
+    if (standingsResult.status === "fulfilled") {
+      const { data, error } = standingsResult.value;
+      if (error) {
+        captureError("group_detail_standings_load", error);
+        setLoadError(error.message || "Group data is taking longer than expected.");
       }
-      if (membersError) {
-        captureError("group_detail_members_load", membersError);
-      }
-      setStandings(standingsData);
-      setMembers(membersData);
-    } catch (error) {
-      captureError("group_detail_standings_load", error);
+      setStandings(data);
+    } else {
+      captureError("group_detail_standings_load", standingsResult.reason);
       setStandings([]);
-      setMembers([]);
-    } finally {
-      setLoading(false);
+      setLoadError("Group data is taking longer than expected.");
     }
+
+    if (membersResult.status === "fulfilled") {
+      const { data, error } = membersResult.value;
+      if (error) {
+        captureError("group_detail_members_load", error);
+        setLoadError((current) => current || error.message || "Group data is taking longer than expected.");
+      }
+      setMembers(data);
+    } else {
+      captureError("group_detail_members_load", membersResult.reason);
+      setMembers([]);
+      setLoadError((current) => current || "Group data is taking longer than expected.");
+    }
+
+    setLoading(false);
   }
 
   const [showInviteToast, setShowInviteToast] = useState(false);
@@ -324,6 +338,7 @@ export function GroupDetailView({
       </div>
 
       <div className="group-detail-content">
+        {loadError ? <p className="group-error">{loadError}</p> : null}
         {loading ? (
           <div className="group-detail-loading">Loading group data...</div>
         ) : (
