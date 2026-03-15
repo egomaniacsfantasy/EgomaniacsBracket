@@ -130,7 +130,7 @@ function PasswordInput({
   );
 }
 
-const OTP_LENGTH = 6;
+const OTP_LENGTH = 8;
 
 function OtpInput({
   value,

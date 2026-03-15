@@ -6781,20 +6781,20 @@ body {
 
 .otp-input-row {
   display: flex;
-  gap: 8px;
+  gap: 6px;
   justify-content: center;
   margin-bottom: 16px;
 }
 
 .otp-digit {
-  width: 44px;
-  height: 52px;
+  width: 36px;
+  height: 46px;
   border: 1px solid rgba(184, 125, 24, 0.3);
   border-radius: 8px;
   background: rgba(255, 255, 255, 0.04);
   color: var(--text-primary);
   font-family: var(--font-mono);
-  font-size: 22px;
+  font-size: 20px;
   font-weight: 600;
   text-align: center;
   outline: none;
