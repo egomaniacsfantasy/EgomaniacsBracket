@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useState } from "react";
+import { createContext, useContext, useEffect, useRef, useState } from "react";
 import type { ReactNode } from "react";
 import type { User } from "@supabase/supabase-js";
 import { supabase } from "./supabaseClient";
@@ -22,19 +22,45 @@ type AuthContextValue = {
 
 const AuthContext = createContext<AuthContextValue | null>(null);
 
+const PROFILE_QUERY_TIMEOUT_MS = 8000;
+
+async function withTimeout<T>(promiseLike: PromiseLike<T>, timeoutMs: number, message: string): Promise<T> {
+  let timer: ReturnType<typeof setTimeout> | null = null;
+  try {
+    return await Promise.race<T>([
+      Promise.resolve(promiseLike),
+      new Promise<T>((_, reject) => {
+        timer = setTimeout(() => reject(new Error(message)), timeoutMs);
+      }),
+    ]);
+  } finally {
+    if (timer !== null) clearTimeout(timer);
+  }
+}
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
+  const mountedRef = useRef(true);
+  const profileRequestRef = useRef(0);
 
   const fetchProfile = async (userId: string, authUser?: User | null) => {
+    const requestId = ++profileRequestRef.current;
+
     try {
-      const { data } = await supabase.from("profiles").select("display_name").eq("id", userId).single();
+      const { data } = await withTimeout(
+        supabase.from("profiles").select("display_name").eq("id", userId).single(),
+        PROFILE_QUERY_TIMEOUT_MS,
+        "Timed out loading your profile."
+      );
+      if (!mountedRef.current || requestId !== profileRequestRef.current) return;
       const profileData = (data as Profile | null) ?? null;
       const googleName = authUser?.user_metadata?.full_name as string | undefined;
 
       if (profileData && (!profileData.display_name || profileData.display_name === "Anonymous") && googleName) {
         await supabase.from("profiles").update({ display_name: googleName }).eq("id", userId);
+        if (!mountedRef.current || requestId !== profileRequestRef.current) return;
         setProfile({ ...profileData, display_name: googleName });
         return;
       }
@@ -42,71 +68,76 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setProfile(profileData);
     } catch (error) {
       captureError("auth_fetch_profile", error);
+      if (!mountedRef.current || requestId !== profileRequestRef.current) return;
       setProfile(null);
     }
   };
 
   useEffect(() => {
-    let mounted = true;
+    mountedRef.current = true;
 
     const initAuth = async () => {
       try {
         const { data: { session } } = await supabase.auth.getSession();
-        if (!mounted) return;
+        if (!mountedRef.current) return;
         setUser(session?.user ?? null);
+        setLoading(false);
         if (session?.user) {
-          await fetchProfile(session.user.id, session.user);
+          setProfile(null);
+          void fetchProfile(session.user.id, session.user);
         } else {
+          profileRequestRef.current += 1;
           setProfile(null);
         }
       } catch (error) {
         captureError("auth_get_session", error);
-        if (!mounted) return;
+        if (!mountedRef.current) return;
         setUser(null);
         setProfile(null);
       } finally {
-        if (mounted) {
-          setLoading(false);
-        }
+        if (mountedRef.current) setLoading(false);
       }
     };
 
     void initAuth();
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      if (!mounted) return;
-      try {
-        setUser(session?.user ?? null);
-        if (session?.user) {
-          await fetchProfile(session.user.id, session.user);
-          if (event === "SIGNED_IN") {
-            const pendingRaw = window.sessionStorage.getItem("pendingBracketSave");
-            if (pendingRaw) {
-              window.sessionStorage.removeItem("pendingBracketSave");
-              try {
-                const pendingPicks = JSON.parse(pendingRaw) as Record<string, string>;
-                await saveBracket(session.user.id, pendingPicks, "My Bracket", null, undefined, { submit: false });
-              } catch (error) {
-                captureError("auth_pending_bracket_save", error);
-                // ignore bad pending payload
-              }
-            }
-          }
-        } else {
-          setProfile(null);
-        }
-      } catch (error) {
-        captureError("auth_state_change", error);
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (!mountedRef.current) return;
+
+      setUser(session?.user ?? null);
+      setLoading(false);
+
+      if (!session?.user) {
+        profileRequestRef.current += 1;
         setProfile(null);
-      } finally {
-        if (mounted) {
-          setLoading(false);
-        }
+        return;
       }
+
+      setProfile(null);
+      const userId = session.user.id;
+      setTimeout(() => {
+        if (!mountedRef.current) return;
+        void fetchProfile(userId, session.user);
+
+        if (event === "SIGNED_IN") {
+          const pendingRaw = window.sessionStorage.getItem("pendingBracketSave");
+          if (!pendingRaw) return;
+
+          window.sessionStorage.removeItem("pendingBracketSave");
+          try {
+            const pendingPicks = JSON.parse(pendingRaw) as Record<string, string>;
+            void saveBracket(userId, pendingPicks, "My Bracket", null, undefined, { submit: false }).catch((error) => {
+              captureError("auth_pending_bracket_save", error);
+            });
+          } catch (error) {
+            captureError("auth_pending_bracket_save", error);
+          }
+        }
+      }, 0);
     });
 
     return () => {
-      mounted = false;
+      mountedRef.current = false;
       subscription.unsubscribe();
     };
   }, []);
@@ -176,8 +207,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const signOut = async () => {
     await supabase.auth.signOut();
+    profileRequestRef.current += 1;
     setUser(null);
     setProfile(null);
+    setLoading(false);
   };
 
   return (

@@ -23,9 +23,13 @@ export function GroupsHub({
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (isOpen && user) {
-      void loadGroups();
+    if (!isOpen) return;
+    if (!user) {
+      setGroups([]);
+      setLoading(false);
+      return;
     }
+    void loadGroups();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen, refreshToken, user]);
 

@@ -126,6 +126,7 @@ const URL_ROUND_ORDER: ResolvedGame["round"][] = ["FF", "R64", "R32", "S16", "E8
 const URL_EXPECTED_GAME_COUNT = gameTemplates.length;
 const URL_EXPECTED_BITS = URL_EXPECTED_GAME_COUNT * 2;
 const SUBMIT_EXPECTED_PICK_COUNT = gameTemplates.filter((game) => game.round !== "FF").length;
+const SHOW_CONFERENCE_TOURNAMENTS = false;
 const MOBILE_TAB_BODY_CLASSES = [
   "mobile-tab-bracket",
   "mobile-tab-futures",
@@ -730,6 +731,9 @@ function App() {
   const walkthroughCascadeTimerRef = useRef<number | null>(null);
   const walkthroughCascadeStepTimersRef = useRef<number[]>([]);
 
+  const visibleMainView = !SHOW_CONFERENCE_TOURNAMENTS && mainView === "conferences" ? "bracket" : mainView;
+  const visibleMobileTab = !SHOW_CONFERENCE_TOURNAMENTS && mobileTab === "conferences" ? "bracket" : mobileTab;
+
   const { games, sanitized } = useMemo(
     () => resolveGames(lockedPicks, customProbByGame),
     [lockedPicks, customProbByGame]
@@ -800,11 +804,17 @@ function App() {
   }, [isMobile, mainView, mobileTab]);
 
   useEffect(() => {
+    if (SHOW_CONFERENCE_TOURNAMENTS) return;
+    if (mainView === "conferences") setMainView("bracket");
+    if (mobileTab === "conferences") setMobileTab("bracket");
+  }, [mainView, mobileTab]);
+
+  useEffect(() => {
     document.body.classList.remove(...MOBILE_TAB_BODY_CLASSES);
     if (!isMobile) return () => document.body.classList.remove(...MOBILE_TAB_BODY_CLASSES);
-    document.body.classList.add(...MOBILE_BODY_CLASSES_BY_TAB[mobileTab]);
+    document.body.classList.add(...MOBILE_BODY_CLASSES_BY_TAB[visibleMobileTab]);
     return () => document.body.classList.remove(...MOBILE_TAB_BODY_CLASSES);
-  }, [isMobile, mobileTab]);
+  }, [isMobile, visibleMobileTab]);
 
   useEffect(() => {
     const media = window.matchMedia("(max-width: 1850px)");
@@ -3362,45 +3372,41 @@ function App() {
 
   const userLabel = profile?.display_name || user?.email || "User";
   const showToolbar = isMobile
-    ? mobileTab === "bracket" || mobileTab === "futures"
-    : mainView === "bracket" || mainView === "futures";
-  const predictorViewActive = isMobile ? mobileTab === "predictor" : mainView === "predictor";
-  const showDesktopLiveOddsBand = !isMobile && mainView !== "predictor";
-  const showDesktopBracketHero = !isMobile && mainView !== "predictor";
+    ? visibleMobileTab === "bracket" || visibleMobileTab === "futures"
+    : visibleMainView === "bracket" || visibleMainView === "futures";
+  const predictorViewActive = isMobile ? visibleMobileTab === "predictor" : visibleMainView === "predictor";
+  const showDesktopLiveOddsBand = !isMobile && visibleMainView !== "predictor";
+  const showDesktopBracketHero = !isMobile && visibleMainView !== "predictor";
   const topNavActiveView: TopNavView = isMobile
-    ? mobileTab === "leaderboard"
+    ? visibleMobileTab === "leaderboard"
       ? "leaderboard"
-      : mobileTab === "conferences"
-        ? "conferences"
-        : mobileTab === "rankings"
+      : visibleMobileTab === "rankings"
           ? "rankings"
-          : mobileTab === "predictor"
+          : visibleMobileTab === "predictor"
             ? "predictor"
         : "bracket"
-    : mainView === "leaderboard"
+    : visibleMainView === "leaderboard"
       ? "leaderboard"
-      : mainView === "conferences"
-        ? "conferences"
-        : mainView === "rankings"
+      : visibleMainView === "rankings"
           ? "rankings"
-          : mainView === "predictor"
+          : visibleMainView === "predictor"
             ? "predictor"
         : "bracket";
   const bugReportContext = useMemo<BugReportModalProps>(
     () => ({
       activeRegion:
-        isMobile && mobileTab === "bracket"
+        isMobile && visibleMobileTab === "bracket"
           ? (mobileSection === "FF" ? "Final Four" : mobileSection)
           : undefined,
       activeRound:
-        isMobile && mobileTab === "bracket"
+        isMobile && visibleMobileTab === "bracket"
           ? (mobileSection === "FF" ? mobileFfRound : mobileRound)
           : undefined,
-      activeTab: isMobile ? mobileTab : mainView,
+      activeTab: isMobile ? visibleMobileTab : visibleMainView,
       pickCount,
       chaosScore,
       displayMode,
-      isFuturesOpen: isMobile ? mobileTab === "futures" : mainView === "futures",
+      isFuturesOpen: isMobile ? visibleMobileTab === "futures" : visibleMainView === "futures",
       isSimRunning: staggeredSimRunning || isUpdating,
       bracketHash: Object.keys(sanitized).length > 0 ? encodeBracketState(sanitized) : null,
       isMobile,
@@ -3410,11 +3416,11 @@ function App() {
       displayMode,
       isMobile,
       isUpdating,
-      mainView,
+      visibleMainView,
       mobileFfRound,
       mobileRound,
       mobileSection,
-      mobileTab,
+      visibleMobileTab,
       pickCount,
       sanitized,
       staggeredSimRunning,
@@ -4246,7 +4252,6 @@ function App() {
           showBeta
           onSelectBracket={() => switchTopNavView("bracket")}
           onSelectLeaderboard={() => switchTopNavView("leaderboard")}
-          onSelectConferences={() => switchTopNavView("conferences")}
           onSelectRankings={() => switchTopNavView("rankings")}
           onSelectPredictor={() => switchTopNavView("predictor")}
           onSignIn={() => setAuthModalOpen(true)}
@@ -4277,7 +4282,7 @@ function App() {
             {isAuthenticated && submissionsLocked && showToolbar ? (
               <div className="bracket-lock-banner">🔒 Submissions locked at tip-off. Tournament is live — check the leaderboard.</div>
             ) : null}
-            {mobileTab === "bracket" ? (
+            {visibleMobileTab === "bracket" ? (
               <>
                 <MobileRegionTabs activeSection={mobileSection} onChange={setMobileSection} />
                 <div className="mobile-bracket-scroll">
@@ -4328,21 +4333,21 @@ function App() {
                   )}
                 </div>
               </>
-            ) : mobileTab === "futures" ? (
+            ) : visibleMobileTab === "futures" ? (
               <div className="mobile-futures-view">{futuresContent}</div>
-            ) : mobileTab === "conferences" ? (
+            ) : SHOW_CONFERENCE_TOURNAMENTS && visibleMobileTab === "conferences" ? (
               <div className="mobile-futures-view">
                 <Suspense fallback={<DeferredViewFallback />}>
                   <ConferenceTournaments displayMode={displayMode} isMobile={isMobile} />
                 </Suspense>
               </div>
-            ) : mobileTab === "rankings" ? (
+            ) : visibleMobileTab === "rankings" ? (
               <div className="mobile-futures-view">
                 <Suspense fallback={<DeferredViewFallback />}>
                   <ExpandedRankings displayMode={displayMode} isMobile={isMobile} />
                 </Suspense>
               </div>
-            ) : mobileTab === "predictor" ? (
+            ) : visibleMobileTab === "predictor" ? (
               <div className="mobile-futures-view">
                 <Suspense fallback={<DeferredViewFallback />}>
                   <MatchupPredictor displayMode={displayMode} />
@@ -4352,7 +4357,7 @@ function App() {
               <div className="mobile-futures-view">
                 <Suspense fallback={<DeferredViewFallback />}>
                   <LeaderboardFullWidth
-                    isVisible={mobileTab === "leaderboard"}
+                    isVisible={visibleMobileTab === "leaderboard"}
                     refreshKey={leaderboardRefreshKey}
                   />
                 </Suspense>
@@ -4364,7 +4369,7 @@ function App() {
               displayMode={displayMode}
               onOpenFutures={() => setMobileTab("futures")}
             />
-            <MobileTabBar activeTab={mobileTab} onTabChange={setMobileTab} />
+            <MobileTabBar activeTab={visibleMobileTab} onTabChange={setMobileTab} />
           </section>
         ) : (
           <section className="eg-layout">
@@ -4374,7 +4379,7 @@ function App() {
               {isAuthenticated && submissionsLocked && showToolbar ? (
                 <div className="bracket-lock-banner">🔒 Submissions locked at tip-off. Tournament is live — check the leaderboard.</div>
               ) : null}
-              <div className="eg-bracket-stack" style={{ display: mainView === "bracket" ? undefined : "none" }}>
+              <div className="eg-bracket-stack" style={{ display: visibleMainView === "bracket" ? undefined : "none" }}>
                 <section
                   className="eg-bracket-section top-half"
                   data-half-expanded={topHalfManuallyExpanded ? "true" : "false"}
@@ -4502,33 +4507,33 @@ function App() {
                   </div>
                 </section>
               </div>
-              {(mainView === "leaderboard" || hasLoadedDesktopLeaderboard) && (
-                <div style={{ display: mainView === "leaderboard" ? undefined : "none" }}>
+              {(visibleMainView === "leaderboard" || hasLoadedDesktopLeaderboard) && (
+                <div style={{ display: visibleMainView === "leaderboard" ? undefined : "none" }}>
                   <Suspense fallback={<DeferredViewFallback />}>
                     <LeaderboardFullWidth
-                      isVisible={mainView === "leaderboard"}
+                      isVisible={visibleMainView === "leaderboard"}
                       refreshKey={leaderboardRefreshKey}
                       onClose={() => setMainView("bracket")}
                     />
                   </Suspense>
                 </div>
               )}
-              {mainView === "conferences" && (
+              {SHOW_CONFERENCE_TOURNAMENTS && visibleMainView === "conferences" && (
                 <Suspense fallback={<DeferredViewFallback />}>
                   <ConferenceTournaments displayMode={displayMode} isMobile={isMobile} />
                 </Suspense>
               )}
-              {mainView === "rankings" && (
+              {visibleMainView === "rankings" && (
                 <Suspense fallback={<DeferredViewFallback />}>
                   <ExpandedRankings displayMode={displayMode} isMobile={isMobile} />
                 </Suspense>
               )}
-              {mainView === "predictor" && (
+              {visibleMainView === "predictor" && (
                 <Suspense fallback={<DeferredViewFallback />}>
                   <MatchupPredictor displayMode={displayMode} />
                 </Suspense>
               )}
-              <div style={{ display: mainView === "futures" ? undefined : "none" }}>{futuresContent}</div>
+              <div style={{ display: visibleMainView === "futures" ? undefined : "none" }}>{futuresContent}</div>
             </div>
           </section>
         )}
@@ -5727,13 +5732,6 @@ function MobileTabBar({
       >
         <span className="mobile-tab-icon">↗</span>
         <span className="mobile-tab-label">Futures</span>
-      </button>
-      <button
-        className={`mobile-tab ${activeTab === "conferences" ? "active" : ""}`}
-        onClick={() => onTabChange("conferences")}
-      >
-        <span className="mobile-tab-icon">🏀</span>
-        <span className="mobile-tab-label">Conf.</span>
       </button>
       <button
         className={`mobile-tab ${activeTab === "rankings" ? "active" : ""}`}

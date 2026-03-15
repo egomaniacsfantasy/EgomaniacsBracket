@@ -13,7 +13,6 @@ export function PredictorPage() {
           showBeta
           onSelectBracket={() => window.location.assign("/")}
           onSelectLeaderboard={() => window.location.assign("/")}
-          onSelectConferences={() => window.location.assign("/")}
           onSelectRankings={() => window.location.assign("/rankings")}
           onSelectPredictor={() => window.location.assign("/predictor")}
           onSignIn={() => window.location.assign("/")}
