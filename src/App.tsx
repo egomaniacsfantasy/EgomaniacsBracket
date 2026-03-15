@@ -3065,6 +3065,7 @@ function App() {
           }, 350);
         }
         if (currentWalkthroughStep.id === "ready") {
+          setMainView("bracket");
           if (walkthroughMatchupId && lockedPicks[walkthroughMatchupId]) {
             const nextLocks = { ...lockedPicks };
             delete nextLocks[walkthroughMatchupId];
@@ -3901,10 +3902,7 @@ function App() {
       ? 100
       : Math.max(0, Math.min(100, Math.round((1 - chaosScore / Math.max(1, pickCount)) * 100)));
   const displayedPickCount = Math.min(pickCount, SUBMIT_EXPECTED_PICK_COUNT);
-  const futuresOddsLabel = (prob: number): string => {
-    if (displayMode === "american" && prob <= 0) return "0%";
-    return formatOddsDisplay(prob, displayMode).primary;
-  };
+  const futuresOddsLabel = (prob: number): string => formatOddsDisplay(prob, displayMode).primary;
 
   const futuresMovers = useMemo(() => {
     const withDelta = futuresViewRows
@@ -7478,11 +7476,11 @@ function ShowdownCard({
                   teamSeed={seedLabel(team)}
                 />
                 <span className="eg-showdown-name">{showdownTeamName(team.name)}</span>
-                <span className="eg-showdown-odds odds-value" data-team-id={team.id}>
-                  {decided
-                    ? formatOddsDisplay(outcome === "win" ? 1 : 0, displayMode).primary
-                    : primary}
-                </span>
+                {decided ? null : (
+                  <span className="eg-showdown-odds odds-value" data-team-id={team.id}>
+                    {primary}
+                  </span>
+                )}
                 {resultLabel ? <span className="eg-showdown-result">{resultLabel}</span> : null}
               </button>
             </Fragment>

@@ -1,5 +1,7 @@
 import type { OddsDisplayMode } from "../types";
 
+const LONGSHOT_AMERICAN_LABEL = "+50000+";
+
 export const clampDisplayProb = (prob: number): number => {
   if (!Number.isFinite(prob)) return 0.5;
   return Math.max(0.001, Math.min(0.999, prob));
@@ -44,14 +46,14 @@ export const formatOddsDisplay = (
 
   if (Number.isFinite(prob) && prob <= 0) {
     const implied = toImpliedLabel(prob);
-    if (mode === "american") return { primary: "0%" };
+    if (mode === "american") return { primary: LONGSHOT_AMERICAN_LABEL };
     if (mode === "implied") return { primary: implied };
     if (mode === "decimal") return { primary: "—" };
-    return { primary: "—", secondary: implied };
+    return { primary: LONGSHOT_AMERICAN_LABEL, secondary: implied };
   }
 
   const americanRaw = toAmericanOdds(prob);
-  const american = americanRaw > 50000 ? "+50000+" : formatAmerican(americanRaw);
+  const american = americanRaw > 50000 ? LONGSHOT_AMERICAN_LABEL : formatAmerican(americanRaw);
   const implied = toImpliedLabel(prob);
   const decimal = toDecimalOdds(prob).toFixed(2);
 

@@ -18904,21 +18904,6 @@ body.walkthrough-active .odds-value--changed::after {
   justify-content: flex-end;
 }
 
-.eg-toolbar-odds-hint {
-  align-self: center;
-  margin-left: 16px;
-  color: var(--muted);
-  font-size: 0.75rem;
-  font-style: italic;
-  white-space: nowrap;
-}
-
-@media (max-width: 768px) {
-  .eg-toolbar-odds-hint {
-    display: none;
-  }
-}
-
 .toolbar .eg-btn,
 .toolbar .eg-chip,
 .toolbar .eg-mini-btn {
