@@ -1,5 +1,6 @@
 import { supabase } from "./supabaseClient";
 import { getModelGameWinProb, resolveGames, type LockedPicks } from "./lib/bracket";
+import { MAX_SCORING_POINTS } from "./lib/bracketScoring";
 import { teamsById } from "./data/teams";
 
 export type LeaderboardFinalFourTeam = {
@@ -72,6 +73,36 @@ type BracketMeta = {
 type SaveBracketOptions = {
   submit?: boolean;
 };
+
+async function ensureBracketScoreRow(bracketId: string, userId: string) {
+  const now = new Date().toISOString();
+  const baseScoreRow = {
+    bracket_id: bracketId,
+    user_id: userId,
+    total_score: 0,
+    correct_picks: 0,
+    possible_picks: 0,
+    max_remaining: MAX_SCORING_POINTS,
+    r64_score: 0,
+    r32_score: 0,
+    s16_score: 0,
+    e8_score: 0,
+    f4_score: 0,
+    champ_score: 0,
+    updated_at: now,
+  };
+
+  const { error } = await supabase.from("bracket_scores").upsert(baseScoreRow);
+  if (error) {
+    console.warn("Failed to initialize bracket score row", error.message);
+    return;
+  }
+
+  const rankResult = await supabase.rpc("compute_bracket_ranks");
+  if (rankResult.error) {
+    console.warn("Failed to recompute bracket ranks after submission", rankResult.error.message);
+  }
+}
 
 export function serializePicks(picks: LockedPicks | Map<string, string> | Array<{ id: string; winner?: string | null }>): LockedPicks {
   if (picks instanceof Map) return Object.fromEntries(picks);
@@ -181,6 +212,9 @@ export async function saveBracket(
         .select()
         .single();
       if (!attempt.error) {
+        if (shouldSubmit && attempt.data?.id && attempt.data?.user_id) {
+          await ensureBracketScoreRow(String(attempt.data.id), String(attempt.data.user_id));
+        }
         return { data: attempt.data as SavedBracket | null, error: null };
       }
       lastData = attempt.data;
@@ -216,6 +250,9 @@ export async function saveBracket(
       .select()
       .single();
     if (!attempt.error) {
+      if (shouldSubmit && attempt.data?.id && attempt.data?.user_id) {
+        await ensureBracketScoreRow(String(attempt.data.id), String(attempt.data.user_id));
+      }
       return { data: attempt.data as SavedBracket | null, error: null };
     }
     lastData = attempt.data;
@@ -305,6 +342,9 @@ export async function setBracketSubmissionStatus(bracketId: string, userId: stri
     .eq("user_id", userId);
   if (error && isMissingSubmissionColumn(error.message)) {
     return { error: { message: "Submission system is updating. Please retry in 1 minute." } };
+  }
+  if (!error && submit) {
+    await ensureBracketScoreRow(bracketId, userId);
   }
   return { error };
 }
