@@ -1,6 +1,14 @@
 import { useEffect, useMemo, useState } from "react";
 import { useAuth } from "./AuthContext";
-import { getChaosTierEmoji, type LeaderboardBoldestPick, type LeaderboardEntry, type LeaderboardFinalFourTeam, getLeaderboard } from "./bracketStorage";
+import {
+  deleteBracketAsAdmin,
+  getChaosTierEmoji,
+  type LeaderboardBoldestPick,
+  type LeaderboardEntry,
+  type LeaderboardFinalFourTeam,
+  getLeaderboard,
+} from "./bracketStorage";
+import { hasElevatedAccess } from "./groupVisibility";
 
 type ParsedLeaderboardEntry = LeaderboardEntry & {
   finalFourParsed: LeaderboardFinalFourTeam[];
@@ -149,7 +157,18 @@ function LBEmptyState({ onClose, onSubmitBracket }: { onClose?: () => void; onSu
   );
 }
 
-function RowDetail({ entry }: { entry: LeaderboardEntry }) {
+function RowDetail({
+  canAdminDelete,
+  deletingBracketId,
+  entry,
+  onDelete,
+}: {
+  canAdminDelete: boolean;
+  deletingBracketId: string | null;
+  entry: LeaderboardEntry;
+  onDelete: (entry: LeaderboardEntry) => void;
+}) {
+  const isDeleting = deletingBracketId === entry.bracket_id;
   return (
     <div className="lb-row-detail">
       <div className="lb-detail-rounds">
@@ -178,20 +197,38 @@ function RowDetail({ entry }: { entry: LeaderboardEntry }) {
           <span className="lb-detail-round-score">{entry.champ_score ?? 0}</span>
         </div>
       </div>
+      {canAdminDelete ? (
+        <div className="lb-detail-actions">
+          <button
+            type="button"
+            className="lb-admin-delete"
+            onClick={() => onDelete(entry)}
+            disabled={isDeleting}
+          >
+            {isDeleting ? "Deleting..." : "Delete Bracket"}
+          </button>
+        </div>
+      ) : null}
     </div>
   );
 }
 
 function PreTournamentLeaderboard({
+  canAdminDelete,
+  deletingBracketId,
   entries,
   currentUserId,
+  onDelete,
 }: {
+  canAdminDelete: boolean;
+  deletingBracketId: string | null;
   entries: ParsedLeaderboardEntry[];
   currentUserId: string | null;
+  onDelete: (entry: LeaderboardEntry) => void;
 }) {
   return (
     <div className="lb-table">
-      <div className="lb-row lb-row--header lb-row--pre">
+      <div className={`lb-row lb-row--header lb-row--pre ${canAdminDelete ? "lb-row--admin" : ""}`}>
         <span className="lb-col lb-col-rank">#</span>
         <span className="lb-col lb-col-player">PLAYER</span>
         <span className="lb-col lb-col-bracket">BRACKET</span>
@@ -199,11 +236,16 @@ function PreTournamentLeaderboard({
         <span className="lb-col lb-col-f4">FINAL FOUR</span>
         <span className="lb-col lb-col-chaos">CHAOS</span>
         <span className="lb-col lb-col-boldest">BOLDEST PICK</span>
+        {canAdminDelete ? <span className="lb-col lb-col-admin">ADMIN</span> : null}
       </div>
       {entries.map((entry, index) => {
         const isMe = currentUserId !== null && entry.user_id === currentUserId;
+        const isDeleting = deletingBracketId === entry.bracket_id;
         return (
-          <div key={entry.bracket_id ?? `${entry.user_id}-${entry.bracket_name}-${index}`} className={`lb-row lb-row--pre ${isMe ? "lb-row--me" : ""}`}>
+          <div
+            key={entry.bracket_id ?? `${entry.user_id}-${entry.bracket_name}-${index}`}
+            className={`lb-row lb-row--pre ${canAdminDelete ? "lb-row--admin" : ""} ${isMe ? "lb-row--me" : ""}`}
+          >
             <span className="lb-col lb-col-rank">{entry.rank ?? index + 1}</span>
             <span className="lb-col lb-col-player">
               {entry.display_name}
@@ -252,6 +294,18 @@ function PreTournamentLeaderboard({
                 "—"
               )}
             </span>
+            {canAdminDelete ? (
+              <span className="lb-col lb-col-admin">
+                <button
+                  type="button"
+                  className="lb-admin-delete"
+                  onClick={() => onDelete(entry)}
+                  disabled={isDeleting}
+                >
+                  {isDeleting ? "Deleting..." : "Delete"}
+                </button>
+              </span>
+            ) : null}
           </div>
         );
       })}
@@ -260,11 +314,17 @@ function PreTournamentLeaderboard({
 }
 
 function TournamentLeaderboard({
+  canAdminDelete,
+  deletingBracketId,
   entries,
   currentUserId,
+  onDelete,
 }: {
+  canAdminDelete: boolean;
+  deletingBracketId: string | null;
   entries: ParsedLeaderboardEntry[];
   currentUserId: string | null;
+  onDelete: (entry: LeaderboardEntry) => void;
 }) {
   const [expandedBracketId, setExpandedBracketId] = useState<string | null>(null);
 
@@ -312,7 +372,14 @@ function TournamentLeaderboard({
               </span>
               <span className="lb-col lb-col-max">{entry.max_remaining ?? "—"}</span>
             </button>
-            {expanded ? <RowDetail entry={entry} /> : null}
+            {expanded ? (
+              <RowDetail
+                canAdminDelete={canAdminDelete}
+                deletingBracketId={deletingBracketId}
+                entry={entry}
+                onDelete={onDelete}
+              />
+            ) : null}
           </div>
         );
       })}
@@ -333,13 +400,36 @@ export function LeaderboardFullWidth({
 }) {
   const { user } = useAuth();
   const [entries, setEntries] = useState<LeaderboardEntry[]>([]);
+  const [adminDeleteError, setAdminDeleteError] = useState<string | null>(null);
+  const [deletingBracketId, setDeletingBracketId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const canAdminDelete = hasElevatedAccess(user?.email);
 
   const loadLeaderboard = async () => {
     setLoading(true);
     const { data } = await getLeaderboard(200);
     setEntries(data ?? []);
     setLoading(false);
+  };
+
+  const handleAdminDelete = async (entry: LeaderboardEntry) => {
+    if (!canAdminDelete) return;
+    const confirmed = window.confirm(
+      `Delete "${entry.bracket_name}" by ${entry.display_name}?\n\nThis removes it from the leaderboard and from the user's account.`
+    );
+    if (!confirmed) return;
+
+    setAdminDeleteError(null);
+    setDeletingBracketId(entry.bracket_id);
+    const { error } = await deleteBracketAsAdmin(entry.bracket_id);
+    if (error) {
+      setAdminDeleteError((error as { message?: string })?.message ?? "Could not delete that bracket.");
+      setDeletingBracketId(null);
+      return;
+    }
+
+    await loadLeaderboard();
+    setDeletingBracketId(null);
   };
 
   useEffect(() => {
@@ -394,6 +484,7 @@ export function LeaderboardFullWidth({
             </button>
           ) : null}
         </div>
+        {adminDeleteError ? <div className="lb-admin-error">{adminDeleteError}</div> : null}
 
         <LBPrizeHero />
 
@@ -402,9 +493,21 @@ export function LeaderboardFullWidth({
         ) : parsedEntries.length === 0 ? (
           <LBEmptyState onClose={onClose} onSubmitBracket={onSubmitBracket} />
         ) : tournamentStarted ? (
-          <TournamentLeaderboard entries={parsedEntries} currentUserId={user?.id ?? null} />
+          <TournamentLeaderboard
+            canAdminDelete={canAdminDelete}
+            deletingBracketId={deletingBracketId}
+            entries={parsedEntries}
+            currentUserId={user?.id ?? null}
+            onDelete={handleAdminDelete}
+          />
         ) : (
-          <PreTournamentLeaderboard entries={parsedEntries} currentUserId={user?.id ?? null} />
+          <PreTournamentLeaderboard
+            canAdminDelete={canAdminDelete}
+            deletingBracketId={deletingBracketId}
+            entries={parsedEntries}
+            currentUserId={user?.id ?? null}
+            onDelete={handleAdminDelete}
+          />
         )}
 
         <LBFooter />

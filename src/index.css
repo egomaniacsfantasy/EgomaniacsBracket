@@ -1191,6 +1191,18 @@ body {
   width: 100%;
 }
 
+.lb-admin-error {
+  margin: 0 0 16px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid rgba(248, 113, 113, 0.22);
+  background: rgba(248, 113, 113, 0.08);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  line-height: 1.5;
+  color: #fca5a5;
+}
+
 .lb-row {
   align-items: center;
   padding: 12px 16px;
@@ -1221,6 +1233,10 @@ body {
   display: grid;
   grid-template-columns: 40px 1.2fr 1fr 1.5fr 120px 90px 1.5fr;
   gap: 10px;
+}
+
+.lb-row--pre.lb-row--admin {
+  grid-template-columns: 40px 1.1fr 0.95fr 1.4fr 110px 85px 1.3fr 110px;
 }
 
 .lb-row--tournament {
@@ -1396,6 +1412,10 @@ button.lb-row {
   text-align: right;
 }
 
+.lb-col-admin {
+  text-align: right;
+}
+
 .lb-row-detail {
   padding: 12px 16px 12px 56px;
   background: rgba(255, 255, 255, 0.01);
@@ -1419,6 +1439,12 @@ button.lb-row {
   gap: 16px;
 }
 
+.lb-detail-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 14px;
+}
+
 .lb-detail-round {
   display: flex;
   flex-direction: column;
@@ -1439,6 +1465,36 @@ button.lb-row {
   font-size: 14px;
   font-weight: 700;
   color: var(--text-secondary);
+}
+
+.lb-admin-delete {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 98px;
+  padding: 8px 12px;
+  border-radius: 10px;
+  border: 1px solid rgba(248, 113, 113, 0.28);
+  background: rgba(248, 113, 113, 0.08);
+  color: #fca5a5;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: border-color 140ms ease, background 140ms ease, color 140ms ease;
+}
+
+.lb-admin-delete:hover:not(:disabled) {
+  border-color: rgba(248, 113, 113, 0.48);
+  background: rgba(248, 113, 113, 0.12);
+  color: #fecaca;
+}
+
+.lb-admin-delete:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
 .lb-empty-state {
@@ -1544,6 +1600,10 @@ button.lb-row {
     gap: 8px;
   }
 
+  .lb-row--pre.lb-row--admin {
+    grid-template-columns: 28px 1fr 1fr 60px 90px;
+  }
+
   .lb-row--tournament {
     grid-template-columns: 28px 1fr 1fr 60px;
     gap: 8px;
@@ -1556,6 +1616,10 @@ button.lb-row {
   .lb-col-score,
   .lb-col-correct {
     display: none;
+  }
+
+  .lb-col-admin {
+    min-width: 90px;
   }
 
   .lb-col-player {
@@ -1591,6 +1655,16 @@ button.lb-row {
   .lb-detail-rounds {
     gap: 8px;
     flex-wrap: wrap;
+  }
+
+  .lb-detail-actions {
+    justify-content: flex-start;
+  }
+
+  .lb-admin-delete {
+    min-width: 84px;
+    padding-inline: 10px;
+    font-size: 9px;
   }
 
   .lb-footer {

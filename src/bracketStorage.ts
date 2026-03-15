@@ -340,6 +340,14 @@ export async function deleteBracket(bracketId: string, userId: string) {
   return { error };
 }
 
+export async function deleteBracketAsAdmin(bracketId: string) {
+  const { error } = await supabase.rpc("admin_delete_bracket", {
+    target_bracket_id: bracketId,
+  });
+
+  return { error };
+}
+
 export async function renameBracket(bracketId: string, userId: string, newName: string) {
   const { error } = await supabase
     .from("brackets")
