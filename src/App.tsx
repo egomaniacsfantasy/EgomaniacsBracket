@@ -47,7 +47,6 @@ import { TopNavBar, type TopNavView } from "./TopNavBar";
 import BugReportModal, { type BugReportModalProps } from "./BugReportModal";
 import { getUserGroups, updateMemberBracket, type UserGroup } from "./groupStorage";
 import { hasElevatedAccess } from "./groupVisibility";
-import { BRACKET_SELECTION_LOCK_ACTIVE, BRACKET_SELECTION_LOCK_MESSAGE } from "./constants";
 
 const DEFAULT_SIM_RUNS = 10000;
 const CHAOS_DISTRIBUTION_SIM_RUNS = 10000;
@@ -4878,15 +4877,6 @@ function App() {
         </>
       ) : null}
 
-      {BRACKET_SELECTION_LOCK_ACTIVE ? (
-        <div className="bracket-maintenance-overlay" role="alert" aria-live="assertive">
-          <div className="bracket-maintenance-card">
-            <span className="bracket-maintenance-kicker">Bracket Maintenance</span>
-            <h2 className="bracket-maintenance-title">{BRACKET_SELECTION_LOCK_MESSAGE}</h2>
-            <p className="bracket-maintenance-body">Stand by.</p>
-          </div>
-        </div>
-      ) : null}
     </div>
   );
 }
