@@ -1,5 +1,7 @@
 import { supabase } from "./supabaseClient";
-import type { LockedPicks } from "./lib/bracket";
+import { resolveGames, type LockedPicks } from "./lib/bracket";
+import { teamsById } from "./data/teams";
+import { teamLogoUrl } from "./lib/logo";
 
 export type GroupRow = {
   id: string;
@@ -78,6 +80,33 @@ type CachedValue<T> = {
   savedAt: number;
   value: T;
 };
+
+function getChampionPreviewFromPicks(picks: LockedPicks | null | undefined) {
+  if (!picks || typeof picks !== "object") {
+    return {
+      champion_name: null,
+      champion_seed: null,
+      champion_logo_url: null,
+    };
+  }
+
+  const { games } = resolveGames(picks);
+  const championId = games.find((game) => game.round === "CHAMP")?.winnerId ?? null;
+  if (!championId) {
+    return {
+      champion_name: null,
+      champion_seed: null,
+      champion_logo_url: null,
+    };
+  }
+
+  const team = teamsById.get(championId);
+  return {
+    champion_name: team?.name ?? championId,
+    champion_seed: team?.seed ?? null,
+    champion_logo_url: team ? teamLogoUrl(team) : null,
+  };
+}
 
 function readCachedValue<T>(key: string): T | null {
   if (typeof window === "undefined") return null;
@@ -227,11 +256,6 @@ export async function getUserGroups(userId: string) {
             invite_code,
             created_by,
             created_at
-          ),
-          brackets:bracket_id (
-            champion_name,
-            champion_seed,
-            champion_logo_url
           )
         `
         )
@@ -252,18 +276,6 @@ export async function getUserGroups(userId: string) {
     role: "admin" | "member";
     bracket_id: string | null;
     groups: GroupRow | GroupRow[] | null;
-    brackets:
-      | {
-          champion_name?: string | null;
-          champion_seed?: number | null;
-          champion_logo_url?: string | null;
-        }
-      | Array<{
-          champion_name?: string | null;
-          champion_seed?: number | null;
-          champion_logo_url?: string | null;
-        }>
-      | null;
   }>;
 
   const normalizedRows = rows
@@ -271,14 +283,10 @@ export async function getUserGroups(userId: string) {
       const groupValue = Array.isArray(membership.groups)
         ? membership.groups[0] ?? null
         : membership.groups;
-      const bracketValue = Array.isArray(membership.brackets)
-        ? membership.brackets[0] ?? null
-        : membership.brackets;
       if (!groupValue?.id) return null;
       return {
         ...membership,
         groups: groupValue,
-        brackets: bracketValue,
       };
     })
     .filter((membership): membership is {
@@ -286,11 +294,6 @@ export async function getUserGroups(userId: string) {
       role: "admin" | "member";
       bracket_id: string | null;
       groups: GroupRow;
-      brackets: {
-        champion_name?: string | null;
-        champion_seed?: number | null;
-        champion_logo_url?: string | null;
-      } | null;
     } => Boolean(membership));
 
   if (normalizedRows.length === 0) {
@@ -300,6 +303,16 @@ export async function getUserGroups(userId: string) {
 
   const groupIds = normalizedRows.map((m) => m.groups.id);
   const cachedMemberCounts = Object.fromEntries((cachedGroups ?? []).map((group) => [group.id, group.memberCount]));
+  const cachedChampionMeta = Object.fromEntries(
+    (cachedGroups ?? []).map((group) => [
+      group.bracketId ?? "",
+      {
+        champion_name: group.championName,
+        champion_seed: group.championSeed,
+        champion_logo_url: group.championLogoUrl,
+      },
+    ]),
+  );
 
   let counts: Array<{ group_id: string }> = [];
   try {
@@ -320,14 +333,43 @@ export async function getUserGroups(userId: string) {
     countMap[c.group_id] = (countMap[c.group_id] || 0) + 1;
   });
 
+  const bracketIds = [...new Set(normalizedRows.map((row) => row.bracket_id).filter((value): value is string => Boolean(value)))];
+  const bracketMetaMap: Record<string, { champion_name: string | null; champion_seed: number | null; champion_logo_url: string | null }> = {
+    ...cachedChampionMeta,
+  };
+
+  if (bracketIds.length > 0) {
+    try {
+      const bracketsResult = await withTimeout(
+        supabase
+          .from("brackets")
+          .select("id, picks")
+          .in("id", bracketIds),
+        GROUP_COUNTS_QUERY_TIMEOUT_MS,
+        "Timed out loading bracket previews."
+      );
+
+      if (!bracketsResult.error) {
+        ((bracketsResult.data ?? []) as Array<{
+          id: string;
+          picks?: LockedPicks | null;
+        }>).forEach((bracket) => {
+          bracketMetaMap[bracket.id] = getChampionPreviewFromPicks(bracket.picks ?? null);
+        });
+      }
+    } catch {
+      // Champion preview is optional. Keep groups visible even if this lookup fails.
+    }
+  }
+
   const groups: UserGroup[] = normalizedRows.map((m) => ({
     ...m.groups,
     role: m.role,
     bracketId: m.bracket_id,
     memberCount: Math.max(1, countMap[m.groups.id] ?? cachedMemberCounts[m.groups.id] ?? 1),
-    championName: m.brackets?.champion_name ?? null,
-    championSeed: m.brackets?.champion_seed ?? null,
-    championLogoUrl: m.brackets?.champion_logo_url ?? null,
+    championName: m.bracket_id ? bracketMetaMap[m.bracket_id]?.champion_name ?? null : null,
+    championSeed: m.bracket_id ? bracketMetaMap[m.bracket_id]?.champion_seed ?? null : null,
+    championLogoUrl: m.bracket_id ? bracketMetaMap[m.bracket_id]?.champion_logo_url ?? null : null,
   }));
 
   writeCachedValue(cacheKey, groups);
