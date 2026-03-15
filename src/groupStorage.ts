@@ -415,15 +415,7 @@ export async function getGroupMembers(groupId: string) {
           user_id,
           role,
           joined_at,
-          bracket_id,
-          profiles:user_id (
-            display_name
-          ),
-          brackets:bracket_id (
-            bracket_name,
-            is_locked,
-            submitted_at
-          )
+          bracket_id
         `
         )
         .eq("group_id", groupId),
@@ -446,25 +438,57 @@ export async function getGroupMembers(groupId: string) {
     role: "admin" | "member";
     joined_at: string;
     bracket_id: string | null;
-    profiles: { display_name?: string | null } | Array<{ display_name?: string | null }> | null;
-    brackets: {
-      bracket_name?: string | null;
-      is_locked?: boolean | null;
-      submitted_at?: string | null;
-    } | Array<{
-      bracket_name?: string | null;
-      is_locked?: boolean | null;
-      submitted_at?: string | null;
-    }> | null;
   }>;
 
+  const userIds = [...new Set(rows.map((membership) => membership.user_id).filter(Boolean))];
+  const bracketIds = [...new Set(rows.map((membership) => membership.bracket_id).filter((value): value is string => Boolean(value)))];
+
+  const profileMap: Record<string, { display_name: string | null }> = {};
+  const bracketMap: Record<string, { bracket_name: string | null; is_locked: boolean; submitted_at: string | null }> = {};
+
+  const [profilesResult, bracketsResult] = await Promise.allSettled([
+    userIds.length > 0
+      ? withTimeout(
+          supabase.from("profiles").select("id, display_name").in("id", userIds),
+          GROUP_COUNTS_QUERY_TIMEOUT_MS,
+          "Timed out loading member profiles."
+        )
+      : Promise.resolve({ data: [], error: null }),
+    bracketIds.length > 0
+      ? withTimeout(
+          supabase.from("brackets").select("id, bracket_name, is_locked, submitted_at").in("id", bracketIds),
+          GROUP_COUNTS_QUERY_TIMEOUT_MS,
+          "Timed out loading member brackets."
+        )
+      : Promise.resolve({ data: [], error: null }),
+  ]);
+
+  if (profilesResult.status === "fulfilled" && !profilesResult.value.error) {
+    ((profilesResult.value.data ?? []) as Array<{ id: string; display_name?: string | null }>).forEach((profile) => {
+      profileMap[profile.id] = {
+        display_name: profile.display_name ?? null,
+      };
+    });
+  }
+
+  if (bracketsResult.status === "fulfilled" && !bracketsResult.value.error) {
+    ((bracketsResult.value.data ?? []) as Array<{
+      id: string;
+      bracket_name?: string | null;
+      is_locked?: boolean | null;
+      submitted_at?: string | null;
+    }>).forEach((bracket) => {
+      bracketMap[bracket.id] = {
+        bracket_name: bracket.bracket_name ?? null,
+        is_locked: Boolean(bracket.is_locked),
+        submitted_at: bracket.submitted_at ?? null,
+      };
+    });
+  }
+
   const members = rows.map((membership) => {
-    const profileValue = Array.isArray(membership.profiles)
-      ? membership.profiles[0] ?? null
-      : membership.profiles;
-    const bracketValue = Array.isArray(membership.brackets)
-      ? membership.brackets[0] ?? null
-      : membership.brackets;
+    const profileValue = profileMap[membership.user_id];
+    const bracketValue = membership.bracket_id ? bracketMap[membership.bracket_id] : undefined;
 
     return {
       id: membership.id,
