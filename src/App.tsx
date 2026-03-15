@@ -47,6 +47,7 @@ import { TopNavBar, type TopNavView } from "./TopNavBar";
 import BugReportModal, { type BugReportModalProps } from "./BugReportModal";
 import { getUserGroups, updateMemberBracket, type UserGroup } from "./groupStorage";
 import { hasElevatedAccess } from "./groupVisibility";
+import { BRACKET_SELECTION_LOCK_ACTIVE, BRACKET_SELECTION_LOCK_MESSAGE } from "./constants";
 
 const DEFAULT_SIM_RUNS = 10000;
 const CHAOS_DISTRIBUTION_SIM_RUNS = 10000;
@@ -883,6 +884,10 @@ function App() {
       appToastTimerRef.current = null;
     }, durationMs);
   }, []);
+
+  const showBracketSelectionLockNotice = useCallback(() => {
+    showAppToast(BRACKET_SELECTION_LOCK_MESSAGE, 2200);
+  }, [showAppToast]);
 
   const dismissGroupAssignmentPrompt = useCallback(() => {
     setGroupAssignmentPrompt(null);
@@ -1805,6 +1810,7 @@ function App() {
   }, [pickCount, nonFFGameCount, games]);
 
   const applyCustomProbability = (gameId: string, customProbA: number | null) => {
+    if (BRACKET_SELECTION_LOCK_ACTIVE) return;
     setCustomProbByGame((prev) => {
       const next = { ...prev };
       if (customProbA === null || !Number.isFinite(customProbA)) {
@@ -1888,6 +1894,10 @@ function App() {
   };
 
   const openProbabilityPopup = (game: ResolvedGame, anchorEl: HTMLElement) => {
+    if (BRACKET_SELECTION_LOCK_ACTIVE) {
+      showBracketSelectionLockNotice();
+      return;
+    }
     if (!game.teamAId || !game.teamBId || game.winnerId) return;
     if (probPopup) {
       closeProbabilityPopup(true);
@@ -1900,14 +1910,26 @@ function App() {
   };
 
   const previewCustomProbability = (gameId: string, customProbA: number) => {
+    if (BRACKET_SELECTION_LOCK_ACTIVE) {
+      showBracketSelectionLockNotice();
+      return;
+    }
     applyCustomProbability(gameId, customProbA);
   };
 
   const saveProbabilityPopup = () => {
+    if (BRACKET_SELECTION_LOCK_ACTIVE) {
+      showBracketSelectionLockNotice();
+      return;
+    }
     setProbPopup(null);
   };
 
   const resetProbabilityToModel = (gameId: string) => {
+    if (BRACKET_SELECTION_LOCK_ACTIVE) {
+      showBracketSelectionLockNotice();
+      return;
+    }
     applyCustomProbability(gameId, null);
     setProbPopup(null);
   };
@@ -1924,6 +1946,10 @@ function App() {
   };
 
   const onPick = (game: ResolvedGame, teamId: string | null) => {
+    if (BRACKET_SELECTION_LOCK_ACTIVE) {
+      showBracketSelectionLockNotice();
+      return;
+    }
     if (!teamId) return;
     if (teamId !== game.teamAId && teamId !== game.teamBId) return;
     if (walkthroughActive && currentWalkthroughStep?.id === "upset-pick" && walkthroughCascadePhase === "pick") {
@@ -2001,6 +2027,10 @@ function App() {
   };
 
   const handleRandomizeFirstFour = () => {
+    if (BRACKET_SELECTION_LOCK_ACTIVE) {
+      showBracketSelectionLockNotice();
+      return;
+    }
     const unresolved = playInGames.filter((game) => !game.winnerId && game.teamAId && game.teamBId);
     if (unresolved.length === 0) return;
     cancelStaggeredSim();
@@ -2025,6 +2055,10 @@ function App() {
   };
 
   const onUndo = () => {
+    if (BRACKET_SELECTION_LOCK_ACTIVE) {
+      showBracketSelectionLockNotice();
+      return;
+    }
     trackEvent("undo_clicked", {
       undo_depth: undoStack.length,
     });
@@ -2047,6 +2081,10 @@ function App() {
   };
 
   const onUndoGame = (gameId: string) => {
+    if (BRACKET_SELECTION_LOCK_ACTIVE) {
+      showBracketSelectionLockNotice();
+      return;
+    }
     if (!lockedPicks[gameId]) return;
     cancelStaggeredSim();
     chaosScoreSourceRef.current = "manual";
@@ -2062,6 +2100,10 @@ function App() {
   };
 
   const onSwitchPick = (game: ResolvedGame, teamId: string) => {
+    if (BRACKET_SELECTION_LOCK_ACTIVE) {
+      showBracketSelectionLockNotice();
+      return;
+    }
     if (!game.teamAId || !game.teamBId) return;
     if (teamId !== game.teamAId && teamId !== game.teamBId) return;
     if (game.winnerId === teamId) return;
@@ -2090,6 +2132,10 @@ function App() {
   };
 
   const onResetAll = () => {
+    if (BRACKET_SELECTION_LOCK_ACTIVE) {
+      showBracketSelectionLockNotice();
+      return;
+    }
     trackEvent("reset_all_clicked", {
       picks_count: Object.keys(lockedPicks).length,
     });
@@ -2113,6 +2159,10 @@ function App() {
   };
 
   const onResetRegion = (region: Region) => {
+    if (BRACKET_SELECTION_LOCK_ACTIVE) {
+      showBracketSelectionLockNotice();
+      return;
+    }
     trackEvent("reset_region_clicked", {
       region,
     });
@@ -2144,6 +2194,10 @@ function App() {
   };
 
   const onRequestResetAll = () => {
+    if (BRACKET_SELECTION_LOCK_ACTIVE) {
+      showBracketSelectionLockNotice();
+      return;
+    }
     setResetModalConfig({
       title: "Reset Bracket",
       message: "Clear all picks and custom odds? This cannot be undone.",
@@ -2153,6 +2207,10 @@ function App() {
   };
 
   const onRequestResetRegion = (region: Region) => {
+    if (BRACKET_SELECTION_LOCK_ACTIVE) {
+      showBracketSelectionLockNotice();
+      return;
+    }
     setResetModalConfig({
       title: `Reset ${region}`,
       message: `Clear all picks in ${region}? This cannot be undone.`,
@@ -2427,6 +2485,10 @@ function App() {
   };
 
   const onModelSim = () => {
+    if (BRACKET_SELECTION_LOCK_ACTIVE) {
+      showBracketSelectionLockNotice();
+      return;
+    }
     trackEvent("instant_sim_clicked", {
       existing_picks: Object.keys(lockedPicks).length,
     });
@@ -2454,6 +2516,10 @@ function App() {
   };
 
   const onModelSimStaggered = () => {
+    if (BRACKET_SELECTION_LOCK_ACTIVE) {
+      showBracketSelectionLockNotice();
+      return;
+    }
     trackEvent("staggered_sim_clicked", {
       existing_picks: Object.keys(lockedPicks).length,
     });
@@ -3605,7 +3671,7 @@ function App() {
       <div className="toolbar-group toolbar-group--left">
         <button
           onClick={onUndo}
-          disabled={undoStack.length === 0}
+          disabled={BRACKET_SELECTION_LOCK_ACTIVE || undoStack.length === 0}
           className="eg-btn toolbar-btn--undo"
         >
           ↩ Undo
@@ -3615,6 +3681,7 @@ function App() {
           <button
             type="button"
             className="eg-btn toolbar-btn--simulate"
+            disabled={BRACKET_SELECTION_LOCK_ACTIVE}
             onClick={() => setOpenToolbarMenu((prev) => (prev === "sim" ? null : "sim"))}
             aria-expanded={openToolbarMenu === "sim"}
             aria-haspopup="menu"
@@ -3653,6 +3720,7 @@ function App() {
             <button
               type="button"
               className="eg-btn toolbar-btn--reset"
+              disabled={BRACKET_SELECTION_LOCK_ACTIVE}
               onClick={() => setOpenToolbarMenu((prev) => (prev === "reset" ? null : "reset"))}
               aria-expanded={openToolbarMenu === "reset"}
               aria-haspopup="menu"
@@ -3684,6 +3752,7 @@ function App() {
           <button
             type="button"
             onClick={openFirstFourFromToolbar}
+            disabled={BRACKET_SELECTION_LOCK_ACTIVE}
             className="eg-btn toolbar-btn--first-four"
             title="Pick the First Four winners to lock in the Round of 64 field"
           >
@@ -4267,7 +4336,9 @@ function App() {
         {isMobile ? (
           <section className="eg-mobile-shell">
             {showToolbar ? <div className="mobile-toolbar-wrapper">{toolbar}</div> : null}
-            {isAuthenticated && submissionsLocked && showToolbar ? (
+            {BRACKET_SELECTION_LOCK_ACTIVE && showToolbar ? (
+              <div className="bracket-lock-banner">{BRACKET_SELECTION_LOCK_MESSAGE}</div>
+            ) : isAuthenticated && submissionsLocked && showToolbar ? (
               <div className="bracket-lock-banner">🔒 Submissions locked at tip-off. Tournament is live — check the leaderboard.</div>
             ) : null}
             {visibleMobileTab === "bracket" ? (
@@ -4364,7 +4435,9 @@ function App() {
             <div className="eg-main-panel">
               {showToolbar ? toolbar : null}
               {showToolbar ? chaosTrackerBar : null}
-              {isAuthenticated && submissionsLocked && showToolbar ? (
+              {BRACKET_SELECTION_LOCK_ACTIVE && showToolbar ? (
+                <div className="bracket-lock-banner">{BRACKET_SELECTION_LOCK_MESSAGE}</div>
+              ) : isAuthenticated && submissionsLocked && showToolbar ? (
                 <div className="bracket-lock-banner">🔒 Submissions locked at tip-off. Tournament is live — check the leaderboard.</div>
               ) : null}
               <div className="eg-bracket-stack" style={{ display: visibleMainView === "bracket" ? undefined : "none" }}>
@@ -4808,6 +4881,7 @@ function App() {
         <FirstFourModal
           playInGames={playInGames}
           gameWinProbs={simResult.gameWinProbs}
+          maintenanceMessage={BRACKET_SELECTION_LOCK_ACTIVE ? BRACKET_SELECTION_LOCK_MESSAGE : null}
           onPick={(gameId, teamId) => {
             const playInGame = gameById.get(gameId);
             if (!playInGame || !teamId) return;
@@ -5016,6 +5090,7 @@ function DesktopFirstModal({
 function FirstFourModal({
   playInGames,
   gameWinProbs,
+  maintenanceMessage = null,
   onPick,
   onRandomize,
   onOpenMatchupStats,
@@ -5023,6 +5098,7 @@ function FirstFourModal({
 }: {
   playInGames: ResolvedGame[];
   gameWinProbs: SimulationOutput["gameWinProbs"];
+  maintenanceMessage?: string | null;
   onPick: (gameId: string, teamId: string | null) => void;
   onRandomize: () => void;
   onOpenMatchupStats: (game: ResolvedGame) => void;
@@ -5038,12 +5114,14 @@ function FirstFourModal({
           <div>
             <h2 className="ff-modal-title">First Four</h2>
             <p className="ff-modal-subtitle">
-              {allDecided
+              {maintenanceMessage
+                ? maintenanceMessage
+                : allDecided
                 ? "All play-in games decided. These winners advance to the Round of 64."
                 : "Pick the winners of each play-in game to set the Round of 64 field."}
             </p>
           </div>
-          {!allDecided ? (
+          {!allDecided && !maintenanceMessage ? (
             <button className="ff-randomize-btn" onClick={onRandomize}>
               🎲 Pick for me
             </button>
