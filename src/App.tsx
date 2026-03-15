@@ -181,13 +181,6 @@ const canonicalGameTemplates = (() => {
 const canonicalGameIds = canonicalGameTemplates.map((game) => game.id);
 const canonicalTemplateById = new Map(canonicalGameTemplates.map((game) => [game.id, game]));
 
-function buildPicksSignature(picks: LockedPicks): string {
-  return Object.entries(sanitizeLockedPicks(picks))
-    .sort(([gameIdA], [gameIdB]) => gameIdA.localeCompare(gameIdB))
-    .map(([gameId, winnerId]) => `${gameId}:${winnerId}`)
-    .join("|");
-}
-
 function bitsToBase64Url(bitString: string): string {
   const padded = bitString.padEnd(Math.ceil(bitString.length / 8) * 8, "0");
   const bytes: number[] = [];
@@ -1714,25 +1707,14 @@ function App() {
   }, [games]);
 
   const chaosScore = useMemo(() => computeChaosScoreFromGames(games), [games]);
-  const currentPicksSignature = useMemo(() => buildPicksSignature(sanitized), [sanitized]);
   const submittedBracketCount = useMemo(
     () => userBrackets.filter((bracket) => Boolean(bracket.submitted_at)).length,
     [userBrackets]
-  );
-  const currentSubmittedBracket = useMemo(
-    () =>
-      userBrackets.find(
-        (bracket) =>
-          Boolean(bracket.submitted_at) &&
-          buildPicksSignature(deserializePicks(bracket.picks)) === currentPicksSignature,
-      ) ?? null,
-    [currentPicksSignature, userBrackets],
   );
   const _elevated = hasElevatedAccess(user?.email);
   const submissionsLocked = useMemo(() => _elevated ? false : userBrackets.some((bracket) => bracket.is_locked), [_elevated, userBrackets]);
   const bracketComplete = pickCount >= SUBMIT_EXPECTED_PICK_COUNT;
   const submissionLimitReached = _elevated ? false : submittedBracketCount >= MAX_SUBMITTED_BRACKETS;
-  const currentBracketAlreadySubmitted = Boolean(currentSubmittedBracket);
   const canSubmitBrackets = isAuthenticated && !submissionsLocked && !submissionLimitReached;
   const tournamentStarted = useMemo(() => {
     if (userBrackets.some((bracket) => bracket.is_locked)) return true;
@@ -2173,13 +2155,6 @@ function App() {
       window.sessionStorage.setItem("pendingBracketSave", JSON.stringify(serializePicks(sanitized)));
       setAuthModalOpen(true);
       return null;
-    }
-
-    if (currentSubmittedBracket) {
-      setSaveStatus("saved");
-      setSaveErrorText(null);
-      queueSaveStatusReset(2000);
-      return currentSubmittedBracket;
     }
 
     if (!bracketComplete) {
@@ -3398,12 +3373,25 @@ function App() {
     setShowFirstFourModal(true);
   };
 
-  const openGroupsFromToolbar = () => {
+  const openGroupsFromToolbar = async () => {
     setOpenToolbarMenu(null);
-    if (isAuthenticated) {
-      setGroupsHubOpen(true);
-    } else {
+    if (!isAuthenticated || !user) {
       setAuthModalOpen(true);
+      return;
+    }
+
+    // Open hub immediately, then promote to direct group view if the user has one group.
+    setGroupsHubOpen(true);
+
+    try {
+      const { data: groups, error } = await getUserGroups(user.id);
+      if (error) return;
+      if (groups.length === 1) {
+        setGroupsHubOpen(false);
+        setActiveGroup(groups[0]);
+      }
+    } catch {
+      // Keep hub open as fallback.
     }
   };
 
@@ -3425,20 +3413,18 @@ function App() {
   const remainingPicks = SUBMIT_EXPECTED_PICK_COUNT - pickCount;
   const submitButtonTitle = !isAuthenticated
     ? "Sign in to submit your bracket"
-    : currentBracketAlreadySubmitted
-      ? "This bracket is already submitted"
     : !bracketComplete
       ? `${remainingPicks} pick${remainingPicks !== 1 ? "s" : ""} remaining`
-      : submissionsLocked
+    : submissionsLocked
         ? "Submissions locked at tip-off"
         : submissionLimitReached
           ? `Submission limit reached (${MAX_SUBMITTED_BRACKETS}/${MAX_SUBMITTED_BRACKETS})`
           : `Submitted: ${submittedBracketCount}/${MAX_SUBMITTED_BRACKETS}`;
   const submitButtonLabel = saveStatus === "saving"
     ? "Submitting..."
-    : saveStatus === "saved" || currentBracketAlreadySubmitted
+    : saveStatus === "saved"
       ? "Bracket Submitted"
-      : saveStatus === "error"
+    : saveStatus === "error"
         ? (saveErrorText?.toLowerCase().includes("complete all")
             ? `${remainingPicks} picks left`
             : saveErrorText?.includes(String(MAX_SUBMITTED_BRACKETS))
@@ -3652,11 +3638,11 @@ function App() {
           <button
             onClick={() => void onSaveBracket()}
             className={`eg-btn toolbar-btn--save toolbar-btn--save-action${
-              bracketComplete && !currentBracketAlreadySubmitted && saveStatus !== "saving" && saveStatus !== "saved"
+              bracketComplete && saveStatus !== "saving" && saveStatus !== "saved"
                 ? " toolbar-btn--save-ready"
                 : ""
             }`}
-            disabled={saveStatus === "saving" || currentBracketAlreadySubmitted || (isAuthenticated && !canSubmitBrackets)}
+            disabled={saveStatus === "saving" || (isAuthenticated && !canSubmitBrackets)}
             title={submitButtonTitle}
           >
             {submitButtonLabel}
@@ -3734,11 +3720,11 @@ function App() {
           <button
             onClick={() => void onSaveBracket()}
             className={`eg-btn toolbar-btn--save toolbar-btn--save-action${
-              bracketComplete && !currentBracketAlreadySubmitted && saveStatus !== "saving" && saveStatus !== "saved"
+              bracketComplete && saveStatus !== "saving" && saveStatus !== "saved"
                 ? " toolbar-btn--save-ready"
                 : ""
             }`}
-            disabled={saveStatus === "saving" || currentBracketAlreadySubmitted || (isAuthenticated && !canSubmitBrackets)}
+            disabled={saveStatus === "saving" || (isAuthenticated && !canSubmitBrackets)}
             title={submitButtonTitle}
           >
             {submitButtonLabel}
@@ -4653,7 +4639,7 @@ function App() {
       {showWrappedFlow && wrappedData ? (
         <BracketWrapped
           data={wrappedData}
-          isBracketSubmitted={currentBracketAlreadySubmitted}
+          isBracketSubmitted={saveStatus === "saved"}
           onSubmitBracket={async () => Boolean(await onSaveBracket())}
           onClose={() => { setShowWrappedFlow(false); setWrappedSeen(true); }}
         />

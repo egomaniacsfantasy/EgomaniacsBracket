@@ -52,6 +52,22 @@ export type GroupStanding = {
   score_updated_at: string | null;
 };
 
+const GROUP_QUERY_TIMEOUT_MS = 10000;
+
+async function withTimeout<T>(promiseLike: PromiseLike<T>, timeoutMs: number, message: string): Promise<T> {
+  let timer: ReturnType<typeof setTimeout> | null = null;
+  try {
+    return await Promise.race<T>([
+      Promise.resolve(promiseLike),
+      new Promise<T>((_, reject) => {
+        timer = setTimeout(() => reject(new Error(message)), timeoutMs);
+      }),
+    ]);
+  } finally {
+    if (timer !== null) clearTimeout(timer);
+  }
+}
+
 export async function createGroup(userId: string, groupName: string, emoji: string = "👥") {
   const { data: codeData, error: codeError } = await supabase.rpc("generate_invite_code");
   if (codeError) return { data: null, error: codeError };
@@ -141,26 +157,38 @@ export async function joinOwnGroup(groupId: string, userId: string, bracketId: s
 }
 
 export async function getUserGroups(userId: string) {
-  const { data: memberships, error } = await supabase
-    .from("group_members")
-    .select(
-      `
-      group_id,
-      role,
-      bracket_id,
-      groups:group_id (
-        id,
-        name,
-        emoji,
-        invite_code,
-        created_by,
-        created_at
-      )
-    `
-    )
-    .eq("user_id", userId);
+  let memberships: unknown = null;
+  let membershipsError: { message?: string } | null = null;
+  try {
+    const result = await withTimeout(
+      supabase
+        .from("group_members")
+        .select(
+          `
+          group_id,
+          role,
+          bracket_id,
+          groups:group_id (
+            id,
+            name,
+            emoji,
+            invite_code,
+            created_by,
+            created_at
+          )
+        `
+        )
+        .eq("user_id", userId),
+      GROUP_QUERY_TIMEOUT_MS,
+      "Timed out loading your groups. Please try again."
+    );
+    memberships = result.data;
+    membershipsError = result.error;
+  } catch (error) {
+    return { data: [] as UserGroup[], error: { message: (error as Error).message } };
+  }
 
-  if (error) return { data: [] as UserGroup[], error };
+  if (membershipsError) return { data: [] as UserGroup[], error: membershipsError };
 
   const rows = ((memberships ?? []) as unknown) as Array<{
     group_id: string;
@@ -193,10 +221,22 @@ export async function getUserGroups(userId: string) {
 
   const groupIds = normalizedRows.map((m) => m.groups.id);
 
-  const { data: counts } = await supabase.from("group_members").select("group_id").in("group_id", groupIds);
+  let counts: Array<{ group_id: string }> = [];
+  try {
+    const countsResult = await withTimeout(
+      supabase.from("group_members").select("group_id").in("group_id", groupIds),
+      GROUP_QUERY_TIMEOUT_MS,
+      "Timed out loading group member counts."
+    );
+    if (!countsResult.error) {
+      counts = (countsResult.data ?? []) as Array<{ group_id: string }>;
+    }
+  } catch {
+    counts = [];
+  }
 
   const countMap: Record<string, number> = {};
-  (counts ?? []).forEach((c: { group_id: string }) => {
+  counts.forEach((c: { group_id: string }) => {
     countMap[c.group_id] = (countMap[c.group_id] || 0) + 1;
   });
 
