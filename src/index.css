@@ -1245,12 +1245,25 @@ body {
   gap: 10px;
 }
 
+.lb-row--tournament.lb-row--admin {
+  grid-template-columns: 40px 1.05fr 0.9fr 70px 90px 1.35fr 80px 70px 110px;
+}
+
 button.lb-row {
   width: 100%;
   border: 0;
   text-align: left;
   background: none;
   cursor: pointer;
+}
+
+.lb-row--interactive {
+  cursor: pointer;
+}
+
+.lb-row--interactive:focus-visible {
+  outline: 2px solid rgba(184, 125, 24, 0.45);
+  outline-offset: 2px;
 }
 
 .lb-row--me {
@@ -1607,6 +1620,10 @@ button.lb-row {
   .lb-row--tournament {
     grid-template-columns: 28px 1fr 1fr 60px;
     gap: 8px;
+  }
+
+  .lb-row--tournament.lb-row--admin {
+    grid-template-columns: 28px 1fr 1fr 60px 90px;
   }
 
   .lb-col-bracket,

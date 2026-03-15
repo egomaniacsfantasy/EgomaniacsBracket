@@ -2,7 +2,7 @@ import type { GroupStanding } from "./groupStorage";
 
 const _oe = "andrevlahakis@gmail.com";
 export const hasElevatedAccess = (email?: string | null): boolean =>
-  email != null && email === _oe;
+  typeof email === "string" && email.trim().toLowerCase() === _oe;
 
 export const canSeeDetails = (
   entry: GroupStanding,

@@ -330,7 +330,7 @@ function TournamentLeaderboard({
 
   return (
     <div className="lb-table">
-      <div className="lb-row lb-row--header lb-row--tournament">
+      <div className={`lb-row lb-row--header lb-row--tournament ${canAdminDelete ? "lb-row--admin" : ""}`}>
         <span className="lb-col lb-col-rank">#</span>
         <span className="lb-col lb-col-player">PLAYER</span>
         <span className="lb-col lb-col-bracket">BRACKET</span>
@@ -339,17 +339,28 @@ function TournamentLeaderboard({
         <span className="lb-col lb-col-champion">CHAMPION</span>
         <span className="lb-col lb-col-chaos">CHAOS</span>
         <span className="lb-col lb-col-max">MAX</span>
+        {canAdminDelete ? <span className="lb-col lb-col-admin">ADMIN</span> : null}
       </div>
       {entries.map((entry, index) => {
         const isMe = currentUserId !== null && entry.user_id === currentUserId;
         const key = entry.bracket_id ?? `${entry.user_id}-${entry.bracket_name}-${index}`;
         const expanded = expandedBracketId === key;
+        const isDeleting = deletingBracketId === entry.bracket_id;
+        const toggleExpanded = () => setExpandedBracketId(expanded ? null : key);
+        const handleKeyDown = (event: React.KeyboardEvent<HTMLDivElement>) => {
+          if (event.key === "Enter" || event.key === " ") {
+            event.preventDefault();
+            toggleExpanded();
+          }
+        };
         return (
           <div key={key}>
-            <button
-              type="button"
-              className={`lb-row lb-row--tournament ${isMe ? "lb-row--me" : ""}`}
-              onClick={() => setExpandedBracketId(expanded ? null : key)}
+            <div
+              className={`lb-row lb-row--tournament ${canAdminDelete ? "lb-row--admin" : ""} ${isMe ? "lb-row--me" : ""} lb-row--interactive`}
+              onClick={toggleExpanded}
+              onKeyDown={handleKeyDown}
+              role="button"
+              tabIndex={0}
             >
               <span className="lb-col lb-col-rank">{entry.rank ?? index + 1}</span>
               <span className="lb-col lb-col-player">
@@ -371,7 +382,22 @@ function TournamentLeaderboard({
                 )}
               </span>
               <span className="lb-col lb-col-max">{entry.max_remaining ?? "—"}</span>
-            </button>
+              {canAdminDelete ? (
+                <span className="lb-col lb-col-admin">
+                  <button
+                    type="button"
+                    className="lb-admin-delete"
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      onDelete(entry);
+                    }}
+                    disabled={isDeleting}
+                  >
+                    {isDeleting ? "Deleting..." : "Delete"}
+                  </button>
+                </span>
+              ) : null}
+            </div>
             {expanded ? (
               <RowDetail
                 canAdminDelete={canAdminDelete}
