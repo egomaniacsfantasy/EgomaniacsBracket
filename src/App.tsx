@@ -3124,6 +3124,16 @@ function App() {
           %
         </button>
       </div>
+      <span
+        className="eg-toolbar-odds-hint"
+        style={
+          !isMobile && mainView !== "bracket" && mainView !== "futures" && mainView !== "conferences"
+            ? { display: "none" }
+            : undefined
+        }
+      >
+        Odds shown reflect each team's probability of advancing past that round.
+      </span>
       {!isMobile && chaosScore !== null ? (
         <div
           className={`chaos-score-wrap ${chaosScoreChanged ? "chaos-score-pill--changed" : ""}`}
