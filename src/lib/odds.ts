@@ -32,6 +32,24 @@ export const toOneInX = (prob: number): string => {
   return `1 in ${(1 / prob).toFixed(prob < 0.01 ? 0 : 1)}`;
 };
 
+const SUPERSCRIPT_DIGITS = ["⁰", "¹", "²", "³", "⁴", "⁵", "⁶", "⁷", "⁸", "⁹"] as const;
+
+export const formatLikelihood = (prob: number): string => {
+  if (!Number.isFinite(prob) || prob <= 0) return "< 10⁻⁶";
+  if (prob >= 1) return "100%";
+  if (prob >= 0.01) return `${(prob * 100).toFixed(1)}%`;
+  if (prob >= 0.0001) return `${(prob * 100).toFixed(3)}%`;
+
+  const exponent = Math.floor(Math.log10(prob));
+  const mantissa = prob / Math.pow(10, exponent);
+  const superscript = String(Math.abs(exponent))
+    .split("")
+    .map((digit) => SUPERSCRIPT_DIGITS[Number(digit)] ?? digit)
+    .join("");
+
+  return `${mantissa.toFixed(1)} × 10⁻${superscript}`;
+};
+
 export const formatOddsDisplay = (
   prob: number,
   mode: OddsDisplayMode
