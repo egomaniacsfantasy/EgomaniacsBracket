@@ -1189,7 +1189,8 @@ function App() {
   const startMobileOnboardingFromFirstFour = useCallback(() => {
     dismissMobileOnboarding();
     setMobileTab("bracket");
-    setFirstFourExpanded(true);
+    setMobileSection("East");
+    setMobileRound("FF");
     setFirstFourPillHintActive(false);
     window.scrollTo({ top: 0, behavior: "smooth" });
   }, [dismissMobileOnboarding]);
@@ -3460,9 +3461,16 @@ function App() {
     if (playInGames.length === 0) return;
     setFirstFourPillHintActive(false);
 
-    if (isMobile ? visibleMobileTab !== "bracket" : visibleMainView !== "bracket") {
-      if (isMobile) setMobileTab("bracket");
-      else setMainView("bracket");
+    if (isMobile) {
+      if (visibleMobileTab !== "bracket") setMobileTab("bracket");
+      setMobileSection((current) => (current === "FF" ? "East" : current));
+      setMobileRound("FF");
+      window.scrollTo({ top: 0, behavior: "smooth" });
+      return;
+    }
+
+    if (visibleMainView !== "bracket") {
+      setMainView("bracket");
       setFirstFourExpanded(true);
       window.scrollTo({ top: 0, behavior: "smooth" });
       return;
@@ -3676,12 +3684,20 @@ function App() {
           <button
             type="button"
             onClick={toggleFirstFourFromToolbar}
-            aria-pressed={Boolean((isMobile ? visibleMobileTab === "bracket" : visibleMainView === "bracket") && firstFourExpanded)}
-            className={`eg-btn toolbar-btn--first-four ${allPlayInDecided && !firstFourExpanded && firstFourPillHintActive ? "ff-pill-collapsed-done" : ""}`}
+            aria-pressed={
+              isMobile
+                ? Boolean(visibleMobileTab === "bracket" && mobileSection !== "FF" && mobileRound === "FF")
+                : Boolean(visibleMainView === "bracket" && firstFourExpanded)
+            }
+            className={`eg-btn toolbar-btn--first-four ${
+              !isMobile && allPlayInDecided && !firstFourExpanded && firstFourPillHintActive ? "ff-pill-collapsed-done" : ""
+            }`}
             title={
-              (isMobile ? visibleMobileTab === "bracket" : visibleMainView === "bracket")
-                ? (firstFourExpanded ? "Collapse the First Four bar" : "Expand the First Four bar")
-                : "Open the First Four bar"
+              isMobile
+                ? "Jump to the First Four round"
+                : visibleMainView === "bracket"
+                  ? (firstFourExpanded ? "Collapse the First Four bar" : "Expand the First Four bar")
+                  : "Open the First Four bar"
             }
           >
             <span>First Four</span>
@@ -4517,7 +4533,6 @@ function App() {
         {isMobile ? (
           <section className="eg-mobile-shell">
             {showToolbar ? <div className="mobile-toolbar-wrapper">{toolbar}</div> : null}
-            {visibleMobileTab === "bracket" ? firstFourBar : null}
             {isAuthenticated && submissionsLocked && showToolbar ? (
               <div className="bracket-lock-banner">🔒 Submissions locked at tip-off. Tournament is live — check the leaderboard.</div>
             ) : null}
@@ -5574,7 +5589,8 @@ const differenceForStat = (teamAName: string, teamAValue: number | null, teamBNa
 };
 
 function getRegionRoundStatus(games: ResolvedGame[], region: Region, round: MobileRegionRound) {
-  const roundGames = gamesByRegionAndRound(games, region, round);
+  const roundGames = getMobileRegionRoundGames(games, region, round);
+  if (roundGames.length === 0) return "available" as const;
   if (roundGames.every((game) => game.winnerId)) return "complete" as const;
   if (roundGames.some((game) => game.winnerId)) return "in-progress" as const;
   return "available" as const;
@@ -5588,7 +5604,7 @@ function getRegionRoundMode(games: ResolvedGame[], region: Region, round: Mobile
     S16: "R32",
     E8: "S16",
   };
-  const priorGames = gamesByRegionAndRound(games, region, previousRound[round]);
+  const priorGames = getMobileRegionRoundGames(games, region, previousRound[round]);
   const prevComplete = priorGames.length > 0 && priorGames.every((game) => Boolean(game.winnerId));
   return prevComplete ? "interactive" : "probabilistic";
 }
@@ -5604,6 +5620,11 @@ function getPreferredMobileRegionRound(games: ResolvedGame[], region: Region): M
     if (mode === "interactive" && status !== "complete") return round;
   }
   return "E8";
+}
+
+function getMobileRegionRoundGames(games: ResolvedGame[], region: Region, round: MobileRegionRound) {
+  if (round === "FF") return games.filter((game) => game.round === "FF");
+  return gamesByRegionAndRound(games, region, round);
 }
 
 function getGameRowsForDisplay(
@@ -5893,11 +5914,11 @@ function MobileRegionView({
     { id: "S16", label: "S16" },
     { id: "E8", label: "E8" },
   ];
-  const activeGames = gamesByRegionAndRound(games, region, activeRound);
+  const activeGames = getMobileRegionRoundGames(games, region, activeRound);
   const roundMode = getRegionRoundMode(games, region, activeRound);
 
   const handlePickForRound = (game: ResolvedGame, teamId: string) => {
-    const roundGames = gamesByRegionAndRound(games, region, activeRound);
+    const roundGames = getMobileRegionRoundGames(games, region, activeRound);
     const allCompleteAfterPick = roundGames.every((roundGame) => roundGame.id === game.id || Boolean(roundGame.winnerId));
     onPick(game, teamId);
     if (allCompleteAfterPick) {
