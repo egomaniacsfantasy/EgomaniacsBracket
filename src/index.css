@@ -752,11 +752,6 @@ body {
 
 .bracket-team-row--playin-pending {
   opacity: 0.4;
-  cursor: pointer;
-}
-
-.bracket-team-row--playin-pending:hover {
-  opacity: 0.65;
 }
 
 .bracket-team-row--playin-pending .team-name {
@@ -850,14 +845,10 @@ body {
 }
 
 .matchup-stats-icon--ff {
-  position: absolute;
-  left: 4px;
-  top: 50%;
-  right: auto;
-  transform: translateY(-50%);
+  position: static;
   color: rgba(240, 230, 208, 0.9);
   flex-shrink: 0;
-  margin-left: 0;
+  margin-left: auto;
   display: inline-flex !important;
   opacity: 1 !important;
   visibility: visible !important;
@@ -887,8 +878,6 @@ body {
   display: flex;
   align-items: center;
   gap: 8px;
-  position: relative;
-  padding-left: 26px;
 }
 
 .ff-team-btn {
@@ -1031,14 +1020,6 @@ body {
   .ff-game-matchup {
     flex-direction: column;
     gap: 6px;
-    padding-left: 0;
-    padding-top: 26px;
-  }
-
-  .matchup-stats-icon--ff {
-    left: 50%;
-    top: 4px;
-    transform: translateX(-50%);
   }
 
   .ff-vs {
@@ -1632,20 +1613,6 @@ button.lb-row {
   min-width: 16px;
   text-align: center;
   line-height: 1.4;
-}
-
-.toolbar-chip--points {
-  font-family: var(--font-mono);
-  letter-spacing: 0.03em;
-}
-
-.toolbar-chip--points.is-active {
-  border-color: rgba(184, 125, 24, 0.48);
-  color: rgba(240, 228, 198, 0.96);
-}
-
-.toolbar-chip--points.is-locked {
-  opacity: 0.78;
 }
 
 .futures-full {
@@ -3079,22 +3046,6 @@ button.lb-row {
   width: 100%;
 }
 
-.team-name-line {
-  display: inline-flex;
-  align-items: baseline;
-  gap: 4px;
-  max-width: 100%;
-  min-width: 0;
-}
-
-.matchup-points-inline {
-  font-family: var(--font-mono);
-  font-size: 0.56rem;
-  color: rgba(231, 191, 114, 0.86);
-  white-space: nowrap;
-  flex-shrink: 0;
-}
-
 .btw-abbrev-name {
   display: block;
 }
@@ -3420,23 +3371,6 @@ button.lb-row {
   text-overflow: clip;
   line-height: 1;
   min-width: 0;
-}
-
-.chip-code-line {
-  display: inline-flex;
-  align-items: baseline;
-  gap: 4px;
-  min-width: 0;
-  max-width: 100%;
-  overflow: hidden;
-}
-
-.chip-code-line.no-logo {
-  grid-column: 2 / 4;
-}
-
-.chip-code-line .matchup-points-inline {
-  font-size: 0.54rem;
 }
 
 .eg-compact-grid.density-md .chip-code {
@@ -5768,23 +5702,9 @@ body.og-onboarding-open {
   color: rgba(240, 230, 208, 1);
 }
 
-.championship-card--celebration .matchup-stats-icon--championship-card {
-  top: 8px;
-  left: 8px;
-  right: auto;
-  z-index: 4;
-  color: rgba(240, 230, 208, 0.9);
-  border-color: rgba(240, 230, 208, 0.3);
-  background: rgba(255, 255, 255, 0.1);
-}
-
 .eg-game-card.collapsed .matchup-stats-icon,
 .bracket-cell--compact .matchup-stats-icon {
   display: none;
-}
-
-.eg-game-card--showdown > .matchup-stats-icon {
-  display: none !important;
 }
 
 .matchup-stats-overlay {
@@ -7421,7 +7341,6 @@ body {
   width: 100%;
   min-height: 180px;
   padding: 24px 28px;
-  position: relative;
   border: 1px solid rgba(171, 138, 69, 0.5);
   border-radius: 16px;
   background:
@@ -7516,13 +7435,6 @@ body {
   -webkit-box-orient: vertical;
   overflow: hidden;
   text-overflow: ellipsis;
-}
-
-.eg-showdown-points {
-  font-family: var(--font-mono);
-  font-size: 11px;
-  color: rgba(231, 191, 114, 0.82);
-  line-height: 1;
 }
 
 .eg-showdown-card.round-champ .eg-showdown-name {
@@ -8679,24 +8591,6 @@ body.walkthrough-active .eg-title-choice:hover {
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
-  }
-
-  .m-name-wrap {
-    display: inline-flex;
-    align-items: baseline;
-    gap: 6px;
-    flex: 1;
-    min-width: 0;
-    overflow: hidden;
-  }
-
-  .m-name-wrap .m-name {
-    flex: 0 1 auto;
-    min-width: 0;
-  }
-
-  .m-name-wrap .matchup-points-inline {
-    font-size: 10px;
   }
 
   .m-stats {
@@ -12085,7 +11979,7 @@ body.walkthrough-active .odds-value--changed::after {
   display: grid;
   grid-auto-columns: minmax(0, 1fr);
   grid-auto-flow: column;
-  gap: 8px;
+  gap: 12px;
   min-height: 560px;
   position: relative;
   align-items: start;
@@ -12119,7 +12013,7 @@ body.walkthrough-active .odds-value--changed::after {
 .conf-games-lane {
   position: relative;
   display: block;
-  height: max(var(--conf-lane-height, 940px), 74vh);
+  height: max(var(--conf-lane-height, 1120px), 84vh);
   border-left: 1px solid rgba(74, 193, 100, 0.45);
   padding-left: 12px;
   margin-top: 6px;
@@ -12492,22 +12386,6 @@ body.walkthrough-active .odds-value--changed::after {
   white-space: nowrap;
 }
 
-.rank-trend-link {
-  border: 1px solid rgba(171, 138, 69, 0.5);
-  background: rgba(171, 138, 69, 0.12);
-  color: var(--text);
-  border-radius: 999px;
-  padding: 2px 8px;
-  font-size: 0.68rem;
-  line-height: 1.2;
-  cursor: pointer;
-}
-
-.rank-trend-link:hover {
-  border-color: rgba(171, 138, 69, 0.75);
-  background: rgba(171, 138, 69, 0.2);
-}
-
 .rank-team-conf-badge {
   font-size: 0.6rem;
   color: var(--text-soft);
@@ -12540,109 +12418,6 @@ body.walkthrough-active .odds-value--changed::after {
   padding: 32px;
   color: var(--text-soft);
   font-style: italic;
-}
-
-.rank-trend-modal-backdrop {
-  position: fixed;
-  inset: 0;
-  background: rgba(4, 3, 1, 0.75);
-  backdrop-filter: blur(4px);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 1200;
-  padding: 16px;
-}
-
-.rank-trend-modal {
-  width: min(900px, 100%);
-  border: 1px solid var(--panel-line);
-  background: rgba(20, 16, 8, 0.95);
-  border-radius: 14px;
-  box-shadow: 0 18px 48px rgba(0, 0, 0, 0.45);
-  padding: 14px 14px 12px;
-}
-
-.rank-trend-modal-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-  margin-bottom: 8px;
-}
-
-.rank-trend-modal-head h3 {
-  margin: 0;
-  font-size: 1rem;
-  font-weight: 600;
-}
-
-.rank-trend-close {
-  border: 1px solid var(--panel-line);
-  border-radius: 8px;
-  background: rgba(20, 16, 8, 0.85);
-  color: var(--text);
-  width: 32px;
-  height: 32px;
-  cursor: pointer;
-}
-
-.rank-trend-chart-wrap {
-  border: 1px solid rgba(171, 138, 69, 0.22);
-  border-radius: 10px;
-  padding: 10px 10px 8px;
-  background: rgba(6, 5, 3, 0.5);
-}
-
-.rank-trend-chart {
-  width: 100%;
-  height: auto;
-  display: block;
-}
-
-.rank-chart-axis {
-  stroke: rgba(240, 230, 208, 0.85);
-  stroke-width: 1;
-}
-
-.rank-chart-grid {
-  stroke: rgba(171, 138, 69, 0.2);
-  stroke-width: 1;
-}
-
-.rank-chart-grid--x {
-  stroke-dasharray: 3 4;
-}
-
-.rank-chart-label {
-  fill: rgba(240, 230, 208, 0.86);
-  font-size: 10px;
-  font-family: "Space Grotesk", sans-serif;
-}
-
-.rank-chart-label--y {
-  text-anchor: end;
-}
-
-.rank-chart-line {
-  fill: none;
-  stroke: rgba(238, 199, 116, 0.98);
-  stroke-width: 1.8;
-}
-
-.rank-chart-dot {
-  fill: rgba(238, 199, 116, 0.9);
-  stroke: rgba(10, 9, 4, 0.9);
-  stroke-width: 0.8;
-}
-
-.rank-trend-meta {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px 14px;
-  font-size: 0.72rem;
-  color: var(--text-soft);
-  margin-top: 6px;
 }
 
 /* Conference & Rankings toolbar button styles */
@@ -12695,14 +12470,6 @@ body.walkthrough-active .odds-value--changed::after {
 
   .rank-title {
     font-size: 1.4rem;
-  }
-
-  .rank-trend-modal {
-    padding: 10px 8px 8px;
-  }
-
-  .rank-trend-modal-head h3 {
-    font-size: 0.9rem;
   }
 
   .mobile-tab-bar {
@@ -12787,30 +12554,8 @@ body.walkthrough-active .odds-value--changed::after {
   border-color: rgba(240 192 64 / 0.5);
 }
 
-.mp-selector-logo {
-  width: 20px;
-  height: 20px;
-  border-radius: 4px;
-  object-fit: contain;
-  flex: 0 0 20px;
-}
-
-.mp-selector-copy {
-  display: flex;
-  flex-direction: column;
-  gap: 1px;
-  min-width: 0;
-  flex: 1;
-}
-
 .mp-selector-name {
-  font-weight: 600;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.mp-selector-copy .mp-selector-name {
+  flex: 1;
   font-weight: 600;
 }
 
@@ -12883,29 +12628,12 @@ body.walkthrough-active .odds-value--changed::after {
   background: rgba(240 192 64 / 0.15);
 }
 
-.mp-dropdown-logo {
-  width: 18px;
-  height: 18px;
-  border-radius: 4px;
-  object-fit: contain;
-  flex: 0 0 18px;
-}
-
-.mp-dropdown-item-copy {
-  min-width: 0;
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  gap: 1px;
-}
-
 .mp-dropdown-item-name {
-  font-size: 0.9rem;
-  line-height: 1.2;
+  flex: 1;
 }
 
 .mp-dropdown-item-conf {
-  font-size: 0.72rem;
+  font-size: 0.73rem;
   opacity: 0.5;
 }
 
@@ -12951,116 +12679,7 @@ body.walkthrough-active .odds-value--changed::after {
   color: #f0c040;
 }
 
-/* Probability summary */
-
-.mp-prob-summary {
-  background: rgba(255 255 255 / 0.04);
-  border: 1px solid rgba(255 255 255 / 0.1);
-  border-radius: 10px;
-  padding: 18px 20px;
-  margin-bottom: 28px;
-}
-
-.mp-prob-team {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 16px;
-  padding: 6px 0;
-}
-
-.mp-prob-team--fav .mp-prob-team-name {
-  color: #f0c040;
-}
-
-.mp-prob-team-main {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  min-width: 0;
-}
-
-.mp-prob-logo {
-  width: 22px;
-  height: 22px;
-  border-radius: 4px;
-  object-fit: contain;
-  flex: 0 0 22px;
-}
-
-.mp-prob-copy {
-  min-width: 0;
-}
-
-.mp-prob-team-name {
-  font-size: 1.02rem;
-  font-weight: 700;
-  line-height: 1.1;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.mp-prob-team-conf {
-  font-size: 0.7rem;
-  opacity: 0.58;
-  letter-spacing: 0.04em;
-  margin-top: 2px;
-}
-
-.mp-prob-team-odds {
-  display: flex;
-  gap: 10px;
-  align-items: baseline;
-  font-size: 1rem;
-  font-weight: 700;
-  flex: 0 0 auto;
-}
-
-.mp-prob-team-pct {
-  font-size: 0.82rem;
-  opacity: 0.74;
-}
-
-.mp-prob-track {
-  height: 12px;
-  background: rgba(255 255 255 / 0.08);
-  border-radius: 6px;
-  overflow: hidden;
-  margin: 8px 0 10px;
-}
-
-.mp-prob-fill {
-  height: 100%;
-  background: linear-gradient(90deg, #f0c040 0%, #c8962c 100%);
-  border-radius: 6px;
-  transition: width 0.35s ease;
-  min-width: 2px;
-}
-
-.mp-prob-values {
-  display: flex;
-  justify-content: space-between;
-  font-size: 0.8rem;
-  opacity: 0.64;
-}
-
-.mp-prob-val {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-}
-
-.mp-prob-val--right {
-  text-align: right;
-}
-
-.mp-prob-pct {
-  font-size: 0.76rem;
-  opacity: 0.7;
-}
-
-/* Keep legacy bar classes in case cached chunks still reference them */
+/* Probability bar */
 
 .mp-prob-bar-wrap {
   background: rgba(255 255 255 / 0.04);
@@ -13108,6 +12727,23 @@ body.walkthrough-active .odds-value--changed::after {
   border-radius: 7px;
   transition: width 0.4s ease;
   min-width: 2px;
+}
+
+.mp-prob-values {
+  display: flex;
+  justify-content: space-between;
+  font-size: 1.1rem;
+  font-weight: 700;
+}
+
+.mp-prob-val--right {
+  text-align: right;
+}
+
+.mp-prob-pct {
+  font-size: 0.78rem;
+  font-weight: 400;
+  opacity: 0.6;
 }
 
 /* Stat table */

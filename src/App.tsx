@@ -88,6 +88,17 @@ const URL_ROUND_ORDER: ResolvedGame["round"][] = ["FF", "R64", "R32", "S16", "E8
 const URL_EXPECTED_GAME_COUNT = gameTemplates.length;
 const URL_EXPECTED_BITS = URL_EXPECTED_GAME_COUNT * 2;
 
+const getRecommendedSimRuns = (): number => {
+  if (typeof window === "undefined") return DEFAULT_SIM_RUNS;
+  const nav = navigator as Navigator & { deviceMemory?: number };
+  const cores = nav.hardwareConcurrency ?? 4;
+  const memory = nav.deviceMemory ?? 4;
+  const isMobileViewport = window.matchMedia("(max-width: 767px)").matches;
+
+  if (isMobileViewport || memory <= 4 || cores <= 4) return 1500;
+  if (memory <= 8 || cores <= 8) return 2500;
+  return DEFAULT_SIM_RUNS;
+};
 
 const canonicalGameTemplates = (() => {
   const regional: typeof gameTemplates = [];
@@ -501,7 +512,7 @@ function App() {
     const saved = window.localStorage.getItem(ODDS_FORMAT_STORAGE_KEY);
     return saved === "american" || saved === "implied" ? saved : "implied";
   });
-  const [simRuns] = useState<number>(DEFAULT_SIM_RUNS);
+  const [simRuns] = useState<number>(() => getRecommendedSimRuns());
   const [futuresFieldExpanded, setFuturesFieldExpanded] = useState(false);
   const [futuresEliminatedExpanded, setFuturesEliminatedExpanded] = useState(false);
   const [mainView, setMainView] = useState<"bracket" | "futures" | "leaderboard" | "conferences" | "rankings" | "predictor">("bracket");
@@ -1741,10 +1752,6 @@ function App() {
   };
 
   const onUnavailableRoundClick = (round: ResolvedGame["round"]) => {
-    if (round === "FF") {
-      setShowFirstFourModal(true);
-      return;
-    }
     if (round !== "R32") return;
     showContextualHint(
       "r32",
@@ -6283,7 +6290,7 @@ function GameCard({
                     ? `${abbreviationForTeam(pendingTeamA.name)} / ${abbreviationForTeam(pendingTeamB.name)}`
                     : "TBD / TBD";
                 const pendingRow = (
-                  <div key={`${game.id}-pending-playin`} className="eg-team-row bracket-team-row--playin-pending" role="button" tabIndex={0} onClick={() => onUnavailableRoundClick?.("FF")} onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") onUnavailableRoundClick?.("FF"); }}>
+                  <div key={`${game.id}-pending-playin`} className="eg-team-row bracket-team-row--playin-pending">
                     <span className="team-seed">{pendingSeed}</span>
                     <span className="team-name-wrap">
                       <span className="team-name">{pendingText}</span>
