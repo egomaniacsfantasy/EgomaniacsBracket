@@ -1,6 +1,7 @@
 import { useState } from "react";
 import type { WrappedData } from "./lib/wrappedData";
 import { ordinal } from "./lib/wrappedData";
+import { formatAmericanFromProbability } from "./lib/odds";
 
 interface BracketWrappedCardProps {
   data: WrappedData;
@@ -62,6 +63,7 @@ export function BracketWrappedCard({
   const chaosPercentilePosition = Math.max(2, Math.min(98, identity.chaosPercentile));
   const championPathGamesByRound = new Map(championPath.games.map((game) => [game.round, game]));
   const toughestRoundLabel = championPath.toughestGame.round || championPath.toughestGame.roundLabel;
+  const pathAmericanOdds = formatAmericanFromProbability(championPath.pathProbability);
 
   // Collect logos for ghosted background
   const ghostLogos = [
@@ -254,12 +256,11 @@ export function BracketWrappedCard({
               </div>
 
               <div className="bw-card-path-footer">
-                <span className="bw-card-path-footer-label">
-                  CHANCE {championPath.championName.toUpperCase()} WINS THE CHAMPIONSHIP WITH THIS PATH
-                </span>
-                <span className="bw-card-hl-number bw-card-hl-number--amber">
-                  {formatPercent(championPath.pathProbability)}
-                </span>
+                <span className="bw-path-summary-label">Your path odds</span>
+                <div className="bw-path-odds-block">
+                  <span className="bw-path-odds-value">{pathAmericanOdds}</span>
+                  <span className="bw-path-odds-context">to cut down the nets on this path</span>
+                </div>
               </div>
             </div>
           </div>

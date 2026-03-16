@@ -20,6 +20,11 @@ export const toDecimalOdds = (prob: number): number => 1 / clampDisplayProb(prob
 
 export const formatAmerican = (odds: number): string => (odds > 0 ? `+${odds}` : `${odds}`);
 
+export const formatAmericanFromProbability = (prob: number): string => {
+  if (!Number.isFinite(prob) || prob <= 0 || prob >= 1) return "—";
+  return formatAmerican(toAmericanOdds(prob));
+};
+
 export const toImpliedLabel = (prob: number): string => {
   if (!Number.isFinite(prob)) return "50.0%";
   if (prob >= 1) return "100%";
