@@ -19,6 +19,14 @@ const ROUND_LABELS: Record<string, string> = {
   CHAMP: "Championship",
 };
 
+const PATH_GAUNTLET_ROUNDS = ["R64", "R32", "S16", "E8", "F4", "CHAMP"] as const;
+
+function getPathProbTone(prob: number): "safe" | "neutral" | "danger" {
+  if (prob >= 0.7) return "safe";
+  if (prob >= 0.5) return "neutral";
+  return "danger";
+}
+
 function formatPercent(prob: number): string {
   const percent = prob * 100;
   const decimals = percent > 0 && percent < 10 ? 1 : 0;
@@ -52,6 +60,8 @@ export function BracketWrappedCard({
     bracketOddsComparison,
   } = data;
   const chaosPercentilePosition = Math.max(2, Math.min(98, identity.chaosPercentile));
+  const championPathGamesByRound = new Map(championPath.games.map((game) => [game.round, game]));
+  const toughestRoundLabel = championPath.toughestGame.round || championPath.toughestGame.roundLabel;
 
   // Collect logos for ghosted background
   const ghostLogos = [
@@ -200,21 +210,58 @@ export function BracketWrappedCard({
 
           {/* The Path */}
           <div className="bw-card-hl bw-card-hl--path">
-            <img
-              src={championPath.championLogoUrl}
-              alt={championPath.championName}
-              className="bw-card-hl-logo-front bw-card-hl-logo--path"
-            />
-            <div className="bw-card-hl-info">
+            <div className="bw-card-path-shell">
               <span className="bw-card-hl-tag bw-card-hl-tag--amber">{"\uD83C\uDFC6"} THE PATH</span>
-              <span className="bw-card-hl-matchup">
-                {championPath.championName} → {championPath.toughestGame.roundLabel}: {championPath.toughestGame.opponentName}
-              </span>
-              <span className="bw-card-hl-detail">toughest test on the road to the title</span>
+
+              <div className="bw-card-path-gauntlet" aria-label={`${championPath.championName} championship gauntlet`}>
+                {PATH_GAUNTLET_ROUNDS.map((round) => {
+                  const game = championPathGamesByRound.get(round) ?? null;
+                  const isToughest =
+                    game?.round === championPath.toughestGame.round &&
+                    game.opponentName === championPath.toughestGame.opponentName;
+                  const probTone = game ? getPathProbTone(game.winProbability) : "neutral";
+
+                  return (
+                    <div
+                      key={round}
+                      className={`bw-card-path-slot${isToughest ? " bw-card-path-slot--toughest" : ""}`}
+                    >
+                      <span className="bw-card-path-slot-round">{round}</span>
+                      <span className="bw-card-path-slot-logo-ring">
+                        {game ? (
+                          <img
+                            src={game.opponentLogoUrl}
+                            alt={game.opponentName}
+                            className="bw-card-path-slot-logo"
+                          />
+                        ) : (
+                          <span className="bw-card-path-slot-logo-placeholder">-</span>
+                        )}
+                      </span>
+                      <span className={`bw-card-path-slot-prob bw-card-path-slot-prob--${probTone}`}>
+                        {game ? formatPercent(game.winProbability) : "--"}
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+
+              <div className="bw-card-path-callout">
+                <span className="bw-card-path-callout-line" aria-hidden="true" />
+                <span className="bw-card-path-callout-text">
+                  toughest: {championPath.toughestGame.opponentName} · {toughestRoundLabel}
+                </span>
+              </div>
+
+              <div className="bw-card-path-footer">
+                <span className="bw-card-path-footer-label">
+                  CHANCE {championPath.championName.toUpperCase()} WINS THE CHAMPIONSHIP WITH THIS PATH
+                </span>
+                <span className="bw-card-hl-number bw-card-hl-number--amber">
+                  {formatPercent(championPath.pathProbability)}
+                </span>
+              </div>
             </div>
-            <span className="bw-card-hl-number bw-card-hl-number--amber">
-              {(championPath.pathProbability * 100).toFixed(1)}%
-            </span>
           </div>
         </div>
 

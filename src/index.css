@@ -18429,12 +18429,153 @@ body.walkthrough-active .odds-value--changed::after {
 }
 /* Path (bottom border) */
 .bw-card-hl--path {
+  display: block;
   background: rgba(184,125,24,0.03);
   border-bottom: 2px solid rgba(184,125,24,0.2);
   border-radius: 6px 6px 2px 2px;
 }
 .bw-card-hl-logo--path {
   filter: drop-shadow(0 0 8px rgba(184,125,24,0.3)) drop-shadow(0 2px 4px rgba(0,0,0,0.35));
+}
+
+.bw-card-path-shell {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 100%;
+}
+
+.bw-card-path-gauntlet {
+  position: relative;
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 6px;
+  width: 100%;
+  padding: 2px 0 0;
+}
+
+.bw-card-path-gauntlet::before {
+  content: "";
+  position: absolute;
+  left: 7%;
+  right: 7%;
+  top: 31px;
+  border-top: 1px dashed rgba(240,230,208,0.14);
+  z-index: 0;
+}
+
+.bw-card-path-slot {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+}
+
+.bw-card-path-slot-round {
+  font-family: ui-monospace, "SFMono-Regular", Menlo, monospace;
+  font-size: 9px;
+  font-weight: 500;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-soft);
+}
+
+.bw-card-path-slot-logo-ring {
+  width: 36px;
+  height: 36px;
+  min-width: 36px;
+  min-height: 36px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid transparent;
+  border-radius: 999px;
+  background: rgba(12, 9, 5, 0.72);
+  box-shadow: inset 0 0 0 1px rgba(240,230,208,0.05);
+}
+
+.bw-card-path-slot--toughest .bw-card-path-slot-logo-ring {
+  border-color: #b87d18;
+  box-shadow:
+    inset 0 0 0 1px rgba(240,230,208,0.05),
+    0 0 0 1px rgba(184,125,24,0.24),
+    0 0 16px rgba(184,125,24,0.18);
+}
+
+.bw-card-path-slot-logo {
+  width: clamp(24px, 7vw, 30px);
+  height: clamp(24px, 7vw, 30px);
+  min-width: 24px;
+  min-height: 24px;
+  object-fit: contain;
+  filter: drop-shadow(0 1px 3px rgba(0,0,0,0.35));
+}
+
+.bw-card-path-slot-logo-placeholder {
+  font-family: ui-monospace, "SFMono-Regular", Menlo, monospace;
+  font-size: 13px;
+  color: rgba(240,230,208,0.34);
+}
+
+.bw-card-path-slot-prob {
+  font-family: ui-monospace, "SFMono-Regular", Menlo, monospace;
+  font-size: 11px;
+  font-weight: 500;
+  line-height: 1;
+}
+
+.bw-card-path-slot-prob--safe { color: #8dd598; }
+.bw-card-path-slot-prob--neutral { color: #f0e6d0; }
+.bw-card-path-slot-prob--danger { color: #e8654a; }
+
+.bw-card-path-callout {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 5px;
+}
+
+.bw-card-path-callout-line {
+  width: 62%;
+  height: 1px;
+  background: linear-gradient(
+    90deg,
+    rgba(184,125,24,0) 0%,
+    rgba(184,125,24,0.2) 12%,
+    rgba(184,125,24,0.85) 50%,
+    rgba(184,125,24,0.2) 88%,
+    rgba(184,125,24,0) 100%
+  );
+}
+
+.bw-card-path-callout-text {
+  font-family: "Instrument Serif", serif;
+  font-style: italic;
+  font-size: 11px;
+  color: var(--text-soft);
+  text-align: center;
+}
+
+.bw-card-path-footer {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.bw-card-path-footer-label {
+  flex: 1;
+  min-width: 0;
+  font-family: "Space Grotesk", sans-serif;
+  font-size: 6px;
+  font-weight: 800;
+  line-height: 1.35;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: rgba(240,230,208,0.42);
 }
 
 .bw-card-hl-logos {
