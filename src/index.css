@@ -17466,9 +17466,13 @@ body.walkthrough-active .odds-value--changed::after {
   }
 
   .bw-card-frame--final {
+    width: min(460px, calc(100vw - 32px));
+    height: auto;
     max-height: 90vh;
+    max-width: 460px;
     overflow-y: auto;
     overflow-x: hidden;
+    align-items: stretch;
     justify-content: flex-start;
     box-sizing: border-box;
     scrollbar-width: thin;
@@ -17488,14 +17492,16 @@ body.walkthrough-active .odds-value--changed::after {
     border-radius: 3px;
   }
 
-  .bw-card-frame--final .bw-card-frame-inner {
-    height: auto !important;
-    min-height: 640px;
+  .bw-card-frame-inner--final {
+    width: 100%;
+    height: auto;
+    min-height: 0;
+    transform: none !important;
   }
 
   .bw-card-frame--final .bw-screen {
     height: auto;
-    min-height: 100%;
+    min-height: 0;
   }
 
   .bw-card-frame--final .bw-screen--final {
