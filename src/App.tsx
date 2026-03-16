@@ -595,7 +595,7 @@ function App() {
   const [welcomeGateOpen, setWelcomeGateOpen] = useState(() => {
     if (typeof window === "undefined") return false;
     if (window.matchMedia("(max-width: 767px)").matches) return false;
-    return window.localStorage.getItem(ONBOARDING_STORAGE_KEY) !== "true";
+    return false; // Onboarding walkthrough disabled — always treat as dismissed
   });
   const [showDesktopFirst, setShowDesktopFirst] = useState(false);
   const [showMobileOnboarding, setShowMobileOnboarding] = useState(false);
@@ -824,7 +824,7 @@ function App() {
 
   useEffect(() => {
     if (typeof window === "undefined") return;
-    const dismissed = window.localStorage.getItem(ONBOARDING_STORAGE_KEY) === "true";
+    const dismissed = true; // Onboarding walkthrough disabled — always treat as dismissed
     if (isMobile) {
       const desktopFirstSeen = window.localStorage.getItem(DESKTOP_FIRST_SEEN_KEY) === "1";
       setWelcomeGateOpen(false);
@@ -4904,6 +4904,9 @@ function PromoCTA({
           after the championship.
         </p>
         <p className="promo-cta-detail">Free to enter. Up to {MAX_SUBMITTED_BRACKETS} brackets per account.</p>
+        <p style={{ fontFamily: "var(--font-mono)", fontSize: "13px", color: "var(--text-dim)", marginTop: "8px", fontStyle: "italic" }}>
+          Complete your bracket first — sign up when you're ready to save.
+        </p>
         <button className="promo-cta-button" onClick={onSignUp}>
           Sign up &amp; save my bracket
         </button>
