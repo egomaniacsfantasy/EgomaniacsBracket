@@ -2739,7 +2739,10 @@ function App() {
   useEffect(() => {
     if (mobileSection === "FF") return;
     const preferred = getPreferredMobileRegionRound(games, mobileSection);
-    setMobileRound((current) => (isRegionRoundAccessible(games, mobileSection, current) ? current : preferred));
+    setMobileRound((current) => {
+      if (current === "FF") return preferred;
+      return isRegionRoundAccessible(games, mobileSection, current) ? current : preferred;
+    });
   }, [games, mobileSection]);
 
   useEffect(() => {
