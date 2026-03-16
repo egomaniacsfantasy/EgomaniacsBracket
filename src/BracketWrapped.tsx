@@ -243,13 +243,6 @@ export function BracketWrapped({ data, isBracketSubmitted, onSubmitBracket, onCl
               <div className="bw-screen5-wrap">
                 <BracketWrappedCard data={data} />
                 <div className="bw-screen5-actions" onClick={(e) => e.stopPropagation()}>
-                  <button
-                    className="bw-screen5-review"
-                    onClick={goPrev}
-                    aria-label="Go back to the previous Bracket Wrapped slide"
-                  >
-                    ← Review Story
-                  </button>
                   <div className="bw-screen5-cta-row">
                     <button
                       className={`bw-btn ${
