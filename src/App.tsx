@@ -38,6 +38,16 @@ import { LeaderboardFullWidth } from "./Leaderboard";
 import { deserializePicks, getUserBrackets, saveBracket, serializePicks, type SavedBracket } from "./bracketStorage";
 import { TEAM_STAT_IMPORTANCE, TEAM_STAT_ORDER, TEAM_STATS_2026, type TeamStatKey } from "./data/teamStats2026";
 import type { OddsDisplayMode, Region, ResolvedGame, SimulationOutput } from "./types";
+import { computeWrappedData, type WrappedData } from "./lib/wrappedData";
+import { BracketWrapped } from "./BracketWrapped";
+import { BracketWrappedCard } from "./BracketWrappedCard";
+import { MobileOnboarding } from "./MobileOnboarding";
+import { OverflowMenu, type OverflowMenuItem } from "./OverflowMenu";
+import { TopNavBar, type TopNavView } from "./TopNavBar";
+import BugReportModal, { type BugReportModalProps } from "./BugReportModal";
+import { FirstFourBar } from "./components/FirstFourBar";
+import { getUserGroups, updateMemberBracket, type UserGroup } from "./groupStorage";
+import { hasElevatedAccess } from "./groupVisibility";
 
 const DEFAULT_SIM_RUNS = 10000;
 const CHAOS_DISTRIBUTION_SIM_RUNS = 10000;
@@ -595,7 +605,7 @@ function App() {
   const [showCompletionCelebration, setShowCompletionCelebration] = useState(false);
   const [completionCelebrationData, setCompletionCelebrationData] = useState<CompletionCelebrationData | null>(null);
   const [statsModalGameId, setStatsModalGameId] = useState<string | null>(null);
-  const [showFirstFourModal, setShowFirstFourModal] = useState(false);
+  const [firstFourExpanded, setFirstFourExpanded] = useState(true);
   const [staggeredChaosTotal, setStaggeredChaosTotal] = useState(0);
   const [staggeredLastGameChaos, setStaggeredLastGameChaos] = useState<number | null>(null);
   const [staggeredLastGameLabel, setStaggeredLastGameLabel] = useState("");
@@ -901,6 +911,39 @@ function App() {
     }
     setAuthModalOpen(true);
   };
+
+  const dismissMobileOnboarding = useCallback(() => {
+    setShowMobileOnboarding(false);
+    setWelcomeGateOpen(false);
+    if (typeof window !== "undefined") {
+      window.localStorage.setItem(ONBOARDING_STORAGE_KEY, "true");
+    }
+  }, []);
+
+  const continuePastDesktopFirst = useCallback(() => {
+    const dismissed = typeof window !== "undefined" && window.localStorage.getItem(ONBOARDING_STORAGE_KEY) === "true";
+    setShowDesktopFirst(false);
+    if (typeof window !== "undefined") {
+      window.localStorage.setItem(DESKTOP_FIRST_SEEN_KEY, "1");
+    }
+    setShowMobileOnboarding(!dismissed);
+  }, []);
+
+  const dismissDesktopFirst = useCallback(() => {
+    setShowDesktopFirst(false);
+    setShowMobileOnboarding(false);
+    if (typeof window !== "undefined") {
+      window.localStorage.setItem(DESKTOP_FIRST_SEEN_KEY, "1");
+      window.localStorage.setItem(ONBOARDING_STORAGE_KEY, "true");
+    }
+  }, []);
+
+  const startMobileOnboardingFromFirstFour = useCallback(() => {
+    dismissMobileOnboarding();
+    setMobileTab("bracket");
+    setFirstFourExpanded(true);
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }, [dismissMobileOnboarding]);
 
   const completeWalkthrough = () => {
     trackEvent("onboarding_completed");
@@ -1775,6 +1818,7 @@ function App() {
     pendingPickMetaRef.current = null;
     setFirstPickNudgeVisible(false);
     setMajorShiftNudgeVisible(false);
+    setFirstFourExpanded(true);
     pushUndo(lockedPicks);
     simGeneratedGameIdsRef.current.clear();
     setLockedPicks({});
@@ -2296,7 +2340,7 @@ function App() {
   );
   const allPlayInDecided = playInGames.length === 0 || decidedPlayInCount === playInGames.length;
   const pointsTrackingEnabled = false;
-  const onboardingFlowReady = !showDesktopFirst && !walkthroughActive;
+  const onboardingFlowReady = !showDesktopFirst && !showMobileOnboarding && !walkthroughActive;
   const leftSemi = finalGames.find((g) => g.id === "F4-Left-0") ?? null;
   const rightSemi = finalGames.find((g) => g.id === "F4-Right-0") ?? null;
   const titleGame = finalGames.find((g) => g.id === "CHAMP-0") ?? null;
@@ -2325,10 +2369,32 @@ function App() {
   }, [displayMode, preTournamentBaseline.futures]);
 
   useEffect(() => {
-    if (!onboardingFlowReady || allPlayInDecided || firstFourAutoShownRef.current) return;
-    setShowFirstFourModal(true);
-    firstFourAutoShownRef.current = true;
-  }, [allPlayInDecided, onboardingFlowReady]);
+    if (!postOnboardingPromoGateOpen || authLoading || promoCTAVisible) return;
+    if (maybeShowPromoCTA()) return;
+    setPostOnboardingPromoGateOpen(false);
+  }, [authLoading, maybeShowPromoCTA, postOnboardingPromoGateOpen, promoCTAVisible]);
+
+  // Auto-collapse the First Four bar when all 4 games are decided.
+  // On initial load with saved picks, collapse immediately. On transition (user just picked the last game), delay 600ms.
+  const ffPrevDecidedRef = useRef(decidedPlayInCount);
+  useEffect(() => {
+    if (!allPlayInDecided || playInGames.length === 0) return;
+    const wasTransition = ffPrevDecidedRef.current < playInGames.length;
+    ffPrevDecidedRef.current = decidedPlayInCount;
+    if (wasTransition) {
+      const timer = setTimeout(() => setFirstFourExpanded(false), 600);
+      return () => clearTimeout(timer);
+    }
+    setFirstFourExpanded(false);
+  }, [allPlayInDecided, decidedPlayInCount, playInGames.length]);
+  useEffect(() => { ffPrevDecidedRef.current = decidedPlayInCount; }, [decidedPlayInCount]);
+
+  useEffect(() => {
+    if (!allPlayInDecided) return;
+    if (mobileSection === "FF") return;
+    if (mobileRound !== "FF") return;
+    setMobileRound("R64");
+  }, [allPlayInDecided, mobileRound, mobileSection]);
 
   useEffect(() => {
     if (mobileSection === "FF") return;
@@ -2927,218 +2993,288 @@ function App() {
     return () => observer.disconnect();
   }, [isMobile, mainView]);
 
+  const userLabel = profile?.display_name || user?.email || "User";
+  const showToolbar = isMobile
+    ? visibleMobileTab === "bracket" || visibleMobileTab === "futures"
+    : visibleMainView === "bracket" || visibleMainView === "futures";
+  const predictorViewActive = isMobile ? visibleMobileTab === "predictor" : visibleMainView === "predictor";
+  const showDesktopLiveOddsBand = !isMobile && visibleMainView !== "predictor";
+  const showDesktopBracketHero = !isMobile && visibleMainView !== "predictor";
+  const topNavActiveView: TopNavView = activeGroup || groupsHubOpen
+    ? "groups"
+    : isMobile
+      ? visibleMobileTab === "leaderboard"
+      ? "leaderboard"
+      : visibleMobileTab === "rankings"
+          ? "rankings"
+          : visibleMobileTab === "predictor"
+            ? "predictor"
+        : "bracket"
+    : visibleMainView === "leaderboard"
+      ? "leaderboard"
+      : visibleMainView === "rankings"
+          ? "rankings"
+          : visibleMainView === "predictor"
+            ? "predictor"
+        : "bracket";
+  const bugReportContext = useMemo<BugReportModalProps>(
+    () => ({
+      activeRegion:
+        isMobile && visibleMobileTab === "bracket"
+          ? (mobileSection === "FF" ? "Final Four" : mobileSection)
+          : undefined,
+      activeRound:
+        isMobile && visibleMobileTab === "bracket"
+          ? (mobileSection === "FF" ? mobileFfRound : mobileRound)
+          : undefined,
+      activeTab: isMobile ? visibleMobileTab : visibleMainView,
+      pickCount,
+      chaosScore,
+      displayMode,
+      isFuturesOpen: isMobile ? visibleMobileTab === "futures" : visibleMainView === "futures",
+      isSimRunning: staggeredSimRunning || isUpdating,
+      bracketHash: Object.keys(sanitized).length > 0 ? encodeBracketState(sanitized) : null,
+      isMobile,
+    }),
+    [
+      chaosScore,
+      displayMode,
+      isMobile,
+      isUpdating,
+      visibleMainView,
+      mobileFfRound,
+      mobileRound,
+      mobileSection,
+      visibleMobileTab,
+      pickCount,
+      sanitized,
+      staggeredSimRunning,
+    ],
+  );
+
+  const switchTopNavView = (view: TopNavView) => {
+    if (view === "groups") {
+      openGroupsHub();
+      return;
+    }
+
+    setGroupsHubOpen(false);
+    setActiveGroup(null);
+    if (isMobile) {
+      setMobileTab(view === "bracket" ? "bracket" : view);
+    } else {
+      setMainView(view === "bracket" ? "bracket" : view);
+    }
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
+  const openWrappedFromToolbar = () => {
+    if (!wrappedData) return;
+    trackEvent("wrapped_opened", {
+      trigger: "toolbar",
+      chaosLabel: wrappedData.identity.chaosLabel,
+      champion: wrappedData.champion.teamName,
+      repeat: wrappedSeen,
+    });
+    setShowWrappedCard(false);
+    setShowWrappedFlow(true);
+  };
+
+  const toggleFirstFourBar = () => {
+    setOpenToolbarMenu(null);
+    setFirstFourExpanded((prev) => !prev);
+  };
+
+  const openGroupsHub = () => {
+    setOpenToolbarMenu(null);
+    if (!isAuthenticated || !user) {
+      setAuthModalContext("groups");
+      setAuthModalOpen(true);
+      return;
+    }
+
+    setActiveGroup(null);
+    setGroupsHubRefreshKey((current) => current + 1);
+    setGroupsHubOpen(true);
+  };
+
+  const showChaosInToolbar = !isMobile && chaosScore !== null;
+  const showToolbarFirstFour = playInGames.length > 0;
+  const showToolbarSubmitAction = true;
+  const firstFourBadgeLabel = allPlayInDecided ? "✓" : `${decidedPlayInCount}/${playInGames.length}`;
+  const remainingPicks = SUBMIT_EXPECTED_PICK_COUNT - pickCount;
+  const submitButtonTitle = !isAuthenticated
+    ? "Sign in to submit your bracket"
+    : !bracketComplete
+      ? `${remainingPicks} pick${remainingPicks !== 1 ? "s" : ""} remaining`
+    : submissionsLocked
+        ? "Submissions locked at tip-off"
+        : submissionLimitReached
+          ? `Submission limit reached (${MAX_SUBMITTED_BRACKETS}/${MAX_SUBMITTED_BRACKETS})`
+          : `Submitted: ${submittedBracketCount}/${MAX_SUBMITTED_BRACKETS}`;
+  const submitButtonLabel = saveStatus === "saving"
+    ? "Submitting..."
+    : saveStatus === "saved"
+      ? "Bracket Submitted"
+    : saveStatus === "error"
+        ? (saveErrorText?.toLowerCase().includes("complete all")
+            ? `${remainingPicks} picks left`
+            : saveErrorText?.includes(String(MAX_SUBMITTED_BRACKETS))
+              ? `Limit reached (${MAX_SUBMITTED_BRACKETS}/${MAX_SUBMITTED_BRACKETS})`
+              : saveErrorText?.toLowerCase().includes("locked")
+                ? "Submissions locked"
+                : "Error — try again")
+        : bracketComplete
+          ? `Submit${isAuthenticated ? ` (${submittedBracketCount}/${MAX_SUBMITTED_BRACKETS})` : ""}`
+          : `${pickCount}/${SUBMIT_EXPECTED_PICK_COUNT} picks`;
+
+  const overflowPrimaryItems: OverflowMenuItem[] = [
+    ...(isMobile
+      ? [{
+          id: "reset-bracket",
+          label: "Reset Bracket",
+          onSelect: () => {
+            setOpenToolbarMenu(null);
+            onRequestResetAll();
+          },
+        }]
+      : []),
+    ...(!showToolbarFirstFour
+      ? [{
+          id: "first-four",
+          label: playInGames.length > 0
+            ? `First Four ${allPlayInDecided ? "✓" : `(${decidedPlayInCount}/${playInGames.length})`}`
+            : "First Four",
+          onSelect: toggleFirstFourBar,
+        }]
+      : []),
+    {
+      id: "copy-link",
+      label: linkCopied ? "✓ Copied!" : "Copy Link",
+      onSelect: () => {
+        setOpenToolbarMenu(null);
+        void onCopyShareLink();
+      },
+    },
+    ...(isMobile && undoStack.length > 0
+      ? [{
+          id: "undo-last-pick",
+          label: "↩ Undo Last Pick",
+          onSelect: () => {
+            setOpenToolbarMenu(null);
+            onUndo();
+          },
+        }]
+      : []),
+    ...(wrappedData
+      ? [{
+          id: "wrapped",
+          label: "🎁 Wrapped",
+          onSelect: () => {
+            setOpenToolbarMenu(null);
+            openWrappedFromToolbar();
+          },
+        }]
+      : []),
+    ...(isAuthenticated
+      ? [{
+          id: "my-brackets",
+          label: "My Brackets",
+          onSelect: () => {
+            setOpenToolbarMenu(null);
+            setMyBracketsOpen(true);
+          },
+        }]
+      : []),
+    ...(!walkthroughActive && !welcomeGateOpen
+      ? [{
+          id: "replay-tour",
+          label: "Replay Tour",
+          onSelect: () => {
+            setOpenToolbarMenu(null);
+            if (isMobile) setShowMobileOnboarding(true);
+            else startWalkthrough({ replay: true });
+          },
+        }]
+      : []),
+  ];
+
+  const overflowSecondaryItems: OverflowMenuItem[] = isMobile
+    ? []
+    : [
+        {
+          id: "reset-all",
+          label: "Reset All",
+          onSelect: () => {
+            setOpenToolbarMenu(null);
+            onRequestResetAll();
+          },
+          tone: "accent",
+        },
+      ];
+
   const toolbar = (
     <div className="eg-main-actions toolbar">
       <button
         onClick={onUndo}
         disabled={undoStack.length === 0}
         className="eg-btn toolbar-btn--undo"
-        style={!isMobile && mainView !== "bracket" && mainView !== "futures" ? { display: "none" } : undefined}
       >
         Undo
       </button>
-      <button
-        onClick={onRequestResetAll}
-        className="eg-btn toolbar-btn--reset"
-        style={!isMobile && mainView !== "bracket" && mainView !== "futures" ? { display: "none" } : undefined}
-      >
-        Reset All
-      </button>
+
+      <OverflowMenu
+        primaryItems={overflowPrimaryItems}
+        secondaryItems={overflowSecondaryItems}
+        open={openToolbarMenu === "overflow"}
+        onToggle={() => setOpenToolbarMenu((prev) => (prev === "overflow" ? null : "overflow"))}
+      />
+
+      {showToolbarFirstFour ? (
+        <button
+          type="button"
+          onClick={toggleFirstFourBar}
+          className={`eg-btn toolbar-btn--first-four${allPlayInDecided && !firstFourExpanded ? " ff-pill-collapsed-done" : ""}`}
+          title={firstFourExpanded ? "Collapse First Four" : "Expand First Four"}
+        >
+          <span>First Four</span>
+          <span className="toolbar-btn-badge">{firstFourBadgeLabel}</span>
+        </button>
+      ) : null}
+
+      {isMobile && showToolbarSubmitAction ? (
+        <button
+          onClick={() => void onSaveBracket()}
+          className={`eg-btn toolbar-btn--save toolbar-btn--save-action${
+            bracketComplete && saveStatus !== "saving" && saveStatus !== "saved"
+              ? " toolbar-btn--save-ready"
+              : ""
+          }`}
+          disabled={saveStatus === "saving" || (isAuthenticated && !canSubmitBrackets)}
+          title={submitButtonTitle}
+        >
+          {submitButtonLabel}
+        </button>
+      ) : null}
+
       {!isMobile ? (
         <button
-          onClick={() => setMainView((prev) => (prev === "futures" ? "bracket" : "futures"))}
-          className={`eg-btn toolbar-btn--futures ${mainView === "futures" ? "toolbar-btn--futures-active" : ""}`}
-          style={!isMobile && mainView !== "bracket" && mainView !== "futures" ? { display: "none" } : undefined}
+          onClick={() => {
+            setMainView((prev) => (prev === "futures" ? "bracket" : "futures"));
+          }}
+          className={`eg-btn toolbar-btn--futures ${
+            mainView === "futures" ? "toolbar-btn--futures-active" : ""
+          }`}
         >
           <span className="futures-btn-icon">📊</span>
           <span className="futures-btn-label">Futures</span>
           {pickCount > 0 ? <span className="futures-btn-badge">{pickCount}</span> : null}
         </button>
       ) : null}
-      <button
-        onClick={onModelSim}
-        className="eg-btn toolbar-btn--instant"
-      >
-        Instant Sim
-      </button>
-      <button
-        onClick={onModelSimStaggered}
-        className="eg-btn toolbar-btn--staggered"
-        disabled={staggeredSimRunning}
-      >
-        {staggeredSimRunning ? "Staggered Sim Running..." : "Staggered Sim"}
-      </button>
-      <button
-        onClick={onSaveBracket}
-        className="eg-btn toolbar-btn--save toolbar-btn--save-action"
-        disabled={saveStatus === "saving" || (isAuthenticated && !canSubmitBrackets)}
-        title={
-          !isAuthenticated
-            ? "Sign in to submit your bracket"
-            : submissionsLocked
-              ? "Submissions locked at tip-off"
-              : submissionLimitReached
-                ? "Submission limit reached (25/25)"
-                : `Submitted: ${submittedBracketCount}/25`
-        }
-        style={!isMobile && mainView !== "bracket" && mainView !== "futures" ? { display: "none" } : undefined}
-      >
-        {saveStatus === "saving"
-          ? "Submitting..."
-          : saveStatus === "saved"
-            ? "✓ Submitted"
-            : saveStatus === "error"
-              ? (saveErrorText?.includes("25")
-                  ? "Submission limit reached (25/25)"
-                  : saveErrorText?.toLowerCase().includes("locked")
-                    ? "Submissions locked"
-                    : "Error — try again")
-              : `Submit Bracket ${isAuthenticated ? `(${submittedBracketCount}/25)` : ""}`}
-      </button>
-      <button
-        onClick={() => setShowFirstFourModal(true)}
-        className="eg-btn toolbar-btn--firstfour"
-        style={!isMobile && mainView !== "bracket" && mainView !== "futures" ? { display: "none" } : undefined}
-      >
-        {playInGames.length > 0
-          ? `First Four ${allPlayInDecided ? "✓" : `(${decidedPlayInCount}/${playInGames.length})`}`
-          : "First Four"}
-      </button>
-      {isAuthenticated ? (
-        <button
-          onClick={() => setMyBracketsOpen(true)}
-          className="eg-btn toolbar-btn--mybrackets"
-          style={!isMobile && mainView !== "bracket" && mainView !== "futures" ? { display: "none" } : undefined}
-        >
-          My Brackets
-        </button>
-      ) : null}
-      {isMobile ? (
-        <button
-          onClick={() => setMobileTab("leaderboard")}
-          className="eg-btn toolbar-btn--leaderboard"
-        >
-          🏆 Leaderboard
-        </button>
-      ) : (
-        <>
-          <button
-            onClick={() => setMainView((prev) => (prev === "conferences" ? "bracket" : "conferences"))}
-            className={`eg-btn toolbar-btn--conferences ${mainView === "conferences" ? "toolbar-btn--active-view" : ""}`}
-          >
-            {mainView === "conferences" ? "← Bracket" : "Conf. Tourneys"}
-          </button>
-          <button
-            onClick={() => setMainView((prev) => (prev === "rankings" ? "bracket" : "rankings"))}
-            className={`eg-btn toolbar-btn--rankings ${mainView === "rankings" ? "toolbar-btn--active-view" : ""}`}
-          >
-            {mainView === "rankings" ? "← Bracket" : "Rankings"}
-          </button>
-          <button
-            onClick={() => setMainView((prev) => (prev === "leaderboard" ? "bracket" : "leaderboard"))}
-            className={`eg-btn toolbar-btn--leaderboard ${mainView === "leaderboard" ? "toolbar-btn--active-view" : ""}`}
-          >
-            {mainView === "leaderboard" ? "← Bracket" : "🏆 Leaderboard"}
-          </button>
-          <button
-            onClick={() => setMainView((prev) => (prev === "predictor" ? "bracket" : "predictor"))}
-            className={`eg-btn toolbar-btn--predictor ${mainView === "predictor" ? "toolbar-btn--active-view" : ""}`}
-          >
-            {mainView === "predictor" ? "← Bracket" : "Predictor"}
-          </button>
-        </>
-      )}
-      <button
-        onClick={onCopyShareLink}
-        className="eg-btn copy-link-btn toolbar-btn--copy"
-        data-copied={linkCopied ? "true" : "false"}
-        aria-label="Copy shareable bracket link"
-        style={!isMobile && mainView !== "bracket" && mainView !== "futures" ? { display: "none" } : undefined}
-      >
-        {linkCopied ? "✓ Copied!" : "Copy Link"}
-      </button>
-      {staggeredSimRunning ? (
-        <button
-          onClick={onToggleStaggeredPause}
-          className="eg-btn toolbar-btn--staggered-toggle"
-          aria-label={staggeredSimPaused ? "Resume staggered simulation" : "Pause staggered simulation"}
-          title={staggeredSimPaused ? "Resume staggered simulation" : "Pause staggered simulation"}
-          style={!isMobile && mainView !== "bracket" && mainView !== "futures" ? { display: "none" } : undefined}
-        >
-          {staggeredSimPaused ? "▶" : "⏸"}
-        </button>
-      ) : null}
-      {staggeredSimRunning ? (
-        <div
-          className="eg-stagger-controls toolbar-btn--stagger-controls"
-          style={!isMobile && mainView !== "bracket" && mainView !== "futures" ? { display: "none" } : undefined}
-        >
-          <label htmlFor="stagger-delay" className="eg-stagger-label">
-            Stagger Delay: {(staggeredSimDelayMs / 1000).toFixed(1)}s
-          </label>
-          <input
-            id="stagger-delay"
-            type="range"
-            min={MIN_STAGGERED_SIM_DELAY_MS}
-            max={MAX_STAGGERED_SIM_DELAY_MS}
-            step={250}
-            value={staggeredSimDelayMs}
-            onChange={(event) => setStaggeredSimDelayMs(Number(event.target.value))}
-            className="eg-stagger-slider"
-          />
-        </div>
-      ) : null}
-      <div
-        className="odds-mode-toggle toolbar-btn--odds"
-        style={
-          !isMobile && mainView !== "bracket" && mainView !== "futures" && mainView !== "conferences"
-            ? { display: "none" }
-            : undefined
-        }
-      >
-        <button
-          className={`odds-mode-btn ${displayMode === "american" ? "odds-mode-btn--active" : ""}`}
-          onClick={() => {
-            showContextualHint(
-              "toggle",
-              "Switch between American odds (+300) and implied win probability (25.0%) across the entire product.",
-              ".odds-mode-toggle",
-              4000
-            );
-            trackEvent("odds_mode_toggled", {
-              from: displayMode,
-              to: "american",
-            });
-            setDisplayMode("american");
-          }}
-          aria-label="Show American odds"
-        >
-          +/-
-        </button>
-        <button
-          className={`odds-mode-btn ${displayMode === "implied" ? "odds-mode-btn--active" : ""}`}
-          onClick={() => {
-            showContextualHint(
-              "toggle",
-              "Switch between American odds (+300) and implied win probability (25.0%) across the entire product.",
-              ".odds-mode-toggle",
-              4000
-            );
-            trackEvent("odds_mode_toggled", {
-              from: displayMode,
-              to: "implied",
-            });
-            setDisplayMode("implied");
-          }}
-          aria-label="Show implied percentage"
-        >
-          %
-        </button>
-      </div>
-      {!isMobile && chaosScore !== null ? (
-        <div
-          className={`chaos-score-wrap ${chaosScoreChanged ? "chaos-score-pill--changed" : ""}`}
-        >
+
+
+      {showChaosInToolbar ? (
+        <div className={`chaos-score-wrap ${chaosScoreChanged ? "chaos-score-pill--changed" : ""}`}>
           <button
             type="button"
             className="chaos-pill"
@@ -3153,11 +3289,41 @@ function App() {
           </button>
         </div>
       ) : null}
-      {isAuthenticated && submissionsLocked ? (
-        <div className="bracket-lock-banner" style={!isMobile && mainView !== "bracket" && mainView !== "futures" ? { display: "none" } : undefined}>
-          🔒 Submissions locked at tip-off. Tournament is live — check the leaderboard.
-        </div>
-      ) : null}
+
+      <div className="odds-mode-toggle toolbar-btn--odds">
+        <button
+          className={`odds-mode-btn ${displayMode === "implied" ? "odds-mode-btn--active" : ""}`}
+          onClick={() => {
+            showContextualHint(
+              "toggle",
+              "Switch between American odds (+300) and implied win probability (25.0%) across the entire product.",
+              ".odds-mode-toggle",
+              4000
+            );
+            trackEvent("odds_mode_toggled", { from: displayMode, to: "implied" });
+            setDisplayMode("implied");
+          }}
+          aria-label="Show implied percentage"
+        >
+          %
+        </button>
+        <button
+          className={`odds-mode-btn ${displayMode === "american" ? "odds-mode-btn--active" : ""}`}
+          onClick={() => {
+            showContextualHint(
+              "toggle",
+              "Switch between American odds (+300) and implied win probability (25.0%) across the entire product.",
+              ".odds-mode-toggle",
+              4000
+            );
+            trackEvent("odds_mode_toggled", { from: displayMode, to: "american" });
+            setDisplayMode("american");
+          }}
+          aria-label="Show American odds"
+        >
+          US
+        </button>
+      </div>
     </div>
   );
 
@@ -3661,6 +3827,20 @@ function App() {
             {chaosTrackerBar}
             {mobileTab === "bracket" ? (
               <>
+                {playInGames.length > 0 ? (
+                  <FirstFourBar
+                    playInGames={playInGames}
+                    gameWinProbs={simResult.gameWinProbs}
+                    displayMode={displayMode}
+                    expanded={firstFourExpanded}
+                    onPick={(gameId, teamId) => {
+                      const playInGame = gameById.get(gameId);
+                      if (!playInGame || !teamId) return;
+                      onPick(playInGame, teamId);
+                    }}
+                    onRandomize={handleRandomizeFirstFour}
+                  />
+                ) : null}
                 <MobileRegionTabs activeSection={mobileSection} onChange={setMobileSection} />
                 <div className="mobile-bracket-scroll">
                   {mobileSection === "FF" ? (
@@ -3741,9 +3921,26 @@ function App() {
         ) : (
           <section className="eg-layout">
             <div className="eg-main-panel">
-              {toolbar}
-              {chaosTrackerBar}
-              <div className="eg-bracket-stack" style={{ display: mainView === "bracket" ? undefined : "none" }}>
+              {showToolbar ? toolbar : null}
+              {showToolbar ? chaosTrackerBar : null}
+              {isAuthenticated && submissionsLocked && showToolbar ? (
+                <div className="bracket-lock-banner">🔒 Submissions locked at tip-off. Tournament is live — check the leaderboard.</div>
+              ) : null}
+              {playInGames.length > 0 && visibleMainView === "bracket" ? (
+                <FirstFourBar
+                  playInGames={playInGames}
+                  gameWinProbs={simResult.gameWinProbs}
+                  displayMode={displayMode}
+                  expanded={firstFourExpanded}
+                  onPick={(gameId, teamId) => {
+                    const playInGame = gameById.get(gameId);
+                    if (!playInGame || !teamId) return;
+                    onPick(playInGame, teamId);
+                  }}
+                  onRandomize={handleRandomizeFirstFour}
+                />
+              ) : null}
+              <div className="eg-bracket-stack" style={{ display: visibleMainView === "bracket" ? undefined : "none" }}>
                 <section
                   className="eg-bracket-section top-half"
                   data-half-expanded={topHalfManuallyExpanded ? "true" : "false"}
@@ -4045,20 +4242,7 @@ function App() {
 
       {showDesktopFirst && isMobile ? <DesktopFirstModal onDismiss={handleDismissDesktopFirst} /> : null}
 
-      {showFirstFourModal && onboardingFlowReady ? (
-        <FirstFourModal
-          playInGames={playInGames}
-          gameWinProbs={simResult.gameWinProbs}
-          onPick={(gameId, teamId) => {
-            const playInGame = gameById.get(gameId);
-            if (!playInGame || !teamId) return;
-            onPick(playInGame, teamId);
-          }}
-          onRandomize={handleRandomizeFirstFour}
-          onOpenMatchupStats={openMatchupStats}
-          onClose={() => setShowFirstFourModal(false)}
-        />
-      ) : null}
+      {/* FirstFourModal removed — replaced by inline FirstFourBar */}
 
       {activeHint ? (
         <ContextualHint
@@ -4164,142 +4348,65 @@ function PromoCTA({
   );
 }
 
-function FirstFourModal({
-  playInGames,
-  gameWinProbs,
-  onPick,
-  onRandomize,
-  onOpenMatchupStats,
+function GroupAssignmentPrompt({
+  bracketName,
+  groups,
+  savingGroupId,
+  error,
+  onAssign,
   onClose,
 }: {
-  playInGames: ResolvedGame[];
-  gameWinProbs: SimulationOutput["gameWinProbs"];
-  onPick: (gameId: string, teamId: string | null) => void;
-  onRandomize: () => void;
-  onOpenMatchupStats: (game: ResolvedGame) => void;
+  bracketName: string;
+  groups: UserGroup[];
+  savingGroupId: string | null;
+  error: string | null;
+  onAssign: (groupId: string) => void;
   onClose: () => void;
 }) {
-  const allDecided = playInGames.every((game) => Boolean(game.winnerId));
-  const decidedCount = playInGames.filter((game) => Boolean(game.winnerId)).length;
-
   return (
-    <div className="ff-modal-overlay" onClick={onClose}>
-      <div className="ff-modal" onClick={(event) => event.stopPropagation()}>
-        <div className="ff-modal-header">
-          <div>
-            <h2 className="ff-modal-title">First Four</h2>
-            <p className="ff-modal-subtitle">
-              {allDecided
-                ? "All play-in games decided. These winners advance to the Round of 64."
-                : "Pick the winners of each play-in game to set the Round of 64 field."}
-            </p>
-          </div>
-          {!allDecided ? (
-            <button className="ff-randomize-btn" onClick={onRandomize}>
-              🎲 Pick for me
-            </button>
-          ) : null}
-          <button className="ff-modal-close" onClick={onClose}>
-            ✕
-          </button>
+    <div className="group-modal-overlay" onClick={onClose}>
+      <div className="group-modal group-modal--assignment" onClick={(event) => event.stopPropagation()}>
+        <button className="group-modal-close-btn" onClick={onClose}>
+          ✕
+        </button>
+        <div className="group-modal-header">
+          <span className="group-modal-icon">👥</span>
+          <h2 className="group-modal-title">Add this bracket to your groups?</h2>
+          <p className="group-modal-subtitle">
+            <strong>{bracketName}</strong> is submitted. Add it anywhere you have not picked a group bracket yet.
+          </p>
         </div>
 
-        <div className="ff-modal-games">
-          {playInGames.map((game) => (
-            <FirstFourGameCard
-              key={game.id}
-              game={game}
-              gameWinProbs={gameWinProbs}
-              onPick={(teamId) => onPick(game.id, teamId)}
-              onOpenMatchupStats={onOpenMatchupStats}
-            />
-          ))}
+        <div className="group-modal-body">
+          <div className="group-assignment-list">
+            {groups.map((group) => (
+              <div key={group.id} className="group-assignment-row">
+                <div className="group-assignment-info">
+                  <span className="group-assignment-name">
+                    <span className="group-assignment-emoji">{group.emoji ?? "👥"}</span>
+                    {group.name}
+                  </span>
+                  <span className="group-assignment-meta">
+                    {group.memberCount} {group.memberCount === 1 ? "member" : "members"}
+                  </span>
+                </div>
+                <button
+                  className="group-assignment-btn"
+                  disabled={savingGroupId !== null}
+                  onClick={() => onAssign(group.id)}
+                >
+                  {savingGroupId === group.id ? "Adding..." : "Add Bracket"}
+                </button>
+              </div>
+            ))}
+          </div>
+          {error ? <p className="group-error">{error}</p> : null}
         </div>
 
-        <div className="ff-modal-footer">
-          <button
-            className={`ff-modal-done ${allDecided ? "ff-modal-done--ready" : "ff-modal-done--partial"}`}
-            onClick={allDecided ? onClose : undefined}
-          >
-            {allDecided ? "Continue to Bracket →" : `${decidedCount}/${playInGames.length} decided`}
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function FirstFourGameCard({
-  game,
-  gameWinProbs,
-  onPick,
-  onOpenMatchupStats,
-}: {
-  game: ResolvedGame;
-  gameWinProbs: SimulationOutput["gameWinProbs"];
-  onPick: (teamId: string) => void;
-  onOpenMatchupStats: (game: ResolvedGame) => void;
-}) {
-  const teamA = game.teamAId ? teamsById.get(game.teamAId) ?? null : null;
-  const teamB = game.teamBId ? teamsById.get(game.teamBId) ?? null : null;
-  if (!teamA || !teamB) return null;
-
-  const probA = getGameWinProb(game, teamA.id, gameWinProbs) ?? getModelGameWinProb(game, teamA.id) ?? 0.5;
-  const probB = 1 - probA;
-  const winner = game.winnerId;
-
-  return (
-    <div className="ff-game-card">
-      <div className="ff-game-header">
-        <span className="ff-game-label">PLAY-IN · {(teamA.region || "").toUpperCase()}</span>
-        <span className="ff-game-seed">Seed {seedLabel(teamA).replace(/[ab]$/i, "")}</span>
-      </div>
-
-      <div className="ff-game-matchup">
-        <button
-          type="button"
-          className="matchup-stats-icon matchup-stats-icon--ff matchup-stats-icon--ff-inline"
-          onClick={(event) => {
-            event.stopPropagation();
-            onOpenMatchupStats(game);
-          }}
-          title="View matchup stats"
-          aria-label="View matchup stats"
-        >
-          {"i"}
-        </button>
-        <button
-          type="button"
-          className={`ff-team-btn ${winner === teamA.id ? "ff-team-btn--winner" : ""} ${winner && winner !== teamA.id ? "ff-team-btn--loser" : ""}`}
-          onClick={() => onPick(teamA.id)}
-        >
-          <div className="ff-team-info">
-            <span className="ff-team-seed">{seedLabel(teamA)}</span>
-            <TeamLogo teamName={teamA.name} src={teamLogoUrl(teamA)} className="ff-team-logo" teamSeed={seedLabel(teamA)} />
-            <span className="ff-team-name">{teamA.name}</span>
-          </div>
-          <span className="ff-team-pct">{(probA * 100).toFixed(1)}%</span>
-          {winner === teamA.id ? <span className="ff-team-check">✓</span> : null}
-        </button>
-
-        <span className="ff-vs">vs</span>
-
-        <button
-          type="button"
-          className={`ff-team-btn ${winner === teamB.id ? "ff-team-btn--winner" : ""} ${winner && winner !== teamB.id ? "ff-team-btn--loser" : ""}`}
-          onClick={() => onPick(teamB.id)}
-        >
-          <div className="ff-team-info">
-            <span className="ff-team-seed">{seedLabel(teamB)}</span>
-            <TeamLogo teamName={teamB.name} src={teamLogoUrl(teamB)} className="ff-team-logo" teamSeed={seedLabel(teamB)} />
-            <span className="ff-team-name">{teamB.name}</span>
-          </div>
-          <span className="ff-team-pct">{(probB * 100).toFixed(1)}%</span>
-          {winner === teamB.id ? <span className="ff-team-check">✓</span> : null}
+        <button className="group-secondary-btn group-secondary-btn--full" onClick={onClose}>
+          Maybe later
         </button>
       </div>
-
-      {winner ? <div className="ff-game-result">{winner === teamA.id ? teamA.name : teamB.name} advances to R64</div> : null}
     </div>
   );
 }
