@@ -28,6 +28,7 @@ import {
 import { fallbackLogo, teamLogoUrl } from "./lib/logo";
 import { fullTeamName } from "./lib/teamNames";
 import { trackEvent } from "./lib/analytics";
+import { extractInviteCode } from "./lib/inviteCode";
 import { useAuth } from "./AuthContext";
 import { AuthModal } from "./AuthModal";
 import { MyBracketsModal } from "./MyBracketsModal";
@@ -946,17 +947,18 @@ function App() {
     if (typeof window === "undefined") return;
 
     const url = new URL(window.location.href);
-    const code = url.searchParams.get("join") ?? url.searchParams.get("code");
+    const rawCode = url.searchParams.get("join") ?? url.searchParams.get("code");
+    const code = extractInviteCode(rawCode);
     if (code) {
-      const upper = code.toUpperCase();
-      setJoinCode(upper);
-      sessionStorage.setItem("pendingJoinCode", upper);
+      setJoinCode(code);
+      sessionStorage.setItem("pendingJoinCode", code);
       url.searchParams.delete("join");
       url.searchParams.delete("code");
       window.history.replaceState({}, "", `${url.pathname}${url.search}${url.hash}`);
     } else {
       const saved = sessionStorage.getItem("pendingJoinCode");
-      if (saved) setJoinCode(saved);
+      const extractedSaved = extractInviteCode(saved);
+      if (extractedSaved) setJoinCode(extractedSaved);
     }
   }, []);
 

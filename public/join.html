@@ -20,7 +20,7 @@
       // Preserve the invite code and redirect to main app
       var params = new URLSearchParams(window.location.search);
       var code = params.get('code');
-      window.location.replace('/' + (code ? '?join=' + code : ''));
+      window.location.replace('/' + (code ? '?join=' + encodeURIComponent(code) : ''));
     </script>
   </head>
   <body></body>

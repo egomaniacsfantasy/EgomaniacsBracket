@@ -2,6 +2,7 @@ import { supabase } from "./supabaseClient";
 import { resolveGames, type LockedPicks } from "./lib/bracket";
 import { teamsById } from "./data/teams";
 import { teamLogoUrl } from "./lib/logo";
+import { extractInviteCode } from "./lib/inviteCode";
 
 export type GroupRow = {
   id: string;
@@ -169,10 +170,15 @@ export async function createGroup(userId: string, groupName: string, emoji: stri
 }
 
 export async function joinGroup(inviteCode: string, userId: string, bracketId: string | null) {
+  const normalizedInviteCode = extractInviteCode(inviteCode);
+  if (normalizedInviteCode.length === 0) {
+    return { data: null, error: { message: "Group not found. Check the invite code." } };
+  }
+
   const { data: group, error: lookupError } = await supabase
     .from("groups")
     .select("id, name, is_active")
-    .eq("invite_code", inviteCode.toUpperCase().trim())
+    .eq("invite_code", normalizedInviteCode)
     .single();
 
   if (lookupError || !group) {
@@ -509,10 +515,15 @@ export async function getGroupMembers(groupId: string) {
 }
 
 export async function getGroupByCode(inviteCode: string) {
+  const normalizedInviteCode = extractInviteCode(inviteCode);
+  if (normalizedInviteCode.length === 0) {
+    return { data: null, error: { message: "Group not found. Check the invite code." } };
+  }
+
   const { data, error } = await supabase
     .from("groups")
     .select("id, name, emoji, invite_code, is_active, created_at")
-    .eq("invite_code", inviteCode.toUpperCase().trim())
+    .eq("invite_code", normalizedInviteCode)
     .single();
 
   return { data: data as GroupRow | null, error };

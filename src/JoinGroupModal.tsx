@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import { useAuth } from "./AuthContext";
 import { getGroupByCode, joinGroup, type GroupRow } from "./groupStorage";
 import { getUserBrackets, type SavedBracket } from "./bracketStorage";
+import { extractInviteCode } from "./lib/inviteCode";
 
 export function JoinGroupModal({
   isOpen,
@@ -18,7 +19,7 @@ export function JoinGroupModal({
 }) {
   const { user } = useAuth();
   const [step, setStep] = useState<"code" | "bracket" | "done">("code");
-  const [code, setCode] = useState(initialCode || "");
+  const [code, setCode] = useState(extractInviteCode(initialCode));
   const [group, setGroup] = useState<GroupRow | null>(null);
   const [brackets, setBrackets] = useState<SavedBracket[]>([]);
   const [selectedBracket, setSelectedBracket] = useState<string | null>(null);
@@ -27,7 +28,7 @@ export function JoinGroupModal({
   const [joinedWithoutBracket, setJoinedWithoutBracket] = useState(false);
 
   const lookupGroup = useCallback(async (lookupCodeRaw: string) => {
-    const lookupCode = lookupCodeRaw.trim().toUpperCase();
+    const lookupCode = extractInviteCode(lookupCodeRaw);
     if (!lookupCode || !user) return;
     setLoading(true);
     setError("");
@@ -79,6 +80,13 @@ export function JoinGroupModal({
       return;
     }
     void lookupGroup(code);
+  }
+
+  function handleCodePaste(event: React.ClipboardEvent<HTMLInputElement>) {
+    const pasted = extractInviteCode(event.clipboardData.getData("text"));
+    if (!pasted) return;
+    event.preventDefault();
+    setCode(pasted);
   }
 
   async function handleJoin() {
@@ -134,7 +142,8 @@ export function JoinGroupModal({
                 type="text"
                 className="group-input group-input--code"
                 value={code}
-                onChange={(e) => setCode(e.target.value.toUpperCase())}
+                onChange={(e) => setCode(extractInviteCode(e.target.value))}
+                onPaste={handleCodePaste}
                 placeholder="e.g. CHAOS26A"
                 maxLength={8}
                 autoFocus
