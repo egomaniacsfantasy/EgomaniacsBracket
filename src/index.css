@@ -15350,7 +15350,7 @@ body.walkthrough-active .odds-value--changed::after {
   }
 
   .ft-desktop-header-block {
-    padding-right: 160px;
+    padding-right: 0;
   }
 
   .ft-desktop-header-copy {

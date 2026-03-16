@@ -152,7 +152,6 @@ const MOBILE_BODY_CLASSES_BY_TAB: Record<
   predictor: ["mobile-tab-predictor"],
 };
 
-
 const canonicalGameTemplates = (() => {
   const regional: typeof gameTemplates = [];
   for (const region of URL_REGION_ORDER) {
@@ -624,11 +623,7 @@ function App() {
   const [staggeredSimRunning, setStaggeredSimRunning] = useState(false);
   const [staggeredSimPaused, setStaggeredSimPaused] = useState(false);
   const [staggeredSimDelayMs, setStaggeredSimDelayMs] = useState(STAGGERED_SIM_DELAY_MS);
-  const [welcomeGateOpen, setWelcomeGateOpen] = useState(() => {
-    if (typeof window === "undefined") return false;
-    if (window.matchMedia("(max-width: 767px)").matches) return false;
-    return window.localStorage.getItem(ONBOARDING_STORAGE_KEY) !== "true";
-  });
+  const [welcomeGateOpen, setWelcomeGateOpen] = useState(false);
   const [showMobileOnboarding, setShowMobileOnboarding] = useState(false);
   const [walkthroughActive, setWalkthroughActive] = useState(false);
   const [walkthroughStep, setWalkthroughStep] = useState(0);
@@ -853,17 +848,15 @@ function App() {
   }, []);
 
   useEffect(() => {
-    if (typeof window === "undefined") return;
-    const dismissed = window.localStorage.getItem(ONBOARDING_STORAGE_KEY) === "true";
     if (isMobile) {
       setWelcomeGateOpen(false);
-      setShowMobileOnboarding(!dismissed);
+      setShowMobileOnboarding(false);
       setWalkthroughActive(false);
       return;
     }
 
     setShowMobileOnboarding(false);
-    setWelcomeGateOpen(!dismissed);
+    setWelcomeGateOpen(false);
   }, [isMobile]);
 
   useEffect(() => {
@@ -3278,11 +3271,6 @@ function App() {
   }, [walkthroughActive]);
 
   useEffect(() => {
-    if (!welcomeGateOpen || walkthroughActive || isMobile) return;
-    startWalkthrough();
-  }, [isMobile, startWalkthrough, walkthroughActive, welcomeGateOpen]);
-
-  useEffect(() => {
     const inWalkthroughSession = welcomeGateOpen || walkthroughActive;
     if (!inWalkthroughSession) return;
     const handleWalkthroughKeydown = (event: KeyboardEvent) => {
@@ -3580,11 +3568,11 @@ function App() {
     ...(!walkthroughActive && !welcomeGateOpen
       ? [{
           id: "replay-tour",
-          label: "Replay Tour",
+          label: "Get Tour",
           onSelect: () => {
             setOpenToolbarMenu(null);
             if (isMobile) setShowMobileOnboarding(true);
-            else startWalkthrough({ replay: true });
+            else startWalkthrough();
           },
         }]
       : []),
@@ -3746,7 +3734,6 @@ function App() {
               <span className="chaos-pill-emoji">{chaosLabelData?.emoji ?? "📋"}</span>
               <span className="chaos-pill-label">{chaosLabelData?.label ?? "Chalk"}</span>
               <span className="chaos-pill-score">{chaosScore.toFixed(1)}</span>
-              {chaosPercentile !== null ? <span className="chaos-pill-pct">Top {Math.max(1, Math.round(100 - chaosPercentile))}%</span> : null}
             </button>
           </div>
         ) : null}
