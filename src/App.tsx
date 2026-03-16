@@ -2708,6 +2708,12 @@ function App() {
     setPostOnboardingPromoGateOpen(false);
   }, [authLoading, maybeShowPromoCTA, postOnboardingPromoGateOpen, promoCTAVisible]);
 
+  // With onboarding walkthrough disabled, show promo directly once app is ready
+  useEffect(() => {
+    if (!onboardingFlowReady || authLoading || promoCTAVisible || promoShown || promoDismissed) return;
+    maybeShowPromoCTA();
+  }, [authLoading, maybeShowPromoCTA, onboardingFlowReady, promoCTAVisible, promoDismissed, promoShown]);
+
   useEffect(() => {
     if (
       !onboardingFlowReady ||
