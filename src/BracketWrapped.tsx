@@ -47,7 +47,6 @@ export function BracketWrapped({ data, isBracketSubmitted, onSubmitBracket, onCl
   const [scale, setScale] = useState(1);
 
   const { identity, boldestPick, unlikelyRun, championPath, champion, finalFour } = data;
-  const isFinalScreen = screen === TOTAL_SCREENS - 1;
   // Compute scale factor for card frame (desktop only; mobile uses natural sizing)
   const isMobile = typeof window !== "undefined" && window.innerWidth < 768;
   useEffect(() => {
@@ -211,14 +210,10 @@ export function BracketWrapped({ data, isBracketSubmitted, onSubmitBracket, onCl
       </button>
 
       {/* Card frame */}
-      <div className={`bw-card-frame ${isFinalScreen ? "bw-card-frame--final" : ""}`} ref={frameRef}>
+      <div className="bw-card-frame" ref={frameRef}>
         <div
-          className={`bw-card-frame-inner ${isFinalScreen ? "bw-card-frame-inner--final" : ""}`}
-          style={
-            isMobile || isFinalScreen
-              ? undefined
-              : { transform: `scale(${scale})`, transformOrigin: "center center", width: 360, height: 640 }
-          }
+          className="bw-card-frame-inner"
+          style={isMobile ? undefined : { transform: `scale(${scale})`, transformOrigin: "center center", width: 360, height: 640 }}
         >
           {/* Ghosted background logos */}
           <div className="bw-ghosts" aria-hidden="true">

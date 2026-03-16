@@ -17459,63 +17459,11 @@ body.walkthrough-active .odds-value--changed::after {
     height: 85vh;
     width: calc(85vh * 9 / 16);
     max-width: 520px;
-    max-height: 920px;
+    max-height: 90vh;
+    overflow-y: auto;
     border-radius: 24px;
     border: 1px solid rgba(184,125,24,0.2);
     box-shadow: 0 0 120px rgba(184,125,24,0.06), 0 40px 100px rgba(0,0,0,0.5);
-  }
-
-  .bw-card-frame--final {
-    width: min(460px, calc(100vw - 32px));
-    height: auto;
-    max-height: 90vh;
-    max-width: 460px;
-    overflow-y: auto;
-    overflow-x: hidden;
-    align-items: stretch;
-    justify-content: flex-start;
-    box-sizing: border-box;
-    scrollbar-width: thin;
-    scrollbar-color: rgba(184,125,24,0.3) transparent;
-  }
-
-  .bw-card-frame--final::-webkit-scrollbar {
-    width: 6px;
-  }
-
-  .bw-card-frame--final::-webkit-scrollbar-track {
-    background: transparent;
-  }
-
-  .bw-card-frame--final::-webkit-scrollbar-thumb {
-    background: rgba(184,125,24,0.3);
-    border-radius: 3px;
-  }
-
-  .bw-card-frame-inner--final {
-    width: 100%;
-    height: auto;
-    min-height: 0;
-    transform: none !important;
-  }
-
-  .bw-card-frame--final .bw-screen {
-    height: auto;
-    min-height: 0;
-  }
-
-  .bw-card-frame--final .bw-screen--final {
-    justify-content: flex-start;
-  }
-
-  .bw-card-frame--final .bw-screen5-wrap {
-    margin: 0;
-    padding-bottom: 24px;
-  }
-
-  .bw-card-frame--final .bw-screen5-actions {
-    position: relative;
-    z-index: 2;
   }
 }
 @media (max-width: 767px) {
