@@ -9,6 +9,10 @@ function playInSeedLabel(team: Team): string {
   return team.seedLabel ?? String(team.seed);
 }
 
+function playInSlotLabel(team: Team): string {
+  return playInSeedLabel(team).toUpperCase();
+}
+
 function FirstFourBarTeamLogo({
   team,
   className,
@@ -75,15 +79,15 @@ function FirstFourBarCard({
         aria-pressed={isWinner}
         onClick={() => onPick(game, team.id)}
       >
-        <span className="ff-bar-team-top">
-          <span className="ff-bar-team-seed">{playInSeedLabel(team)}</span>
+        <span className="ff-bar-team-line">
+          <span className="ff-bar-team-seed">{playInSlotLabel(team)}</span>
           <FirstFourBarTeamLogo team={team} />
           <span className="ff-bar-team-name">{team.name}</span>
-        </span>
-        <span
-          className={`ff-bar-team-odds ${prob >= opponentProb ? "ff-bar-team-odds--favorite" : "ff-bar-team-odds--underdog"}`}
-        >
-          {formatOddsDisplay(prob, displayMode).primary}
+          <span
+            className={`ff-bar-team-odds ${prob >= opponentProb ? "ff-bar-team-odds--favorite" : "ff-bar-team-odds--underdog"}`}
+          >
+            {formatOddsDisplay(prob, displayMode).primary}
+          </span>
         </span>
       </button>
     );
