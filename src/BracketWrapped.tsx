@@ -3,7 +3,6 @@ import type { WrappedData } from "./lib/wrappedData";
 import { BracketWrappedCard } from "./BracketWrappedCard";
 import { trackEvent } from "./lib/analytics";
 import { exportWrappedCard } from "./lib/wrappedExport";
-import { formatAmericanFromProbability } from "./lib/odds";
 
 interface BracketWrappedProps {
   data: WrappedData;
@@ -48,7 +47,6 @@ export function BracketWrapped({ data, isBracketSubmitted, onSubmitBracket, onCl
   const [scale, setScale] = useState(1);
 
   const { identity, boldestPick, unlikelyRun, championPath, champion, finalFour } = data;
-  const isFinalScreen = screen === TOTAL_SCREENS - 1;
   // Compute scale factor for card frame (desktop only; mobile uses natural sizing)
   const isMobile = typeof window !== "undefined" && window.innerWidth < 768;
   useEffect(() => {
@@ -66,7 +64,7 @@ export function BracketWrapped({ data, isBracketSubmitted, onSubmitBracket, onCl
     updateScale();
     window.addEventListener("resize", updateScale);
     return () => window.removeEventListener("resize", updateScale);
-  }, [screen]);
+  }, []);
 
   // Collect logos for ghosted background
   const ghostLogos = [
@@ -212,14 +210,10 @@ export function BracketWrapped({ data, isBracketSubmitted, onSubmitBracket, onCl
       </button>
 
       {/* Card frame */}
-      <div className={`bw-card-frame ${isFinalScreen ? "bw-card-frame--final" : ""}`} ref={frameRef}>
+      <div className={`bw-card-frame ${screen === TOTAL_SCREENS - 1 ? "bw-card-frame--final" : ""}`} ref={frameRef}>
         <div
-          className={`bw-card-frame-inner ${isFinalScreen ? "bw-card-frame-inner--final" : ""}`}
-          style={
-            isMobile || isFinalScreen
-              ? undefined
-              : { transform: `scale(${scale})`, transformOrigin: "center center", width: 360, height: 640 }
-          }
+          className="bw-card-frame-inner"
+          style={isMobile ? undefined : { transform: `scale(${scale})`, transformOrigin: "center center", width: 360, height: 640 }}
         >
           {/* Ghosted background logos */}
           <div className="bw-ghosts" aria-hidden="true">
@@ -451,7 +445,6 @@ function Screen3Unlikely({ unlikelyRun }: { unlikelyRun: WrappedData["unlikelyRu
 // ---------------------------------------------------------------------------
 
 function Screen4Path({ championPath }: { championPath: WrappedData["championPath"] }) {
-  const americanOdds = formatAmericanFromProbability(championPath.pathProbability);
   const probColor = (p: number) => {
     if (p >= 0.75) return "var(--green, #4ade80)";
     if (p >= 0.5) return "#f0e6d0";
@@ -498,14 +491,6 @@ function Screen4Path({ championPath }: { championPath: WrappedData["championPath
             </div>
           );
         })}
-      </div>
-
-      <div className="bw-path-summary">
-        <span className="bw-path-summary-label">Your path odds</span>
-        <div className="bw-path-odds-block">
-          <span className="bw-path-odds-value">{americanOdds}</span>
-          <span className="bw-path-odds-context">to cut down the nets on this path</span>
-        </div>
       </div>
 
       <p className="bw-context-line">
