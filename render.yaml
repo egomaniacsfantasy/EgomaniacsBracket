@@ -4,7 +4,7 @@ services:
     env: static
     branch: main
     autoDeployTrigger: commit
-    buildCommand: echo "RENDER_DIAG_SHA=$(git rev-parse HEAD)" && echo "RENDER_DIAG_BRANCH=$(git branch --show-current)" && npm install && npm run build && echo "RENDER_DIAG_BUNDLE=$(grep -o 'src="[^"]*\.js"' dist/index.html)"
+    buildCommand: npm install && npm run build
     staticPublishPath: dist
     headers:
       - path: /*
