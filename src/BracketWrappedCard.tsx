@@ -63,6 +63,17 @@ export function BracketWrappedCard({
   const championPathGamesByRound = new Map(championPath.games.map((game) => [game.round, game]));
   const toughestRoundLabel = championPath.toughestGame.round || championPath.toughestGame.roundLabel;
 
+  // Cumulative probability of winning through each round (in gauntlet order)
+  const cumulativeProbByRound = new Map<string, number>();
+  let runningProb = 1;
+  for (const round of PATH_GAUNTLET_ROUNDS) {
+    const game = championPathGamesByRound.get(round);
+    if (game) {
+      runningProb *= game.winProbability;
+      cumulativeProbByRound.set(round, runningProb);
+    }
+  }
+
   // Collect logos for ghosted background
   const ghostLogos = [
     champion.teamLogoUrl,
@@ -219,7 +230,8 @@ export function BracketWrappedCard({
                   const isToughest =
                     game?.round === championPath.toughestGame.round &&
                     game.opponentName === championPath.toughestGame.opponentName;
-                  const probTone = game ? getPathProbTone(game.winProbability) : "neutral";
+                  const cumProb = game ? (cumulativeProbByRound.get(round) ?? null) : null;
+                  const probTone = cumProb !== null ? getPathProbTone(cumProb) : "neutral";
 
                   return (
                     <div
@@ -239,7 +251,7 @@ export function BracketWrappedCard({
                         )}
                       </span>
                       <span className={`bw-card-path-slot-prob bw-card-path-slot-prob--${probTone}`}>
-                        {game ? formatPercent(game.winProbability) : "--"}
+                        {cumProb !== null ? formatPercent(cumProb) : "--"}
                       </span>
                     </div>
                   );
