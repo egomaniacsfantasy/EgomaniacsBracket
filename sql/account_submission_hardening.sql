@@ -90,7 +90,7 @@ BEGIN
     RAISE EXCEPTION 'Submissions are locked at tip-off.';
   END IF;
 
-  -- Enforce max 25 submitted brackets per user.
+  -- Enforce max 10 submitted brackets per user.
   IF NEW.submitted_at IS NOT NULL
      AND (
        TG_OP = 'INSERT'
@@ -102,8 +102,8 @@ BEGIN
       AND b.submitted_at IS NOT NULL
       AND b.id <> COALESCE(NEW.id, '00000000-0000-0000-0000-000000000000'::uuid);
 
-    IF submit_count >= 25 THEN
-      RAISE EXCEPTION 'Submission limit reached (25/25).';
+    IF submit_count >= 10 THEN
+      RAISE EXCEPTION 'Submission limit reached (10/10).';
     END IF;
   END IF;
 

@@ -4253,6 +4253,18 @@ function FirstFourGameCard({
       <div className="ff-game-header">
         <span className="ff-game-label">PLAY-IN · {(teamA.region || "").toUpperCase()}</span>
         <span className="ff-game-seed">Seed {seedLabel(teamA).replace(/[ab]$/i, "")}</span>
+        <button
+          type="button"
+          className="matchup-stats-icon matchup-stats-icon--ff matchup-stats-icon--ff-inline"
+          onClick={(event) => {
+            event.stopPropagation();
+            onOpenMatchupStats(game);
+          }}
+          title="View matchup stats"
+          aria-label="View matchup stats"
+        >
+          {"i"}
+        </button>
       </div>
 
       <div className="ff-game-matchup">

@@ -69,15 +69,44 @@ const RANK_LIKE_METRICS = new Set<RankingTrendMetric>([
   "rankWLK",
   "rankBIH",
 ]);
+const LOWER_IS_BETTER_METRICS = new Set<RankingTrendMetric>([
+  ...RANK_LIKE_METRICS,
+  "defRtg",
+]);
 
 const ALL_CONFS = Array.from(new Set(D1_TEAMS.map((t) => t.conf))).sort();
 
 type TrendPoint = { daynum: number; value: number };
+const TREND_DISPLAY_START_DAYNUM = 40;
+const MASSEY_RANKINGS_URL = "https://masseyratings.com/ranks";
 
 function formatAxisValue(value: number, metric: RankingMetric): string {
   if (RANK_LIKE_METRICS.has(metric.key)) return `${Math.round(value)}`;
   const decimals = metric.chartDecimals ?? 2;
   return value.toFixed(decimals);
+}
+
+function getMobileMetricLabel(metric: RankingMetric): string {
+  switch (metric.key) {
+    case "mrRank":
+      return "OG";
+    case "mrScore":
+      return "Model";
+    case "netRtg":
+      return "Net";
+    case "offRtg":
+      return "Off";
+    case "defRtg":
+      return "Def";
+    case "eloSos":
+      return "SOS";
+    case "eloTrend":
+      return "Elo Δ";
+    case "last5Margin":
+      return "L5";
+    default:
+      return metric.label;
+  }
 }
 
 export function ExpandedRankings({
@@ -94,6 +123,7 @@ export function ExpandedRankings({
   const [trendTeamId, setTrendTeamId] = useState<number | null>(null);
 
   const metric = RANKING_METRICS[metricIdx];
+  const metricHeaderLabel = isMobile ? getMobileMetricLabel(metric) : metric.label;
 
   const teamById = useMemo(() => new Map(D1_TEAMS.map((team) => [team.id, team])), []);
 
@@ -131,12 +161,15 @@ export function ExpandedRankings({
     const byMetric = RANKING_TRENDS_BY_TEAM[trendTeamId];
     if (!byMetric) return [] as TrendPoint[];
     const values = byMetric[metric.key] ?? [];
+    const rankLike = RANK_LIKE_METRICS.has(metric.key);
     const points: TrendPoint[] = [];
     for (let i = 0; i < RANKING_TREND_DAYNUMS.length; i += 1) {
       const daynum = RANKING_TREND_DAYNUMS[i];
+      if (daynum < TREND_DISPLAY_START_DAYNUM) continue;
       const value = values[i];
       if (value === null || value === undefined || Number.isNaN(value)) continue;
-      points.push({ daynum, value });
+      const normalizedValue = rankLike ? Math.round(value) : value;
+      points.push({ daynum, value: normalizedValue });
     }
     return points;
   }, [metric.key, trendTeamId]);
@@ -171,18 +204,22 @@ export function ExpandedRankings({
       };
     }
 
-    const xMin = RANKING_TREND_DAYNUMS[0];
+    const firstDaynumInData = RANKING_TREND_DAYNUMS[0];
+    const xMin = Math.max(TREND_DISPLAY_START_DAYNUM, firstDaynumInData);
     const xMax = RANKING_TREND_DAYNUMS[RANKING_TREND_DAYNUMS.length - 1];
+    const rankLike = RANK_LIKE_METRICS.has(metric.key);
+    const lowerIsBetter = LOWER_IS_BETTER_METRICS.has(metric.key);
     const yVals = trendPoints.map((point) => point.value);
-    const yMin = Math.min(...yVals);
-    const yMax = Math.max(...yVals);
+    const rawYMin = Math.min(...yVals);
+    const rawYMax = Math.max(...yVals);
+    const yMin = rankLike ? Math.floor(rawYMin) : rawYMin;
+    const yMax = rankLike ? Math.ceil(rawYMax) : rawYMax;
     const xRange = Math.max(1, xMax - xMin);
     const yRange = Math.max(1e-9, yMax - yMin);
-    const rankLike = RANK_LIKE_METRICS.has(metric.key);
 
     const xFor = (daynum: number) => padL + ((daynum - xMin) / xRange) * plotW;
     const yFor = (value: number) =>
-      rankLike
+      lowerIsBetter
         ? padT + ((value - yMin) / yRange) * plotH
         : padT + (1 - (value - yMin) / yRange) * plotH;
 
@@ -192,22 +229,60 @@ export function ExpandedRankings({
       value: point.value,
       daynum: point.daynum,
     }));
-    const polyline = circles.map((point) => `${point.cx.toFixed(2)},${point.cy.toFixed(2)}`).join(" ");
+    let polylinePoints = circles.map((point) => `${point.cx.toFixed(2)},${point.cy.toFixed(2)}`);
+    if (rankLike && circles.length > 1) {
+      const steppedPoints: string[] = [`${circles[0].cx.toFixed(2)},${circles[0].cy.toFixed(2)}`];
+      for (let i = 1; i < circles.length; i += 1) {
+        const prev = circles[i - 1];
+        const curr = circles[i];
+        steppedPoints.push(`${curr.cx.toFixed(2)},${prev.cy.toFixed(2)}`);
+        steppedPoints.push(`${curr.cx.toFixed(2)},${curr.cy.toFixed(2)}`);
+      }
+      polylinePoints = steppedPoints;
+    }
+    const polyline = polylinePoints.join(" ");
 
-    const xTickCount = Math.min(6, RANKING_TREND_DAYNUMS.length);
-    const xTicks = Array.from({ length: xTickCount }, (_, idx) => {
-      const pos = xTickCount === 1 ? 0 : idx / (xTickCount - 1);
-      const daynum = Math.round(xMin + pos * xRange);
-      return { x: xFor(daynum), label: `${daynum}` };
-    });
+    const xTickStep = xRange > 120 ? 20 : 10;
+    const firstTick = Math.ceil(xMin / xTickStep) * xTickStep;
+    const xTickValues: number[] = [];
+    for (let daynum = firstTick; daynum <= xMax; daynum += xTickStep) {
+      xTickValues.push(daynum);
+    }
+    if (xTickValues.length === 0) {
+      xTickValues.push(xMin);
+    }
+    const xTicks = xTickValues.map((daynum) => ({
+      x: xFor(daynum),
+      label: `${daynum}`,
+    }));
 
-    const yTickCount = 5;
-    const yTicks = Array.from({ length: yTickCount }, (_, idx) => {
-      const pos = idx / (yTickCount - 1);
-      const y = padT + pos * plotH;
-      const value = rankLike ? yMin + pos * yRange : yMax - pos * yRange;
-      return { y, label: formatAxisValue(value, metric) };
-    });
+    const yTicks = (() => {
+      if (rankLike) {
+        const rankMin = Math.round(yMin);
+        const rankMax = Math.round(yMax);
+        const span = Math.max(0, rankMax - rankMin);
+        const maxTicks = 7;
+        const step = Math.max(1, Math.ceil(Math.max(1, span) / (maxTicks - 1)));
+        const tickValues: number[] = [];
+        for (let value = rankMin; value <= rankMax; value += step) {
+          tickValues.push(value);
+        }
+        if (tickValues.length === 0 || tickValues[tickValues.length - 1] !== rankMax) {
+          tickValues.push(rankMax);
+        }
+        return tickValues.map((value) => ({
+          y: yFor(value),
+          label: `${value}`,
+        }));
+      }
+      const yTickCount = 5;
+      return Array.from({ length: yTickCount }, (_, idx) => {
+        const pos = idx / (yTickCount - 1);
+        const y = padT + pos * plotH;
+        const value = yMax - pos * yRange;
+        return { y, label: formatAxisValue(value, metric) };
+      });
+    })();
 
     return { width, height, polyline, circles, xTicks, yTicks };
   }, [metric, trendPoints]);
@@ -259,8 +334,15 @@ export function ExpandedRankings({
               ))}
             </svg>
             <div className="rank-trend-meta">
-              <span>DayNum {RANKING_TREND_DAYNUMS[0]} to {RANKING_TREND_DAYNUMS[RANKING_TREND_DAYNUMS.length - 1]}</span>
-              <span>{RANK_LIKE_METRICS.has(metric.key) ? "Lower is better for this metric." : "Higher is better for this metric."}</span>
+              <span>
+                DayNum {Math.max(TREND_DISPLAY_START_DAYNUM, RANKING_TREND_DAYNUMS[0])} to{" "}
+                {RANKING_TREND_DAYNUMS[RANKING_TREND_DAYNUMS.length - 1]}
+              </span>
+              <span>
+                {LOWER_IS_BETTER_METRICS.has(metric.key)
+                  ? "Lower is better for this metric."
+                  : "Higher is better for this metric."}
+              </span>
             </div>
           </div>
         )}
@@ -271,6 +353,16 @@ export function ExpandedRankings({
   return (
     <div className="rank-page">
       <h2 className="rank-title">D1 Team Rankings</h2>
+      <div className="rankings-massey-badge">
+        <span className="rankings-massey-icon">📊</span>
+        <span className="rankings-massey-text">
+          Odds Gods rankings are featured on{" "}
+          <a href={MASSEY_RANKINGS_URL} target="_blank" rel="noopener">
+            Massey Ratings
+          </a>{" "}
+          — one of college basketball&apos;s most trusted composite indexes.
+        </span>
+      </div>
 
       <div className="rank-controls">
         <select
@@ -318,7 +410,7 @@ export function ExpandedRankings({
                 onClick={() => setSortAsc((prev) => (prev === null ? !metric.ascending : !prev))}
                 style={{ cursor: "pointer" }}
               >
-                {metric.label} {(sortAsc ?? metric.ascending) ? "↑" : "↓"}
+                {metricHeaderLabel} {(sortAsc ?? metric.ascending) ? "↑" : "↓"}
               </th>
             </tr>
           </thead>

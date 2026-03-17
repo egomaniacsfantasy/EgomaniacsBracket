@@ -1,6 +1,5 @@
 import { supabase } from "./supabaseClient";
 import { getModelGameWinProb, resolveGames, type LockedPicks } from "./lib/bracket";
-import { MAX_SCORING_POINTS } from "./lib/bracketScoring";
 import { teamsById } from "./data/teams";
 
 export type LeaderboardFinalFourTeam = {
@@ -61,6 +60,8 @@ export type LeaderboardEntry = {
   champ_score?: number | null;
 };
 
+export const MAX_SUBMITTED_BRACKETS = 10;
+
 type BracketMeta = {
   champion_name: string | null;
   champion_seed: number | null;
@@ -72,35 +73,53 @@ type BracketMeta = {
 
 type SaveBracketOptions = {
   submit?: boolean;
+  bypassLock?: boolean;
 };
 
-async function ensureBracketScoreRow(bracketId: string, userId: string) {
-  const now = new Date().toISOString();
-  const baseScoreRow = {
-    bracket_id: bracketId,
-    user_id: userId,
-    total_score: 0,
-    correct_picks: 0,
-    possible_picks: 0,
-    max_remaining: MAX_SCORING_POINTS,
-    r64_score: 0,
-    r32_score: 0,
-    s16_score: 0,
-    e8_score: 0,
-    f4_score: 0,
-    champ_score: 0,
-    updated_at: now,
-  };
+const LEADERBOARD_QUERY_TIMEOUT_MS = 8000;
+const LEADERBOARD_CACHE_PREFIX = "og_leaderboard_cache_v1";
 
-  const { error } = await supabase.from("bracket_scores").upsert(baseScoreRow);
-  if (error) {
-    console.warn("Failed to initialize bracket score row", error.message);
-    return;
+type CachedValue<T> = {
+  savedAt: number;
+  value: T;
+};
+
+function readCachedValue<T>(key: string): T | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const raw = window.localStorage.getItem(key);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as CachedValue<T> | T;
+    if (parsed && typeof parsed === "object" && "value" in parsed) {
+      return (parsed as CachedValue<T>).value;
+    }
+    return parsed as T;
+  } catch {
+    return null;
   }
+}
 
-  const rankResult = await supabase.rpc("compute_bracket_ranks");
-  if (rankResult.error) {
-    console.warn("Failed to recompute bracket ranks after submission", rankResult.error.message);
+function writeCachedValue<T>(key: string, value: T) {
+  if (typeof window === "undefined") return;
+  try {
+    const payload: CachedValue<T> = { value, savedAt: Date.now() };
+    window.localStorage.setItem(key, JSON.stringify(payload));
+  } catch {
+    // Ignore storage failures.
+  }
+}
+
+async function withTimeout<T>(promiseLike: PromiseLike<T>, timeoutMs: number, message: string): Promise<T> {
+  let timer: ReturnType<typeof setTimeout> | null = null;
+  try {
+    return await Promise.race<T>([
+      Promise.resolve(promiseLike),
+      new Promise<T>((_, reject) => {
+        timer = setTimeout(() => reject(new Error(message)), timeoutMs);
+      }),
+    ]);
+  } finally {
+    if (timer !== null) clearTimeout(timer);
   }
 }
 
@@ -160,10 +179,11 @@ export async function saveBracket(
     );
   };
   const roundedChaosScore = Math.round(normalizedChaosScore);
+  const submittedAt = shouldSubmit ? new Date().toISOString() : null;
   const basePayload = {
     picks: serialized,
     bracket_name: bracketName,
-    submitted_at: shouldSubmit ? new Date().toISOString() : null,
+    submitted_at: submittedAt,
     ...meta,
   };
 
@@ -174,17 +194,25 @@ export async function saveBracket(
     const noMeta = {
       picks: serialized,
       bracket_name: bracketName,
+      submitted_at: submittedAt,
       ...withTimestamp,
       chaos_score: normalizedChaosScore,
     };
     const noMetaRounded = {
       picks: serialized,
       bracket_name: bracketName,
+      submitted_at: submittedAt,
       ...withTimestamp,
       chaos_score: roundedChaosScore,
     };
     const metaNoChaos = { ...basePayload, ...withTimestamp };
     const legacy = {
+      picks: serialized,
+      bracket_name: bracketName,
+      submitted_at: submittedAt,
+      ...withTimestamp,
+    };
+    const noMetaNoSubmit = {
       picks: serialized,
       bracket_name: bracketName,
       ...withTimestamp,
@@ -193,7 +221,7 @@ export async function saveBracket(
     if (roundedChaosScore !== normalizedChaosScore) candidates.push(rounded);
     candidates.push(noMeta);
     if (roundedChaosScore !== normalizedChaosScore) candidates.push(noMetaRounded);
-    candidates.push(metaNoChaos, legacy);
+    candidates.push(metaNoChaos, legacy, noMetaNoSubmit);
     return candidates;
   };
 
@@ -212,9 +240,6 @@ export async function saveBracket(
         .select()
         .single();
       if (!attempt.error) {
-        if (shouldSubmit && attempt.data?.id && attempt.data?.user_id) {
-          await ensureBracketScoreRow(String(attempt.data.id), String(attempt.data.user_id));
-        }
         return { data: attempt.data as SavedBracket | null, error: null };
       }
       lastData = attempt.data;
@@ -233,8 +258,8 @@ export async function saveBracket(
       .eq("user_id", userId)
       .not("submitted_at", "is", null);
     if (countError && !isMissingSubmissionColumn(countError.message)) return { data: null, error: countError };
-    if ((count ?? 0) >= 25) {
-      return { data: null, error: { message: "Maximum of 25 submitted brackets per user." } };
+    if ((count ?? 0) >= MAX_SUBMITTED_BRACKETS) {
+      return { data: null, error: { message: `Maximum of ${MAX_SUBMITTED_BRACKETS} submitted brackets per user.` } };
     }
   }
 
@@ -250,9 +275,6 @@ export async function saveBracket(
       .select()
       .single();
     if (!attempt.error) {
-      if (shouldSubmit && attempt.data?.id && attempt.data?.user_id) {
-        await ensureBracketScoreRow(String(attempt.data.id), String(attempt.data.user_id));
-      }
       return { data: attempt.data as SavedBracket | null, error: null };
     }
     lastData = attempt.data;
@@ -274,13 +296,22 @@ export async function getUserBrackets(userId: string) {
     return { data: (withAll.data as SavedBracket[] | null) ?? [], error: null };
   }
 
-  const withMeta = await supabase
+  const withSubmittedAndChaos = await supabase
     .from("brackets")
-    .select("id, user_id, bracket_name, picks, chaos_score, created_at, updated_at, is_locked, champion_name, champion_seed, champion_logo_url, final_four, boldest_pick")
+    .select("id, user_id, bracket_name, picks, chaos_score, created_at, updated_at, is_locked, submitted_at")
     .eq("user_id", userId)
     .order("created_at", { ascending: true });
-  if (!withMeta.error) {
-    return { data: (withMeta.data as SavedBracket[] | null) ?? [], error: null };
+  if (!withSubmittedAndChaos.error) {
+    return { data: (withSubmittedAndChaos.data as SavedBracket[] | null) ?? [], error: null };
+  }
+
+  const withSubmitted = await supabase
+    .from("brackets")
+    .select("id, user_id, bracket_name, picks, created_at, updated_at, is_locked, submitted_at")
+    .eq("user_id", userId)
+    .order("created_at", { ascending: true });
+  if (!withSubmitted.error) {
+    return { data: (withSubmitted.data as SavedBracket[] | null) ?? [], error: null };
   }
 
   const withChaos = await supabase
@@ -301,7 +332,7 @@ export async function getUserBrackets(userId: string) {
   return { data: (data as SavedBracket[] | null) ?? [], error: error ?? withAll.error };
 }
 
-export async function setBracketSubmissionStatus(bracketId: string, userId: string, submit: boolean) {
+export async function setBracketSubmissionStatus(bracketId: string, userId: string, submit: boolean, bypassLock = false) {
   const isMissingSubmissionColumn = (message?: string) => {
     const msg = (message ?? "").toLowerCase();
     return msg.includes("submitted_at") && (msg.includes("column") || msg.includes("schema cache"));
@@ -313,7 +344,7 @@ export async function setBracketSubmissionStatus(bracketId: string, userId: stri
     .eq("user_id", userId)
     .single();
   if (existingError) return { error: existingError };
-  if ((bracket as { is_locked?: boolean } | null)?.is_locked) {
+  if (!bypassLock && (bracket as { is_locked?: boolean } | null)?.is_locked) {
     return { error: { message: "Submissions are locked at tip-off." } };
   }
 
@@ -327,8 +358,8 @@ export async function setBracketSubmissionStatus(bracketId: string, userId: stri
       if (isMissingSubmissionColumn(countError.message)) return { error: { message: "Submission system is updating. Please retry in 1 minute." } };
       return { error: countError };
     }
-    if ((count ?? 0) >= 25) {
-      return { error: { message: "Submission limit reached (25/25)." } };
+    if ((count ?? 0) >= MAX_SUBMITTED_BRACKETS) {
+      return { error: { message: `Submission limit reached (${MAX_SUBMITTED_BRACKETS}/${MAX_SUBMITTED_BRACKETS}).` } };
     }
   }
 
@@ -343,9 +374,6 @@ export async function setBracketSubmissionStatus(bracketId: string, userId: stri
   if (error && isMissingSubmissionColumn(error.message)) {
     return { error: { message: "Submission system is updating. Please retry in 1 minute." } };
   }
-  if (!error && submit) {
-    await ensureBracketScoreRow(bracketId, userId);
-  }
   return { error };
 }
 
@@ -355,6 +383,14 @@ export async function deleteBracket(bracketId: string, userId: string) {
     .delete()
     .eq("id", bracketId)
     .eq("user_id", userId);
+
+  return { error };
+}
+
+export async function deleteBracketAsAdmin(bracketId: string) {
+  const { error } = await supabase.rpc("admin_delete_bracket", {
+    target_bracket_id: bracketId,
+  });
 
   return { error };
 }
@@ -370,70 +406,109 @@ export async function renameBracket(bracketId: string, userId: string, newName: 
 }
 
 export async function getLeaderboard(limit = 50) {
-  const primary = await supabase
-    .from("bracket_scores")
-    .select(
-      `
-      rank,
-      total_score,
-      correct_picks,
-      possible_picks,
-      max_remaining,
-      r64_score,
-      r32_score,
-      s16_score,
-      e8_score,
-      f4_score,
-      champ_score,
-      bracket_id,
-      user_id,
-      updated_at,
-      brackets!inner(bracket_name, chaos_score, champion_name, champion_seed, champion_logo_url, champion_eliminated, final_four, boldest_pick, submitted_at),
-      profiles!inner(display_name)
-      `
-    )
-    .not("brackets.submitted_at", "is", null)
-    .order("total_score", { ascending: false })
-    .order("correct_picks", { ascending: false })
-    .limit(limit);
+  const cacheKey = `${LEADERBOARD_CACHE_PREFIX}:${limit}`;
+  const cachedEntries = readCachedValue<LeaderboardEntry[]>(cacheKey);
 
-  if (primary.error) {
-    const { data, error } = await supabase
-      .from("leaderboard")
-      .select("*")
-      .limit(limit);
-    return { data: (data as LeaderboardEntry[] | null) ?? [], error };
+  try {
+    const viewResult = await withTimeout(
+      supabase
+        .from("leaderboard")
+        .select("*")
+        .order("total_score", { ascending: false })
+        .order("correct_picks", { ascending: false })
+        .limit(limit),
+      LEADERBOARD_QUERY_TIMEOUT_MS,
+      "Timed out loading the leaderboard. Please try again."
+    );
+
+    if (!viewResult.error) {
+      const entries = (viewResult.data as LeaderboardEntry[] | null) ?? [];
+      writeCachedValue(cacheKey, entries);
+      return { data: entries, error: null };
+    }
+  } catch (error) {
+    return {
+      data: cachedEntries ?? [],
+      error: { message: (error as Error).message },
+    };
   }
 
-  const mapped = ((primary.data as Array<Record<string, unknown>> | null) ?? []).map((row) => {
-    const b = (row.brackets as Record<string, unknown>) ?? {};
-    const p = (row.profiles as Record<string, unknown>) ?? {};
+  try {
+    const primary = await withTimeout(
+      supabase
+        .from("bracket_scores")
+        .select(
+          `
+          rank,
+          total_score,
+          correct_picks,
+          possible_picks,
+          max_remaining,
+          r64_score,
+          r32_score,
+          s16_score,
+          e8_score,
+          f4_score,
+          champ_score,
+          bracket_id,
+          user_id,
+          updated_at,
+          brackets!inner(bracket_name, chaos_score, champion_name, champion_seed, champion_logo_url, champion_eliminated, final_four, boldest_pick, submitted_at),
+          profiles!inner(display_name)
+          `
+        )
+        .not("brackets.submitted_at", "is", null)
+        .order("total_score", { ascending: false })
+        .order("correct_picks", { ascending: false })
+        .limit(limit),
+      LEADERBOARD_QUERY_TIMEOUT_MS,
+      "Timed out loading the leaderboard. Please try again."
+    );
+
+    if (primary.error) {
+      return {
+        data: cachedEntries ?? [],
+        error: primary.error,
+      };
+    }
+
+    const mapped = ((primary.data as Array<Record<string, unknown>> | null) ?? []).map((row) => {
+      const b = (row.brackets as Record<string, unknown>) ?? {};
+      const p = (row.profiles as Record<string, unknown>) ?? {};
+      return {
+        rank: row.rank as number | null | undefined,
+        bracket_id: String(row.bracket_id ?? ""),
+        user_id: String(row.user_id ?? ""),
+        display_name: String(p.display_name ?? "Anonymous"),
+        bracket_name: String(b.bracket_name ?? "Bracket"),
+        chaos_score: (b.chaos_score as number | null | undefined) ?? null,
+        champion_name: (b.champion_name as string | null | undefined) ?? null,
+        champion_seed: (b.champion_seed as number | null | undefined) ?? null,
+        champion_logo_url: (b.champion_logo_url as string | null | undefined) ?? null,
+        champion_eliminated: Boolean(b.champion_eliminated),
+        final_four: (b.final_four as LeaderboardFinalFourTeam[] | string | null | undefined) ?? null,
+        boldest_pick: (b.boldest_pick as LeaderboardBoldestPick | string | null | undefined) ?? null,
+        total_score: Number(row.total_score ?? 0),
+        correct_picks: Number(row.correct_picks ?? 0),
+        possible_picks: (row.possible_picks as number | null | undefined) ?? null,
+        max_remaining: (row.max_remaining as number | null | undefined) ?? null,
+        r64_score: (row.r64_score as number | null | undefined) ?? null,
+        r32_score: (row.r32_score as number | null | undefined) ?? null,
+        s16_score: (row.s16_score as number | null | undefined) ?? null,
+        e8_score: (row.e8_score as number | null | undefined) ?? null,
+        f4_score: (row.f4_score as number | null | undefined) ?? null,
+        champ_score: (row.champ_score as number | null | undefined) ?? null,
+      } satisfies LeaderboardEntry;
+    });
+
+    writeCachedValue(cacheKey, mapped);
+    return { data: mapped, error: null };
+  } catch (error) {
     return {
-      rank: row.rank as number | null | undefined,
-      bracket_id: String(row.bracket_id ?? ""),
-      user_id: String(row.user_id ?? ""),
-      display_name: String(p.display_name ?? "Anonymous"),
-      bracket_name: String(b.bracket_name ?? "Bracket"),
-      chaos_score: (b.chaos_score as number | null | undefined) ?? null,
-      champion_name: (b.champion_name as string | null | undefined) ?? null,
-      champion_seed: (b.champion_seed as number | null | undefined) ?? null,
-      champion_logo_url: (b.champion_logo_url as string | null | undefined) ?? null,
-      champion_eliminated: Boolean(b.champion_eliminated),
-      final_four: (b.final_four as LeaderboardFinalFourTeam[] | string | null | undefined) ?? null,
-      boldest_pick: (b.boldest_pick as LeaderboardBoldestPick | string | null | undefined) ?? null,
-      total_score: Number(row.total_score ?? 0),
-      correct_picks: Number(row.correct_picks ?? 0),
-      possible_picks: (row.possible_picks as number | null | undefined) ?? null,
-      max_remaining: (row.max_remaining as number | null | undefined) ?? null,
-      r64_score: (row.r64_score as number | null | undefined) ?? null,
-      r32_score: (row.r32_score as number | null | undefined) ?? null,
-      s16_score: (row.s16_score as number | null | undefined) ?? null,
-      e8_score: (row.e8_score as number | null | undefined) ?? null,
-      f4_score: (row.f4_score as number | null | undefined) ?? null,
-      champ_score: (row.champ_score as number | null | undefined) ?? null,
-    } satisfies LeaderboardEntry;
-  });
-  return { data: mapped, error: null };
+      data: cachedEntries ?? [],
+      error: { message: (error as Error).message },
+    };
+  }
 }
 
 export async function getUserScores(userId: string) {

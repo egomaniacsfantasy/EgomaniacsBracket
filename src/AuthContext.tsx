@@ -1,8 +1,9 @@
-import { createContext, useContext, useEffect, useState } from "react";
+import { createContext, useContext, useEffect, useRef, useState } from "react";
 import type { ReactNode } from "react";
 import type { User } from "@supabase/supabase-js";
 import { supabase } from "./supabaseClient";
 import { saveBracket } from "./bracketStorage";
+import { captureError } from "./lib/errorMonitoring";
 
 type Profile = {
   display_name: string | null;
@@ -22,60 +23,122 @@ type AuthContextValue = {
 
 const AuthContext = createContext<AuthContextValue | null>(null);
 
+const PROFILE_QUERY_TIMEOUT_MS = 8000;
+
+async function withTimeout<T>(promiseLike: PromiseLike<T>, timeoutMs: number, message: string): Promise<T> {
+  let timer: ReturnType<typeof setTimeout> | null = null;
+  try {
+    return await Promise.race<T>([
+      Promise.resolve(promiseLike),
+      new Promise<T>((_, reject) => {
+        timer = setTimeout(() => reject(new Error(message)), timeoutMs);
+      }),
+    ]);
+  } finally {
+    if (timer !== null) clearTimeout(timer);
+  }
+}
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
+  const mountedRef = useRef(true);
+  const profileRequestRef = useRef(0);
 
   const fetchProfile = async (userId: string, authUser?: User | null) => {
-    const { data } = await supabase.from("profiles").select("display_name").eq("id", userId).single();
-    const profileData = (data as Profile | null) ?? null;
-    const googleName = authUser?.user_metadata?.full_name as string | undefined;
+    const requestId = ++profileRequestRef.current;
 
-    if (profileData && (!profileData.display_name || profileData.display_name === "Anonymous") && googleName) {
-      await supabase.from("profiles").update({ display_name: googleName }).eq("id", userId);
-      setProfile({ ...profileData, display_name: googleName });
-      return;
+    try {
+      const { data } = await withTimeout(
+        supabase.from("profiles").select("display_name").eq("id", userId).single(),
+        PROFILE_QUERY_TIMEOUT_MS,
+        "Timed out loading your profile."
+      );
+      if (!mountedRef.current || requestId !== profileRequestRef.current) return;
+      const profileData = (data as Profile | null) ?? null;
+      const googleName = authUser?.user_metadata?.full_name as string | undefined;
+
+      if (profileData && (!profileData.display_name || profileData.display_name === "Anonymous") && googleName) {
+        await supabase.from("profiles").update({ display_name: googleName }).eq("id", userId);
+        if (!mountedRef.current || requestId !== profileRequestRef.current) return;
+        setProfile({ ...profileData, display_name: googleName });
+        return;
+      }
+
+      setProfile(profileData);
+    } catch (error) {
+      captureError("auth_fetch_profile", error);
+      if (!mountedRef.current || requestId !== profileRequestRef.current) return;
+      setProfile(null);
     }
-
-    setProfile(profileData);
   };
 
   useEffect(() => {
-    let mounted = true;
+    mountedRef.current = true;
 
-    supabase.auth.getSession().then(async ({ data: { session } }) => {
-      if (!mounted) return;
-      setUser(session?.user ?? null);
-      if (session?.user) {
-        await fetchProfile(session.user.id, session.user);
+    const initAuth = async () => {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!mountedRef.current) return;
+        setUser(session?.user ?? null);
+        setLoading(false);
+        if (session?.user) {
+          setProfile(null);
+          void fetchProfile(session.user.id, session.user);
+        } else {
+          profileRequestRef.current += 1;
+          setProfile(null);
+        }
+      } catch (error) {
+        captureError("auth_get_session", error);
+        if (!mountedRef.current) return;
+        setUser(null);
+        setProfile(null);
+      } finally {
+        if (mountedRef.current) setLoading(false);
       }
-      setLoading(false);
-    });
+    };
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+    void initAuth();
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (!mountedRef.current) return;
+
       setUser(session?.user ?? null);
-      if (session?.user) {
-        await fetchProfile(session.user.id, session.user);
+      setLoading(false);
+
+      if (!session?.user) {
+        profileRequestRef.current += 1;
+        setProfile(null);
+        return;
+      }
+
+      setProfile(null);
+      const userId = session.user.id;
+      setTimeout(() => {
+        if (!mountedRef.current) return;
+        void fetchProfile(userId, session.user);
+
         if (event === "SIGNED_IN") {
           const pendingRaw = window.sessionStorage.getItem("pendingBracketSave");
-          if (pendingRaw) {
-            window.sessionStorage.removeItem("pendingBracketSave");
-            try {
-              const pendingPicks = JSON.parse(pendingRaw) as Record<string, string>;
-              await saveBracket(session.user.id, pendingPicks, "My Bracket");
-            } catch {
-              // ignore bad pending payload
-            }
+          if (!pendingRaw) return;
+
+          window.sessionStorage.removeItem("pendingBracketSave");
+          try {
+            const pendingPicks = JSON.parse(pendingRaw) as Record<string, string>;
+            void saveBracket(userId, pendingPicks, "My Bracket", null, undefined, { submit: false }).catch((error) => {
+              captureError("auth_pending_bracket_save", error);
+            });
+          } catch (error) {
+            captureError("auth_pending_bracket_save", error);
           }
         }
-      } else {
-        setProfile(null);
-      }
+      }, 0);
     });
 
     return () => {
-      mounted = false;
+      mountedRef.current = false;
       subscription.unsubscribe();
     };
   }, []);
@@ -99,6 +162,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         emailRedirectTo: window.location.origin,
       },
     });
+
+    // Supabase returns success with empty identities when the email already
+    // exists (confirmed or unconfirmed). In that case no confirmation email
+    // is sent, so we need to explicitly resend it for unconfirmed users.
+    const identities = data?.user?.identities;
+    if (!error && Array.isArray(identities) && identities.length === 0) {
+      // Try to resend the confirmation email so the user actually receives it
+      const { error: resendError } = await supabase.auth.resend({
+        type: "signup",
+        email,
+        options: { emailRedirectTo: window.location.origin },
+      });
+      if (resendError) {
+        // If resend also fails, the account likely already exists and is confirmed
+        return { data: null, error: { message: "This email already has an account. Try logging in instead." } };
+      }
+      // Resend succeeded — return the original data so the UI shows "check your email"
+      return { data, error: null };
+    }
+
     return { data, error };
   };
 
@@ -135,8 +218,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const signOut = async () => {
     await supabase.auth.signOut();
+    profileRequestRef.current += 1;
     setUser(null);
     setProfile(null);
+    setLoading(false);
   };
 
   return (

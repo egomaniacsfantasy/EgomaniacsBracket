@@ -1,5 +1,7 @@
 import type { OddsDisplayMode } from "../types";
 
+const LONGSHOT_AMERICAN_LABEL = "+50000+";
+
 export const clampDisplayProb = (prob: number): number => {
   if (!Number.isFinite(prob)) return 0.5;
   return Math.max(0.001, Math.min(0.999, prob));
@@ -30,6 +32,24 @@ export const toOneInX = (prob: number): string => {
   return `1 in ${(1 / prob).toFixed(prob < 0.01 ? 0 : 1)}`;
 };
 
+const SUPERSCRIPT_DIGITS = ["⁰", "¹", "²", "³", "⁴", "⁵", "⁶", "⁷", "⁸", "⁹"] as const;
+
+export const formatLikelihood = (prob: number): string => {
+  if (!Number.isFinite(prob) || prob <= 0) return "< 10⁻⁶";
+  if (prob >= 1) return "100%";
+  if (prob >= 0.01) return `${(prob * 100).toFixed(1)}%`;
+  if (prob >= 0.0001) return `${(prob * 100).toFixed(3)}%`;
+
+  const exponent = Math.floor(Math.log10(prob));
+  const mantissa = prob / Math.pow(10, exponent);
+  const superscript = String(Math.abs(exponent))
+    .split("")
+    .map((digit) => SUPERSCRIPT_DIGITS[Number(digit)] ?? digit)
+    .join("");
+
+  return `${mantissa.toFixed(1)} × 10⁻${superscript}`;
+};
+
 export const formatOddsDisplay = (
   prob: number,
   mode: OddsDisplayMode
@@ -44,14 +64,14 @@ export const formatOddsDisplay = (
 
   if (Number.isFinite(prob) && prob <= 0) {
     const implied = toImpliedLabel(prob);
-    if (mode === "american") return { primary: "0%" };
+    if (mode === "american") return { primary: LONGSHOT_AMERICAN_LABEL };
     if (mode === "implied") return { primary: implied };
     if (mode === "decimal") return { primary: "—" };
-    return { primary: "—", secondary: implied };
+    return { primary: LONGSHOT_AMERICAN_LABEL, secondary: implied };
   }
 
   const americanRaw = toAmericanOdds(prob);
-  const american = americanRaw > 50000 ? "+50000+" : formatAmerican(americanRaw);
+  const american = americanRaw > 50000 ? LONGSHOT_AMERICAN_LABEL : formatAmerican(americanRaw);
   const implied = toImpliedLabel(prob);
   const decimal = toDecimalOdds(prob).toFixed(2);
 

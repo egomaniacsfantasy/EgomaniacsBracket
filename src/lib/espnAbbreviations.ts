@@ -142,6 +142,8 @@ export const ESPN_ABBREVIATIONS_2026: Record<string, string> = {
   'colorado state rams': 'CSU',
   'columbia': 'COLU',
   'columbia lions': 'COLU',
+  'connecticut': 'UCONN',
+  'connecticut huskies': 'UCONN',
   'coppin st': 'COPP',
   'coppin state': 'COPP',
   'coppin state eagles': 'COPP',

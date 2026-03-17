@@ -16,6 +16,7 @@
  *   - src/conferences/data/confMatchupProbs.ts
  *   - src/data/teamStats2026.ts
  *   - src/rankings/data/d1Rankings.ts
+ *   - src/rankings/data/rankingsTrend2026.ts
  *   - src/lib/matchupProbData.ts
  *   - src/data/bracketPreds2026.ts
  */
@@ -525,6 +526,96 @@ export const D1_TEAMS: D1Team[] = ${JSON.stringify(teams, null, 2)};
   console.log(`✓ Wrote ${outPath} (${teams.length} teams)`);
 }
 
+// ─── 4. Daily Rankings Trend Data (from model_rankings_daily_2026.csv) ───
+function convertD1RankingsTrend(): void {
+  const csvPath = path.join(DATA_DIR, "model_rankings_daily_2026.csv");
+  const outPath = path.join(ROOT, "src/rankings/data/rankingsTrend2026.ts");
+
+  const metricDefs = [
+    { key: "mrRank", col: "MR_Rank", integer: true },
+    { key: "mrScore", col: "MR_Score", integer: false },
+    { key: "rankPOM", col: "Rank_POM", integer: true },
+    { key: "rankMAS", col: "Rank_MAS", integer: true },
+    { key: "rankMOR", col: "Rank_MOR", integer: true },
+    { key: "rankWLK", col: "Rank_WLK", integer: true },
+    { key: "rankBIH", col: "Rank_BIH", integer: true },
+    { key: "rankNET", col: "Rank_NET", integer: true },
+    { key: "elo", col: "Elo", integer: false },
+    { key: "eloTrend", col: "Elo_Trend", integer: false },
+    { key: "eloSos", col: "Elo_SOS", integer: false },
+    { key: "netRtg", col: "Net_Rtg", integer: false },
+    { key: "offRtg", col: "Off_Rtg", integer: false },
+    { key: "defRtg", col: "Def_Rtg", integer: false },
+    { key: "last5Margin", col: "Last5_Margin", integer: false },
+  ] as const;
+  const metricKeys = metricDefs.map((metric) => metric.key);
+
+  if (!fs.existsSync(csvPath)) {
+    const emptyOutput = `// Auto-generated from model_rankings_daily_2026.csv — do not edit manually
+export const RANKING_TREND_DAYNUMS: number[] = [];
+export const RANKING_TREND_METRICS = ${JSON.stringify(metricKeys)} as const;
+export type RankingTrendMetric = (typeof RANKING_TREND_METRICS)[number];
+export type RankingTrendSeries = Record<RankingTrendMetric, Array<number | null>>;
+export const RANKING_TRENDS_BY_TEAM: Record<number, RankingTrendSeries> = {};
+`;
+    fs.writeFileSync(outPath, emptyOutput, "utf-8");
+    console.warn("model_rankings_daily_2026.csv not found — wrote empty rankingsTrend2026.ts");
+    return;
+  }
+
+  const wb = XLSX.readFile(csvPath, { raw: true });
+  const rows = XLSX.utils.sheet_to_json<Record<string, unknown>>(wb.Sheets[wb.SheetNames[0]]);
+  const rows2026 = rows.filter((row) => Number(row["Season"] ?? 2026) === 2026);
+
+  const daynums = Array.from(
+    new Set(rows2026.map((row) => Number(row["DayNum"])).filter((value) => Number.isFinite(value)))
+  )
+    .sort((a, b) => a - b)
+    .map((value) => Math.round(value));
+
+  const rowByTeamByDay = new Map<number, Map<number, Record<string, unknown>>>();
+  for (const row of rows2026) {
+    const teamId = Number(row["TeamID"]);
+    const daynum = Number(row["DayNum"]);
+    if (!Number.isFinite(teamId) || !Number.isFinite(daynum)) continue;
+    if (!rowByTeamByDay.has(teamId)) {
+      rowByTeamByDay.set(teamId, new Map<number, Record<string, unknown>>());
+    }
+    rowByTeamByDay.get(teamId)!.set(Math.round(daynum), row);
+  }
+
+  const trendsByTeam: Record<number, Record<string, Array<number | null>>> = {};
+  const sortedTeamIds = Array.from(rowByTeamByDay.keys()).sort((a, b) => a - b);
+  for (const teamId of sortedTeamIds) {
+    const dayMap = rowByTeamByDay.get(teamId)!;
+    const metricSeries: Record<string, Array<number | null>> = {};
+    for (const metric of metricDefs) {
+      metricSeries[metric.key] = daynums.map((daynum) => {
+        const row = dayMap.get(daynum);
+        if (!row) return null;
+        const raw = Number(row[metric.col]);
+        if (!Number.isFinite(raw)) return null;
+        if (metric.integer) return Math.round(raw);
+        return raw;
+      });
+    }
+    trendsByTeam[teamId] = metricSeries;
+  }
+
+  const output = `// Auto-generated from model_rankings_daily_2026.csv — do not edit manually
+export const RANKING_TREND_DAYNUMS: number[] = ${JSON.stringify(daynums)};
+export const RANKING_TREND_METRICS = ${JSON.stringify(metricKeys)} as const;
+export type RankingTrendMetric = (typeof RANKING_TREND_METRICS)[number];
+export type RankingTrendSeries = Record<RankingTrendMetric, Array<number | null>>;
+export const RANKING_TRENDS_BY_TEAM: Record<number, RankingTrendSeries> = ${JSON.stringify(trendsByTeam)};
+`;
+
+  fs.writeFileSync(outPath, output, "utf-8");
+  console.log(
+    `✓ Wrote ${outPath} (${sortedTeamIds.length} teams, ${daynums.length} DayNums, ${metricDefs.length} metrics)`
+  );
+}
+
 // ─── 4. NCAA Tournament Teams (from ProjectedBrackets.xlsx NCAA sheet) ───
 function convertNCAATeams(): void {
   const pbPath = path.join(DATA_DIR, "ProjectedBrackets.xlsx");
@@ -849,11 +940,13 @@ convertConfTeams();
 convertConfMatchupProbs();
 convertTeamStatsData();
 convertD1Rankings();
+convertD1RankingsTrend();
 convertNCAATeams();
 convertNCAAMatchupProbs();
 convertNCAABracketPreds();
 convertMatchupPredictor();
 console.log("\nDone!");
+
 
 
 

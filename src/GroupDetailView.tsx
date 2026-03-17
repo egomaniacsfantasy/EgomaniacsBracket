@@ -1,0 +1,483 @@
+import { useState, useEffect, useMemo } from "react";
+import { useAuth } from "./AuthContext";
+import {
+  getGroupMembers,
+  getGroupStandings,
+  leaveGroup,
+  deleteGroup,
+  updateMemberBracket,
+  updateGroup,
+  type GroupMember,
+  type GroupStanding,
+  type UserGroup,
+} from "./groupStorage";
+import { getUserBrackets, type SavedBracket } from "./bracketStorage";
+import { GroupMembersTab } from "./GroupMembersTab";
+import { GroupStandingsTab } from "./GroupStandingsTab";
+import { GroupPicksTab } from "./GroupPicksTab";
+import { GroupChaosTab } from "./GroupChaosTab";
+import { BracketViewer } from "./BracketViewer";
+import { GROUP_EMOJIS } from "./constants";
+import { hasElevatedAccess } from "./groupVisibility";
+import { captureError } from "./lib/errorMonitoring";
+
+type RankedStanding = GroupStanding & { groupRank: number };
+
+export function GroupDetailView({
+  group,
+  isOpen,
+  onClose,
+  tournamentStarted,
+  tournamentResults,
+  onGroupUpdated,
+}: {
+  group: UserGroup | null;
+  isOpen: boolean;
+  onClose: () => void;
+  tournamentStarted: boolean;
+  tournamentResults?: unknown;
+  onGroupUpdated?: (updated: { name: string; emoji: string }) => void;
+}) {
+  const { user } = useAuth();
+  const [activeTab, setActiveTab] = useState<"standings" | "members" | "picks" | "chaos">("standings");
+  const [standings, setStandings] = useState<GroupStanding[]>([]);
+  const [members, setMembers] = useState<GroupMember[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState("");
+  const [viewingBracket, setViewingBracket] = useState<{
+    bracketId: string;
+    displayName: string;
+    bracketName: string;
+  } | null>(null);
+  const [showSettings, setShowSettings] = useState(false);
+
+  // Bracket picker state for members with no bracket
+  const [showBracketPicker, setShowBracketPicker] = useState(false);
+  const [brackets, setBrackets] = useState<SavedBracket[]>([]);
+  const [selectedBracket, setSelectedBracket] = useState<string | null>(null);
+  const [bracketPickerLoading, setBracketPickerLoading] = useState(false);
+  const [bracketPickerError, setBracketPickerError] = useState("");
+
+  // Edit group state
+  const [showEditGroup, setShowEditGroup] = useState(false);
+  const [editName, setEditName] = useState("");
+  const [editEmoji, setEditEmoji] = useState("");
+  const [editLoading, setEditLoading] = useState(false);
+  const [editError, setEditError] = useState("");
+
+  const isAdmin = group?.created_by === user?.id;
+  const canPreviewHidden = hasElevatedAccess(user?.email);
+
+  useEffect(() => {
+    if (isOpen && group) {
+      void loadGroupData();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOpen, group]);
+
+  async function loadGroupData() {
+    if (!group) return;
+    setLoading(true);
+    setLoadError("");
+    const [standingsResult, membersResult] = await Promise.allSettled([
+      getGroupStandings(group.id),
+      getGroupMembers(group.id),
+    ]);
+
+    if (standingsResult.status === "fulfilled") {
+      const { data, error } = standingsResult.value;
+      if (error) {
+        captureError("group_detail_standings_load", error);
+        setLoadError(error.message || "Group data is taking longer than expected.");
+      }
+      setStandings(data);
+    } else {
+      captureError("group_detail_standings_load", standingsResult.reason);
+      setStandings([]);
+      setLoadError("Group data is taking longer than expected.");
+    }
+
+    if (membersResult.status === "fulfilled") {
+      const { data, error } = membersResult.value;
+      if (error) {
+        captureError("group_detail_members_load", error);
+        setLoadError((current) => current || error.message || "Group data is taking longer than expected.");
+      }
+      setMembers(data);
+    } else {
+      captureError("group_detail_members_load", membersResult.reason);
+      setMembers([]);
+      setLoadError((current) => current || "Group data is taking longer than expected.");
+    }
+
+    setLoading(false);
+  }
+
+  const [showInviteToast, setShowInviteToast] = useState(false);
+
+  const canNativeShare = typeof navigator !== "undefined" && !!navigator.share;
+
+  function handleCopyInvite() {
+    if (!group) return;
+    const link = `${window.location.origin}/join.html?code=${group.invite_code}`;
+    const message = `Join my group "${group.name}" on The Bracket Lab and compete to see who has the best bracket! 🏀\n${link}`;
+    navigator.clipboard.writeText(message).then(() => {
+      setShowInviteToast(true);
+      setTimeout(() => setShowInviteToast(false), 3000);
+    });
+  }
+
+  async function handleNativeShare() {
+    if (!group) return;
+    const link = `${window.location.origin}/join.html?code=${group.invite_code}`;
+    try {
+      await navigator.share({
+        title: `Join ${group.name} on The Bracket Lab`,
+        text: `Join my group "${group.name}" on The Bracket Lab and compete to see who has the best bracket! 🏀`,
+        url: link,
+      });
+    } catch {
+      // User cancelled share sheet — no action needed
+    }
+  }
+
+  async function handleInvite() {
+    if (canNativeShare) {
+      await handleNativeShare();
+      return;
+    }
+    handleCopyInvite();
+  }
+
+  async function handleLeave() {
+    if (!group || !user) return;
+    if (!confirm("Leave this group? You can rejoin later with the invite code.")) return;
+    await leaveGroup(group.id, user.id);
+    onClose();
+  }
+
+  async function handleDelete() {
+    if (!group) return;
+    if (!confirm(`Delete "${group.name}" permanently? All members will be removed. This cannot be undone.`)) return;
+    await deleteGroup(group.id);
+    onClose();
+  }
+
+  async function handleOpenBracketPicker() {
+    if (!user) return;
+    setBracketPickerLoading(true);
+    setBracketPickerError("");
+    const { data } = await getUserBrackets(user.id);
+    setBrackets(data);
+    setBracketPickerLoading(false);
+    if (data.length === 0) {
+      setBracketPickerError("You need at least one saved bracket. Save your current bracket first!");
+      return;
+    }
+    setShowBracketPicker(true);
+  }
+
+  function handleOpenEditGroup() {
+    if (!group) return;
+    setEditName(group.name);
+    setEditEmoji(group.emoji ?? "👥");
+    setEditError("");
+    setShowEditGroup(true);
+    setShowSettings(false);
+  }
+
+  async function handleSaveGroup() {
+    if (!group) return;
+    const trimmed = editName.trim();
+    if (!trimmed) {
+      setEditError("Group name cannot be empty.");
+      return;
+    }
+    if (trimmed.length > 40) {
+      setEditError("Group name must be 40 characters or fewer.");
+      return;
+    }
+    setEditLoading(true);
+    setEditError("");
+    const { error } = await updateGroup(group.id, { name: trimmed, emoji: editEmoji });
+    if (error) {
+      setEditError(error.message || "Failed to update group.");
+      setEditLoading(false);
+      return;
+    }
+    setEditLoading(false);
+    setShowEditGroup(false);
+    onGroupUpdated?.({ name: trimmed, emoji: editEmoji });
+  }
+
+  async function handleConfirmBracket() {
+    if (!group || !user || !selectedBracket) return;
+    setBracketPickerLoading(true);
+    const { error } = await updateMemberBracket(group.id, user.id, selectedBracket);
+    if (error) {
+      setBracketPickerError(error.message || "Failed to set bracket.");
+      setBracketPickerLoading(false);
+      return;
+    }
+    setShowBracketPicker(false);
+    setSelectedBracket(null);
+    setBracketPickerLoading(false);
+    await loadGroupData();
+  }
+
+  const rankedStandings: RankedStanding[] = useMemo(() => {
+    const sorted = [...standings].sort((a, b) => {
+      if ((b.total_score || 0) !== (a.total_score || 0)) return (b.total_score || 0) - (a.total_score || 0);
+      if ((b.correct_picks || 0) !== (a.correct_picks || 0)) return (b.correct_picks || 0) - (a.correct_picks || 0);
+      return 0;
+    });
+
+    let rank = 1;
+    return sorted.map((entry, i) => {
+      if (i > 0) {
+        const prev = sorted[i - 1];
+        if (entry.total_score !== prev.total_score || entry.correct_picks !== prev.correct_picks) {
+          rank = i + 1;
+        }
+      }
+      return { ...entry, groupRank: rank };
+    });
+  }, [standings]);
+
+  const soleLeader = useMemo(() => {
+    if (rankedStandings.length === 0) return null;
+    const leaders = rankedStandings.filter((s) => s.groupRank === 1);
+    return leaders.length === 1 ? leaders[0].user_id : null;
+  }, [rankedStandings]);
+  const displayedMemberCount = members.length > 0 ? members.length : Math.max(group?.memberCount ?? 0, standings.length);
+
+  if (!isOpen || !group) return null;
+
+  if (viewingBracket) {
+    return (
+      <BracketViewer
+        bracketId={viewingBracket.bracketId}
+        displayName={viewingBracket.displayName}
+        bracketName={viewingBracket.bracketName}
+        onBack={() => setViewingBracket(null)}
+        tournamentResults={tournamentResults}
+      />
+    );
+  }
+
+  return (
+    <div className="group-detail-overlay">
+      <div className="gd-header">
+        <button className="gd-back" onClick={onClose}>
+          ← Groups
+        </button>
+
+        <div className="gd-header-center">
+          <div className="gd-header-title">
+            <span className="gd-header-emoji">{group.emoji ?? "👥"}</span>
+            <h1 className="gd-header-name">{group.name}</h1>
+          </div>
+          <span className="gd-header-members">
+            {displayedMemberCount} {displayedMemberCount === 1 ? "member" : "members"}
+          </span>
+        </div>
+
+        <div className="gd-header-actions">
+          <button className="gd-invite-btn" onClick={() => void handleInvite()}>
+            🔗 Invite
+          </button>
+          <button className="gd-settings-btn" onClick={() => setShowSettings(!showSettings)} aria-label="Group settings">
+            ⚙️
+          </button>
+          {showInviteToast && (
+            <div className="invite-toast">
+              <span className="invite-toast-check">✓</span>
+              <span className="invite-toast-text">Invite message copied to clipboard</span>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {showSettings && (
+        <div className="group-settings-dropdown">
+          <div className="group-settings-code">
+            <span className="group-settings-code-label">INVITE CODE</span>
+            <span className="group-settings-code-value">{group.invite_code}</span>
+          </div>
+          {isAdmin && (
+            <button className="group-settings-action" onClick={handleOpenEditGroup}>
+              ✏️ Edit Group
+            </button>
+          )}
+          {!isAdmin && (
+            <button className="group-settings-action group-settings-action--danger" onClick={handleLeave}>
+              Leave Group
+            </button>
+          )}
+          {isAdmin && (
+            <button className="group-settings-action group-settings-action--danger" onClick={handleDelete}>
+              Delete Group
+            </button>
+          )}
+        </div>
+      )}
+
+      <div className="gd-tabs">
+        {(["standings", "members", "picks", "chaos"] as const).map((tab) => (
+          <button
+            key={tab}
+            className={`gd-tab ${activeTab === tab ? "gd-tab--active" : ""}`}
+            onClick={() => setActiveTab(tab)}
+          >
+            {tab === "standings" && "Standings"}
+            {tab === "members" && "Members"}
+            {tab === "picks" && "Picks"}
+            {tab === "chaos" && "Chaos"}
+          </button>
+        ))}
+      </div>
+
+      <div className="group-detail-content">
+        {loadError ? <p className="group-error">{loadError}</p> : null}
+        {loading ? (
+          <div className="group-detail-loading">Loading group data...</div>
+        ) : (
+          <>
+            {activeTab === "standings" && (
+              <GroupStandingsTab
+                standings={rankedStandings}
+                groupMemberCount={displayedMemberCount}
+                soleLeader={soleLeader}
+                currentUserId={user?.id}
+                tournamentStarted={tournamentStarted}
+                canPreviewHidden={canPreviewHidden}
+                onViewBracket={setViewingBracket}
+                onRefresh={loadGroupData}
+                onSelectBracket={handleOpenBracketPicker}
+                onInvite={() => void handleInvite()}
+              />
+            )}
+            {activeTab === "members" && (
+              <GroupMembersTab
+                members={members}
+                currentUserId={user?.id}
+                onSelectBracket={handleOpenBracketPicker}
+              />
+            )}
+            {activeTab === "picks" && (
+              <GroupPicksTab
+                standings={rankedStandings}
+                members={members}
+                currentUserId={user?.id}
+                canPreviewHidden={canPreviewHidden}
+                tournamentResults={tournamentResults}
+              />
+            )}
+            {activeTab === "chaos" && (
+              <GroupChaosTab
+                standings={rankedStandings}
+                currentUserId={user?.id}
+                canPreviewHidden={canPreviewHidden}
+              />
+            )}
+          </>
+        )}
+      </div>
+
+      {showBracketPicker && (
+        <div className="group-modal-overlay" onClick={() => { setShowBracketPicker(false); setSelectedBracket(null); }}>
+          <div className="group-modal" onClick={(e) => e.stopPropagation()}>
+            <button className="group-modal-close-btn" onClick={() => { setShowBracketPicker(false); setSelectedBracket(null); }}>
+              ✕
+            </button>
+            <div className="group-modal-header">
+              <span className="group-modal-icon">🏀</span>
+              <h2 className="group-modal-title">Select Your Bracket</h2>
+              <p className="group-modal-subtitle">Choose which bracket to enter into this group</p>
+            </div>
+            <div className="group-modal-body">
+              <div className="group-bracket-list">
+                {brackets.map((b) => (
+                  <button
+                    key={b.id}
+                    className={`group-bracket-option ${selectedBracket === b.id ? "group-bracket-option--selected" : ""}`}
+                    onClick={() => setSelectedBracket(b.id)}
+                  >
+                    <div className="group-bracket-option-info">
+                      <span className="group-bracket-option-name">{b.bracket_name}</span>
+                      <span className="group-bracket-option-meta">
+                        {Object.keys(b.picks || {}).length} picks
+                        {b.is_locked && " · 🔒 Locked"}
+                      </span>
+                    </div>
+                    <div
+                      className={`group-bracket-radio ${selectedBracket === b.id ? "group-bracket-radio--checked" : ""}`}
+                    />
+                  </button>
+                ))}
+              </div>
+              {bracketPickerError && <p className="group-error">{bracketPickerError}</p>}
+            </div>
+            <button className="group-cta-btn" onClick={handleConfirmBracket} disabled={!selectedBracket || bracketPickerLoading}>
+              {bracketPickerLoading ? "Saving..." : "Confirm Bracket"}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {showEditGroup && (
+        <div className="group-modal-overlay" onClick={() => { setShowEditGroup(false); setEditError(""); }}>
+          <div className="group-modal" onClick={(e) => e.stopPropagation()}>
+            <button className="group-modal-close-btn" onClick={() => { setShowEditGroup(false); setEditError(""); }}>
+              ✕
+            </button>
+            <div className="group-modal-header">
+              <span className="group-modal-icon">{editEmoji}</span>
+              <h2 className="group-modal-title">Edit Group</h2>
+              <p className="group-modal-subtitle">Update your group's name and emoji</p>
+            </div>
+            <div className="group-modal-body">
+              <label className="group-input-label">Group Emoji</label>
+              <div className="group-emoji-grid">
+                {GROUP_EMOJIS.map((e) => (
+                  <button
+                    key={e}
+                    type="button"
+                    className={`group-emoji-btn ${editEmoji === e ? "group-emoji-btn--selected" : ""}`}
+                    onClick={() => setEditEmoji(e)}
+                  >
+                    {e}
+                  </button>
+                ))}
+              </div>
+
+              <label className="group-input-label">Group Name</label>
+              <input
+                type="text"
+                className="group-input"
+                value={editName}
+                onChange={(e) => setEditName(e.target.value)}
+                placeholder="e.g. Office Pool 2026"
+                maxLength={40}
+                autoFocus
+                onKeyDown={(e) => e.key === "Enter" && handleSaveGroup()}
+              />
+              <span className="group-input-hint">{editName.length}/40</span>
+
+              {editError && <p className="group-error">{editError}</p>}
+            </div>
+            <button className="group-cta-btn" onClick={handleSaveGroup} disabled={!editName.trim() || editLoading}>
+              {editLoading ? "Saving..." : "Save Changes"}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {bracketPickerError && !showBracketPicker && (
+        <div className="group-bracket-picker-error-toast">
+          {bracketPickerError}
+        </div>
+      )}
+    </div>
+  );
+}

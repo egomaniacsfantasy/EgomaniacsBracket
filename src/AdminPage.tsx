@@ -2,10 +2,12 @@ import { useEffect, useMemo, useState } from "react";
 import { gameTemplates } from "./data/bracket";
 import { teamsById } from "./data/teams";
 import { supabase } from "./supabaseClient";
-import { buildScoringResultMap, scoreBracketPicks, TOTAL_SCORING_GAMES } from "./lib/bracketScoring";
+import { useAuth } from "./AuthContext";
+import { hasElevatedAccess } from "./groupVisibility";
 
-const ADMIN_PASSWORD = "oddsgods2026";
+const POINTS: Record<number, number> = { 64: 10, 32: 20, 16: 40, 8: 80, 4: 160, 2: 320 };
 const ROUND_TO_INT: Record<string, number> = { R64: 64, R32: 32, S16: 16, E8: 8, F4: 4, CHAMP: 2 };
+const TOTAL_GAMES = gameTemplates.length;
 
 type ResultRow = {
   matchup_id: string;
@@ -23,39 +25,32 @@ type MatchupRow = {
 };
 
 export function AdminPage() {
-  const [authenticated, setAuthenticated] = useState(false);
-  const [passwordInput, setPasswordInput] = useState("");
+  const { user, loading } = useAuth();
   const [resultsRefresh, setResultsRefresh] = useState(0);
   const [scoringStatus, setScoringStatus] = useState("");
   const [lockStatus, setLockStatus] = useState("");
 
-  if (!authenticated) {
+  if (loading) {
     return (
       <div style={{ padding: 40, maxWidth: 400, margin: "0 auto", fontFamily: "monospace", color: "#f0e6d0" }}>
-        <h2 style={{ color: "#b87d18" }}>BracketLab Admin</h2>
-        <input
-          type="password"
-          placeholder="Admin password"
-          value={passwordInput}
-          onChange={(event) => setPasswordInput(event.target.value)}
-          onKeyDown={(event) => {
-            if (event.key === "Enter" && passwordInput === ADMIN_PASSWORD) setAuthenticated(true);
-          }}
-          style={{ padding: 10, width: "100%", fontSize: 16, background: "#1a1510", color: "#fff", border: "1px solid #333", borderRadius: 6 }}
-        />
-        <button
-          onClick={() => passwordInput === ADMIN_PASSWORD && setAuthenticated(true)}
-          style={{ marginTop: 10, padding: "10px 20px", background: "#b87d18", color: "#000", border: "none", borderRadius: 6, cursor: "pointer", fontWeight: "bold" }}
-        >
-          Enter
-        </button>
+        <h2 style={{ color: "#b87d18" }}>Bracket Lab Admin</h2>
+        <p style={{ color: "#888" }}>Loading...</p>
+      </div>
+    );
+  }
+
+  if (!hasElevatedAccess(user?.email)) {
+    return (
+      <div style={{ padding: 40, maxWidth: 400, margin: "0 auto", fontFamily: "monospace", color: "#f0e6d0" }}>
+        <h2 style={{ color: "#b87d18" }}>Bracket Lab Admin</h2>
+        <p style={{ color: "#888" }}>Not authorized.</p>
       </div>
     );
   }
 
   return (
     <div style={{ padding: 40, maxWidth: 1000, margin: "0 auto", fontFamily: "monospace", color: "#f0e6d0" }}>
-      <h2 style={{ color: "#b87d18" }}>BracketLab Admin</h2>
+      <h2 style={{ color: "#b87d18" }}>Bracket Lab Admin</h2>
       <AdminResultsEntry onResultsChange={() => setResultsRefresh((v) => v + 1)} />
       <AdminScoringControls scoringStatus={scoringStatus} setScoringStatus={setScoringStatus} />
       <AdminLockControls lockStatus={lockStatus} setLockStatus={setLockStatus} />
@@ -280,56 +275,58 @@ function AdminScoringControls({
         setScoringStatus("No results entered yet.");
         return;
       }
-      const resultMap = buildScoringResultMap(results as ResultRow[]);
-      const scoredGames = Object.keys(resultMap).length;
-      if (scoredGames === 0) {
-        setScoringStatus("No scoring-round results entered yet (R64 to Championship only).");
-        return;
-      }
+      const resultMap: Record<string, { winner: string; round: number }> = {};
+      (results as ResultRow[]).forEach((result) => {
+        resultMap[result.matchup_id] = { winner: result.winner_team_id, round: Number(result.round) };
+      });
 
-      const submittedOnly = await supabase
-        .from("brackets")
-        .select("id, user_id, picks, submitted_at")
-        .not("submitted_at", "is", null);
-
-      const missingSubmittedAt =
-        submittedOnly.error &&
-        submittedOnly.error.message?.toLowerCase().includes("submitted_at") &&
-        (submittedOnly.error.message.toLowerCase().includes("column") ||
-          submittedOnly.error.message.toLowerCase().includes("schema cache"));
-
-      const bracketQuery = missingSubmittedAt
-        ? await supabase.from("brackets").select("id, user_id, picks")
-        : submittedOnly;
-
-      if (bracketQuery.error) {
-        setScoringStatus(`Error: ${bracketQuery.error.message}`);
-        return;
-      }
-
-      const brackets = bracketQuery.data;
+      const { data: brackets } = await supabase.from("brackets").select("id, user_id, picks");
       if (!brackets || brackets.length === 0) {
-        setScoringStatus("No submitted brackets to score.");
+        setScoringStatus("No brackets to score.");
         return;
       }
+
+      const gamesPerRound: Record<number, number> = { 64: 32, 32: 16, 16: 8, 8: 4, 4: 2, 2: 1 };
+      const gamesPlayed = results.length;
 
       const scoreUpdates = (brackets as Array<{ id: string; user_id: string; picks: Record<string, string> }>).map((bracket) => {
+        let totalScore = 0;
+        let correctPicks = 0;
+        const roundScores: Record<number, number> = { 64: 0, 32: 0, 16: 0, 8: 0, 4: 0, 2: 0 };
         const picks = bracket.picks ?? {};
-        const score = scoreBracketPicks(picks, resultMap);
+
+        for (const [matchupId, pickedWinner] of Object.entries(picks)) {
+          const result = resultMap[matchupId];
+          if (!result) continue;
+          if (pickedWinner === result.winner) {
+            const points = POINTS[result.round] ?? 0;
+            totalScore += points;
+            roundScores[result.round] = (roundScores[result.round] ?? 0) + points;
+            correctPicks += 1;
+          }
+        }
+
+        let maxRemaining = 0;
+        for (const [roundStr, totalInRound] of Object.entries(gamesPerRound)) {
+          const round = Number(roundStr);
+          const playedInRound = (results as ResultRow[]).filter((result) => Number(result.round) === round).length;
+          const remainingInRound = totalInRound - playedInRound;
+          maxRemaining += Math.max(0, remainingInRound) * (POINTS[round] ?? 0);
+        }
 
         return {
           bracket_id: bracket.id,
           user_id: bracket.user_id,
-          total_score: score.totalScore,
-          r64_score: score.roundScores[64] ?? 0,
-          r32_score: score.roundScores[32] ?? 0,
-          s16_score: score.roundScores[16] ?? 0,
-          e8_score: score.roundScores[8] ?? 0,
-          f4_score: score.roundScores[4] ?? 0,
-          champ_score: score.roundScores[2] ?? 0,
-          correct_picks: score.correctPicks,
-          possible_picks: score.possiblePicks,
-          max_remaining: score.maxRemaining,
+          total_score: totalScore,
+          r64_score: roundScores[64] ?? 0,
+          r32_score: roundScores[32] ?? 0,
+          s16_score: roundScores[16] ?? 0,
+          e8_score: roundScores[8] ?? 0,
+          f4_score: roundScores[4] ?? 0,
+          champ_score: roundScores[2] ?? 0,
+          correct_picks: correctPicks,
+          possible_picks: gamesPlayed,
+          max_remaining: totalScore + maxRemaining,
           updated_at: new Date().toISOString(),
         };
       });
@@ -346,9 +343,7 @@ function AdminScoringControls({
         return;
       }
 
-      setScoringStatus(
-        `✓ Scored ${brackets.length} brackets. ${scoredGames}/${TOTAL_SCORING_GAMES} scoring games entered (First Four excluded).`
-      );
+      setScoringStatus(`✓ Scored ${brackets.length} brackets. ${results.length}/${TOTAL_GAMES} games entered.`);
     } catch (error) {
       setScoringStatus(`Error: ${(error as Error).message}`);
     }
@@ -445,13 +440,9 @@ function AdminResultsLog({ refreshKey }: { refreshKey: number }) {
       .then(({ data }) => setResults((data as ResultRow[] | null) ?? []));
   }, [refreshKey]);
 
-  const scoredCount = Object.keys(buildScoringResultMap(results)).length;
-
   return (
     <div style={{ marginBottom: 40 }}>
-      <h3 style={{ color: "#b87d18" }}>
-        Results Entered ({scoredCount}/{TOTAL_SCORING_GAMES} scoring games, First Four excluded)
-      </h3>
+      <h3 style={{ color: "#b87d18" }}>Results Entered ({results.length}/{TOTAL_GAMES})</h3>
       <div style={{ maxHeight: 220, overflowY: "auto", fontSize: 11, color: "#888" }}>
         {results.map((result) => (
           <div key={result.matchup_id} style={{ padding: "4px 0", borderBottom: "1px solid rgba(255,255,255,0.04)" }}>

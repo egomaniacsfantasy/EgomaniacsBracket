@@ -1,7 +1,12 @@
 import { useEffect, useRef, useState, type FormEvent, type MouseEvent } from "react";
 import { useAuth } from "./AuthContext";
+import { MAX_SUBMITTED_BRACKETS } from "./bracketStorage";
+import { supabase } from "./supabaseClient";
+import { captureError } from "./lib/errorMonitoring";
 
-type Mode = "signup" | "signin" | "check-email";
+export type AuthContext = "submit" | "default" | "groups" | "join";
+
+type Mode = "signup" | "signin" | "verify-otp" | "check-email" | "forgot" | "forgot-sent";
 
 function getFriendlyAuthError(error: { message?: string } | null | undefined): string {
   const raw = error?.message ?? "";
@@ -42,22 +47,203 @@ function getFriendlyAuthError(error: { message?: string } | null | undefined): s
   }
 
   if (msg.includes("not confirmed") || msg.includes("confirm")) {
-    return "Please check your email and click the confirmation link first.";
+    return "Your email isn't confirmed yet. Check for a verification code or resend one below.";
   }
 
   if (msg.includes("network") || msg.includes("fetch")) {
     return "Connection error. Please check your internet and try again.";
   }
 
+  if (msg.includes("otp") && msg.includes("expired")) {
+    return "That code has expired. Resend a new one and try again.";
+  }
+
+  if (msg.includes("otp") || msg.includes("token")) {
+    return "Invalid code. Please check and try again.";
+  }
+
   return raw || "Something went wrong. Please try again.";
+}
+
+function getFriendlyGoogleAuthError(error: { message?: string } | null | undefined): string {
+  const raw = error?.message ?? "";
+  const msg = raw.toLowerCase();
+
+  if (msg.includes("disallowed_useragent") || msg.includes("secure browsers")) {
+    return "Google sign-in won't work inside an in-app browser. Open Odds Gods in Safari or Chrome and try again.";
+  }
+
+  if (msg.includes("provider is not enabled") || msg.includes("unsupported provider")) {
+    return "Google sign-in isn't enabled in Supabase yet. Finish the Google provider setup and try again.";
+  }
+
+  return getFriendlyAuthError(error);
+}
+
+function getEmbeddedBrowserName(): string | null {
+  if (typeof navigator === "undefined") return null;
+  const ua = navigator.userAgent.toLowerCase();
+
+  if (ua.includes("snapchat")) return "Snapchat";
+  if (ua.includes("instagram")) return "Instagram";
+  if (ua.includes("fban") || ua.includes("fbav") || ua.includes("fb_iab")) return "Facebook";
+  if (ua.includes("tiktok")) return "TikTok";
+  if (ua.includes("micromessenger")) return "WeChat";
+  if (ua.includes("line/")) return "LINE";
+
+  return null;
+}
+
+function getAuthCopy(context: AuthContext, mode: string) {
+  if (mode === "check-email" || mode === "verify-otp" || mode === "forgot" || mode === "forgot-sent") return null;
+
+  switch (context) {
+    case "submit":
+      return {
+        title: "Save your bracket",
+        subtitle: `Create an account to save up to ${MAX_SUBMITTED_BRACKETS} brackets and compete on the leaderboard.`,
+      };
+    case "groups":
+      return {
+        title: "Sign in for Groups",
+        subtitle: "Create or join groups to compete with friends.",
+      };
+    case "join":
+      return {
+        title: "Sign in to join",
+        subtitle: "Create an account to join the group you were invited to.",
+      };
+    case "default":
+    default:
+      return {
+        title: "Welcome to The Bracket Lab",
+        subtitle: "Save brackets, join groups, and compete on the leaderboard.",
+      };
+  }
+}
+
+function PasswordInput({
+  value,
+  onChange,
+  placeholder,
+  autoFocus,
+}: {
+  value: string;
+  onChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
+  placeholder: string;
+  autoFocus?: boolean;
+}) {
+  const [visible, setVisible] = useState(false);
+
+  return (
+    <div className="auth-password-wrap">
+      <input
+        className="auth-modal-input auth-modal-input--password"
+        type={visible ? "text" : "password"}
+        placeholder={placeholder}
+        value={value}
+        onChange={onChange}
+        autoFocus={autoFocus}
+        minLength={6}
+      />
+      <button
+        className="auth-password-toggle"
+        onClick={() => setVisible(!visible)}
+        type="button"
+        tabIndex={-1}
+        aria-label={visible ? "Hide password" : "Show password"}
+      >
+        {visible ? "\u{1F441}\u200D\u{1F5E8}" : "\u{1F441}"}
+      </button>
+    </div>
+  );
+}
+
+const OTP_LENGTH = 8;
+
+function OtpInput({
+  value,
+  onChange,
+  disabled,
+}: {
+  value: string;
+  onChange: (code: string) => void;
+  disabled: boolean;
+}) {
+  const inputsRef = useRef<(HTMLInputElement | null)[]>([]);
+
+  useEffect(() => {
+    inputsRef.current[0]?.focus();
+  }, []);
+
+  const handleChange = (index: number, char: string) => {
+    // Handle paste of full code
+    if (char.length > 1) {
+      const digits = char.replace(/\D/g, "").slice(0, OTP_LENGTH);
+      onChange(digits);
+      const focusIdx = Math.min(digits.length, OTP_LENGTH - 1);
+      inputsRef.current[focusIdx]?.focus();
+      return;
+    }
+
+    const digit = char.replace(/\D/g, "");
+    const chars = value.split("");
+    chars[index] = digit;
+    const next = chars.join("").slice(0, OTP_LENGTH);
+    onChange(next);
+
+    if (digit && index < OTP_LENGTH - 1) {
+      inputsRef.current[index + 1]?.focus();
+    }
+  };
+
+  const handleKeyDown = (index: number, e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "Backspace" && !value[index] && index > 0) {
+      inputsRef.current[index - 1]?.focus();
+      const chars = value.split("");
+      chars[index - 1] = "";
+      onChange(chars.join(""));
+    }
+  };
+
+  const handlePaste = (e: React.ClipboardEvent) => {
+    e.preventDefault();
+    const pasted = e.clipboardData.getData("text").replace(/\D/g, "").slice(0, OTP_LENGTH);
+    onChange(pasted);
+    const focusIdx = Math.min(pasted.length, OTP_LENGTH - 1);
+    inputsRef.current[focusIdx]?.focus();
+  };
+
+  return (
+    <div className="otp-input-row">
+      {Array.from({ length: OTP_LENGTH }).map((_, i) => (
+        <input
+          key={i}
+          ref={(el) => { inputsRef.current[i] = el; }}
+          className="otp-digit"
+          type="text"
+          inputMode="numeric"
+          maxLength={1}
+          value={value[i] ?? ""}
+          disabled={disabled}
+          onChange={(e) => handleChange(i, e.target.value)}
+          onKeyDown={(e) => handleKeyDown(i, e)}
+          onPaste={handlePaste}
+          autoComplete="one-time-code"
+        />
+      ))}
+    </div>
+  );
 }
 
 export function AuthModal({
   isOpen,
   onClose,
+  context = "default",
 }: {
   isOpen: boolean;
   onClose: () => void;
+  context?: AuthContext;
 }) {
   const { signUp, signIn, signInWithGoogle, isDisplayNameAvailable } = useAuth();
   const [mode, setMode] = useState<Mode>("signup");
@@ -70,6 +256,10 @@ export function AuthModal({
   const [signinPassword, setSigninPassword] = useState("");
   const [displayNameHint, setDisplayNameHint] = useState("");
   const [displayNameChecking, setDisplayNameChecking] = useState(false);
+  const [resendStatus, setResendStatus] = useState("");
+  const [resendingConfirmation, setResendingConfirmation] = useState(false);
+  const [otpCode, setOtpCode] = useState("");
+  const [verifyingOtp, setVerifyingOtp] = useState(false);
   const modalRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
@@ -84,6 +274,10 @@ export function AuthModal({
     setSigninPassword("");
     setDisplayNameHint("");
     setDisplayNameChecking(false);
+    setResendStatus("");
+    setResendingConfirmation(false);
+    setOtpCode("");
+    setVerifyingOtp(false);
   }, [isOpen]);
 
   useEffect(() => {
@@ -121,9 +315,80 @@ export function AuthModal({
     if (event.target === event.currentTarget) onClose();
   };
 
+  const handleResendCode = async () => {
+    if (!email.trim()) {
+      setError("Enter your email address.");
+      return;
+    }
+
+    setError("");
+    setResendStatus("");
+    setResendingConfirmation(true);
+
+    try {
+      const { error: resendError } = await supabase.auth.resend({
+        type: "signup",
+        email: email.trim(),
+        options: {
+          emailRedirectTo: window.location.origin,
+        },
+      });
+
+      setResendingConfirmation(false);
+
+      if (resendError) {
+        setError(getFriendlyAuthError(resendError));
+        return;
+      }
+
+      setOtpCode("");
+      setResendStatus("New code sent! Check your email.");
+    } catch (err) {
+      captureError("auth_resend_otp", err);
+      setResendingConfirmation(false);
+      setError("Something went wrong. Please try again.");
+    }
+  };
+
+  const handleVerifyOtp = async (event?: FormEvent) => {
+    event?.preventDefault();
+    const code = otpCode.trim();
+    if (code.length !== OTP_LENGTH) {
+      setError(`Enter the ${OTP_LENGTH}-digit code from your email.`);
+      return;
+    }
+
+    setError("");
+    setResendStatus("");
+    setVerifyingOtp(true);
+
+    try {
+      const { error: verifyError } = await supabase.auth.verifyOtp({
+        email: email.trim(),
+        token: code,
+        type: "signup",
+      });
+
+      setVerifyingOtp(false);
+
+      if (verifyError) {
+        setError(getFriendlyAuthError(verifyError));
+        return;
+      }
+
+      // Success — user is now verified and logged in
+      onClose();
+    } catch (err) {
+      captureError("auth_verify_otp", err);
+      setVerifyingOtp(false);
+      setError("Something went wrong. Please try again.");
+    }
+  };
+
   const handleSignUp = async (event: FormEvent) => {
     event.preventDefault();
     setError("");
+    setResendStatus("");
     if (!email.trim()) return setError("Email is required");
     if (!displayName.trim()) return setError("Display name is required");
     if (displayName.trim().length > 30) return setError("Display name must be 30 characters or less");
@@ -135,12 +400,14 @@ export function AuthModal({
     setSubmitting(false);
     if (authError) return setError(getFriendlyAuthError(authError as { message?: string }));
     setSubmittedMode("signup");
-    setMode("check-email");
+    setOtpCode("");
+    setMode("verify-otp");
   };
 
   const handleSignIn = async (event: FormEvent) => {
     event.preventDefault();
     setError("");
+    setResendStatus("");
     if (!email.trim()) return setError("Email is required");
     if (!signinPassword) return setError("Password is required");
 
@@ -148,21 +415,76 @@ export function AuthModal({
     const authResult = await signIn(email.trim(), signinPassword);
     const authError = authResult.error;
     setSubmitting(false);
-    if (authError) return setError(getFriendlyAuthError(authError as { message?: string }));
+    if (authError) {
+      const friendlyMsg = getFriendlyAuthError(authError as { message?: string });
+      setError(friendlyMsg);
+      return;
+    }
     onClose();
   };
 
-  const handleGoogleSignIn = async () => {
+  const handleForgotPassword = async (event: FormEvent) => {
+    event.preventDefault();
     setError("");
+
+    if (!email.trim()) {
+      setError("Enter your email address.");
+      return;
+    }
+
     setSubmitting(true);
-    const authResult = await signInWithGoogle();
-    setSubmitting(false);
-    if (authResult.error) {
-      setError("Google sign-in failed. Please try again.");
+
+    try {
+      const { error: resetError } = await supabase.auth.resetPasswordForEmail(
+        email.trim(),
+        { redirectTo: window.location.origin }
+      );
+
+      setSubmitting(false);
+
+      if (resetError) {
+        setError(getFriendlyAuthError(resetError));
+        return;
+      }
+
+      setMode("forgot-sent");
+    } catch (err) {
+      captureError("auth_reset_password", err);
+      setSubmitting(false);
+      setError("Something went wrong. Please try again.");
     }
   };
 
+  // Auto-submit when all 6 digits entered
+  useEffect(() => {
+    if (mode === "verify-otp" && otpCode.length === OTP_LENGTH && !verifyingOtp) {
+      void handleVerifyOtp();
+    }
+  }, [otpCode, mode]);
+
   if (!isOpen) return null;
+
+  const copy = getAuthCopy(context, mode);
+  const embeddedBrowserName = getEmbeddedBrowserName();
+
+  const handleGoogleSignIn = async () => {
+    setError("");
+    setResendStatus("");
+
+    if (embeddedBrowserName) {
+      setError(`Google sign-in is blocked inside ${embeddedBrowserName}. Open Odds Gods in Safari or Chrome, then try again.`);
+      return;
+    }
+
+    setSubmitting(true);
+    const authResult = await signInWithGoogle();
+    setSubmitting(false);
+
+    if (authResult.error) {
+      captureError("auth_google_signin", authResult.error);
+      setError(getFriendlyGoogleAuthError(authResult.error as { message?: string }));
+    }
+  };
 
   return (
     <div className="auth-modal-backdrop" onClick={handleBackdropClick}>
@@ -171,7 +493,49 @@ export function AuthModal({
           ✕
         </button>
 
-        {mode === "check-email" ? (
+        {mode === "verify-otp" ? (
+          <div className="auth-modal-verify-otp">
+            <span className="auth-modal-icon">✉</span>
+            <h3 className="auth-modal-title">Enter your code</h3>
+            <p className="auth-modal-subtitle">
+              We sent a {OTP_LENGTH}-digit code to <strong>{email}</strong>
+            </p>
+            <form onSubmit={handleVerifyOtp}>
+              <OtpInput
+                value={otpCode}
+                onChange={setOtpCode}
+                disabled={verifyingOtp}
+              />
+              {error ? <div className="auth-modal-error"><span>{error}</span></div> : null}
+              {resendStatus ? <p className="auth-modal-hint auth-modal-hint--success">{resendStatus}</p> : null}
+              <button
+                className="auth-modal-submit"
+                type="submit"
+                disabled={verifyingOtp || otpCode.length !== OTP_LENGTH}
+              >
+                {verifyingOtp ? "Verifying..." : "Verify"}
+              </button>
+            </form>
+            <p className="auth-modal-hint">
+              Didn&apos;t get it? Check spam, or{" "}
+              <button
+                className="auth-modal-error-link"
+                type="button"
+                onClick={() => { void handleResendCode(); }}
+                disabled={resendingConfirmation}
+              >
+                {resendingConfirmation ? "Sending..." : "resend code"}
+              </button>
+            </p>
+            <button
+              className="auth-modal-mode-toggle"
+              onClick={() => { setMode("signup"); setError(""); setOtpCode(""); }}
+              type="button"
+            >
+              &larr; Back to sign up
+            </button>
+          </div>
+        ) : mode === "check-email" ? (
           <div className="auth-modal-check-email">
             <span className="auth-modal-icon">✉</span>
             <h3 className="auth-modal-title">Check your email</h3>
@@ -180,17 +544,85 @@ export function AuthModal({
               {submittedMode === "signup" ? "create your account" : "log in"}.
             </p>
             <p className="auth-modal-hint">Don&apos;t see it? Check your spam folder.</p>
+            {resendStatus ? <p className="auth-modal-hint">{resendStatus}</p> : null}
+            {error ? <p className="auth-modal-hint auth-modal-hint--error">{error}</p> : null}
+            <p className="auth-modal-hint">
+              Still nothing?{" "}
+              <button
+                className="auth-modal-error-link"
+                type="button"
+                onClick={() => {
+                  void handleResendCode();
+                }}
+                disabled={resendingConfirmation}
+              >
+                {resendingConfirmation ? "Sending..." : "Resend confirmation email"}
+              </button>
+            </p>
+          </div>
+        ) : mode === "forgot" ? (
+          <div className="auth-modal-forgot">
+            <h2 className="auth-modal-title">Reset your password</h2>
+            <p className="auth-modal-subtitle">
+              Enter your email and we&apos;ll send you a reset link.
+            </p>
+            <form onSubmit={handleForgotPassword}>
+              <label className="auth-modal-label">Email</label>
+              <input
+                className="auth-modal-input"
+                type="email"
+                placeholder="you@example.com"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                autoFocus
+              />
+              {error && <div className="auth-modal-error"><span>{error}</span></div>}
+              <button
+                className="auth-modal-submit"
+                type="submit"
+                disabled={submitting}
+              >
+                {submitting ? "Sending..." : "Send Reset Link"}
+              </button>
+            </form>
+            <button
+              className="auth-modal-mode-toggle"
+              onClick={() => { setMode("signin"); setError(""); }}
+              type="button"
+            >
+              &larr; Back to log in
+            </button>
+          </div>
+        ) : mode === "forgot-sent" ? (
+          <div className="auth-modal-forgot-sent">
+            <span className="auth-modal-icon">✉</span>
+            <h2 className="auth-modal-title">Check your inbox</h2>
+            <p className="auth-modal-subtitle">
+              We sent a password reset link to <strong>{email}</strong>
+            </p>
+            <p className="auth-modal-hint">
+              Didn&apos;t get it? Check spam or{" "}
+              <button
+                className="auth-modal-inline-link"
+                onClick={() => { setMode("forgot"); setError(""); }}
+                type="button"
+              >
+                try again
+              </button>.
+            </p>
           </div>
         ) : mode === "signup" ? (
           <form onSubmit={handleSignUp} className="auth-modal-form">
-            <h3 className="auth-modal-title">Submit your bracket</h3>
-            <p className="auth-modal-subtitle">
-              Create an account to save up to 25 brackets and compete on the leaderboard. Password required.
-            </p>
+            {copy && (
+              <>
+                <h3 className="auth-modal-title">{copy.title}</h3>
+                <p className="auth-modal-subtitle">{copy.subtitle}</p>
+              </>
+            )}
 
             <button
               className="auth-modal-google-btn"
-              onClick={handleGoogleSignIn}
+              onClick={() => { void handleGoogleSignIn(); }}
               type="button"
               disabled={submitting}
             >
@@ -202,8 +634,13 @@ export function AuthModal({
               </svg>
               Continue with Google
             </button>
+            {embeddedBrowserName ? (
+              <p className="auth-modal-hint auth-modal-hint--error auth-modal-google-note">
+                Google sign-in is blocked inside {embeddedBrowserName}. Open Odds Gods in Safari or Chrome.
+              </p>
+            ) : null}
 
-            <div className="auth-modal-divider">
+            <div className="auth-modal-divider" aria-hidden="true">
               <span className="auth-modal-divider-line" />
               <span className="auth-modal-divider-text">or</span>
               <span className="auth-modal-divider-line" />
@@ -235,13 +672,10 @@ export function AuthModal({
             />
 
             <label className="auth-modal-label">Password</label>
-            <input
-              className="auth-modal-input"
-              type="password"
-              placeholder="At least 6 characters"
+            <PasswordInput
               value={password}
               onChange={(event) => setPassword(event.target.value)}
-              minLength={6}
+              placeholder="At least 6 characters"
             />
 
             {error ? (
@@ -258,6 +692,20 @@ export function AuthModal({
                     }}
                   >
                     Go to log in →
+                  </button>
+                ) : null}
+                {error.includes("isn't confirmed") ? (
+                  <button
+                    className="auth-modal-error-link"
+                    type="button"
+                    onClick={() => {
+                      setOtpCode("");
+                      setMode("verify-otp");
+                      void handleResendCode();
+                    }}
+                    disabled={resendingConfirmation}
+                  >
+                    {resendingConfirmation ? "Sending..." : "Resend verification code →"}
                   </button>
                 ) : null}
                 {error.includes("Try signing up") ? (
@@ -296,12 +744,21 @@ export function AuthModal({
           </form>
         ) : (
           <form onSubmit={handleSignIn} className="auth-modal-form">
-            <h3 className="auth-modal-title">Welcome back</h3>
-            <p className="auth-modal-subtitle">Enter your email and password to log in.</p>
+            {copy && mode === "signin" ? (
+              <>
+                <h3 className="auth-modal-title">{copy.title}</h3>
+                <p className="auth-modal-subtitle">{copy.subtitle}</p>
+              </>
+            ) : (
+              <>
+                <h3 className="auth-modal-title">Welcome back</h3>
+                <p className="auth-modal-subtitle">Enter your email and password to log in.</p>
+              </>
+            )}
 
             <button
               className="auth-modal-google-btn"
-              onClick={handleGoogleSignIn}
+              onClick={() => { void handleGoogleSignIn(); }}
               type="button"
               disabled={submitting}
             >
@@ -313,8 +770,13 @@ export function AuthModal({
               </svg>
               Continue with Google
             </button>
+            {embeddedBrowserName ? (
+              <p className="auth-modal-hint auth-modal-hint--error auth-modal-google-note">
+                Google sign-in is blocked inside {embeddedBrowserName}. Open Odds Gods in Safari or Chrome.
+              </p>
+            ) : null}
 
-            <div className="auth-modal-divider">
+            <div className="auth-modal-divider" aria-hidden="true">
               <span className="auth-modal-divider-line" />
               <span className="auth-modal-divider-text">or</span>
               <span className="auth-modal-divider-line" />
@@ -331,13 +793,19 @@ export function AuthModal({
             />
 
             <label className="auth-modal-label">Password</label>
-            <input
-              className="auth-modal-input"
-              type="password"
-              placeholder="Your password"
+            <PasswordInput
               value={signinPassword}
               onChange={(event) => setSigninPassword(event.target.value)}
+              placeholder="Your password"
             />
+
+            <button
+              className="auth-modal-forgot-link"
+              onClick={() => { setMode("forgot"); setError(""); }}
+              type="button"
+            >
+              Forgot your password?
+            </button>
 
             {error ? (
               <div className="auth-modal-error">
@@ -352,6 +820,20 @@ export function AuthModal({
                     }}
                   >
                     Go to log in →
+                  </button>
+                ) : null}
+                {error.includes("isn't confirmed") ? (
+                  <button
+                    className="auth-modal-error-link"
+                    type="button"
+                    onClick={() => {
+                      setOtpCode("");
+                      setMode("verify-otp");
+                      void handleResendCode();
+                    }}
+                    disabled={resendingConfirmation}
+                  >
+                    {resendingConfirmation ? "Sending..." : "Resend verification code →"}
                   </button>
                 ) : null}
                 {error.includes("Try signing up") ? (

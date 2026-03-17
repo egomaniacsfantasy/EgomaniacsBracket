@@ -1,4 +1,5 @@
 import { gameTemplates } from "../data/bracket";
+import { BRACKET_PREDS_2026 } from "../data/bracketPreds2026";
 import { teams, teamsById } from "../data/teams";
 import type { ChaosDistribution, FuturesRow, GameWinProbability, Region, ResolvedGame, Round, SimulationOutput } from "../types";
 import type { CustomProbByGame, LockedPicks } from "./bracket";
@@ -330,18 +331,31 @@ export const buildPrecomputedBaseline = (simRuns: number): SimulationOutput => {
   const { games: resolvedGames } = resolveGames({}, {});
   const resolvedById = new Map(resolvedGames.map((game) => [game.id, game]));
 
-  // Run a seeded simulation to populate win counts for S16/E8/F4 (teams unknown without picks).
-  // normalizeGameWinProbs will use these counts for later rounds, but will use the EXACT
-  // matchup probability from matchupProbData.ts for R64/FF games where both teams are fixed.
+  // Build futures directly from static pre-computed data — no simulation, device-independent.
+  const teamByName = new Map(teams.map((t) => [t.name, t]));
+  const rows = makeEmptyFutures();
+  const rowMap = new Map(rows.map((row) => [row.teamId, row]));
+  for (const [name, pred] of Object.entries(BRACKET_PREDS_2026)) {
+    const team = teamByName.get(name);
+    if (!team) continue;
+    const row = rowMap.get(team.id);
+    if (!row) continue;
+    row.round2Prob = pred.round2Prob;
+    row.sweet16Prob = pred.sweet16Prob;
+    row.elite8Prob = pred.elite8Prob;
+    row.final4Prob = pred.final4Prob;
+    row.titleGameProb = pred.titleGameProb;
+    row.champProb = pred.champProb;
+  }
+
+  // Run a seeded simulation for gameWinProbs (S16/E8/F4 game-level display — teams unknown without picks).
+  // R64/FF games use exact matchup probabilities from matchupProbData.ts via normalizeGameWinProbs.
   const rootSeed = fnv1aHash(`${DEFAULT_SIM_SEED}::baseline`);
   const rng = mulberry32(rootSeed);
   const gameWinCounts = new Map<string, Map<string, number>>();
   for (const game of gameTemplates) {
     gameWinCounts.set(game.id, new Map<string, number>());
   }
-  const rows = makeEmptyFutures();
-  const rowMap = new Map(rows.map((row) => [row.teamId, row]));
-
   for (let i = 0; i < simRuns; i += 1) {
     const { winners } = simulateBracket({}, false, {}, rng);
     for (const game of gameTemplates) {
@@ -349,24 +363,8 @@ export const buildPrecomputedBaseline = (simRuns: number): SimulationOutput => {
       if (!winnerId) continue;
       const byTeam = gameWinCounts.get(game.id)!;
       byTeam.set(winnerId, (byTeam.get(winnerId) ?? 0) + 1);
-      const row = rowMap.get(winnerId);
-      if (!row) continue;
-      if (game.round === "R64") row.round2Prob += 1;
-      if (game.round === "R32") row.sweet16Prob += 1;
-      if (game.round === "S16") row.elite8Prob += 1;
-      if (game.round === "E8") row.final4Prob += 1;
-      if (game.round === "F4") row.titleGameProb += 1;
-      if (game.round === "CHAMP") row.champProb += 1;
     }
   }
-  rows.forEach((row) => {
-    row.round2Prob /= simRuns;
-    row.sweet16Prob /= simRuns;
-    row.elite8Prob /= simRuns;
-    row.final4Prob /= simRuns;
-    row.titleGameProb /= simRuns;
-    row.champProb /= simRuns;
-  });
 
   return {
     futures: rows.sort((a, b) => b.champProb - a.champProb),
