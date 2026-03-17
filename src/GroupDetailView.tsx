@@ -367,9 +367,10 @@ export function GroupDetailView({
             {activeTab === "picks" && (
               <GroupPicksTab
                 standings={rankedStandings}
+                members={members}
                 currentUserId={user?.id}
-                tournamentStarted={tournamentStarted}
                 canPreviewHidden={canPreviewHidden}
+                tournamentResults={tournamentResults}
               />
             )}
             {activeTab === "chaos" && (
