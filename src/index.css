@@ -5943,6 +5943,22 @@ body.og-onboarding-open {
   background: rgba(255, 255, 255, 0.1);
 }
 
+.ff-bar-stats-icon {
+  position: static;
+  top: auto;
+  right: auto;
+  margin-left: 0;
+  flex-shrink: 0;
+  padding: 0;
+  appearance: none;
+  -webkit-appearance: none;
+}
+
+.ff-bar-card:hover .ff-bar-stats-icon {
+  color: rgba(240, 230, 208, 0.9);
+  border-color: rgba(240, 230, 208, 0.32);
+}
+
 .eg-showdown-card .matchup-stats-icon {
   top: 8px;
   left: 8px;

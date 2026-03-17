@@ -104,7 +104,7 @@ function FirstFourBarCard({
         <span className="ff-bar-card-meta">
           <button
             type="button"
-            className="ff-bar-stats-icon ff-bar-card-icon"
+            className="matchup-stats-icon ff-bar-stats-icon"
             onClick={(event) => {
               event.stopPropagation();
               onOpenMatchupStats(game);
