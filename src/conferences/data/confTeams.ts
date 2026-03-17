@@ -112,7 +112,7 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "rankMOR": 35,
       "rankWLK": 34,
       "rankBIH": 30,
-      "rankNET": 27
+      "rankNET": 31
     },
     {
       "id": 1433,
@@ -131,8 +131,8 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "rankMAS": 44,
       "rankMOR": 48,
       "rankWLK": 41,
-      "rankBIH": 40,
-      "rankNET": 0
+      "rankBIH": 39,
+      "rankNET": 43
     },
     {
       "id": 1386,
@@ -152,7 +152,7 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "rankMOR": 142,
       "rankWLK": 118,
       "rankBIH": 89,
-      "rankNET": 124
+      "rankNET": 121
     },
     {
       "id": 1173,
@@ -171,8 +171,8 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "rankMAS": 74,
       "rankMOR": 74,
       "rankWLK": 72,
-      "rankBIH": 64,
-      "rankNET": 0
+      "rankBIH": 63,
+      "rankNET": 69
     },
     {
       "id": 1206,
@@ -192,7 +192,7 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "rankMOR": 93,
       "rankWLK": 93,
       "rankBIH": 78,
-      "rankNET": 89
+      "rankNET": 92
     },
     {
       "id": 1172,
@@ -212,7 +212,7 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "rankMOR": 139,
       "rankWLK": 114,
       "rankBIH": 110,
-      "rankNET": 106
+      "rankNET": 115
     },
     {
       "id": 1182,
@@ -231,8 +231,8 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "rankMAS": 132,
       "rankMOR": 131,
       "rankWLK": 137,
-      "rankBIH": 129,
-      "rankNET": 140
+      "rankBIH": 130,
+      "rankNET": 133
     },
     {
       "id": 1200,
@@ -272,7 +272,7 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "rankMOR": 80,
       "rankWLK": 90,
       "rankBIH": 118,
-      "rankNET": 90
+      "rankNET": 91
     },
     {
       "id": 1348,
@@ -292,7 +292,7 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "rankMOR": 118,
       "rankWLK": 141,
       "rankBIH": 159,
-      "rankNET": 144
+      "rankNET": 152
     },
     {
       "id": 1350,
@@ -312,7 +312,7 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "rankMOR": 130,
       "rankWLK": 163,
       "rankBIH": 190,
-      "rankNET": 152
+      "rankNET": 165
     },
     {
       "id": 1247,
@@ -332,7 +332,7 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "rankMOR": 216,
       "rankWLK": 238,
       "rankBIH": 243,
-      "rankNET": 235
+      "rankNET": 245
     },
     {
       "id": 1382,
@@ -352,7 +352,7 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "rankMOR": 137,
       "rankWLK": 138,
       "rankBIH": 161,
-      "rankNET": 158
+      "rankNET": 144
     },
     {
       "id": 1260,
@@ -372,7 +372,7 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "rankMOR": 250,
       "rankWLK": 284,
       "rankBIH": 276,
-      "rankNET": 289
+      "rankNET": 279
     }
   ],
   "acc": [
@@ -414,7 +414,7 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "rankMOR": 9,
       "rankWLK": 16,
       "rankBIH": 8,
-      "rankNET": 13
+      "rankNET": 12
     },
     {
       "id": 1274,
@@ -433,7 +433,7 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "rankMAS": 37,
       "rankMOR": 28,
       "rankWLK": 33,
-      "rankBIH": 26,
+      "rankBIH": 25,
       "rankNET": 32
     },
     {
@@ -454,7 +454,7 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "rankMOR": 24,
       "rankWLK": 25,
       "rankBIH": 19,
-      "rankNET": 23
+      "rankNET": 24
     },
     {
       "id": 1155,
@@ -474,7 +474,7 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "rankMOR": 30,
       "rankWLK": 35,
       "rankBIH": 32,
-      "rankNET": 36
+      "rankNET": 34
     },
     {
       "id": 1257,
@@ -494,7 +494,7 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "rankMOR": 13,
       "rankWLK": 21,
       "rankBIH": 28,
-      "rankNET": 14
+      "rankNET": 17
     },
     {
       "id": 1301,
@@ -514,7 +514,7 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "rankMOR": 34,
       "rankWLK": 37,
       "rankBIH": 41,
-      "rankNET": 35
+      "rankNET": 36
     },
     {
       "id": 1199,
@@ -534,7 +534,7 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "rankMOR": 62,
       "rankWLK": 62,
       "rankBIH": 72,
-      "rankNET": 69
+      "rankNET": 62
     },
     {
       "id": 1143,
@@ -554,7 +554,7 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "rankMOR": 71,
       "rankWLK": 71,
       "rankBIH": 56,
-      "rankNET": 65
+      "rankNET": 67
     },
     {
       "id": 1390,
@@ -574,7 +574,7 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "rankMOR": 58,
       "rankWLK": 58,
       "rankBIH": 57,
-      "rankNET": 59
+      "rankNET": 61
     },
     {
       "id": 1374,
@@ -594,7 +594,7 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "rankMOR": 36,
       "rankWLK": 38,
       "rankBIH": 44,
-      "rankNET": 39
+      "rankNET": 37
     },
     {
       "id": 1439,
@@ -614,7 +614,7 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "rankMOR": 45,
       "rankWLK": 55,
       "rankBIH": 52,
-      "rankNET": 53
+      "rankNET": 55
     },
     {
       "id": 1448,
@@ -634,7 +634,7 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "rankMOR": 63,
       "rankWLK": 70,
       "rankBIH": 79,
-      "rankNET": 64
+      "rankNET": 66
     },
     {
       "id": 1393,
@@ -654,7 +654,7 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "rankMOR": 66,
       "rankWLK": 88,
       "rankBIH": 85,
-      "rankNET": 83
+      "rankNET": 86
     },
     {
       "id": 1338,
@@ -674,7 +674,7 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "rankMOR": 81,
       "rankWLK": 99,
       "rankBIH": 126,
-      "rankNET": 109
+      "rankNET": 104
     }
   ],
   "aac": [
@@ -695,8 +695,8 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "rankMAS": 58,
       "rankMOR": 49,
       "rankWLK": 45,
-      "rankBIH": 51,
-      "rankNET": 0
+      "rankBIH": 48,
+      "rankNET": 45
     },
     {
       "id": 1455,
@@ -716,7 +716,7 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "rankMOR": 88,
       "rankWLK": 86,
       "rankBIH": 83,
-      "rankNET": 0
+      "rankNET": 78
     },
     {
       "id": 1409,
@@ -735,8 +735,8 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "rankMAS": 82,
       "rankMOR": 68,
       "rankWLK": 59,
-      "rankBIH": 61,
-      "rankNET": 50
+      "rankBIH": 60,
+      "rankNET": 52
     },
     {
       "id": 1412,
@@ -756,7 +756,7 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "rankMOR": 113,
       "rankWLK": 126,
       "rankBIH": 115,
-      "rankNET": 117
+      "rankNET": 118
     },
     {
       "id": 1150,
@@ -776,7 +776,7 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "rankMOR": 180,
       "rankWLK": 198,
       "rankBIH": 176,
-      "rankNET": 183
+      "rankNET": 173
     },
     {
       "id": 1317,
@@ -796,7 +796,7 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "rankMOR": 146,
       "rankWLK": 142,
       "rankBIH": 127,
-      "rankNET": 145
+      "rankNET": 136
     },
     {
       "id": 1194,
@@ -815,7 +815,7 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "rankMAS": 124,
       "rankMOR": 112,
       "rankWLK": 129,
-      "rankBIH": 130,
+      "rankBIH": 131,
       "rankNET": 123
     },
     {
@@ -836,7 +836,7 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "rankMOR": 122,
       "rankWLK": 140,
       "rankBIH": 163,
-      "rankNET": 125
+      "rankNET": 135
     },
     {
       "id": 1408,
@@ -855,8 +855,8 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "rankMAS": 138,
       "rankMOR": 210,
       "rankWLK": 213,
-      "rankBIH": 141,
-      "rankNET": 206
+      "rankBIH": 140,
+      "rankNET": 207
     },
     {
       "id": 1396,
@@ -875,8 +875,8 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "rankMAS": 149,
       "rankMOR": 144,
       "rankWLK": 174,
-      "rankBIH": 199,
-      "rankNET": 164
+      "rankBIH": 200,
+      "rankNET": 167
     }
   ],
   "aec": [
@@ -898,7 +898,7 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "rankMOR": 177,
       "rankWLK": 182,
       "rankBIH": 189,
-      "rankNET": 205
+      "rankNET": 196
     },
     {
       "id": 1436,
@@ -918,7 +918,7 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "rankMOR": 223,
       "rankWLK": 226,
       "rankBIH": 225,
-      "rankNET": 223
+      "rankNET": 227
     },
     {
       "id": 1312,
@@ -958,7 +958,7 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "rankMOR": 319,
       "rankWLK": 305,
       "rankBIH": 317,
-      "rankNET": 318
+      "rankNET": 321
     },
     {
       "id": 1107,
@@ -998,7 +998,7 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "rankMOR": 347,
       "rankWLK": 349,
       "rankBIH": 352,
-      "rankNET": 338
+      "rankNET": 339
     },
     {
       "id": 1136,
@@ -1018,7 +1018,7 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "rankMOR": 352,
       "rankWLK": 350,
       "rankBIH": 349,
-      "rankNET": 352
+      "rankNET": 354
     },
     {
       "id": 1306,
@@ -1038,7 +1038,7 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "rankMOR": 322,
       "rankWLK": 343,
       "rankBIH": 348,
-      "rankNET": 347
+      "rankNET": 348
     }
   ],
   "a_sun": [
@@ -1079,8 +1079,8 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "rankMAS": 169,
       "rankMOR": 149,
       "rankWLK": 147,
-      "rankBIH": 133,
-      "rankNET": 156
+      "rankBIH": 134,
+      "rankNET": 164
     },
     {
       "id": 1474,
@@ -1100,7 +1100,7 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "rankMOR": 178,
       "rankWLK": 178,
       "rankBIH": 171,
-      "rankNET": 187
+      "rankNET": 189
     },
     {
       "id": 1252,
@@ -1120,7 +1120,7 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "rankMOR": 198,
       "rankWLK": 183,
       "rankBIH": 182,
-      "rankNET": 173
+      "rankNET": 193
     },
     {
       "id": 1195,
@@ -1140,7 +1140,7 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "rankMOR": 230,
       "rankWLK": 243,
       "rankBIH": 260,
-      "rankNET": 262
+      "rankNET": 247
     },
     {
       "id": 1480,
@@ -1160,7 +1160,7 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "rankMOR": 261,
       "rankWLK": 297,
       "rankBIH": 269,
-      "rankNET": 300
+      "rankNET": 298
     },
     {
       "id": 1184,
@@ -1180,7 +1180,7 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "rankMOR": 277,
       "rankWLK": 293,
       "rankBIH": 302,
-      "rankNET": 283
+      "rankNET": 291
     },
     {
       "id": 1468,
@@ -1220,7 +1220,7 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "rankMOR": 264,
       "rankWLK": 289,
       "rankBIH": 297,
-      "rankNET": 296
+      "rankNET": 297
     },
     {
       "id": 1391,
@@ -1240,7 +1240,7 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "rankMOR": 313,
       "rankWLK": 311,
       "rankBIH": 303,
-      "rankNET": 320
+      "rankNET": 314
     },
     {
       "id": 1316,
@@ -1260,7 +1260,7 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "rankMOR": 293,
       "rankWLK": 340,
       "rankBIH": 347,
-      "rankNET": 336
+      "rankNET": 337
     },
     {
       "id": 1466,
@@ -1280,7 +1280,7 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "rankMOR": 330,
       "rankWLK": 348,
       "rankBIH": 334,
-      "rankNET": 339
+      "rankNET": 338
     }
   ],
   "big12": [
@@ -1321,8 +1321,8 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "rankMAS": 4,
       "rankMOR": 6,
       "rankWLK": 6,
-      "rankBIH": 6,
-      "rankNET": 7
+      "rankBIH": 5,
+      "rankNET": 5
     },
     {
       "id": 1242,
@@ -1342,7 +1342,7 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "rankMOR": 20,
       "rankWLK": 19,
       "rankBIH": 15,
-      "rankNET": 19
+      "rankNET": 21
     },
     {
       "id": 1403,
@@ -1362,7 +1362,7 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "rankMOR": 21,
       "rankWLK": 18,
       "rankBIH": 17,
-      "rankNET": 15
+      "rankNET": 19
     },
     {
       "id": 1235,
@@ -1382,7 +1382,7 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "rankMOR": 5,
       "rankWLK": 5,
       "rankBIH": 10,
-      "rankNET": 8
+      "rankNET": 6
     },
     {
       "id": 1395,
@@ -1402,7 +1402,7 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "rankMOR": 43,
       "rankWLK": 42,
       "rankBIH": 35,
-      "rankNET": 40
+      "rankNET": 39
     },
     {
       "id": 1452,
@@ -1422,7 +1422,7 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "rankMOR": 61,
       "rankWLK": 57,
       "rankBIH": 71,
-      "rankNET": 58
+      "rankNET": 59
     },
     {
       "id": 1416,
@@ -1461,8 +1461,8 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "rankMAS": 49,
       "rankMOR": 39,
       "rankWLK": 43,
-      "rankBIH": 63,
-      "rankNET": 46
+      "rankBIH": 62,
+      "rankNET": 49
     },
     {
       "id": 1140,
@@ -1482,7 +1482,7 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "rankMOR": 22,
       "rankWLK": 22,
       "rankBIH": 23,
-      "rankNET": 24
+      "rankNET": 23
     },
     {
       "id": 1160,
@@ -1502,7 +1502,7 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "rankMOR": 72,
       "rankWLK": 67,
       "rankBIH": 68,
-      "rankNET": 71
+      "rankNET": 76
     },
     {
       "id": 1113,
@@ -1521,8 +1521,8 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "rankMAS": 56,
       "rankMOR": 78,
       "rankWLK": 64,
-      "rankBIH": 62,
-      "rankNET": 67
+      "rankBIH": 61,
+      "rankNET": 73
     },
     {
       "id": 1124,
@@ -1542,7 +1542,7 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "rankMOR": 44,
       "rankWLK": 53,
       "rankBIH": 70,
-      "rankNET": 48
+      "rankNET": 50
     },
     {
       "id": 1329,
@@ -1562,7 +1562,7 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "rankMOR": 65,
       "rankWLK": 60,
       "rankBIH": 55,
-      "rankNET": 79
+      "rankNET": 74
     },
     {
       "id": 1243,
@@ -1582,7 +1582,7 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "rankMOR": 94,
       "rankWLK": 103,
       "rankBIH": 111,
-      "rankNET": 99
+      "rankNET": 100
     },
     {
       "id": 1428,
@@ -1602,7 +1602,7 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "rankMOR": 109,
       "rankWLK": 123,
       "rankBIH": 147,
-      "rankNET": 129
+      "rankNET": 132
     }
   ],
   "bigEast": [
@@ -1624,7 +1624,7 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "rankMOR": 10,
       "rankWLK": 13,
       "rankBIH": 16,
-      "rankNET": 22
+      "rankNET": 16
     },
     {
       "id": 1163,
@@ -1644,7 +1644,7 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "rankMOR": 19,
       "rankWLK": 9,
       "rankBIH": 4,
-      "rankNET": 9
+      "rankNET": 10
     },
     {
       "id": 1437,
@@ -1664,7 +1664,7 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "rankMOR": 41,
       "rankWLK": 30,
       "rankBIH": 24,
-      "rankNET": 33
+      "rankNET": 35
     },
     {
       "id": 1371,
@@ -1684,7 +1684,7 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "rankMOR": 50,
       "rankWLK": 49,
       "rankBIH": 54,
-      "rankNET": 56
+      "rankNET": 53
     },
     {
       "id": 1166,
@@ -1704,7 +1704,7 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "rankMOR": 77,
       "rankWLK": 80,
       "rankBIH": 84,
-      "rankNET": 81
+      "rankNET": 83
     },
     {
       "id": 1177,
@@ -1724,7 +1724,7 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "rankMOR": 96,
       "rankWLK": 98,
       "rankBIH": 95,
-      "rankNET": 101
+      "rankNET": 102
     },
     {
       "id": 1266,
@@ -1743,8 +1743,8 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "rankMAS": 86,
       "rankMOR": 82,
       "rankWLK": 94,
-      "rankBIH": 136,
-      "rankNET": 91
+      "rankBIH": 137,
+      "rankNET": 93
     },
     {
       "id": 1139,
@@ -1764,7 +1764,7 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "rankMOR": 73,
       "rankWLK": 82,
       "rankBIH": 86,
-      "rankNET": 82
+      "rankNET": 84
     },
     {
       "id": 1344,
@@ -1784,7 +1784,7 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "rankMOR": 67,
       "rankWLK": 77,
       "rankBIH": 94,
-      "rankNET": 84
+      "rankNET": 80
     },
     {
       "id": 1462,
@@ -1824,7 +1824,7 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "rankMOR": 79,
       "rankWLK": 83,
       "rankBIH": 104,
-      "rankNET": 95
+      "rankNET": 90
     }
   ],
   "big_sky": [
@@ -1846,7 +1846,7 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "rankMOR": 167,
       "rankWLK": 162,
       "rankBIH": 143,
-      "rankNET": 136
+      "rankNET": 147
     },
     {
       "id": 1286,
@@ -1866,7 +1866,7 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "rankMOR": 163,
       "rankWLK": 148,
       "rankBIH": 166,
-      "rankNET": 127
+      "rankNET": 128
     },
     {
       "id": 1186,
@@ -1886,7 +1886,7 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "rankMOR": 211,
       "rankWLK": 205,
       "rankBIH": 226,
-      "rankNET": 201
+      "rankNET": 204
     },
     {
       "id": 1285,
@@ -1906,7 +1906,7 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "rankMOR": 248,
       "rankWLK": 216,
       "rankBIH": 186,
-      "rankNET": 199
+      "rankNET": 194
     },
     {
       "id": 1294,
@@ -1926,7 +1926,7 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "rankMOR": 190,
       "rankWLK": 161,
       "rankBIH": 156,
-      "rankNET": 139
+      "rankNET": 149
     },
     {
       "id": 1451,
@@ -1946,7 +1946,7 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "rankMOR": 208,
       "rankWLK": 212,
       "rankBIH": 224,
-      "rankNET": 197
+      "rankNET": 202
     },
     {
       "id": 1225,
@@ -1966,7 +1966,7 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "rankMOR": 168,
       "rankWLK": 171,
       "rankBIH": 174,
-      "rankNET": 161
+      "rankNET": 145
     },
     {
       "id": 1170,
@@ -1986,7 +1986,7 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "rankMOR": 305,
       "rankWLK": 303,
       "rankBIH": 292,
-      "rankNET": 274
+      "rankNET": 269
     },
     {
       "id": 1226,
@@ -2026,7 +2026,7 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "rankMOR": 301,
       "rankWLK": 327,
       "rankBIH": 322,
-      "rankNET": 311
+      "rankNET": 315
     }
   ],
   "bigsouth": [
@@ -2048,7 +2048,7 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "rankMOR": 91,
       "rankWLK": 81,
       "rankBIH": 75,
-      "rankNET": 76
+      "rankNET": 75
     },
     {
       "id": 1457,
@@ -2068,7 +2068,7 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "rankMOR": 227,
       "rankWLK": 136,
       "rankBIH": 125,
-      "rankNET": 130
+      "rankNET": 131
     },
     {
       "id": 1347,
@@ -2088,7 +2088,7 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "rankMOR": 278,
       "rankWLK": 258,
       "rankBIH": 261,
-      "rankNET": 250
+      "rankNET": 252
     },
     {
       "id": 1421,
@@ -2108,7 +2108,7 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "rankMOR": 287,
       "rankWLK": 251,
       "rankBIH": 248,
-      "rankNET": 242
+      "rankNET": 239
     },
     {
       "id": 1255,
@@ -2127,8 +2127,8 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "rankMAS": 263,
       "rankMOR": 289,
       "rankWLK": 264,
-      "rankBIH": 274,
-      "rankNET": 264
+      "rankBIH": 275,
+      "rankNET": 266
     },
     {
       "id": 1342,
@@ -2148,7 +2148,7 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "rankMOR": 303,
       "rankWLK": 267,
       "rankBIH": 273,
-      "rankNET": 266
+      "rankNET": 260
     },
     {
       "id": 1149,
@@ -2167,8 +2167,8 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "rankMAS": 285,
       "rankMOR": 252,
       "rankWLK": 255,
-      "rankBIH": 275,
-      "rankNET": 241
+      "rankBIH": 274,
+      "rankNET": 242
     },
     {
       "id": 1367,
@@ -2188,7 +2188,7 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "rankMOR": 299,
       "rankWLK": 288,
       "rankBIH": 299,
-      "rankNET": 292
+      "rankNET": 303
     },
     {
       "id": 1205,
@@ -2230,7 +2230,7 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "rankMOR": 2,
       "rankWLK": 3,
       "rankBIH": 3,
-      "rankNET": 0
+      "rankNET": 2
     },
     {
       "id": 1304,
@@ -2250,7 +2250,7 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "rankMOR": 18,
       "rankWLK": 17,
       "rankBIH": 11,
-      "rankNET": 12
+      "rankNET": 14
     },
     {
       "id": 1277,
@@ -2290,7 +2290,7 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "rankMOR": 8,
       "rankWLK": 8,
       "rankBIH": 13,
-      "rankNET": 6
+      "rankNET": 8
     },
     {
       "id": 1458,
@@ -2310,7 +2310,7 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "rankMOR": 23,
       "rankWLK": 23,
       "rankBIH": 27,
-      "rankNET": 26
+      "rankNET": 25
     },
     {
       "id": 1417,
@@ -2330,7 +2330,7 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "rankMOR": 32,
       "rankWLK": 31,
       "rankBIH": 33,
-      "rankNET": 34
+      "rankNET": 30
     },
     {
       "id": 1345,
@@ -2350,7 +2350,7 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "rankMOR": 7,
       "rankWLK": 7,
       "rankBIH": 12,
-      "rankNET": 0
+      "rankNET": 9
     },
     {
       "id": 1326,
@@ -2370,7 +2370,7 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "rankMOR": 26,
       "rankWLK": 27,
       "rankBIH": 38,
-      "rankNET": 30
+      "rankNET": 29
     },
     {
       "id": 1234,
@@ -2389,8 +2389,8 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "rankMAS": 33,
       "rankMOR": 27,
       "rankWLK": 28,
-      "rankBIH": 39,
-      "rankNET": 25
+      "rankBIH": 40,
+      "rankNET": 27
     },
     {
       "id": 1231,
@@ -2410,7 +2410,7 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "rankMOR": 42,
       "rankWLK": 44,
       "rankBIH": 58,
-      "rankNET": 37
+      "rankNET": 41
     },
     {
       "id": 1278,
@@ -2430,7 +2430,7 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "rankMOR": 75,
       "rankWLK": 84,
       "rankBIH": 91,
-      "rankNET": 74
+      "rankNET": 81
     },
     {
       "id": 1449,
@@ -2450,7 +2450,7 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "rankMOR": 52,
       "rankWLK": 56,
       "rankBIH": 82,
-      "rankNET": 61
+      "rankNET": 57
     },
     {
       "id": 1425,
@@ -2469,8 +2469,8 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "rankMAS": 57,
       "rankMOR": 84,
       "rankWLK": 74,
-      "rankBIH": 65,
-      "rankNET": 78
+      "rankBIH": 64,
+      "rankNET": 79
     },
     {
       "id": 1353,
@@ -2490,7 +2490,7 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "rankMOR": 103,
       "rankWLK": 119,
       "rankBIH": 119,
-      "rankNET": 143
+      "rankNET": 134
     },
     {
       "id": 1321,
@@ -2510,7 +2510,7 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "rankMOR": 60,
       "rankWLK": 66,
       "rankBIH": 90,
-      "rankNET": 70
+      "rankNET": 65
     },
     {
       "id": 1332,
@@ -2530,7 +2530,7 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "rankMOR": 90,
       "rankWLK": 102,
       "rankBIH": 116,
-      "rankNET": 102
+      "rankNET": 109
     },
     {
       "id": 1268,
@@ -2550,7 +2550,7 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "rankMOR": 104,
       "rankWLK": 116,
       "rankBIH": 121,
-      "rankNET": 151
+      "rankNET": 138
     },
     {
       "id": 1336,
@@ -2569,8 +2569,8 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "rankMAS": 106,
       "rankMOR": 115,
       "rankWLK": 131,
-      "rankBIH": 137,
-      "rankNET": 131
+      "rankBIH": 138,
+      "rankNET": 142
     }
   ],
   "big_west": [
@@ -2592,7 +2592,7 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "rankMOR": 106,
       "rankWLK": 107,
       "rankBIH": 109,
-      "rankNET": 118
+      "rankNET": 117
     },
     {
       "id": 1218,
@@ -2612,7 +2612,7 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "rankMOR": 128,
       "rankWLK": 110,
       "rankBIH": 93,
-      "rankNET": 112
+      "rankNET": 101
     },
     {
       "id": 1168,
@@ -2631,8 +2631,8 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "rankMAS": 195,
       "rankMOR": 213,
       "rankWLK": 192,
-      "rankBIH": 168,
-      "rankNET": 180
+      "rankBIH": 169,
+      "rankNET": 177
     },
     {
       "id": 1169,
@@ -2652,7 +2652,7 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "rankMOR": 221,
       "rankWLK": 193,
       "rankBIH": 146,
-      "rankNET": 190
+      "rankNET": 188
     },
     {
       "id": 1471,
@@ -2672,7 +2672,7 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "rankMOR": 170,
       "rankWLK": 128,
       "rankBIH": 112,
-      "rankNET": 120
+      "rankNET": 124
     },
     {
       "id": 1413,
@@ -2692,7 +2692,7 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "rankMOR": 206,
       "rankWLK": 179,
       "rankBIH": 160,
-      "rankNET": 176
+      "rankNET": 178
     },
     {
       "id": 1364,
@@ -2712,7 +2712,7 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "rankMOR": 176,
       "rankWLK": 159,
       "rankBIH": 164,
-      "rankNET": 137
+      "rankNET": 143
     },
     {
       "id": 1142,
@@ -2732,7 +2732,7 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "rankMOR": 257,
       "rankWLK": 242,
       "rankBIH": 232,
-      "rankNET": 228
+      "rankNET": 225
     }
   ],
   "caa": [
@@ -2774,7 +2774,7 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "rankMOR": 183,
       "rankWLK": 154,
       "rankBIH": 113,
-      "rankNET": 163
+      "rankNET": 162
     },
     {
       "id": 1220,
@@ -2814,7 +2814,7 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "rankMOR": 157,
       "rankWLK": 175,
       "rankBIH": 173,
-      "rankNET": 169
+      "rankNET": 168
     },
     {
       "id": 1180,
@@ -2834,7 +2834,7 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "rankMOR": 192,
       "rankWLK": 211,
       "rankBIH": 219,
-      "rankNET": 210
+      "rankNET": 211
     },
     {
       "id": 1456,
@@ -2853,8 +2853,8 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "rankMAS": 173,
       "rankMOR": 126,
       "rankWLK": 135,
-      "rankBIH": 132,
-      "rankNET": 128
+      "rankBIH": 133,
+      "rankNET": 129
     },
     {
       "id": 1406,
@@ -2874,7 +2874,7 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "rankMOR": 136,
       "rankWLK": 152,
       "rankBIH": 155,
-      "rankNET": 160
+      "rankNET": 159
     },
     {
       "id": 1392,
@@ -2894,7 +2894,7 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "rankMOR": 188,
       "rankWLK": 231,
       "rankBIH": 209,
-      "rankNET": 219
+      "rankNET": 232
     },
     {
       "id": 1144,
@@ -2914,7 +2914,7 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "rankMOR": 153,
       "rankWLK": 186,
       "rankBIH": 201,
-      "rankNET": 192
+      "rankNET": 200
     },
     {
       "id": 1214,
@@ -2934,7 +2934,7 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "rankMOR": 235,
       "rankWLK": 260,
       "rankBIH": 266,
-      "rankNET": 268
+      "rankNET": 270
     },
     {
       "id": 1189,
@@ -2954,7 +2954,7 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "rankMOR": 218,
       "rankWLK": 235,
       "rankBIH": 236,
-      "rankNET": 210
+      "rankNET": 223
     },
     {
       "id": 1299,
@@ -2974,7 +2974,7 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "rankMOR": 283,
       "rankWLK": 291,
       "rankBIH": 285,
-      "rankNET": 267
+      "rankNET": 276
     },
     {
       "id": 1318,
@@ -2994,7 +2994,7 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "rankMOR": 256,
       "rankWLK": 299,
       "rankBIH": 323,
-      "rankNET": 288
+      "rankNET": 286
     }
   ],
   "cusa": [
@@ -3016,7 +3016,7 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "rankMOR": 119,
       "rankWLK": 113,
       "rankBIH": 77,
-      "rankNET": 100
+      "rankNET": 106
     },
     {
       "id": 1358,
@@ -3036,7 +3036,7 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "rankMOR": 110,
       "rankWLK": 112,
       "rankBIH": 101,
-      "rankNET": 104
+      "rankNET": 107
     },
     {
       "id": 1443,
@@ -3056,7 +3056,7 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "rankMOR": 155,
       "rankWLK": 169,
       "rankBIH": 145,
-      "rankNET": 156
+      "rankNET": 160
     },
     {
       "id": 1256,
@@ -3076,7 +3076,7 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "rankMOR": 172,
       "rankWLK": 206,
       "rankBIH": 194,
-      "rankNET": 213
+      "rankNET": 209
     },
     {
       "id": 1292,
@@ -3096,7 +3096,7 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "rankMOR": 151,
       "rankWLK": 188,
       "rankBIH": 170,
-      "rankNET": 154
+      "rankNET": 163
     },
     {
       "id": 1244,
@@ -3116,7 +3116,7 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "rankMOR": 132,
       "rankWLK": 165,
       "rankBIH": 149,
-      "rankNET": 170
+      "rankNET": 155
     },
     {
       "id": 1240,
@@ -3136,7 +3136,7 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "rankMOR": 184,
       "rankWLK": 230,
       "rankBIH": 235,
-      "rankNET": 211
+      "rankNET": 216
     },
     {
       "id": 1198,
@@ -3156,7 +3156,7 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "rankMOR": 175,
       "rankWLK": 208,
       "rankBIH": 228,
-      "rankNET": 191
+      "rankNET": 197
     },
     {
       "id": 1283,
@@ -3176,7 +3176,7 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "rankMOR": 195,
       "rankWLK": 228,
       "rankBIH": 234,
-      "rankNET": 214
+      "rankNET": 206
     },
     {
       "id": 1308,
@@ -3196,7 +3196,7 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "rankMOR": 179,
       "rankWLK": 209,
       "rankBIH": 222,
-      "rankNET": 186
+      "rankNET": 190
     }
   ],
   "horizon": [
@@ -3218,7 +3218,7 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "rankMOR": 124,
       "rankWLK": 130,
       "rankBIH": 124,
-      "rankNET": 133
+      "rankNET": 127
     },
     {
       "id": 1352,
@@ -3238,7 +3238,7 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "rankMOR": 159,
       "rankWLK": 149,
       "rankBIH": 139,
-      "rankNET": 135
+      "rankNET": 148
     },
     {
       "id": 1178,
@@ -3258,7 +3258,7 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "rankMOR": 224,
       "rankWLK": 215,
       "rankBIH": 210,
-      "rankNET": 229
+      "rankNET": 221
     },
     {
       "id": 1324,
@@ -3278,7 +3278,7 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "rankMOR": 152,
       "rankWLK": 157,
       "rankBIH": 184,
-      "rankNET": 167
+      "rankNET": 175
     },
     {
       "id": 1453,
@@ -3298,7 +3298,7 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "rankMOR": 217,
       "rankWLK": 203,
       "rankBIH": 177,
-      "rankNET": 216
+      "rankNET": 218
     },
     {
       "id": 1236,
@@ -3318,7 +3318,7 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "rankMOR": 225,
       "rankWLK": 244,
       "rankBIH": 217,
-      "rankNET": 252
+      "rankNET": 254
     },
     {
       "id": 1297,
@@ -3338,7 +3338,7 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "rankMOR": 186,
       "rankWLK": 173,
       "rankBIH": 195,
-      "rankNET": 178
+      "rankNET": 184
     },
     {
       "id": 1454,
@@ -3358,7 +3358,7 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "rankMOR": 236,
       "rankWLK": 261,
       "rankBIH": 259,
-      "rankNET": 247
+      "rankNET": 253
     },
     {
       "id": 1464,
@@ -3378,7 +3378,7 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "rankMOR": 219,
       "rankWLK": 214,
       "rankBIH": 245,
-      "rankNET": 215
+      "rankNET": 219
     },
     {
       "id": 1156,
@@ -3398,7 +3398,7 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "rankMOR": 312,
       "rankWLK": 326,
       "rankBIH": 308,
-      "rankNET": 316
+      "rankNET": 317
     },
     {
       "id": 1237,
@@ -3418,7 +3418,7 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "rankMOR": 315,
       "rankWLK": 331,
       "rankBIH": 343,
-      "rankNET": 315
+      "rankNET": 320
     }
   ],
   "ivy": [
@@ -3439,8 +3439,8 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "rankMAS": 96,
       "rankMOR": 100,
       "rankWLK": 73,
-      "rankBIH": 60,
-      "rankNET": 0
+      "rankBIH": 65,
+      "rankNET": 68
     },
     {
       "id": 1217,
@@ -3459,8 +3459,8 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "rankMAS": 179,
       "rankMOR": 148,
       "rankWLK": 151,
-      "rankBIH": 169,
-      "rankNET": 150
+      "rankBIH": 168,
+      "rankNET": 151
     },
     {
       "id": 1335,
@@ -3479,8 +3479,8 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "rankMAS": 145,
       "rankMOR": 140,
       "rankWLK": 139,
-      "rankBIH": 138,
-      "rankNET": 0
+      "rankBIH": 128,
+      "rankNET": 139
     },
     {
       "id": 1165,
@@ -3500,7 +3500,7 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "rankMOR": 160,
       "rankWLK": 150,
       "rankBIH": 188,
-      "rankNET": 141
+      "rankNET": 150
     }
   ],
   "maac": [
@@ -3521,8 +3521,8 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "rankMAS": 176,
       "rankMOR": 194,
       "rankWLK": 155,
-      "rankBIH": 128,
-      "rankNET": 173
+      "rankBIH": 129,
+      "rankNET": 180
     },
     {
       "id": 1389,
@@ -3541,8 +3541,8 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "rankMAS": 246,
       "rankMOR": 253,
       "rankWLK": 225,
-      "rankBIH": 200,
-      "rankNET": 225
+      "rankBIH": 199,
+      "rankNET": 233
     },
     {
       "id": 1373,
@@ -3562,7 +3562,7 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "rankMOR": 171,
       "rankWLK": 170,
       "rankBIH": 172,
-      "rankNET": 188
+      "rankNET": 183
     },
     {
       "id": 1346,
@@ -3602,7 +3602,7 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "rankMOR": 169,
       "rankWLK": 181,
       "rankBIH": 202,
-      "rankNET": 182
+      "rankNET": 181
     },
     {
       "id": 1291,
@@ -3622,7 +3622,7 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "rankMOR": 290,
       "rankWLK": 262,
       "rankBIH": 250,
-      "rankNET": 279
+      "rankNET": 281
     },
     {
       "id": 1193,
@@ -3642,7 +3642,7 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "rankMOR": 232,
       "rankWLK": 229,
       "rankBIH": 211,
-      "rankNET": 242
+      "rankNET": 240
     },
     {
       "id": 1233,
@@ -3662,7 +3662,7 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "rankMOR": 244,
       "rankWLK": 221,
       "rankBIH": 216,
-      "rankNET": 231
+      "rankNET": 237
     },
     {
       "id": 1357,
@@ -3723,8 +3723,8 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "rankMAS": 245,
       "rankMOR": 271,
       "rankWLK": 196,
-      "rankBIH": 229,
-      "rankNET": 202
+      "rankBIH": 230,
+      "rankNET": 203
     },
     {
       "id": 1288,
@@ -3744,7 +3744,7 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "rankMOR": 358,
       "rankWLK": 346,
       "rankBIH": 327,
-      "rankNET": 351
+      "rankNET": 352
     },
     {
       "id": 1300,
@@ -3764,7 +3764,7 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "rankMOR": 356,
       "rankWLK": 336,
       "rankBIH": 335,
-      "rankNET": 347
+      "rankNET": 342
     },
     {
       "id": 1313,
@@ -3784,7 +3784,7 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "rankMOR": 343,
       "rankWLK": 316,
       "rankBIH": 325,
-      "rankNET": 313
+      "rankNET": 318
     },
     {
       "id": 1354,
@@ -3804,7 +3804,7 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "rankMOR": 363,
       "rankWLK": 357,
       "rankBIH": 351,
-      "rankNET": 357
+      "rankNET": 356
     },
     {
       "id": 1271,
@@ -3824,7 +3824,7 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "rankMOR": 345,
       "rankWLK": 341,
       "rankBIH": 353,
-      "rankNET": 350
+      "rankNET": 351
     },
     {
       "id": 1175,
@@ -3866,7 +3866,7 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "rankMOR": 89,
       "rankWLK": 68,
       "rankBIH": 22,
-      "rankNET": 55
+      "rankNET": 64
     },
     {
       "id": 1103,
@@ -3885,8 +3885,8 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "rankMAS": 70,
       "rankMOR": 56,
       "rankWLK": 54,
-      "rankBIH": 45,
-      "rankNET": 52
+      "rankBIH": 46,
+      "rankNET": 54
     },
     {
       "id": 1245,
@@ -3906,7 +3906,7 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "rankMOR": 143,
       "rankWLK": 121,
       "rankBIH": 87,
-      "rankNET": 147
+      "rankNET": 141
     },
     {
       "id": 1405,
@@ -3926,7 +3926,7 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "rankMOR": 150,
       "rankWLK": 127,
       "rankBIH": 148,
-      "rankNET": 146
+      "rankNET": 130
     },
     {
       "id": 1132,
@@ -3946,7 +3946,7 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "rankMOR": 129,
       "rankWLK": 144,
       "rankBIH": 178,
-      "rankNET": 155
+      "rankNET": 157
     },
     {
       "id": 1325,
@@ -3966,7 +3966,7 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "rankMOR": 231,
       "rankWLK": 220,
       "rankBIH": 214,
-      "rankNET": 227
+      "rankNET": 231
     },
     {
       "id": 1138,
@@ -3986,7 +3986,7 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "rankMOR": 207,
       "rankWLK": 199,
       "rankBIH": 196,
-      "rankNET": 198
+      "rankNET": 195
     },
     {
       "id": 1269,
@@ -4006,7 +4006,7 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "rankMOR": 197,
       "rankWLK": 185,
       "rankBIH": 208,
-      "rankNET": 203
+      "rankNET": 201
     }
   ],
   "mvc": [
@@ -4027,8 +4027,8 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "rankMAS": 73,
       "rankMOR": 76,
       "rankWLK": 61,
-      "rankBIH": 50,
-      "rankNET": 55
+      "rankBIH": 51,
+      "rankNET": 63
     },
     {
       "id": 1133,
@@ -4048,7 +4048,7 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "rankMOR": 108,
       "rankWLK": 108,
       "rankBIH": 108,
-      "rankNET": 112
+      "rankNET": 113
     },
     {
       "id": 1229,
@@ -4068,7 +4068,7 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "rankMOR": 99,
       "rankWLK": 96,
       "rankBIH": 102,
-      "rankNET": 90
+      "rankNET": 95
     },
     {
       "id": 1293,
@@ -4088,7 +4088,7 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "rankMOR": 116,
       "rankWLK": 111,
       "rankBIH": 99,
-      "rankNET": 101
+      "rankNET": 105
     },
     {
       "id": 1227,
@@ -4107,8 +4107,8 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "rankMAS": 130,
       "rankMOR": 117,
       "rankWLK": 109,
-      "rankBIH": 140,
-      "rankNET": 113
+      "rankBIH": 141,
+      "rankNET": 110
     },
     {
       "id": 1320,
@@ -4148,7 +4148,7 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "rankMOR": 154,
       "rankWLK": 158,
       "rankBIH": 151,
-      "rankNET": 155
+      "rankNET": 156
     },
     {
       "id": 1356,
@@ -4168,7 +4168,7 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "rankMOR": 105,
       "rankWLK": 125,
       "rankBIH": 158,
-      "rankNET": 113
+      "rankNET": 120
     },
     {
       "id": 1179,
@@ -4187,8 +4187,8 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "rankMAS": 155,
       "rankMOR": 165,
       "rankWLK": 204,
-      "rankBIH": 230,
-      "rankNET": 206
+      "rankBIH": 229,
+      "rankNET": 199
     },
     {
       "id": 1232,
@@ -4208,7 +4208,7 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "rankMOR": 182,
       "rankWLK": 218,
       "rankBIH": 253,
-      "rankNET": 216
+      "rankNET": 213
     },
     {
       "id": 1191,
@@ -4228,7 +4228,7 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "rankMOR": 243,
       "rankWLK": 307,
       "rankBIH": 305,
-      "rankNET": 304
+      "rankNET": 306
     }
   ],
   "mwc": [
@@ -4250,7 +4250,7 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "rankMOR": 33,
       "rankWLK": 26,
       "rankBIH": 29,
-      "rankNET": 29
+      "rankNET": 26
     },
     {
       "id": 1361,
@@ -4289,8 +4289,8 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "rankMAS": 52,
       "rankMOR": 55,
       "rankWLK": 51,
-      "rankBIH": 46,
-      "rankNET": 45
+      "rankBIH": 45,
+      "rankNET": 46
     },
     {
       "id": 1213,
@@ -4310,7 +4310,7 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "rankMOR": 69,
       "rankWLK": 65,
       "rankBIH": 74,
-      "rankNET": 68
+      "rankNET": 71
     },
     {
       "id": 1305,
@@ -4330,7 +4330,7 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "rankMOR": 83,
       "rankWLK": 75,
       "rankBIH": 69,
-      "rankNET": 73
+      "rankNET": 70
     },
     {
       "id": 1129,
@@ -4350,7 +4350,7 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "rankMOR": 85,
       "rankWLK": 76,
       "rankBIH": 59,
-      "rankNET": 57
+      "rankNET": 60
     },
     {
       "id": 1161,
@@ -4410,7 +4410,7 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "rankMOR": 102,
       "rankWLK": 104,
       "rankBIH": 100,
-      "rankNET": 98
+      "rankNET": 99
     },
     {
       "id": 1201,
@@ -4430,7 +4430,7 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "rankMOR": 138,
       "rankWLK": 153,
       "rankBIH": 179,
-      "rankNET": 149
+      "rankNET": 153
     },
     {
       "id": 1363,
@@ -4450,7 +4450,7 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "rankMOR": 209,
       "rankWLK": 240,
       "rankBIH": 244,
-      "rankNET": 256
+      "rankNET": 244
     },
     {
       "id": 1102,
@@ -4470,7 +4470,7 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "rankMOR": 346,
       "rankWLK": 353,
       "rankBIH": 346,
-      "rankNET": 349
+      "rankNET": 350
     }
   ],
   "nec": [
@@ -4492,7 +4492,7 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "rankMOR": 204,
       "rankWLK": 190,
       "rankBIH": 165,
-      "rankNET": 200
+      "rankNET": 198
     },
     {
       "id": 1148,
@@ -4512,7 +4512,7 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "rankMOR": 274,
       "rankWLK": 276,
       "rankBIH": 252,
-      "rankNET": 282
+      "rankNET": 289
     },
     {
       "id": 1479,
@@ -4532,7 +4532,7 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "rankMOR": 276,
       "rankWLK": 266,
       "rankBIH": 296,
-      "rankNET": 275
+      "rankNET": 277
     },
     {
       "id": 1478,
@@ -4552,7 +4552,7 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "rankMOR": 296,
       "rankWLK": 283,
       "rankBIH": 300,
-      "rankNET": 287
+      "rankNET": 290
     },
     {
       "id": 1476,
@@ -4572,7 +4572,7 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "rankMOR": 324,
       "rankWLK": 328,
       "rankBIH": 341,
-      "rankNET": 335
+      "rankNET": 332
     },
     {
       "id": 1192,
@@ -4592,7 +4592,7 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "rankMOR": 339,
       "rankWLK": 334,
       "rankBIH": 345,
-      "rankNET": 333
+      "rankNET": 334
     },
     {
       "id": 1447,
@@ -4612,7 +4612,7 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "rankMOR": 327,
       "rankWLK": 306,
       "rankBIH": 316,
-      "rankNET": 309
+      "rankNET": 302
     },
     {
       "id": 1152,
@@ -4632,7 +4632,7 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "rankMOR": 344,
       "rankWLK": 344,
       "rankBIH": 350,
-      "rankNET": 344
+      "rankNET": 340
     }
   ],
   "ovc": [
@@ -4654,7 +4654,7 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "rankMOR": 187,
       "rankWLK": 168,
       "rankBIH": 152,
-      "rankNET": 191
+      "rankNET": 172
     },
     {
       "id": 1287,
@@ -4674,7 +4674,7 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "rankMOR": 300,
       "rankWLK": 269,
       "rankBIH": 223,
-      "rankNET": 261
+      "rankNET": 264
     },
     {
       "id": 1369,
@@ -4694,7 +4694,7 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "rankMOR": 259,
       "rankWLK": 219,
       "rankBIH": 220,
-      "rankNET": 220
+      "rankNET": 224
     },
     {
       "id": 1404,
@@ -4714,7 +4714,7 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "rankMOR": 222,
       "rankWLK": 202,
       "rankBIH": 192,
-      "rankNET": 199
+      "rankNET": 205
     },
     {
       "id": 1188,
@@ -4734,7 +4734,7 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "rankMOR": 272,
       "rankWLK": 246,
       "rankBIH": 249,
-      "rankNET": 255
+      "rankNET": 259
     },
     {
       "id": 1473,
@@ -4754,7 +4754,7 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "rankMOR": 260,
       "rankWLK": 248,
       "rankBIH": 251,
-      "rankNET": 263
+      "rankNET": 262
     },
     {
       "id": 1114,
@@ -4774,7 +4774,7 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "rankMOR": 320,
       "rankWLK": 310,
       "rankBIH": 311,
-      "rankNET": 306
+      "rankNET": 309
     },
     {
       "id": 1183,
@@ -4794,7 +4794,7 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "rankMOR": 328,
       "rankWLK": 317,
       "rankBIH": 314,
-      "rankNET": 325
+      "rankNET": 319
     }
   ],
   "patriot": [
@@ -4816,7 +4816,7 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "rankMOR": 162,
       "rankWLK": 134,
       "rankBIH": 123,
-      "rankNET": 138
+      "rankNET": 137
     },
     {
       "id": 1250,
@@ -4836,7 +4836,7 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "rankMOR": 269,
       "rankWLK": 277,
       "rankBIH": 263,
-      "rankNET": 282
+      "rankNET": 275
     },
     {
       "id": 1159,
@@ -4856,7 +4856,7 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "rankMOR": 238,
       "rankWLK": 224,
       "rankBIH": 240,
-      "rankNET": 230
+      "rankNET": 226
     },
     {
       "id": 1131,
@@ -4876,7 +4876,7 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "rankMOR": 254,
       "rankWLK": 254,
       "rankBIH": 270,
-      "rankNET": 257
+      "rankNET": 263
     },
     {
       "id": 1110,
@@ -4896,7 +4896,7 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "rankMOR": 201,
       "rankWLK": 234,
       "rankBIH": 258,
-      "rankNET": 259
+      "rankNET": 256
     },
     {
       "id": 1259,
@@ -4936,7 +4936,7 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "rankMOR": 310,
       "rankWLK": 325,
       "rankBIH": 330,
-      "rankNET": 321
+      "rankNET": 323
     },
     {
       "id": 1137,
@@ -4956,7 +4956,7 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "rankMOR": 325,
       "rankWLK": 333,
       "rankBIH": 328,
-      "rankNET": 337
+      "rankNET": 333
     },
     {
       "id": 1119,
@@ -4976,7 +4976,7 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "rankMOR": 332,
       "rankWLK": 338,
       "rankBIH": 339,
-      "rankNET": 334
+      "rankNET": 336
     },
     {
       "id": 1221,
@@ -4996,7 +4996,7 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "rankMOR": 335,
       "rankWLK": 332,
       "rankBIH": 337,
-      "rankNET": 332
+      "rankNET": 331
     }
   ],
   "sec": [
@@ -5038,7 +5038,7 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "rankMOR": 16,
       "rankWLK": 15,
       "rankBIH": 14,
-      "rankNET": 17
+      "rankNET": 18
     },
     {
       "id": 1116,
@@ -5057,8 +5057,8 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "rankMAS": 12,
       "rankMOR": 15,
       "rankWLK": 14,
-      "rankBIH": 20,
-      "rankNET": 0
+      "rankBIH": 18,
+      "rankNET": 15
     },
     {
       "id": 1435,
@@ -5077,8 +5077,8 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "rankMAS": 15,
       "rankMOR": 14,
       "rankWLK": 12,
-      "rankBIH": 18,
-      "rankNET": 0
+      "rankBIH": 20,
+      "rankNET": 13
     },
     {
       "id": 1397,
@@ -5097,8 +5097,8 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "rankMAS": 17,
       "rankMOR": 17,
       "rankWLK": 20,
-      "rankBIH": 25,
-      "rankNET": 21
+      "rankBIH": 26,
+      "rankNET": 20
     },
     {
       "id": 1401,
@@ -5118,7 +5118,7 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "rankMOR": 37,
       "rankWLK": 40,
       "rankBIH": 42,
-      "rankNET": 43
+      "rankNET": 44
     },
     {
       "id": 1208,
@@ -5138,7 +5138,7 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "rankMOR": 31,
       "rankWLK": 32,
       "rankBIH": 37,
-      "rankNET": 31
+      "rankNET": 33
     },
     {
       "id": 1281,
@@ -5158,7 +5158,7 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "rankMOR": 51,
       "rankWLK": 52,
       "rankBIH": 43,
-      "rankNET": 60
+      "rankNET": 58
     },
     {
       "id": 1246,
@@ -5198,7 +5198,7 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "rankMOR": 40,
       "rankWLK": 46,
       "rankBIH": 47,
-      "rankNET": 41
+      "rankNET": 42
     },
     {
       "id": 1328,
@@ -5218,7 +5218,7 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "rankMOR": 46,
       "rankWLK": 50,
       "rankBIH": 67,
-      "rankNET": 54
+      "rankNET": 48
     },
     {
       "id": 1120,
@@ -5237,7 +5237,7 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "rankMAS": 29,
       "rankMOR": 38,
       "rankWLK": 39,
-      "rankBIH": 48,
+      "rankBIH": 49,
       "rankNET": 38
     },
     {
@@ -5258,7 +5258,7 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "rankMOR": 92,
       "rankWLK": 106,
       "rankBIH": 107,
-      "rankNET": 110
+      "rankNET": 112
     },
     {
       "id": 1376,
@@ -5278,7 +5278,7 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "rankMOR": 97,
       "rankWLK": 101,
       "rankBIH": 135,
-      "rankNET": 107
+      "rankNET": 108
     },
     {
       "id": 1279,
@@ -5298,7 +5298,7 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "rankMOR": 59,
       "rankWLK": 79,
       "rankBIH": 103,
-      "rankNET": 92
+      "rankNET": 82
     },
     {
       "id": 1261,
@@ -5340,7 +5340,7 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "rankMOR": 173,
       "rankWLK": 146,
       "rankBIH": 162,
-      "rankNET": 126
+      "rankNET": 140
     },
     {
       "id": 1273,
@@ -5360,7 +5360,7 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "rankMOR": 185,
       "rankWLK": 177,
       "rankBIH": 191,
-      "rankNET": 171
+      "rankNET": 182
     },
     {
       "id": 1459,
@@ -5380,7 +5380,7 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "rankMOR": 282,
       "rankWLK": 236,
       "rankBIH": 218,
-      "rankNET": 240
+      "rankNET": 246
     },
     {
       "id": 1359,
@@ -5400,7 +5400,7 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "rankMOR": 241,
       "rankWLK": 201,
       "rankBIH": 215,
-      "rankNET": 213
+      "rankNET": 217
     },
     {
       "id": 1441,
@@ -5420,7 +5420,7 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "rankMOR": 205,
       "rankWLK": 232,
       "rankBIH": 239,
-      "rankNET": 226
+      "rankNET": 228
     },
     {
       "id": 1202,
@@ -5440,7 +5440,7 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "rankMOR": 181,
       "rankWLK": 180,
       "rankBIH": 183,
-      "rankNET": 194
+      "rankNET": 186
     },
     {
       "id": 1422,
@@ -5460,7 +5460,7 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "rankMOR": 307,
       "rankWLK": 300,
       "rankBIH": 279,
-      "rankNET": 293
+      "rankNET": 292
     },
     {
       "id": 1151,
@@ -5480,7 +5480,7 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "rankMOR": 288,
       "rankWLK": 296,
       "rankBIH": 304,
-      "rankNET": 286
+      "rankNET": 288
     },
     {
       "id": 1154,
@@ -5500,7 +5500,7 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "rankMOR": 349,
       "rankWLK": 347,
       "rankBIH": 338,
-      "rankNET": 350
+      "rankNET": 346
     },
     {
       "id": 1440,
@@ -5520,7 +5520,7 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "rankMOR": 353,
       "rankWLK": 359,
       "rankBIH": 358,
-      "rankNET": 358
+      "rankNET": 359
     }
   ],
   "southland": [
@@ -5542,7 +5542,7 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "rankMOR": 107,
       "rankWLK": 91,
       "rankBIH": 66,
-      "rankNET": 86
+      "rankNET": 89
     },
     {
       "id": 1270,
@@ -5561,8 +5561,8 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "rankMAS": 87,
       "rankMOR": 57,
       "rankWLK": 63,
-      "rankBIH": 49,
-      "rankNET": 62
+      "rankBIH": 50,
+      "rankNET": 56
     },
     {
       "id": 1410,
@@ -5582,7 +5582,7 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "rankMOR": 123,
       "rankWLK": 133,
       "rankBIH": 167,
-      "rankNET": 134
+      "rankNET": 126
     },
     {
       "id": 1394,
@@ -5602,7 +5602,7 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "rankMOR": 189,
       "rankWLK": 189,
       "rankBIH": 198,
-      "rankNET": 196
+      "rankNET": 191
     },
     {
       "id": 1309,
@@ -5622,7 +5622,7 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "rankMOR": 228,
       "rankWLK": 200,
       "rankBIH": 213,
-      "rankNET": 208
+      "rankNET": 215
     },
     {
       "id": 1311,
@@ -5642,7 +5642,7 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "rankMOR": 247,
       "rankWLK": 250,
       "rankBIH": 238,
-      "rankNET": 246
+      "rankNET": 250
     },
     {
       "id": 1322,
@@ -5662,7 +5662,7 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "rankMOR": 279,
       "rankWLK": 298,
       "rankBIH": 307,
-      "rankNET": 300
+      "rankNET": 301
     },
     {
       "id": 1223,
@@ -5704,7 +5704,7 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "rankMOR": 158,
       "rankWLK": 117,
       "rankBIH": 98,
-      "rankNET": 115
+      "rankNET": 114
     },
     {
       "id": 1472,
@@ -5724,7 +5724,7 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "rankMOR": 199,
       "rankWLK": 115,
       "rankBIH": 117,
-      "rankNET": 106
+      "rankNET": 103
     },
     {
       "id": 1315,
@@ -5744,7 +5744,7 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "rankMOR": 317,
       "rankWLK": 275,
       "rankBIH": 237,
-      "rankNET": 272
+      "rankNET": 271
     },
     {
       "id": 1377,
@@ -5764,7 +5764,7 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "rankMOR": 334,
       "rankWLK": 292,
       "rankBIH": 254,
-      "rankNET": 281
+      "rankNET": 284
     },
     {
       "id": 1303,
@@ -5804,7 +5804,7 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "rankMOR": 304,
       "rankWLK": 249,
       "rankBIH": 242,
-      "rankNET": 234
+      "rankNET": 241
     },
     {
       "id": 1355,
@@ -5824,7 +5824,7 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "rankMOR": 249,
       "rankWLK": 237,
       "rankBIH": 256,
-      "rankNET": 205
+      "rankNET": 210
     },
     {
       "id": 1331,
@@ -5844,7 +5844,7 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "rankMOR": 314,
       "rankWLK": 324,
       "rankBIH": 326,
-      "rankNET": 318
+      "rankNET": 311
     },
     {
       "id": 1282,
@@ -5864,7 +5864,7 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "rankMOR": 362,
       "rankWLK": 362,
       "rankBIH": 363,
-      "rankNET": 357
+      "rankNET": 358
     }
   ],
   "sun_belt": [
@@ -5886,7 +5886,7 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "rankMOR": 135,
       "rankWLK": 132,
       "rankBIH": 120,
-      "rankNET": 132
+      "rankNET": 125
     },
     {
       "id": 1267,
@@ -5906,7 +5906,7 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "rankMOR": 200,
       "rankWLK": 187,
       "rankBIH": 157,
-      "rankNET": 168
+      "rankNET": 171
     },
     {
       "id": 1157,
@@ -5926,7 +5926,7 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "rankMOR": 233,
       "rankWLK": 222,
       "rankBIH": 181,
-      "rankNET": 217
+      "rankNET": 229
     },
     {
       "id": 1111,
@@ -5946,7 +5946,7 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "rankMOR": 193,
       "rankWLK": 195,
       "rankBIH": 175,
-      "rankNET": 183
+      "rankNET": 192
     },
     {
       "id": 1402,
@@ -5966,7 +5966,7 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "rankMOR": 220,
       "rankWLK": 241,
       "rankBIH": 197,
-      "rankNET": 236
+      "rankNET": 235
     },
     {
       "id": 1375,
@@ -5986,7 +5986,7 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "rankMOR": 214,
       "rankWLK": 197,
       "rankBIH": 154,
-      "rankNET": 176
+      "rankNET": 187
     },
     {
       "id": 1117,
@@ -6006,7 +6006,7 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "rankMOR": 166,
       "rankWLK": 145,
       "rankBIH": 142,
-      "rankNET": 142
+      "rankNET": 154
     },
     {
       "id": 1379,
@@ -6026,7 +6026,7 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "rankMOR": 215,
       "rankWLK": 210,
       "rankBIH": 212,
-      "rankNET": 218
+      "rankNET": 214
     },
     {
       "id": 1241,
@@ -6046,7 +6046,7 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "rankMOR": 212,
       "rankWLK": 207,
       "rankBIH": 193,
-      "rankNET": 207
+      "rankNET": 208
     },
     {
       "id": 1204,
@@ -6066,7 +6066,7 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "rankMOR": 255,
       "rankWLK": 233,
       "rankBIH": 227,
-      "rankNET": 219
+      "rankNET": 220
     },
     {
       "id": 1330,
@@ -6086,7 +6086,7 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "rankMOR": 234,
       "rankWLK": 256,
       "rankBIH": 262,
-      "rankNET": 253
+      "rankNET": 255
     },
     {
       "id": 1418,
@@ -6106,7 +6106,7 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "rankMOR": 309,
       "rankWLK": 321,
       "rankBIH": 291,
-      "rankNET": 314
+      "rankNET": 313
     },
     {
       "id": 1209,
@@ -6126,7 +6126,7 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "rankMOR": 306,
       "rankWLK": 315,
       "rankBIH": 319,
-      "rankNET": 299
+      "rankNET": 307
     },
     {
       "id": 1419,
@@ -6168,7 +6168,7 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "rankMOR": 268,
       "rankWLK": 223,
       "rankBIH": 221,
-      "rankNET": 255
+      "rankNET": 261
     },
     {
       "id": 1197,
@@ -6188,7 +6188,7 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "rankMOR": 336,
       "rankWLK": 314,
       "rankBIH": 289,
-      "rankNET": 315
+      "rankNET": 312
     },
     {
       "id": 1380,
@@ -6208,7 +6208,7 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "rankMOR": 263,
       "rankWLK": 259,
       "rankBIH": 271,
-      "rankNET": 277
+      "rankNET": 278
     },
     {
       "id": 1411,
@@ -6228,7 +6228,7 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "rankMOR": 321,
       "rankWLK": 309,
       "rankBIH": 313,
-      "rankNET": 320
+      "rankNET": 322
     },
     {
       "id": 1105,
@@ -6248,7 +6248,7 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "rankMOR": 331,
       "rankWLK": 295,
       "rankBIH": 265,
-      "rankNET": 308
+      "rankNET": 310
     },
     {
       "id": 1115,
@@ -6268,7 +6268,7 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "rankMOR": 338,
       "rankWLK": 312,
       "rankBIH": 301,
-      "rankNET": 317
+      "rankNET": 316
     },
     {
       "id": 1238,
@@ -6288,7 +6288,7 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "rankMOR": 357,
       "rankWLK": 335,
       "rankBIH": 315,
-      "rankNET": 348
+      "rankNET": 347
     },
     {
       "id": 1341,
@@ -6308,7 +6308,7 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "rankMOR": 295,
       "rankWLK": 281,
       "rankBIH": 306,
-      "rankNET": 316
+      "rankNET": 300
     },
     {
       "id": 1212,
@@ -6328,7 +6328,7 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "rankMOR": 316,
       "rankWLK": 285,
       "rankBIH": 320,
-      "rankNET": 301
+      "rankNET": 305
     },
     {
       "id": 1106,
@@ -6348,7 +6348,7 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "rankMOR": 323,
       "rankWLK": 320,
       "rankBIH": 332,
-      "rankNET": 321
+      "rankNET": 324
     },
     {
       "id": 1108,
@@ -6368,7 +6368,7 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "rankMOR": 354,
       "rankWLK": 345,
       "rankBIH": 336,
-      "rankNET": 352
+      "rankNET": 349
     },
     {
       "id": 1290,
@@ -6430,7 +6430,7 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "rankMOR": 114,
       "rankWLK": 100,
       "rankBIH": 81,
-      "rankNET": 103
+      "rankNET": 98
     },
     {
       "id": 1469,
@@ -6450,7 +6450,7 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "rankMOR": 191,
       "rankWLK": 191,
       "rankBIH": 144,
-      "rankNET": 175
+      "rankNET": 176
     },
     {
       "id": 1426,
@@ -6470,7 +6470,7 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "rankMOR": 156,
       "rankWLK": 160,
       "rankBIH": 150,
-      "rankNET": 162
+      "rankNET": 161
     },
     {
       "id": 1381,
@@ -6490,7 +6490,7 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "rankMOR": 265,
       "rankWLK": 268,
       "rankBIH": 264,
-      "rankNET": 271
+      "rankNET": 272
     },
     {
       "id": 1101,
@@ -6530,7 +6530,7 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "rankMOR": 262,
       "rankWLK": 227,
       "rankBIH": 231,
-      "rankNET": 224
+      "rankNET": 230
     }
   ],
   "wcc": [
@@ -6551,8 +6551,8 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "rankMAS": 5,
       "rankMOR": 11,
       "rankWLK": 11,
-      "rankBIH": 5,
-      "rankNET": 5
+      "rankBIH": 6,
+      "rankNET": 7
     },
     {
       "id": 1388,
@@ -6572,7 +6572,7 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "rankMOR": 29,
       "rankWLK": 24,
       "rankBIH": 21,
-      "rankNET": 20
+      "rankNET": 22
     },
     {
       "id": 1365,
@@ -6592,7 +6592,7 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "rankMOR": 47,
       "rankWLK": 36,
       "rankBIH": 34,
-      "rankNET": 42
+      "rankNET": 40
     },
     {
       "id": 1333,
@@ -6611,8 +6611,8 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "rankMAS": 126,
       "rankMOR": 161,
       "rankWLK": 166,
-      "rankBIH": 131,
-      "rankNET": 171
+      "rankBIH": 132,
+      "rankNET": 170
     },
     {
       "id": 1362,
@@ -6651,7 +6651,7 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "rankMAS": 137,
       "rankMOR": 125,
       "rankWLK": 120,
-      "rankBIH": 134,
+      "rankBIH": 136,
       "rankNET": 116
     },
     {
@@ -6672,7 +6672,7 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "rankMOR": 134,
       "rankWLK": 122,
       "rankBIH": 114,
-      "rankNET": 118
+      "rankNET": 122
     },
     {
       "id": 1450,
@@ -6692,7 +6692,7 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "rankMOR": 164,
       "rankWLK": 164,
       "rankBIH": 203,
-      "rankNET": 135
+      "rankNET": 146
     },
     {
       "id": 1339,
@@ -6712,7 +6712,7 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "rankMOR": 246,
       "rankWLK": 217,
       "rankBIH": 205,
-      "rankNET": 227
+      "rankNET": 222
     },
     {
       "id": 1258,
@@ -6732,7 +6732,7 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "rankMOR": 141,
       "rankWLK": 176,
       "rankBIH": 187,
-      "rankNET": 166
+      "rankNET": 179
     },
     {
       "id": 1360,
@@ -6752,7 +6752,7 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "rankMOR": 251,
       "rankWLK": 253,
       "rankBIH": 247,
-      "rankNET": 244
+      "rankNET": 234
     },
     {
       "id": 1337,
@@ -6772,7 +6772,7 @@ export const CONF_TEAMS: Record<string, ConfTeam[]> = {
       "rankMOR": 273,
       "rankWLK": 286,
       "rankBIH": 290,
-      "rankNET": 270
+      "rankNET": 274
     }
   ]
 };
