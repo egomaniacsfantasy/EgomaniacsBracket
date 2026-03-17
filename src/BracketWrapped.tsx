@@ -444,6 +444,13 @@ function Screen4Path({ championPath }: { championPath: WrappedData["championPath
     return "var(--red, #f87171)";
   };
 
+  // Compute running cumulative product (probability of winning through each round)
+  const cumulativeProbs = championPath.games.reduce<number[]>((acc, game) => {
+    const prev = acc.length > 0 ? acc[acc.length - 1] : 1;
+    acc.push(prev * game.winProbability);
+    return acc;
+  }, []);
+
   return (
     <div className="bw-content bw-content--path">
       <span className="bw-heading bw-heading--amber">THE PATH OF MOST RESISTANCE</span>
@@ -459,8 +466,9 @@ function Screen4Path({ championPath }: { championPath: WrappedData["championPath
       </div>
 
       <div className="bw-path-games">
-        {championPath.games.map((game) => {
+        {championPath.games.map((game, idx) => {
           const isToughest = game.round === championPath.toughestGame.round;
+          const cumProb = cumulativeProbs[idx];
           return (
             <div
               key={game.round}
@@ -477,9 +485,9 @@ function Screen4Path({ championPath }: { championPath: WrappedData["championPath
               </span>
               <span
                 className="bw-path-prob"
-                style={{ color: probColor(game.winProbability) }}
+                style={{ color: probColor(cumProb) }}
               >
-                {(game.winProbability * 100).toFixed(0)}%
+                {(cumProb * 100).toFixed(0)}%
               </span>
             </div>
           );
