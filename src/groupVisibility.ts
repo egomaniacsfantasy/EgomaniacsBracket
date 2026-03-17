@@ -20,5 +20,7 @@ export const areAllGroupBracketsLocked = (
   canPreviewHidden: boolean = false,
 ): boolean => {
   if (canPreviewHidden) return true;
-  return standings.length > 0 && standings.every((entry) => entry.is_locked);
+  const entriesWithBrackets = standings.filter((entry) => Boolean(entry.bracket_id));
+  if (entriesWithBrackets.length === 0) return false;
+  return entriesWithBrackets.every((entry) => entry.is_locked);
 };
