@@ -7500,11 +7500,11 @@ function ShowdownCard({
         : 88
       : game.round === "F4"
         ? isMobileViewport
-          ? 48
-          : 80
+          ? 64
+          : 108
         : isMobileViewport
-          ? 40
-          : 64;
+          ? 64
+          : 112;
 
   return (
     <div className={`eg-showdown-card ${roundClass} ${isEntering ? "eg-showdown-card--entering" : ""} ${decided ? "decided" : ""}`}>
