@@ -4270,18 +4270,6 @@ function FirstFourGameCard({
       <div className="ff-game-matchup">
         <button
           type="button"
-          className="matchup-stats-icon matchup-stats-icon--ff matchup-stats-icon--ff-inline"
-          onClick={(event) => {
-            event.stopPropagation();
-            onOpenMatchupStats(game);
-          }}
-          title="View matchup stats"
-          aria-label="View matchup stats"
-        >
-          {"i"}
-        </button>
-        <button
-          type="button"
           className={`ff-team-btn ${winner === teamA.id ? "ff-team-btn--winner" : ""} ${winner && winner !== teamA.id ? "ff-team-btn--loser" : ""}`}
           onClick={() => onPick(teamA.id)}
         >
