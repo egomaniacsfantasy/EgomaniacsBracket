@@ -11222,24 +11222,49 @@ body.walkthrough-active .eg-title-choice:hover {
   -webkit-text-fill-color: #1a1408;
 }
 
-.eg-showdown-logo {
-  object-fit: contain;
-  image-rendering: -webkit-optimize-contrast;
-  filter: drop-shadow(0 2px 10px rgba(0, 0, 0, 0.5));
-}
-
-/* DISABLED: showdown logo dimensions are now controlled inline by ShowdownTeamLogo in App.tsx. */
 .eg-showdown-logo-wrap {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.07);
   filter: drop-shadow(0 2px 10px rgba(0, 0, 0, 0.5));
 }
 
 .eg-showdown-logo-img {
+  display: block;
   image-rendering: -webkit-optimize-contrast;
   object-fit: contain;
 }
 
+.eg-showdown-logo-fallback {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.eg-showdown-logo-seed {
+  font-family: var(--font-mono);
+  font-size: 28px;
+  font-weight: 700;
+  color: rgba(231, 191, 114, 0.92);
+  line-height: 1;
+}
+
 @media (max-width: 767px) {
-  /* DISABLED: mobile showdown logo dimensions are now controlled inline by ShowdownTeamLogo in App.tsx. */
+  .eg-showdown-logo-wrap,
+  .eg-showdown-logo-fallback {
+    border-radius: 14px;
+  }
+
+  .eg-showdown-logo-seed {
+    font-size: 22px;
+  }
 }
 
 .eg-showdown-card.decided {

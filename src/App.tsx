@@ -7796,31 +7796,33 @@ function ShowdownTeamLogo({
   sizePx: number;
   teamSeed?: string | number | null;
 }) {
+  const [failed, setFailed] = useState(false);
   const size = `${sizePx}px`;
+  const boxStyle = {
+    width: size,
+    height: size,
+    minWidth: size,
+    minHeight: size,
+    maxWidth: size,
+    maxHeight: size,
+  } as const;
 
   return (
-    <span
-      className="eg-showdown-logo-wrap"
-      style={{
-        width: size,
-        height: size,
-        minWidth: size,
-        minHeight: size,
-        maxWidth: size,
-        maxHeight: size,
-        display: "inline-flex",
-        alignItems: "center",
-        justifyContent: "center",
-        flexShrink: 0,
-      }}
-    >
-      <TeamLogo
-        className="eg-showdown-logo-img"
-        teamName={teamName}
-        src={src}
-        sizePx={sizePx}
-        teamSeed={teamSeed}
-      />
+    <span className="eg-showdown-logo-wrap" style={boxStyle}>
+      {failed || !src ? (
+        <span className="eg-showdown-logo-fallback" style={boxStyle}>
+          <span className="eg-showdown-logo-seed">{teamSeed ?? "?"}</span>
+        </span>
+      ) : (
+        <img
+          className="eg-showdown-logo-img"
+          src={src}
+          alt={`${teamName} logo`}
+          loading="lazy"
+          style={boxStyle}
+          onError={() => setFailed(true)}
+        />
+      )}
     </span>
   );
 }
