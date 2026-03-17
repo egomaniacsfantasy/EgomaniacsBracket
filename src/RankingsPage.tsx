@@ -2,7 +2,6 @@ import { useEffect, useState } from "react";
 import { ExpandedRankings } from "./rankings/ExpandedRankings";
 import { StandaloneFooter } from "./SiteChrome";
 import { TopNavBar } from "./TopNavBar";
-import "./index.css";
 
 export function RankingsPage() {
   const [isMobile, setIsMobile] = useState(() =>

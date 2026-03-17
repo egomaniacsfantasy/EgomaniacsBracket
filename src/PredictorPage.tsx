@@ -1,6 +1,5 @@
 import { MatchupPredictor } from "./MatchupPredictor";
 import { TopNavBar } from "./TopNavBar";
-import "./index.css";
 
 export function PredictorPage() {
   return (

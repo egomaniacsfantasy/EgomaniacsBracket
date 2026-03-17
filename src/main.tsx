@@ -2,6 +2,7 @@ import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import { initAnalytics } from "./lib/analytics";
 import { initErrorMonitoring } from "./lib/errorMonitoring";
+import "./index.css";
 
 if (window.location.pathname === "/bracket") {
   window.history.replaceState({}, "", "/");

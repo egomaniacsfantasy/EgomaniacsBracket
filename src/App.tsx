@@ -1,7 +1,6 @@
 import { Fragment, Suspense, lazy, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import html2canvas from "html2canvas";
-import "./index.css";
 import { teamsById } from "./data/teams";
 import { BRACKET_HALVES, gameTemplates, regionRounds } from "./data/bracket";
 import {
