@@ -1017,9 +1017,31 @@ body {
   color: rgba(240, 230, 208, 0.9);
 }
 
-.ff-bar-card-icon--stats {
-  border-color: rgba(240, 230, 208, 0.2);
+.ff-bar-stats-icon {
+  border-radius: 999px;
+  border: 1px solid rgba(240, 230, 208, 0.2);
   background: rgba(255, 255, 255, 0.04);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  line-height: 1;
+  cursor: pointer;
+  transition: color 140ms ease, background 140ms ease, border-color 140ms ease;
+}
+
+.ff-bar-stats-icon:hover,
+.ff-bar-stats-icon:focus-visible {
+  color: rgba(240, 230, 208, 1);
+  background: rgba(255, 255, 255, 0.1);
+  border-color: rgba(240, 230, 208, 0.35);
+}
+
+.ff-bar-stats-icon:focus-visible {
+  outline: 1px solid rgba(240, 230, 208, 0.22);
+  outline-offset: 1px;
+}
+
+.ff-bar-stats-icon:disabled {
+  cursor: default;
 }
 
 .ff-bar-card-check {
