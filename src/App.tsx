@@ -31,6 +31,7 @@ import { trackEvent } from "./lib/analytics";
 import { extractInviteCode } from "./lib/inviteCode";
 import { useAuth } from "./AuthContext";
 import { AuthModal } from "./AuthModal";
+import { clearPendingAuthVerification, getPendingAuthVerification } from "./authVerificationSession";
 import { MyBracketsModal } from "./MyBracketsModal";
 import { CreateGroupModal } from "./CreateGroupModal";
 import { JoinGroupModal } from "./JoinGroupModal";
@@ -987,7 +988,20 @@ function App() {
   }, [joinCode]);
 
   useEffect(() => {
-    if (isAuthenticated) setAuthModalOpen(false);
+    if (isAuthenticated) {
+      clearPendingAuthVerification();
+      setAuthModalOpen(false);
+    }
+  }, [isAuthenticated]);
+
+  useEffect(() => {
+    if (typeof window === "undefined" || isAuthenticated) return;
+
+    const pendingVerification = getPendingAuthVerification();
+    if (!pendingVerification) return;
+
+    setAuthModalContext(pendingVerification.context);
+    setAuthModalOpen(true);
   }, [isAuthenticated]);
 
   useEffect(() => {
@@ -4823,7 +4837,16 @@ function App() {
         onCancel={() => setResetModalConfig(null)}
       />
 
-      <AuthModal isOpen={authModalOpen} onClose={() => { setAuthModalOpen(false); setAuthModalContext("default"); }} context={authModalContext} />
+      {authModalOpen ? (
+        <AuthModal
+          isOpen={authModalOpen}
+          onClose={() => {
+            setAuthModalOpen(false);
+            setAuthModalContext("default");
+          }}
+          context={authModalContext}
+        />
+      ) : null}
 
       <MyBracketsModal
         isOpen={myBracketsOpen}
@@ -4880,7 +4903,12 @@ function App() {
           }
         }}
         initialCode={joinCode || undefined}
-        onRequestAuth={() => {
+        onRequestAuth={(pendingCode) => {
+          const extractedCode = extractInviteCode(pendingCode);
+          if (extractedCode) {
+            setJoinCode(extractedCode);
+            sessionStorage.setItem("pendingJoinCode", extractedCode);
+          }
           setAuthModalContext("join");
           setAuthModalOpen(true);
         }}

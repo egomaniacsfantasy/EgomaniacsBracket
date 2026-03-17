@@ -1,12 +1,20 @@
-import { useEffect, useRef, useState, type FormEvent, type MouseEvent } from "react";
+import { useCallback, useEffect, useRef, useState, type FormEvent, type MouseEvent } from "react";
 import { useAuth } from "./AuthContext";
 import { MAX_SUBMITTED_BRACKETS } from "./bracketStorage";
 import { supabase } from "./supabaseClient";
 import { captureError } from "./lib/errorMonitoring";
+import {
+  clearPendingAuthVerification,
+  getPendingAuthVerification,
+  savePendingAuthVerification,
+  type SubmittedMode,
+} from "./authVerificationSession";
 
 export type AuthContext = "submit" | "default" | "groups" | "join";
 
 type Mode = "signup" | "signin" | "verify-otp" | "check-email" | "forgot" | "forgot-sent";
+
+const OTP_LENGTH = 8;
 
 function getFriendlyAuthError(error: { message?: string } | null | undefined): string {
   const raw = error?.message ?? "";
@@ -159,8 +167,6 @@ function PasswordInput({
   );
 }
 
-const OTP_LENGTH = 8;
-
 function OtpInput({
   value,
   onChange,
@@ -245,13 +251,14 @@ export function AuthModal({
   onClose: () => void;
   context?: AuthContext;
 }) {
+  const pendingVerification = getPendingAuthVerification();
   const { signUp, signIn, signInWithGoogle, isDisplayNameAvailable } = useAuth();
-  const [mode, setMode] = useState<Mode>("signup");
-  const [email, setEmail] = useState("");
+  const [mode, setMode] = useState<Mode>(pendingVerification?.mode ?? "signup");
+  const [email, setEmail] = useState(pendingVerification?.email ?? "");
   const [displayName, setDisplayName] = useState("");
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
-  const [submittedMode, setSubmittedMode] = useState<"signup" | "signin">("signup");
+  const [submittedMode, setSubmittedMode] = useState<SubmittedMode>(pendingVerification?.submittedMode ?? "signup");
   const [password, setPassword] = useState("");
   const [signinPassword, setSigninPassword] = useState("");
   const [displayNameHint, setDisplayNameHint] = useState("");
@@ -262,23 +269,10 @@ export function AuthModal({
   const [verifyingOtp, setVerifyingOtp] = useState(false);
   const modalRef = useRef<HTMLDivElement | null>(null);
 
-  useEffect(() => {
-    if (!isOpen) return;
-    setMode("signup");
-    setEmail("");
-    setDisplayName("");
-    setError("");
-    setSubmitting(false);
-    setSubmittedMode("signup");
-    setPassword("");
-    setSigninPassword("");
-    setDisplayNameHint("");
-    setDisplayNameChecking(false);
-    setResendStatus("");
-    setResendingConfirmation(false);
-    setOtpCode("");
-    setVerifyingOtp(false);
-  }, [isOpen]);
+  const handleCloseModal = useCallback(() => {
+    clearPendingAuthVerification();
+    onClose();
+  }, [onClose]);
 
   useEffect(() => {
     if (!isOpen || mode !== "signup") return;
@@ -305,14 +299,38 @@ export function AuthModal({
   useEffect(() => {
     if (!isOpen) return;
     const handleEsc = (event: KeyboardEvent) => {
-      if (event.key === "Escape") onClose();
+      if (event.key === "Escape") handleCloseModal();
     };
     document.addEventListener("keydown", handleEsc);
     return () => document.removeEventListener("keydown", handleEsc);
-  }, [isOpen, onClose]);
+  }, [handleCloseModal, isOpen]);
 
   const handleBackdropClick = (event: MouseEvent<HTMLDivElement>) => {
-    if (event.target === event.currentTarget) onClose();
+    if (event.target !== event.currentTarget) return;
+    handleCloseModal();
+  };
+
+  const openVerifyOtp = (nextEmail: string, nextSubmittedMode: SubmittedMode = "signup") => {
+    const trimmedEmail = nextEmail.trim();
+    savePendingAuthVerification({
+      mode: "verify-otp",
+      email: trimmedEmail,
+      context,
+      submittedMode: nextSubmittedMode,
+    });
+    setSubmittedMode(nextSubmittedMode);
+    setEmail(trimmedEmail);
+    setOtpCode("");
+    setMode("verify-otp");
+  };
+
+  const leaveVerifyOtp = () => {
+    clearPendingAuthVerification();
+    setMode("signup");
+    setError("");
+    setOtpCode("");
+    setResendStatus("");
+    setResendingConfirmation(false);
   };
 
   const handleResendCode = async () => {
@@ -377,6 +395,7 @@ export function AuthModal({
       }
 
       // Success — user is now verified and logged in
+      clearPendingAuthVerification();
       onClose();
     } catch (err) {
       captureError("auth_verify_otp", err);
@@ -399,9 +418,7 @@ export function AuthModal({
     const authError = authResult.error;
     setSubmitting(false);
     if (authError) return setError(getFriendlyAuthError(authError as { message?: string }));
-    setSubmittedMode("signup");
-    setOtpCode("");
-    setMode("verify-otp");
+    openVerifyOtp(email, "signup");
   };
 
   const handleSignIn = async (event: FormEvent) => {
@@ -489,7 +506,7 @@ export function AuthModal({
   return (
     <div className="auth-modal-backdrop" onClick={handleBackdropClick}>
       <div className="auth-modal" ref={modalRef}>
-        <button className="auth-modal-close" onClick={onClose}>
+        <button className="auth-modal-close" onClick={handleCloseModal}>
           ✕
         </button>
 
@@ -529,7 +546,7 @@ export function AuthModal({
             </p>
             <button
               className="auth-modal-mode-toggle"
-              onClick={() => { setMode("signup"); setError(""); setOtpCode(""); }}
+              onClick={leaveVerifyOtp}
               type="button"
             >
               &larr; Back to sign up
@@ -699,8 +716,7 @@ export function AuthModal({
                     className="auth-modal-error-link"
                     type="button"
                     onClick={() => {
-                      setOtpCode("");
-                      setMode("verify-otp");
+                      openVerifyOtp(email, "signup");
                       void handleResendCode();
                     }}
                     disabled={resendingConfirmation}
@@ -827,8 +843,7 @@ export function AuthModal({
                     className="auth-modal-error-link"
                     type="button"
                     onClick={() => {
-                      setOtpCode("");
-                      setMode("verify-otp");
+                      openVerifyOtp(email, "signin");
                       void handleResendCode();
                     }}
                     disabled={resendingConfirmation}

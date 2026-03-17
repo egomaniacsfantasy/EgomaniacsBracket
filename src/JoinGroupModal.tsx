@@ -15,7 +15,7 @@ export function JoinGroupModal({
   onClose: () => void;
   onGroupJoined?: (group: GroupRow, hadBracket: boolean) => void;
   initialCode?: string | null;
-  onRequestAuth?: () => void;
+  onRequestAuth?: (code?: string) => void;
 }) {
   const { user } = useAuth();
   const [step, setStep] = useState<"code" | "bracket" | "done">("code");
@@ -76,7 +76,7 @@ export function JoinGroupModal({
   function handleLookup() {
     if (!user) {
       // Not logged in — request auth first
-      onRequestAuth?.();
+      onRequestAuth?.(code);
       return;
     }
     void lookupGroup(code);
