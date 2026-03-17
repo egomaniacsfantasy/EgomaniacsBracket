@@ -4637,6 +4637,12 @@ function App() {
                 <div className="bracket-lock-banner">🔒 Submissions locked at tip-off. Tournament is live — check the leaderboard.</div>
               ) : null}
               <div className="eg-bracket-stack" style={{ display: visibleMainView === "bracket" ? undefined : "none" }}>
+                {!isMobile && !allPlayInDecided && playInGames.length > 0 ? (
+                  <div className="ff-nudge-banner">
+                    <span className="ff-nudge-banner-arrow">↑</span>
+                    <span className="ff-nudge-banner-text">Pick your First Four games above to unlock the full bracket</span>
+                  </div>
+                ) : null}
                 <section
                   className="eg-bracket-section top-half"
                   data-half-expanded={topHalfManuallyExpanded ? "true" : "false"}
@@ -7056,6 +7062,50 @@ function GameCard({
     return null;
   }, [game.round, game.sourceGameIds, gamesById]);
 
+  const ffPending = Boolean(playInAttachment && !playInAttachment.ffGame.winnerId);
+  const ffNudgeCooldownRef = useRef(0);
+  const ffNudgeCardRef = useRef<HTMLElement | null>(null);
+
+  const showFfNudgeTooltip = useCallback(() => {
+    if (!ffPending) return;
+    const card = ffNudgeCardRef.current;
+    if (!card) return;
+    if (Date.now() < ffNudgeCooldownRef.current) return;
+    if (document.querySelector(".ff-nudge-tooltip")) return;
+    ffNudgeCooldownRef.current = Date.now() + 5000;
+
+    const rect = card.getBoundingClientRect();
+    const tip = document.createElement("div");
+    tip.className = "ff-nudge-tooltip";
+    tip.style.position = "fixed";
+    tip.style.left = `${rect.left + rect.width / 2}px`;
+    tip.style.top = `${rect.top - 8}px`;
+    tip.style.transform = "translate(-50%, -100%)";
+    tip.innerHTML = `<span class="ff-nudge-tooltip-text">Complete the First Four to unlock this matchup</span><span class="ff-nudge-tooltip-link">Go to First Four ↑</span>`;
+    tip.addEventListener("click", (e) => e.stopPropagation());
+    tip.querySelector(".ff-nudge-tooltip-link")!.addEventListener("click", () => {
+      dismiss();
+      document.querySelector(".ff-bar-wrapper")?.scrollIntoView({ behavior: "smooth" });
+    });
+    document.body.appendChild(tip);
+
+    const dismiss = () => tip.remove();
+    const autoTimer = window.setTimeout(dismiss, 4000);
+    const clickTimer = window.setTimeout(() => {
+      window.addEventListener("click", (ev: MouseEvent) => {
+        if ((ev.target as HTMLElement).closest?.(".ff-nudge-tooltip")) return;
+        dismiss();
+      }, { capture: true, once: true });
+    }, 200);
+    return () => { window.clearTimeout(autoTimer); window.clearTimeout(clickTimer); tip.remove(); };
+  }, [ffPending]);
+
+  // Clean up any body-appended tooltip when ffPending becomes false or component unmounts
+  useEffect(() => {
+    if (ffPending) return;
+    document.querySelectorAll(".ff-nudge-tooltip").forEach((el) => el.remove());
+  }, [ffPending]);
+
   if (collapsed) {
     const compactTeams = [game.teamAId, game.teamBId]
       .map((teamId) => (teamId ? teamsById.get(teamId) ?? null : null))
@@ -7134,7 +7184,8 @@ function GameCard({
 
   return (
     <article
-      className={`eg-game-card round-${game.round.toLowerCase()} ${useShowdownCard ? "eg-game-card--showdown" : ""}`}
+      ref={ffPending ? ffNudgeCardRef as React.Ref<HTMLElement> : undefined}
+      className={`eg-game-card round-${game.round.toLowerCase()} ${useShowdownCard ? "eg-game-card--showdown" : ""} ${ffPending ? "eg-game-card--ff-pending" : ""}`}
       data-game-id={game.id}
       data-matchup-id={game.id}
       data-region={game.region}
@@ -7143,6 +7194,13 @@ function GameCard({
       onMouseEnter={() => setShowChaosTooltip(true)}
       onMouseLeave={() => setShowChaosTooltip(false)}
     >
+      {ffPending ? (
+        <div
+          className="ff-nudge-overlay"
+          onClick={(e) => { e.stopPropagation(); showFfNudgeTooltip(); }}
+          onMouseEnter={() => showFfNudgeTooltip()}
+        />
+      ) : null}
       {game.teamAId && game.teamBId && !useShowdownCard ? (
         <button
           type="button"

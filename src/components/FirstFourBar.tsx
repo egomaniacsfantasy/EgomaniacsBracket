@@ -168,7 +168,7 @@ export function FirstFourBar({
   const allDecided = decidedCount === games.length;
 
   return (
-    <div className={`ff-bar-wrapper ${expanded ? "expanded" : "collapsed"}`} aria-hidden={!expanded}>
+    <div className={`ff-bar-wrapper ${expanded ? "expanded" : "collapsed"} ${!allDecided ? "ff-section-incomplete" : ""}`} aria-hidden={!expanded}>
       <section className="ff-bar">
         <div className="ff-bar-header">
           <div className="ff-bar-header-copy">

@@ -20320,3 +20320,121 @@ body.br-modal-open {
   }
 
 }
+
+/* ─── First Four Nudge: Banner ───────────────────────────────── */
+
+.ff-nudge-banner {
+  display: none;
+}
+
+@media (min-width: 768px) {
+  .ff-nudge-banner {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    background: rgba(184, 125, 24, 0.06);
+    border: 1px solid rgba(184, 125, 24, 0.2);
+    border-radius: 10px;
+    padding: 10px 20px;
+    margin-bottom: 16px;
+    animation: ffBannerIn 400ms ease both;
+  }
+
+  .ff-nudge-banner-arrow {
+    font-size: 16px;
+    color: var(--text-amber);
+  }
+
+  .ff-nudge-banner-text {
+    font-family: var(--font-mono);
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--text-dim);
+  }
+
+  @keyframes ffBannerIn {
+    from {
+      opacity: 0;
+      transform: translateY(8px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+}
+
+/* ─── First Four Nudge: Tooltip on blocked R64 cards ─────────── */
+
+.ff-nudge-tooltip {
+  display: none;
+}
+
+@media (min-width: 768px) {
+  .eg-game-card--ff-pending {
+    cursor: pointer;
+  }
+
+  .ff-nudge-overlay {
+    position: absolute;
+    inset: 0;
+    z-index: 10;
+    cursor: pointer;
+  }
+
+  .ff-nudge-tooltip {
+    display: flex;
+    flex-direction: column;
+    background: rgba(23, 16, 8, 0.95);
+    border: 1px solid rgba(184, 125, 24, 0.35);
+    border-radius: 10px;
+    padding: 12px 18px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+    z-index: 100;
+    max-width: 280px;
+    animation: popupIn 120ms ease-out;
+    pointer-events: auto;
+  }
+
+  .ff-nudge-tooltip-text {
+    font-family: var(--font-mono);
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--text-primary);
+    line-height: 1.4;
+  }
+
+  .ff-nudge-tooltip-link {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--text-amber);
+    cursor: pointer;
+    margin-top: 6px;
+    display: inline-block;
+  }
+
+  .ff-nudge-tooltip-link:hover {
+    text-decoration: underline;
+  }
+}
+
+/* ─── First Four Section: Incomplete glow ────────────────────── */
+
+.ff-section-incomplete {
+  /* only on desktop */
+}
+
+@media (min-width: 768px) {
+  .ff-bar-wrapper.ff-section-incomplete.expanded {
+    border: 1px solid rgba(184, 125, 24, 0.3);
+    border-radius: 12px;
+    animation: ff-pulse 2.5s ease-in-out infinite;
+  }
+
+  @keyframes ff-pulse {
+    0%, 100% { border-color: rgba(184, 125, 24, 0.15); }
+    50% { border-color: rgba(184, 125, 24, 0.4); }
+  }
+}
