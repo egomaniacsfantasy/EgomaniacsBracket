@@ -44,12 +44,16 @@ function FirstFourBarCard({
   displayMode,
   lastPickedKey,
   onPick,
+  onEditProb,
+  onOpenMatchupStats,
 }: {
   game: ResolvedGame;
   gameWinProbs: SimulationOutput["gameWinProbs"];
   displayMode: OddsDisplayMode;
   lastPickedKey: string | null;
   onPick: (game: ResolvedGame, teamId: string) => void;
+  onEditProb: (game: ResolvedGame, anchorEl: HTMLElement) => void;
+  onOpenMatchupStats: (game: ResolvedGame) => void;
 }) {
   const teamA = game.teamAId ? teamsById.get(game.teamAId) ?? null : null;
   const teamB = game.teamBId ? teamsById.get(game.teamBId) ?? null : null;
@@ -99,6 +103,32 @@ function FirstFourBarCard({
         <span className="ff-bar-card-label">PLAY-IN · {teamA.region.toUpperCase()}</span>
         <span className="ff-bar-card-meta">
           <span className="ff-bar-card-seed">Seed {seedLabel}</span>
+          <span className="ff-bar-card-actions">
+            <button
+              type="button"
+              className={`matchup-edit-icon ff-bar-card-icon ${game.customProbA !== null ? "is-edited" : ""}`}
+              onClick={(event) => {
+                event.stopPropagation();
+                onEditProb(game, event.currentTarget);
+              }}
+              title="Edit matchup probability"
+              aria-label="Edit matchup probability"
+            >
+              ✎
+            </button>
+            <button
+              type="button"
+              className="matchup-stats-icon ff-bar-card-icon ff-bar-card-icon--stats"
+              onClick={(event) => {
+                event.stopPropagation();
+                onOpenMatchupStats(game);
+              }}
+              title="View matchup stats"
+              aria-label="View matchup stats"
+            >
+              {"i"}
+            </button>
+          </span>
           {winnerId ? <span className="ff-bar-card-check">✓</span> : null}
         </span>
       </div>
@@ -118,6 +148,8 @@ export function FirstFourBar({
   expanded,
   lastPickedKey,
   onPick,
+  onEditProb,
+  onOpenMatchupStats,
   onRandomize,
 }: {
   games: ResolvedGame[];
@@ -126,6 +158,8 @@ export function FirstFourBar({
   expanded: boolean;
   lastPickedKey: string | null;
   onPick: (game: ResolvedGame, teamId: string) => void;
+  onEditProb: (game: ResolvedGame, anchorEl: HTMLElement) => void;
+  onOpenMatchupStats: (game: ResolvedGame) => void;
   onRandomize: () => void;
 }) {
   if (games.length === 0) return null;
@@ -164,6 +198,8 @@ export function FirstFourBar({
               displayMode={displayMode}
               lastPickedKey={lastPickedKey}
               onPick={onPick}
+              onEditProb={onEditProb}
+              onOpenMatchupStats={onOpenMatchupStats}
             />
           ))}
         </div>

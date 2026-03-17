@@ -4483,6 +4483,8 @@ function App() {
       expanded={firstFourExpanded}
       lastPickedKey={lastPickedKey}
       onPick={onPick}
+      onEditProb={openProbabilityPopup}
+      onOpenMatchupStats={openMatchupStats}
       onRandomize={handleRandomizeFirstFour}
     />
   ) : null;
