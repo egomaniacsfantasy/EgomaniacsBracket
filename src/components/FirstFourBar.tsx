@@ -102,6 +102,18 @@ function FirstFourBarCard({
       <div className="ff-bar-card-header">
         <span className="ff-bar-card-label">PLAY-IN · {teamA.region.toUpperCase()}</span>
         <span className="ff-bar-card-meta">
+          <button
+            type="button"
+            className="matchup-stats-icon ff-bar-card-icon ff-bar-card-icon--stats"
+            onClick={(event) => {
+              event.stopPropagation();
+              onOpenMatchupStats(game);
+            }}
+            title="View matchup stats"
+            aria-label="View matchup stats"
+          >
+            {"i"}
+          </button>
           <span className="ff-bar-card-seed">Seed {seedLabel}</span>
           <span className="ff-bar-card-actions">
             <button
@@ -115,18 +127,6 @@ function FirstFourBarCard({
               aria-label="Edit matchup probability"
             >
               ✎
-            </button>
-            <button
-              type="button"
-              className="matchup-stats-icon ff-bar-card-icon ff-bar-card-icon--stats"
-              onClick={(event) => {
-                event.stopPropagation();
-                onOpenMatchupStats(game);
-              }}
-              title="View matchup stats"
-              aria-label="View matchup stats"
-            >
-              {"i"}
             </button>
           </span>
           {winnerId ? <span className="ff-bar-card-check">✓</span> : null}
