@@ -20783,10 +20783,11 @@ body.br-modal-open {
 
 .grp-bv-board-grid {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 220px minmax(0, 1fr);
-  gap: 24px 20px;
-  align-items: start;
-  min-width: 1180px;
+  grid-template-columns: minmax(0, 1fr) 260px minmax(0, 1fr);
+  grid-template-rows: minmax(360px, auto) minmax(360px, auto);
+  gap: 28px 22px;
+  align-items: stretch;
+  min-width: 1220px;
 }
 
 .grp-bv-region {
@@ -20794,6 +20795,7 @@ body.br-modal-open {
   flex-direction: column;
   gap: 12px;
   min-width: 0;
+  height: 100%;
 }
 
 .grp-bv-region--east {
@@ -20817,12 +20819,12 @@ body.br-modal-open {
 }
 
 .grp-bv-region-label {
-  font-family: var(--font-mono);
-  font-size: 11px;
-  font-weight: 600;
-  letter-spacing: 0.16em;
+  font-family: var(--font-serif);
+  font-size: 16px;
+  font-style: italic;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
-  color: var(--text-soft);
+  color: rgba(184, 125, 24, 0.4);
 }
 
 .grp-bv-region--to-left .grp-bv-region-label {
@@ -20831,8 +20833,9 @@ body.br-modal-open {
 
 .grp-bv-region-rounds {
   display: flex;
-  gap: 8px;
+  gap: 10px;
   min-width: 0;
+  flex: 1;
 }
 
 .grp-bv-round-column {
@@ -20847,7 +20850,7 @@ body.br-modal-open {
   text-align: center;
   font-family: var(--font-mono);
   font-size: 9px;
-  font-weight: 600;
+  font-weight: 500;
   letter-spacing: 0.1em;
   text-transform: uppercase;
   color: var(--text-soft);
@@ -20859,7 +20862,7 @@ body.br-modal-open {
   flex-direction: column;
   justify-content: space-around;
   gap: 12px;
-  min-height: 332px;
+  min-height: 0;
 }
 
 .grp-bv-slot {
@@ -20868,14 +20871,37 @@ body.br-modal-open {
   gap: 2px;
   margin: 2px 0;
   padding: 4px 6px;
-  background: rgba(16, 12, 7, 0.6);
-  border: 1px solid rgba(171, 138, 69, 0.06);
   border-radius: 6px;
+  background: rgba(16, 12, 7, 0.5);
+  border: 1px solid rgba(171, 138, 69, 0.06);
+}
+
+.grp-bv-slot--r32 {
+  background: rgba(16, 12, 7, 0.55);
+  border-color: rgba(171, 138, 69, 0.08);
+}
+
+.grp-bv-slot--s16 {
+  background: rgba(16, 12, 7, 0.6);
+  border-color: rgba(171, 138, 69, 0.1);
+}
+
+.grp-bv-slot--e8 {
+  background: rgba(16, 12, 7, 0.65);
+  border-color: rgba(171, 138, 69, 0.14);
 }
 
 .grp-bv-slot--final,
+.grp-bv-slot--f4 {
+  padding: 6px 10px;
+  background: rgba(16, 12, 7, 0.7);
+  border-color: rgba(171, 138, 69, 0.15);
+}
+
 .grp-bv-slot--championship {
-  background: rgba(16, 12, 7, 0.76);
+  padding: 8px 14px;
+  background: rgba(184, 125, 24, 0.04);
+  border-color: rgba(184, 125, 24, 0.25);
 }
 
 .grp-bv-slot--placeholder {
@@ -20889,6 +20915,14 @@ body.br-modal-open {
   min-height: 22px;
   padding: 3px 4px;
   border-radius: 4px;
+}
+
+.grp-bv-slot--f4 .grp-bv-team-row {
+  min-height: 26px;
+}
+
+.grp-bv-slot--championship .grp-bv-team-row {
+  min-height: 30px;
 }
 
 .grp-bv-team-row--picked {
@@ -20945,11 +20979,23 @@ body.br-modal-open {
   font-size: 8px;
 }
 
+.grp-bv-slot--f4 .grp-bv-logo,
+.grp-bv-slot--f4 .grp-bv-logo-fallback {
+  width: 20px;
+  height: 20px;
+}
+
+.grp-bv-slot--championship .grp-bv-logo,
+.grp-bv-slot--championship .grp-bv-logo-fallback {
+  width: 22px;
+  height: 22px;
+}
+
 .grp-bv-logo--large,
 .grp-bv-logo-fallback--large {
-  width: 24px;
-  height: 24px;
-  border-radius: 4px;
+  width: 36px;
+  height: 36px;
+  border-radius: 6px;
 }
 
 .grp-bv-team-seed {
@@ -20972,6 +21018,20 @@ body.br-modal-open {
   color: var(--text-primary);
 }
 
+.grp-bv-slot--f4 .grp-bv-team-name {
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.grp-bv-slot--championship .grp-bv-team-name {
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.grp-bv-slot--championship .grp-bv-team-seed {
+  font-size: 10px;
+}
+
 .grp-bv-team-check {
   font-size: 9px;
   color: #4ade80;
@@ -20980,11 +21040,11 @@ body.br-modal-open {
 .grp-bv-finals {
   grid-column: 2;
   grid-row: 1 / span 2;
-  display: flex;
-  flex-direction: column;
-  justify-content: space-between;
-  gap: 22px;
-  min-height: 688px;
+  display: grid;
+  grid-template-rows: minmax(0, 1fr) auto minmax(0, 1fr);
+  gap: 18px;
+  min-height: 100%;
+  align-items: stretch;
 }
 
 .grp-bv-finals-section {
@@ -20993,21 +21053,28 @@ body.br-modal-open {
   gap: 8px;
 }
 
+.grp-bv-finals-section--top,
+.grp-bv-finals-section--bottom {
+  align-self: center;
+}
+
 .grp-bv-finals-section--champ {
-  flex: 1;
-  justify-content: center;
+  align-self: center;
+  gap: 12px;
 }
 
 .grp-bv-champion {
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 8px;
-  margin-top: 10px;
-  padding: 12px 10px;
-  border-radius: 10px;
-  border: 1px solid rgba(184, 125, 24, 0.22);
-  background: rgba(184, 125, 24, 0.08);
+  gap: 6px;
+  margin: 8px 0;
+  padding: 16px 24px;
+  border-radius: 12px;
+  border: 1.5px solid rgba(184, 125, 24, 0.35);
+  background: linear-gradient(180deg, rgba(184, 125, 24, 0.08), rgba(184, 125, 24, 0.03));
+  box-shadow: 0 0 40px rgba(184, 125, 24, 0.06);
 }
 
 .grp-bv-champion--correct {
@@ -21020,16 +21087,33 @@ body.br-modal-open {
   background: rgba(248, 113, 113, 0.08);
 }
 
+.grp-bv-champion-label {
+  margin-bottom: 2px;
+  font-family: var(--font-mono);
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: var(--text-amber);
+}
+
 .grp-bv-champion-trophy {
-  font-size: 12px;
+  display: block;
+  font-size: 20px;
 }
 
 .grp-bv-champion-name {
   font-family: var(--font-mono);
-  font-size: 12px;
+  font-size: 16px;
   font-weight: 700;
   color: var(--text-amber);
   text-align: center;
+}
+
+.grp-bv-champion-seed {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--text-soft);
 }
 
 .grp-bv-champion--correct .grp-bv-champion-name {

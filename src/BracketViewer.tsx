@@ -36,6 +36,7 @@ type TeamDisplay = {
 
 type TeamRowState = "default" | "correct" | "incorrect" | "missing";
 type RegionDirection = "to-right" | "to-left";
+type SlotTone = "r64" | "r32" | "s16" | "e8" | "f4" | "championship";
 
 const LEFT_REGION_ROUNDS: Round[] = ["R64", "R32", "S16", "E8"];
 const RIGHT_REGION_ROUNDS: Round[] = ["E8", "S16", "R32", "R64"];
@@ -177,6 +178,15 @@ function getPickedRowState(game: ResolvedGame, actualWinnerId: string | null): T
   return actualWinnerId === game.winnerId ? "correct" : "incorrect";
 }
 
+function getSlotTone(round: Round): SlotTone {
+  if (round === "R64") return "r64";
+  if (round === "R32") return "r32";
+  if (round === "S16") return "s16";
+  if (round === "E8") return "e8";
+  if (round === "F4") return "f4";
+  return "championship";
+}
+
 function TeamLogo({ team, large = false }: { team: TeamDisplay; large?: boolean }) {
   const [failedUrl, setFailedUrl] = useState<string | null>(null);
   const shouldFallback = !team.logoUrl || failedUrl === team.logoUrl;
@@ -244,7 +254,7 @@ function PlaceholderSlot() {
   const placeholder = getTeamDisplay(null);
 
   return (
-    <div className="grp-bv-slot grp-bv-slot--placeholder">
+    <div className="grp-bv-slot grp-bv-slot--placeholder grp-bv-slot--r64">
       <TeamRow team={placeholder} isPicked={false} rowState="missing" faded={false} />
       <TeamRow team={placeholder} isPicked={false} rowState="missing" faded={false} />
     </div>
@@ -265,9 +275,19 @@ function GameSlot({
   const actualWinnerId = resultsByGame.get(game.id) ?? null;
   const pickedRowState = getPickedRowState(game, actualWinnerId);
   const hasPick = Boolean(game.winnerId);
+  const slotTone = getSlotTone(game.round);
 
   return (
-    <div className={["grp-bv-slot", className, hasPick ? "" : "grp-bv-slot--missing"].filter(Boolean).join(" ")}>
+    <div
+      className={[
+        "grp-bv-slot",
+        `grp-bv-slot--${slotTone}`,
+        className,
+        hasPick ? "" : "grp-bv-slot--missing",
+      ]
+        .filter(Boolean)
+        .join(" ")}
+    >
       <TeamRow
         team={teamA}
         isPicked={game.winnerId === game.teamAId}
@@ -344,11 +364,13 @@ function ChampionBadge({
         .filter(Boolean)
         .join(" ")}
     >
+      <span className="grp-bv-champion-label">Champion</span>
       <span className="grp-bv-champion-trophy" aria-hidden="true">
         🏆
       </span>
       <TeamLogo team={championTeam} large />
       <span className="grp-bv-champion-name">{championTeam.name === "TBD" ? "Champion TBD" : championTeam.name}</span>
+      <span className="grp-bv-champion-seed">{championTeam.seed !== "—" ? `Seed ${championTeam.seed}` : "Awaiting result"}</span>
     </div>
   );
 }
@@ -366,20 +388,32 @@ function FinalsBoard({
 
   return (
     <section className="grp-bv-finals">
-      <div className="grp-bv-finals-section">
+      <div className="grp-bv-finals-section grp-bv-finals-section--top">
         <div className="grp-bv-round-heading">F4</div>
-        {topSemifinal ? <GameSlot game={topSemifinal} resultsByGame={resultsByGame} className="grp-bv-slot--final" /> : <PlaceholderSlot />}
+        {topSemifinal ? (
+          <GameSlot game={topSemifinal} resultsByGame={resultsByGame} className="grp-bv-slot--final" />
+        ) : (
+          <PlaceholderSlot />
+        )}
       </div>
 
       <div className="grp-bv-finals-section grp-bv-finals-section--champ">
         <div className="grp-bv-round-heading">Champ</div>
-        {championship ? <GameSlot game={championship} resultsByGame={resultsByGame} className="grp-bv-slot--championship" /> : <PlaceholderSlot />}
+        {championship ? (
+          <GameSlot game={championship} resultsByGame={resultsByGame} className="grp-bv-slot--championship" />
+        ) : (
+          <PlaceholderSlot />
+        )}
         <ChampionBadge championship={championship} resultsByGame={resultsByGame} />
       </div>
 
-      <div className="grp-bv-finals-section">
+      <div className="grp-bv-finals-section grp-bv-finals-section--bottom">
         <div className="grp-bv-round-heading">F4</div>
-        {bottomSemifinal ? <GameSlot game={bottomSemifinal} resultsByGame={resultsByGame} className="grp-bv-slot--final" /> : <PlaceholderSlot />}
+        {bottomSemifinal ? (
+          <GameSlot game={bottomSemifinal} resultsByGame={resultsByGame} className="grp-bv-slot--final" />
+        ) : (
+          <PlaceholderSlot />
+        )}
       </div>
     </section>
   );
