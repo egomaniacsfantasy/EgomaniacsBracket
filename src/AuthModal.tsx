@@ -15,7 +15,7 @@ export type AuthContext = "submit" | "default" | "groups" | "join";
 
 type Mode = "signup" | "signin" | "verify-otp" | "check-email" | "forgot" | "forgot-sent";
 
-const OTP_LENGTH = 6;
+const OTP_LENGTH = 8;
 
 function getFriendlyAuthError(error: { message?: string } | null | undefined): string {
   const raw = error?.message ?? "";
@@ -477,7 +477,7 @@ export function AuthModal({
     }
   };
 
-  // Auto-submit when all 6 digits entered
+  // Auto-submit when the full OTP is entered
   useEffect(() => {
     if (mode === "verify-otp" && otpCode.length === OTP_LENGTH && !verifyingOtp) {
       void handleVerifyOtp();
