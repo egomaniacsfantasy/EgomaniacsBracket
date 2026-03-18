@@ -3,6 +3,7 @@ import { createPortal } from "react-dom";
 import html2canvas from "html2canvas";
 import { teamsById } from "./data/teams";
 import { BRACKET_HALVES, gameTemplates, regionRounds } from "./data/bracket";
+import { NCAA_KNOWN_RESULT_IDS, NCAA_KNOWN_RESULTS } from "./data/ncaaKnownResults";
 import {
   finalRounds,
   gamesByRegionAndRound,
@@ -137,6 +138,19 @@ const MOBILE_ROUND_ORDER: Record<"FF" | "R64" | "R32" | "S16" | "E8", number> = 
   E8: 4,
 };
 
+const mergeNcaaKnownResults = (locks: LockedPicks): LockedPicks => ({
+  ...locks,
+  ...NCAA_KNOWN_RESULTS,
+});
+
+const stripNcaaKnownResults = (locks: LockedPicks): LockedPicks => {
+  const next = { ...locks };
+  for (const gameId of NCAA_KNOWN_RESULT_IDS) {
+    delete next[gameId];
+  }
+  return next;
+};
+
 function DeferredViewFallback() {
   return (
     <div
@@ -234,19 +248,26 @@ function encodeBracketState(locks: LockedPicks): string {
   let pickedBits = "";
   let winnerBits = "";
 
-  const { games } = resolveGames(locks);
+  const { games } = resolveGames(mergeNcaaKnownResults(locks));
   const gameById = new Map(games.map((game) => [game.id, game]));
 
   for (const gameId of canonicalGameIds) {
     const game = gameById.get(gameId);
-    if (!game || !game.winnerId || !game.teamAId || !game.teamBId) {
+    const pickedWinnerId = locks[gameId] ?? null;
+    if (
+      !game ||
+      !pickedWinnerId ||
+      !game.teamAId ||
+      !game.teamBId ||
+      (pickedWinnerId !== game.teamAId && pickedWinnerId !== game.teamBId)
+    ) {
       pickedBits += "0";
       winnerBits += "0";
       continue;
     }
 
     pickedBits += "1";
-    winnerBits += game.winnerId === game.teamAId ? "0" : "1";
+    winnerBits += pickedWinnerId === game.teamAId ? "0" : "1";
   }
 
   return bitsToBase64Url(pickedBits + winnerBits);
@@ -280,17 +301,17 @@ function decodeBracketState(hash: string): LockedPicks | null {
       const side = decodedByGame.get(gameId);
       if (!side) continue;
 
-      const resolvedGame = resolveGames(nextLocks).games.find((game) => game.id === gameId);
+      const resolvedGame = resolveGames(mergeNcaaKnownResults(nextLocks)).games.find((game) => game.id === gameId);
       if (!resolvedGame || !resolvedGame.teamAId || !resolvedGame.teamBId) return null;
       nextLocks[gameId] = side === "A" ? resolvedGame.teamAId : resolvedGame.teamBId;
     }
   }
 
-  return sanitizeLockedPicks(nextLocks);
+  return stripNcaaKnownResults(resolveGames(mergeNcaaKnownResults(nextLocks)).sanitized);
 }
 
 function areAllFirstFourGamesDecided(locks: LockedPicks): boolean {
-  const ffGames = resolveGames(locks).games.filter((game) => game.round === "FF");
+  const ffGames = resolveGames(mergeNcaaKnownResults(locks)).games.filter((game) => game.round === "FF");
   return ffGames.length === 4 && ffGames.every((game) => Boolean(game.winnerId));
 }
 
@@ -781,11 +802,13 @@ function App() {
 
   const visibleMainView = !SHOW_CONFERENCE_TOURNAMENTS && mainView === "conferences" ? "bracket" : mainView;
   const visibleMobileTab = !SHOW_CONFERENCE_TOURNAMENTS && mobileTab === "conferences" ? "bracket" : mobileTab;
+  const effectiveLockedPicks = useMemo(() => mergeNcaaKnownResults(lockedPicks), [lockedPicks]);
 
   const { games, sanitized } = useMemo(
-    () => resolveGames(lockedPicks, customProbByGame),
-    [lockedPicks, customProbByGame]
+    () => resolveGames(effectiveLockedPicks, customProbByGame),
+    [customProbByGame, effectiveLockedPicks]
   );
+  const sanitizedUserPicks = useMemo(() => stripNcaaKnownResults(sanitized), [sanitized]);
   const possibleWinners = useMemo(() => possibleWinnersByGame(sanitized), [sanitized]);
   const walkthroughMatchup = useMemo(
     () => (walkthroughMatchupId ? games.find((game) => game.id === walkthroughMatchupId) ?? null : null),
@@ -1063,8 +1086,9 @@ function App() {
       return;
     }
 
-    setLockedPicks(decoded);
-    setFirstFourExpanded(!areAllFirstFourGamesDecided(decoded));
+    const sanitizedSharedPicks = stripNcaaKnownResults(resolveGames(mergeNcaaKnownResults(decoded)).sanitized);
+    setLockedPicks(sanitizedSharedPicks);
+    setFirstFourExpanded(!areAllFirstFourGamesDecided(sanitizedSharedPicks));
     setFirstFourPillHintActive(false);
     trackEvent("shared_bracket_loaded", {
       total_picks: Object.keys(decoded).length,
@@ -1079,7 +1103,7 @@ function App() {
     const restoredDraft = consumePendingAuthDraft();
     if (!restoredDraft || Object.keys(restoredDraft).length === 0) return;
 
-    const sanitizedDraft = sanitizeLockedPicks(restoredDraft);
+    const sanitizedDraft = stripNcaaKnownResults(resolveGames(mergeNcaaKnownResults(restoredDraft)).sanitized);
     setLockedPicks(sanitizedDraft);
     setFirstFourExpanded(!areAllFirstFourGamesDecided(sanitizedDraft));
     setFirstFourPillHintActive(false);
@@ -1087,18 +1111,18 @@ function App() {
 
   useEffect(() => {
     if (typeof window === "undefined" || suppressHashSyncRef.current) return;
-    if (Object.keys(sanitized).length === 0) {
+    if (Object.keys(sanitizedUserPicks).length === 0) {
       window.history.replaceState(null, "", window.location.pathname + window.location.search);
       return;
     }
 
-    const encoded = encodeBracketState(sanitized);
+    const encoded = encodeBracketState(sanitizedUserPicks);
     window.history.replaceState(null, "", `${window.location.pathname}${window.location.search}#${encoded}`);
-  }, [sanitized]);
+  }, [sanitizedUserPicks]);
 
   const preserveDraftForGoogleAuth = useCallback(() => {
-    savePendingAuthDraft(sanitized);
-  }, [sanitized]);
+    savePendingAuthDraft(sanitizedUserPicks);
+  }, [sanitizedUserPicks]);
 
   useEffect(() => {
     if (isMobile) return;
@@ -1770,7 +1794,7 @@ function App() {
       winProbPct: Math.round(row.winProb * 100),
     }));
 
-    const totalPicks = Math.min(URL_EXPECTED_GAME_COUNT, Object.keys(sanitized).length);
+    const totalPicks = Math.min(URL_EXPECTED_GAME_COUNT, Object.keys(sanitizedUserPicks).length);
     const chaosScoreValue = computeChaosScoreFromGames(games) ?? 0;
     const chaosLabelData = getChaosLabel(chaosScoreValue, totalPicks) ?? { label: "Chalk", emoji: "📋" };
     const bracketLikelihood = simResult.likelihoodSimulation > 0 ? toOneInX(simResult.likelihoodSimulation) : null;
@@ -1785,7 +1809,7 @@ function App() {
       chaosEmoji: chaosLabelData.emoji,
       bracketLikelihood,
     };
-  }, [baselineByTeamId, games, sanitized, simResult.futures, simResult.likelihoodSimulation]);
+  }, [baselineByTeamId, games, sanitizedUserPicks, simResult.futures, simResult.likelihoodSimulation]);
 
   const pickCount = useMemo(() => {
     const count = games.filter(
@@ -1892,6 +1916,14 @@ function App() {
     return next;
   };
 
+  const sanitizeUserLockedPicks = (nextRawLocks: LockedPicks): LockedPicks =>
+    stripNcaaKnownResults(resolveGames(mergeNcaaKnownResults(nextRawLocks)).sanitized);
+
+  const resolveGamesWithKnownResults = (
+    nextRawLocks: LockedPicks,
+    nextCustomProbByGame: CustomProbByGame = customProbByGame
+  ) => resolveGames(mergeNcaaKnownResults(nextRawLocks), nextCustomProbByGame);
+
   const sanitizeCustomProbByParticipants = (
     prevLocks: LockedPicks,
     nextLocks: LockedPicks,
@@ -1899,8 +1931,8 @@ function App() {
   ): CustomProbByGame => {
     if (Object.keys(currentCustom).length === 0) return currentCustom;
 
-    const prevResolved = resolveGames(prevLocks).games;
-    const nextResolved = resolveGames(nextLocks).games;
+    const prevResolved = resolveGamesWithKnownResults(prevLocks).games;
+    const nextResolved = resolveGamesWithKnownResults(nextLocks).games;
     const prevById = new Map(prevResolved.map((game) => [game.id, game]));
     const nextById = new Map(nextResolved.map((game) => [game.id, game]));
 
@@ -1934,7 +1966,7 @@ function App() {
   };
 
   const applyLockedPicksUpdate = (nextRawLocks: LockedPicks) => {
-    const nextSanitizedLocks = sanitizeLockedPicks(nextRawLocks);
+    const nextSanitizedLocks = sanitizeUserLockedPicks(nextRawLocks);
     const nextCustomProbByGame = sanitizeCustomProbByParticipants(lockedPicks, nextSanitizedLocks, customProbByGame);
 
     if (nextCustomProbByGame !== customProbByGame) {
@@ -1948,7 +1980,7 @@ function App() {
   };
 
   const openProbabilityPopup = (game: ResolvedGame, anchorEl: HTMLElement) => {
-    if (!game.teamAId || !game.teamBId || game.winnerId) return;
+    if (!game.teamAId || !game.teamBId || game.winnerId || NCAA_KNOWN_RESULT_IDS.has(game.id)) return;
     if (probPopup) {
       closeProbabilityPopup(true);
     }
@@ -1985,6 +2017,7 @@ function App() {
 
   const onPick = (game: ResolvedGame, teamId: string | null) => {
     if (!teamId) return;
+    if (NCAA_KNOWN_RESULT_IDS.has(game.id)) return;
     if (teamId !== game.teamAId && teamId !== game.teamBId) return;
     if (walkthroughActive && currentWalkthroughStep?.id === "upset-pick" && walkthroughCascadePhase === "pick") {
       const pickedTeam = teamsById.get(teamId);
@@ -2015,7 +2048,7 @@ function App() {
       action: pickAction,
     });
     const isFirstPick =
-      Object.keys(sanitized).length === 0 &&
+      Object.keys(sanitizedUserPicks).length === 0 &&
       lockedPicks[game.id] !== teamId &&
       mobileSection !== "FF" &&
       mobileRound === "R64" &&
@@ -2041,8 +2074,8 @@ function App() {
       setProbPopup(null);
     }
 
-    const wasComplete = Object.keys(sanitizeLockedPicks(lockedPicks)).length === URL_EXPECTED_GAME_COUNT;
-    const nextResolved = resolveGames(next, customProbByGame).games;
+    const wasComplete = Object.keys(resolveGamesWithKnownResults(lockedPicks).sanitized).length === URL_EXPECTED_GAME_COUNT;
+    const nextResolved = resolveGamesWithKnownResults(next, customProbByGame).games;
     const nowComplete = nextResolved.every((resolvedGame) => Boolean(resolvedGame.winnerId));
     if (!wasComplete && nowComplete && game.round === "CHAMP") {
       const champion = nextResolved.find((resolvedGame) => resolvedGame.round === "CHAMP");
@@ -2236,7 +2269,7 @@ function App() {
     };
 
     if (!isAuthenticated || !user) {
-      window.sessionStorage.setItem("pendingBracketSave", JSON.stringify(serializePicks(sanitized)));
+      window.sessionStorage.setItem("pendingBracketSave", JSON.stringify(serializePicks(sanitizedUserPicks)));
       setAuthModalOpen(true);
       return null;
     }
@@ -2265,7 +2298,7 @@ function App() {
     setSaveStatus("saving");
     const defaultName =
       submittedBracketCount === 0 ? "My Bracket" : `Bracket #${Math.min(MAX_SUBMITTED_BRACKETS, submittedBracketCount + 1)}`;
-    const { data, error } = await saveBracket(user.id, sanitized, defaultName, null, chaosScore ?? 0, { submit: true });
+    const { data, error } = await saveBracket(user.id, sanitizedUserPicks, defaultName, null, chaosScore ?? 0, { submit: true });
     if (error) {
       setSaveStatus("error");
       setSaveErrorText((error as { message?: string })?.message ?? "Save failed");
@@ -2299,7 +2332,7 @@ function App() {
   };
 
   const onLoadSavedBracket = (bracket: SavedBracket) => {
-    const picks = sanitizeLockedPicks(deserializePicks(bracket.picks));
+    const picks = sanitizeUserLockedPicks(deserializePicks(bracket.picks));
     cancelStaggeredSim();
     chaosScoreSourceRef.current = "manual";
     pendingPickMetaRef.current = null;
@@ -2358,7 +2391,7 @@ function App() {
 
     setLinkCopied(true);
     trackEvent("bracket_link_copied", {
-      total_picks: Object.keys(sanitized).length,
+      total_picks: Object.keys(sanitizedUserPicks).length,
       bracket_complete: pickCount === SUBMIT_EXPECTED_PICK_COUNT,
     });
 
@@ -2508,7 +2541,10 @@ function App() {
     setTopHalfManuallyExpanded(false);
     setBottomHalfManuallyExpanded(false);
     const baseLocks = getUserLockedPicks(lockedPicks);
-    const nextLocks = sanitizeLockedPicks(generateSimulatedBracket(baseLocks, customProbByGame));
+    const effectiveBaseLocks = mergeNcaaKnownResults(baseLocks);
+    const nextLocks = stripNcaaKnownResults(
+      sanitizeLockedPicks(generateSimulatedBracket(effectiveBaseLocks, customProbByGame))
+    );
     simGeneratedGameIdsRef.current = new Set(
       Object.keys(nextLocks).filter((gameId) => !Object.prototype.hasOwnProperty.call(baseLocks, gameId))
     );
@@ -2532,7 +2568,12 @@ function App() {
     setMajorShiftNudgeVisible(false);
     closeProbabilityPopup(true);
     const baseLocks = getUserLockedPicks(lockedPicks);
-    const steps = generateSimulatedBracketSteps(baseLocks, ["South", "East", "West", "Midwest"], customProbByGame);
+    const effectiveBaseLocks = mergeNcaaKnownResults(baseLocks);
+    const steps = generateSimulatedBracketSteps(
+      effectiveBaseLocks,
+      ["South", "East", "West", "Midwest"],
+      customProbByGame
+    );
     if (steps.length === 0) {
       simGeneratedGameIdsRef.current = new Set();
       return;
@@ -2541,7 +2582,7 @@ function App() {
     pushUndo(baseLocks);
     setTopHalfManuallyExpanded(false);
     setBottomHalfManuallyExpanded(false);
-    setStaggeredChaosTotal(computeChaosScoreFromGames(resolveGames(baseLocks).games) ?? 0);
+    setStaggeredChaosTotal(computeChaosScoreFromGames(resolveGamesWithKnownResults(baseLocks).games) ?? 0);
     setStaggeredLastGameChaos(null);
     setStaggeredLastGameLabel("");
     setStaggeredGamesResolved(Object.keys(baseLocks).length);
@@ -2567,8 +2608,8 @@ function App() {
       const step = staggeredStepsRef.current[staggeredIndexRef.current];
       setLastPickedKey(`${step.gameId}:${step.winnerId}`);
       setLockedPicks((prev) => {
-        const nextLocks = sanitizeLockedPicks({ ...prev, [step.gameId]: step.winnerId });
-        const resolved = resolveGames(nextLocks).games.find((game) => game.id === step.gameId);
+        const nextLocks = sanitizeUserLockedPicks({ ...prev, [step.gameId]: step.winnerId });
+        const resolved = resolveGamesWithKnownResults(nextLocks).games.find((game) => game.id === step.gameId);
         if (resolved && resolved.teamAId && resolved.teamBId) {
           const modelProbA = getModelGameWinProb(resolved, resolved.teamAId);
           if (modelProbA !== null) {
@@ -2615,8 +2656,8 @@ function App() {
       const step = staggeredStepsRef.current[staggeredIndexRef.current];
       setLastPickedKey(`${step.gameId}:${step.winnerId}`);
       setLockedPicks((prev) => {
-        const nextLocks = sanitizeLockedPicks({ ...prev, [step.gameId]: step.winnerId });
-        const resolved = resolveGames(nextLocks).games.find((game) => game.id === step.gameId);
+        const nextLocks = sanitizeUserLockedPicks({ ...prev, [step.gameId]: step.winnerId });
+        const resolved = resolveGamesWithKnownResults(nextLocks).games.find((game) => game.id === step.gameId);
         if (resolved && resolved.teamAId && resolved.teamBId) {
           const modelProbA = getModelGameWinProb(resolved, resolved.teamAId);
           if (modelProbA !== null) {
@@ -3472,7 +3513,7 @@ function App() {
       displayMode,
       isFuturesOpen: isMobile ? visibleMobileTab === "futures" : visibleMainView === "futures",
       isSimRunning: staggeredSimRunning || isUpdating,
-      bracketHash: Object.keys(sanitized).length > 0 ? encodeBracketState(sanitized) : null,
+      bracketHash: Object.keys(sanitizedUserPicks).length > 0 ? encodeBracketState(sanitizedUserPicks) : null,
       isMobile,
     }),
     [
@@ -3486,7 +3527,7 @@ function App() {
       mobileSection,
       visibleMobileTab,
       pickCount,
-      sanitized,
+      sanitizedUserPicks,
       staggeredSimRunning,
     ],
   );
@@ -4904,7 +4945,7 @@ function App() {
         onLoadBracket={onLoadSavedBracket}
         onRenameSuccess={onBracketRenamed}
         onBracketsChanged={onBracketsChanged}
-        currentPicks={sanitized}
+        currentPicks={sanitizedUserPicks}
         currentChaosScore={chaosScore ?? 0}
       />
 
@@ -5112,7 +5153,7 @@ function App() {
             onAdvance={() => {
               if (walkthroughCtaDisabled) return;
               const highlighted = walkthroughMatchup;
-              const pickedTeamId = highlighted?.id ? sanitized[highlighted.id] ?? null : null;
+              const pickedTeamId = highlighted?.id ? sanitizedUserPicks[highlighted.id] ?? null : null;
               const pickedTeam = pickedTeamId ? teamsById.get(pickedTeamId) ?? null : null;
               const opponentTeam =
                 highlighted && pickedTeamId && highlighted.teamAId && highlighted.teamBId
