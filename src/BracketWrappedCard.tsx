@@ -1,6 +1,7 @@
 import { useState } from "react";
 import type { WrappedData } from "./lib/wrappedData";
 import { ordinal } from "./lib/wrappedData";
+import { formatAmerican, toAmericanOdds } from "./lib/odds";
 
 interface BracketWrappedCardProps {
   data: WrappedData;
@@ -33,6 +34,10 @@ function formatPercent(prob: number): string {
   return `${percent.toFixed(decimals)}%`;
 }
 
+function formatMoneylineFromProbability(prob: number): string {
+  return formatAmerican(toAmericanOdds(prob));
+}
+
 export function BracketWrappedCard({
   data,
   onSaveCard,
@@ -62,17 +67,6 @@ export function BracketWrappedCard({
   const chaosPercentilePosition = Math.max(2, Math.min(98, identity.chaosPercentile));
   const championPathGamesByRound = new Map(championPath.games.map((game) => [game.round, game]));
   const toughestRoundLabel = championPath.toughestGame.round || championPath.toughestGame.roundLabel;
-
-  // Cumulative probability of winning through each round (in gauntlet order)
-  const cumulativeProbByRound = new Map<string, number>();
-  let runningProb = 1;
-  for (const round of PATH_GAUNTLET_ROUNDS) {
-    const game = championPathGamesByRound.get(round);
-    if (game) {
-      runningProb *= game.winProbability;
-      cumulativeProbByRound.set(round, runningProb);
-    }
-  }
 
   // Collect logos for ghosted background
   const ghostLogos = [
@@ -230,8 +224,7 @@ export function BracketWrappedCard({
                   const isToughest =
                     game?.round === championPath.toughestGame.round &&
                     game.opponentName === championPath.toughestGame.opponentName;
-                  const cumProb = game ? (cumulativeProbByRound.get(round) ?? null) : null;
-                  const probTone = cumProb !== null ? getPathProbTone(cumProb) : "neutral";
+                  const probTone = game ? getPathProbTone(game.winProbability) : "neutral";
 
                   return (
                     <div
@@ -251,7 +244,7 @@ export function BracketWrappedCard({
                         )}
                       </span>
                       <span className={`bw-card-path-slot-prob bw-card-path-slot-prob--${probTone}`}>
-                        {cumProb !== null ? formatPercent(cumProb) : "--"}
+                        {game ? formatMoneylineFromProbability(game.winProbability) : "--"}
                       </span>
                     </div>
                   );
