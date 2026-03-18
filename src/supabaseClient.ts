@@ -13,5 +13,10 @@ if (!supabaseUrl || !supabaseAnonKey) {
   console.error("Missing Supabase environment variables");
 }
 
-export const supabase = createClient(supabaseUrl, supabaseAnonKey);
-
+export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+  auth: {
+    // The app uses the URL hash for bracket state, so OAuth needs query-based PKCE callbacks instead.
+    flowType: "pkce",
+    detectSessionInUrl: true,
+  },
+});

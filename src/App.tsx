@@ -30,6 +30,7 @@ import { trackEvent } from "./lib/analytics";
 import { extractInviteCode } from "./lib/inviteCode";
 import { useAuth } from "./AuthContext";
 import { AuthModal } from "./AuthModal";
+import { consumePendingAuthDraft, savePendingAuthDraft } from "./authRedirectState";
 import { clearPendingAuthVerification, getPendingAuthVerification } from "./authVerificationSession";
 import { MyBracketsModal } from "./MyBracketsModal";
 import { CreateGroupModal } from "./CreateGroupModal";
@@ -63,6 +64,17 @@ const MAX_STAGGERED_SIM_DELAY_MS = 5000;
 const regionSections: Region[][] = BRACKET_HALVES.map((half) => [...half.regions]);
 const mobileRegionOrder: Region[] = ["East", "West", "Midwest", "South"];
 const invertedRegions = new Set<Region>([regionSections[0][1], regionSections[1][1]]);
+
+function getInviteCodeFromUrl(url: URL): string {
+  const joinCode = extractInviteCode(url.searchParams.get("join"));
+  if (joinCode) return joinCode;
+
+  const legacyCode = url.searchParams.get("code");
+  // OAuth callbacks also use `code`, so only honor the legacy param when it already
+  // looks exactly like one of our 8-character invite codes.
+  if (!legacyCode || !/^[A-Za-z0-9]{8}$/.test(legacyCode.trim())) return "";
+  return extractInviteCode(legacyCode);
+}
 
 const ConferenceTournaments = lazy(() =>
   import("./conferences/ConferenceTournaments").then((module) => ({ default: module.ConferenceTournaments })),
@@ -967,8 +979,7 @@ function App() {
     if (typeof window === "undefined") return;
 
     const url = new URL(window.location.href);
-    const rawCode = url.searchParams.get("join") ?? url.searchParams.get("code");
-    const code = extractInviteCode(rawCode);
+    const code = getInviteCodeFromUrl(url);
     if (code) {
       setJoinCode(code);
       sessionStorage.setItem("pendingJoinCode", code);
@@ -1040,6 +1051,19 @@ function App() {
   }, []);
 
   useEffect(() => {
+    if (typeof window === "undefined") return;
+    if (window.location.hash) return;
+
+    const restoredDraft = consumePendingAuthDraft();
+    if (!restoredDraft || Object.keys(restoredDraft).length === 0) return;
+
+    const sanitizedDraft = sanitizeLockedPicks(restoredDraft);
+    setLockedPicks(sanitizedDraft);
+    setFirstFourExpanded(!areAllFirstFourGamesDecided(sanitizedDraft));
+    setFirstFourPillHintActive(false);
+  }, []);
+
+  useEffect(() => {
     if (typeof window === "undefined" || suppressHashSyncRef.current) return;
     if (Object.keys(sanitized).length === 0) {
       window.history.replaceState(null, "", window.location.pathname + window.location.search);
@@ -1048,6 +1072,10 @@ function App() {
 
     const encoded = encodeBracketState(sanitized);
     window.history.replaceState(null, "", `${window.location.pathname}${window.location.search}#${encoded}`);
+  }, [sanitized]);
+
+  const preserveDraftForGoogleAuth = useCallback(() => {
+    savePendingAuthDraft(sanitized);
   }, [sanitized]);
 
   useEffect(() => {
@@ -4844,6 +4872,7 @@ function App() {
             setAuthModalContext("default");
           }}
           context={authModalContext}
+          onBeforeGoogleSignIn={preserveDraftForGoogleAuth}
         />
       ) : null}
 

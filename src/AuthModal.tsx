@@ -246,10 +246,12 @@ export function AuthModal({
   isOpen,
   onClose,
   context = "default",
+  onBeforeGoogleSignIn,
 }: {
   isOpen: boolean;
   onClose: () => void;
   context?: AuthContext;
+  onBeforeGoogleSignIn?: () => void;
 }) {
   const pendingVerification = getPendingAuthVerification();
   const { signUp, signIn, signInWithGoogle, isDisplayNameAvailable } = useAuth();
@@ -493,6 +495,7 @@ export function AuthModal({
       return;
     }
 
+    onBeforeGoogleSignIn?.();
     setSubmitting(true);
     const authResult = await signInWithGoogle();
     setSubmitting(false);
