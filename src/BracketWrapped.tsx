@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import type { WrappedData } from "./lib/wrappedData";
 import { BracketWrappedCard } from "./BracketWrappedCard";
 import { trackEvent } from "./lib/analytics";
+import { formatAmerican, toAmericanOdds } from "./lib/odds";
 import { exportWrappedCard } from "./lib/wrappedExport";
 
 interface BracketWrappedProps {
@@ -27,6 +28,10 @@ function formatPercent(prob: number): string {
   const percent = prob * 100;
   const decimals = percent > 0 && percent < 10 ? 1 : 0;
   return `${percent.toFixed(decimals)}%`;
+}
+
+function formatMoneylineFromProbability(prob: number): string {
+  return formatAmerican(toAmericanOdds(prob));
 }
 
 function unlikelyRunHeroLine(roundReached: string): string {
@@ -446,13 +451,6 @@ function Screen4Path({ championPath }: { championPath: WrappedData["championPath
     return "var(--red, #f87171)";
   };
 
-  // Compute running cumulative product (probability of winning through each round)
-  const cumulativeProbs = championPath.games.reduce<number[]>((acc, game) => {
-    const prev = acc.length > 0 ? acc[acc.length - 1] : 1;
-    acc.push(prev * game.winProbability);
-    return acc;
-  }, []);
-
   return (
     <div className="bw-content bw-content--path">
       <span className="bw-heading bw-heading--amber">THE PATH OF MOST RESISTANCE</span>
@@ -468,9 +466,8 @@ function Screen4Path({ championPath }: { championPath: WrappedData["championPath
       </div>
 
       <div className="bw-path-games">
-        {championPath.games.map((game, idx) => {
+        {championPath.games.map((game) => {
           const isToughest = game.round === championPath.toughestGame.round;
-          const cumProb = cumulativeProbs[idx];
           return (
             <div
               key={game.round}
@@ -487,9 +484,9 @@ function Screen4Path({ championPath }: { championPath: WrappedData["championPath
               </span>
               <span
                 className="bw-path-prob"
-                style={{ color: probColor(cumProb) }}
+                style={{ color: probColor(game.winProbability) }}
               >
-                {(cumProb * 100).toFixed(0)}%
+                {formatMoneylineFromProbability(game.winProbability)}
               </span>
             </div>
           );
@@ -500,6 +497,16 @@ function Screen4Path({ championPath }: { championPath: WrappedData["championPath
         The model says {championPath.championName}'s toughest test is{" "}
         {championPath.toughestGame.opponentName} in the {championPath.toughestGame.roundLabel}.
       </p>
+
+      <div className="bw-prob-display">
+        <span className="bw-prob-number bw-prob-number--amber">
+          {(championPath.pathProbability * 100).toFixed(1)}
+          <span className="bw-prob-pct">%</span>
+        </span>
+        <span className="bw-prob-label">
+          Conditional probability {championPath.championName} wins the title on this exact path
+        </span>
+      </div>
     </div>
   );
 }
