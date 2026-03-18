@@ -5862,8 +5862,24 @@ body.og-onboarding-open {
 .chip-odds-wrap {
   display: inline-flex;
   align-items: center;
+  justify-content: flex-end;
   justify-self: end;
   gap: 2px;
+}
+
+.matchup-card-actions {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  z-index: 4;
+}
+
+.eg-game-card--compact-actions .eg-game-list {
+  padding-top: 18px;
+  padding-right: 0;
 }
 
 .matchup-edit-icon {
@@ -5910,6 +5926,39 @@ body.og-onboarding-open {
 
 .bracket-cell--compact:hover .matchup-edit-btn--compact {
   opacity: 0.8;
+}
+
+.matchup-edit-icon--card,
+.matchup-card-actions .matchup-stats-icon {
+  position: static;
+  top: auto;
+  right: auto;
+  margin-right: 0;
+  width: 18px;
+  height: 18px;
+  border-radius: 999px;
+}
+
+.matchup-edit-icon--card {
+  border: 1px solid rgba(240, 230, 208, 0.18);
+  background: rgba(255, 255, 255, 0.05);
+  color: rgba(240, 230, 208, 0.58);
+  font-size: 9px;
+  line-height: 1;
+  transition: color 140ms ease, background 140ms ease, border-color 140ms ease;
+}
+
+.eg-game-card:hover .matchup-edit-icon--card,
+.matchup-edit-icon--card.is-edited {
+  color: rgba(240, 230, 208, 0.9);
+  border-color: rgba(240, 230, 208, 0.32);
+}
+
+.matchup-edit-icon--card:hover,
+.matchup-edit-icon--card:focus-visible {
+  color: rgba(240, 230, 208, 1) !important;
+  border-color: rgba(240, 230, 208, 0.38);
+  background: rgba(255, 255, 255, 0.1);
 }
 
 .matchup-stats-icon {

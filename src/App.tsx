@@ -7220,6 +7220,8 @@ function GameCard({
   const ffPending = Boolean(playInAttachment && !playInAttachment.ffGame.winnerId);
   const ffNudgeCooldownRef = useRef(0);
   const ffNudgeCardRef = useRef<HTMLElement | null>(null);
+  const showCompactGrid = !useShowdownCard && rows.length > 0 && game.round !== "R64";
+  const showCompactCardActions = showCompactGrid && Boolean(game.teamAId && game.teamBId);
 
   const showFfNudgeTooltip = useCallback(() => {
     if (!ffPending) return;
@@ -7340,7 +7342,7 @@ function GameCard({
   return (
     <article
       ref={ffPending ? ffNudgeCardRef as React.Ref<HTMLElement> : undefined}
-      className={`eg-game-card round-${game.round.toLowerCase()} ${useShowdownCard ? "eg-game-card--showdown" : ""} ${ffPending ? "eg-game-card--ff-pending" : ""}`}
+      className={`eg-game-card round-${game.round.toLowerCase()} ${useShowdownCard ? "eg-game-card--showdown" : ""} ${ffPending ? "eg-game-card--ff-pending" : ""} ${showCompactCardActions ? "eg-game-card--compact-actions" : ""}`}
       data-game-id={game.id}
       data-matchup-id={game.id}
       data-region={game.region}
@@ -7356,7 +7358,7 @@ function GameCard({
           onMouseEnter={() => showFfNudgeTooltip()}
         />
       ) : null}
-      {game.teamAId && game.teamBId && !useShowdownCard ? (
+      {game.teamAId && game.teamBId && !useShowdownCard && !showCompactCardActions ? (
         <button
           type="button"
           className="matchup-stats-icon"
@@ -7369,6 +7371,36 @@ function GameCard({
         >
           {"i"}
         </button>
+      ) : null}
+      {showCompactCardActions ? (
+        <div className="matchup-card-actions">
+          {!game.winnerId ? (
+            <button
+              type="button"
+              className={`matchup-edit-icon matchup-edit-icon--card ${game.customProbA !== null ? "is-edited" : ""}`}
+              onClick={(event) => {
+                event.stopPropagation();
+                onOpenProbabilityPopup(game, event.currentTarget);
+              }}
+              title="Edit matchup probability"
+              aria-label="Edit matchup probability"
+            >
+              ✎
+            </button>
+          ) : null}
+          <button
+            type="button"
+            className="matchup-stats-icon matchup-stats-icon--card"
+            onClick={(event) => {
+              event.stopPropagation();
+              onOpenMatchupStats(game);
+            }}
+            title="View matchup stats"
+            aria-label="View matchup stats"
+          >
+            {"i"}
+          </button>
+        </div>
       ) : null}
       <div className="eg-game-list">
         {useShowdownCard ? (
@@ -7465,7 +7497,7 @@ function GameCard({
               className={`eg-compact-grid round-${game.round.toLowerCase()} density-${compactDensity}`}
               style={{ gridTemplateColumns: `repeat(${compactColumns}, minmax(0, 1fr))` }}
             >
-              {rows.map((candidate, rowIndex) => {
+              {rows.map((candidate) => {
                 const team = candidate.team!;
                 const canPick =
                   game.teamAId !== null &&
@@ -7537,33 +7569,12 @@ function GameCard({
                           <span className={`chip-code ${showLogo ? "" : "no-logo"} chip-code--e8`} title={teamLabel}>
                             {teamLabel}
                           </span>
-                        ) : (
-                          <AdaptiveTeamLabel className={`chip-code ${showLogo ? "" : "no-logo"}`} fullName={teamLabel} />
-                        )}
-                      </span>
-                    </TeamHoverAnchor>
+                    ) : (
+                      <AdaptiveTeamLabel className={`chip-code ${showLogo ? "" : "no-logo"}`} fullName={teamLabel} />
+                    )}
+                  </span>
+                </TeamHoverAnchor>
                     <span className="chip-odds-wrap">
-                      {game.teamAId && game.teamBId && rowIndex === 0 && !game.winnerId ? (
-                        <span
-                          role="button"
-                          tabIndex={0}
-                          className={`matchup-edit-icon ${game.customProbA !== null ? "is-edited" : ""}`}
-                          onClick={(event) => {
-                            event.stopPropagation();
-                            onOpenProbabilityPopup(game, event.currentTarget as HTMLElement);
-                          }}
-                          onKeyDown={(event) => {
-                            if (event.key !== "Enter" && event.key !== " ") return;
-                            event.preventDefault();
-                            event.stopPropagation();
-                            onOpenProbabilityPopup(game, event.currentTarget as HTMLElement);
-                          }}
-                          title="Edit probability"
-                          aria-label="Edit matchup probability"
-                        >
-                          ✎
-                        </span>
-                      ) : null}
                       <span className="chip-odds">
                       {outcome ? (
                         <span className={`outcome-badge ${outcome}`}>{outcome === "win" ? "✓" : "✕"}</span>
