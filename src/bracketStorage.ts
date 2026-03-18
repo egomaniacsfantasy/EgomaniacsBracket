@@ -41,6 +41,7 @@ export type LeaderboardEntry = {
   bracket_id: string;
   bracket_name: string;
   display_name: string;
+  updated_at?: string | null;
   chaos_score?: number | null;
   champion_name?: string | null;
   champion_seed?: number | null;
@@ -78,6 +79,7 @@ type SaveBracketOptions = {
 
 const LEADERBOARD_QUERY_TIMEOUT_MS = 8000;
 const LEADERBOARD_CACHE_PREFIX = "og_leaderboard_cache_v1";
+const LEADERBOARD_PAGE_SIZE = 500;
 
 type CachedValue<T> = {
   savedAt: number;
@@ -405,26 +407,52 @@ export async function renameBracket(bracketId: string, userId: string, newName: 
   return { error };
 }
 
-export async function getLeaderboard(limit = 50) {
-  const cacheKey = `${LEADERBOARD_CACHE_PREFIX}:${limit}`;
+export async function getLeaderboard(limit?: number | null) {
+  const normalizedLimit =
+    typeof limit === "number" && Number.isFinite(limit) && limit > 0
+      ? Math.floor(limit)
+      : null;
+  const cacheKey = `${LEADERBOARD_CACHE_PREFIX}:${normalizedLimit ?? "all"}`;
   const cachedEntries = readCachedValue<LeaderboardEntry[]>(cacheKey);
 
-  try {
-    const viewResult = await withTimeout(
-      supabase
-        .from("leaderboard")
-        .select("*")
-        .order("total_score", { ascending: false })
-        .order("correct_picks", { ascending: false })
-        .limit(limit),
-      LEADERBOARD_QUERY_TIMEOUT_MS,
-      "Timed out loading the leaderboard. Please try again."
-    );
+  const getNextPageSize = (loadedCount: number) => {
+    if (normalizedLimit === null) return LEADERBOARD_PAGE_SIZE;
+    return Math.min(LEADERBOARD_PAGE_SIZE, Math.max(0, normalizedLimit - loadedCount));
+  };
 
-    if (!viewResult.error) {
-      const entries = (viewResult.data as LeaderboardEntry[] | null) ?? [];
-      writeCachedValue(cacheKey, entries);
-      return { data: entries, error: null };
+  try {
+    const entries: LeaderboardEntry[] = [];
+    let offset = 0;
+
+    while (true) {
+      const pageSize = getNextPageSize(entries.length);
+      if (pageSize <= 0) break;
+
+      const viewResult = await withTimeout(
+        supabase
+          .from("leaderboard")
+          .select("*")
+          .order("total_score", { ascending: false })
+          .order("correct_picks", { ascending: false })
+          .order("updated_at", { ascending: false })
+          .range(offset, offset + pageSize - 1),
+        LEADERBOARD_QUERY_TIMEOUT_MS,
+        "Timed out loading the leaderboard. Please try again."
+      );
+
+      if (viewResult.error) {
+        break;
+      }
+
+      const batch = (viewResult.data as LeaderboardEntry[] | null) ?? [];
+      entries.push(...batch);
+
+      if (batch.length < pageSize) {
+        writeCachedValue(cacheKey, entries);
+        return { data: entries, error: null };
+      }
+
+      offset += pageSize;
     }
   } catch (error) {
     return {
@@ -434,45 +462,7 @@ export async function getLeaderboard(limit = 50) {
   }
 
   try {
-    const primary = await withTimeout(
-      supabase
-        .from("bracket_scores")
-        .select(
-          `
-          rank,
-          total_score,
-          correct_picks,
-          possible_picks,
-          max_remaining,
-          r64_score,
-          r32_score,
-          s16_score,
-          e8_score,
-          f4_score,
-          champ_score,
-          bracket_id,
-          user_id,
-          updated_at,
-          brackets!inner(bracket_name, chaos_score, champion_name, champion_seed, champion_logo_url, champion_eliminated, final_four, boldest_pick, submitted_at),
-          profiles!inner(display_name)
-          `
-        )
-        .not("brackets.submitted_at", "is", null)
-        .order("total_score", { ascending: false })
-        .order("correct_picks", { ascending: false })
-        .limit(limit),
-      LEADERBOARD_QUERY_TIMEOUT_MS,
-      "Timed out loading the leaderboard. Please try again."
-    );
-
-    if (primary.error) {
-      return {
-        data: cachedEntries ?? [],
-        error: primary.error,
-      };
-    }
-
-    const mapped = ((primary.data as Array<Record<string, unknown>> | null) ?? []).map((row) => {
+    const mapLeaderboardRow = (row: Record<string, unknown>) => {
       const b = (row.brackets as Record<string, unknown>) ?? {};
       const p = (row.profiles as Record<string, unknown>) ?? {};
       return {
@@ -481,6 +471,7 @@ export async function getLeaderboard(limit = 50) {
         user_id: String(row.user_id ?? ""),
         display_name: String(p.display_name ?? "Anonymous"),
         bracket_name: String(b.bracket_name ?? "Bracket"),
+        updated_at: (row.updated_at as string | null | undefined) ?? null,
         chaos_score: (b.chaos_score as number | null | undefined) ?? null,
         champion_name: (b.champion_name as string | null | undefined) ?? null,
         champion_seed: (b.champion_seed as number | null | undefined) ?? null,
@@ -499,7 +490,63 @@ export async function getLeaderboard(limit = 50) {
         f4_score: (row.f4_score as number | null | undefined) ?? null,
         champ_score: (row.champ_score as number | null | undefined) ?? null,
       } satisfies LeaderboardEntry;
-    });
+    };
+
+    const mapped: LeaderboardEntry[] = [];
+    let offset = 0;
+
+    while (true) {
+      const pageSize = getNextPageSize(mapped.length);
+      if (pageSize <= 0) break;
+
+      const primary = await withTimeout(
+        supabase
+          .from("bracket_scores")
+          .select(
+            `
+            rank,
+            total_score,
+            correct_picks,
+            possible_picks,
+            max_remaining,
+            r64_score,
+            r32_score,
+            s16_score,
+            e8_score,
+            f4_score,
+            champ_score,
+            bracket_id,
+            user_id,
+            updated_at,
+            brackets!inner(bracket_name, chaos_score, champion_name, champion_seed, champion_logo_url, champion_eliminated, final_four, boldest_pick, submitted_at),
+            profiles!inner(display_name)
+            `
+          )
+          .not("brackets.submitted_at", "is", null)
+          .order("total_score", { ascending: false })
+          .order("correct_picks", { ascending: false })
+          .order("updated_at", { ascending: false })
+          .range(offset, offset + pageSize - 1),
+        LEADERBOARD_QUERY_TIMEOUT_MS,
+        "Timed out loading the leaderboard. Please try again."
+      );
+
+      if (primary.error) {
+        return {
+          data: cachedEntries ?? [],
+          error: primary.error,
+        };
+      }
+
+      const batch = ((primary.data as Array<Record<string, unknown>> | null) ?? []).map(mapLeaderboardRow);
+      mapped.push(...batch);
+
+      if (batch.length < pageSize) {
+        break;
+      }
+
+      offset += pageSize;
+    }
 
     writeCachedValue(cacheKey, mapped);
     return { data: mapped, error: null };

@@ -435,7 +435,7 @@ export function LeaderboardFullWidth({
 
   const loadLeaderboard = async () => {
     setLoading(entries.length === 0);
-    const { data, error } = await getLeaderboard(200);
+    const { data, error } = await getLeaderboard();
     if (error) {
       captureError("leaderboard_load", error);
       setLoadError((error as { message?: string })?.message ?? "Leaderboard is taking longer than expected.");
@@ -478,7 +478,18 @@ export function LeaderboardFullWidth({
           const rankA = a.rank ?? Number.MAX_SAFE_INTEGER;
           const rankB = b.rank ?? Number.MAX_SAFE_INTEGER;
           if (rankA !== rankB) return rankA - rankB;
-          return Number(b.total_score ?? 0) - Number(a.total_score ?? 0);
+          if (Number(b.total_score ?? 0) !== Number(a.total_score ?? 0)) {
+            return Number(b.total_score ?? 0) - Number(a.total_score ?? 0);
+          }
+          if (Number(b.correct_picks ?? 0) !== Number(a.correct_picks ?? 0)) {
+            return Number(b.correct_picks ?? 0) - Number(a.correct_picks ?? 0);
+          }
+          const updatedAtA = Date.parse(a.updated_at ?? "");
+          const updatedAtB = Date.parse(b.updated_at ?? "");
+          if (Number.isFinite(updatedAtA) && Number.isFinite(updatedAtB) && updatedAtA !== updatedAtB) {
+            return updatedAtB - updatedAtA;
+          }
+          return a.bracket_id.localeCompare(b.bracket_id);
         })
         .map((entry) => ({
           ...entry,
