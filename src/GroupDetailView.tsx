@@ -75,6 +75,19 @@ export function GroupDetailView({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen, group]);
 
+  useEffect(() => {
+    if (isOpen) return;
+    setShowBracketPicker(false);
+    setSelectedBracket(null);
+    setBracketPickerError("");
+  }, [isOpen]);
+
+  useEffect(() => {
+    setShowBracketPicker(false);
+    setSelectedBracket(null);
+    setBracketPickerError("");
+  }, [group?.id]);
+
   async function loadGroupData() {
     if (!group) return;
     setLoading(true);
@@ -250,6 +263,24 @@ export function GroupDetailView({
     return leaders.length === 1 ? leaders[0].user_id : null;
   }, [rankedStandings]);
   const displayedMemberCount = members.length > 0 ? members.length : Math.max(group?.memberCount ?? 0, standings.length);
+  const currentMember = useMemo(
+    () => members.find((member) => member.user_id === user?.id) ?? null,
+    [members, user?.id]
+  );
+
+  useEffect(() => {
+    if (currentMember?.has_assigned_bracket) {
+      setBracketPickerError("");
+    }
+  }, [currentMember?.has_assigned_bracket]);
+
+  useEffect(() => {
+    if (!bracketPickerError || showBracketPicker) return;
+    const timeoutId = window.setTimeout(() => {
+      setBracketPickerError("");
+    }, 3500);
+    return () => window.clearTimeout(timeoutId);
+  }, [bracketPickerError, showBracketPicker]);
 
   if (!isOpen || !group) return null;
 
