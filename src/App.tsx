@@ -782,6 +782,9 @@ function App() {
   const contextualHintTimerRef = useRef<number | null>(null);
   const copyLinkTimerRef = useRef<number | null>(null);
   const saveStatusTimerRef = useRef<number | null>(null);
+  const completionPromptArmedRef = useRef(true);
+  const lastCompletionPromptBracketKeyRef = useRef<string | null>(null);
+  const lastSubmittedBracketKeyRef = useRef<string | null>(null);
   const simMenuRef = useRef<HTMLDivElement | null>(null);
   const resetMenuRef = useRef<HTMLDivElement | null>(null);
   const overflowMenuRef = useRef<HTMLDivElement | null>(null);
@@ -1826,6 +1829,10 @@ function App() {
   const _elevated = hasElevatedAccess(user?.email);
   const submissionsLocked = useMemo(() => _elevated ? false : userBrackets.some((bracket) => bracket.is_locked), [_elevated, userBrackets]);
   const bracketComplete = pickCount >= SUBMIT_EXPECTED_PICK_COUNT;
+  const currentBracketKey = useMemo(
+    () => (Object.keys(sanitizedUserPicks).length > 0 ? encodeBracketState(sanitizedUserPicks) : null),
+    [sanitizedUserPicks]
+  );
   const submissionLimitReached = _elevated ? false : submittedBracketCount >= MAX_SUBMITTED_BRACKETS;
   const canSubmitBrackets = isAuthenticated && !submissionsLocked && !submissionLimitReached;
   const tournamentStarted = useMemo(() => {
@@ -1869,24 +1876,58 @@ function App() {
 
   useEffect(() => { setWrappedSeen(false); }, [lockedPicks]);
 
-  // Detect bracket completion for Instant Sim / Staggered Sim paths
-  const prevPickCountRef = useRef(0);
   const mountTimeRef = useRef(Date.now());
-  useEffect(() => {
-    const prev = prevPickCountRef.current;
-    prevPickCountRef.current = pickCount;
-    if (pickCount >= nonFFGameCount && prev < nonFFGameCount && Date.now() - mountTimeRef.current > 1000) {
-      const champGame = games.find((g) => g.round === "CHAMP");
+  const openCompletionCelebration = useCallback(
+    (resolvedGames: ResolvedGame[], bracketKey: string, delayMs = 0) => {
+      if (lastCompletionPromptBracketKeyRef.current === bracketKey) return;
+
+      const champGame = resolvedGames.find((game) => game.round === "CHAMP");
       const champId = champGame?.winnerId;
       const champName = champId ? teamsById.get(champId)?.name ?? "Your champion" : "Your champion";
-      const completedChaos = computeChaosScoreFromGames(games);
-      const cLabel = getChaosLabel(completedChaos, URL_EXPECTED_GAME_COUNT) ?? { label: "Chalk", emoji: "📋" };
-      setTimeout(() => {
-        setCompletionCelebrationData({ championName: champName, chaosLabel: cLabel.label, chaosEmoji: cLabel.emoji });
+      const completedChaos = computeChaosScoreFromGames(resolvedGames);
+      const chaosLabel = getChaosLabel(completedChaos, URL_EXPECTED_GAME_COUNT) ?? { label: "Chalk", emoji: "📋" };
+
+      const open = () => {
+        lastCompletionPromptBracketKeyRef.current = bracketKey;
+        completionPromptArmedRef.current = false;
+        setCompletionCelebrationData({
+          championName: champName,
+          chaosLabel: chaosLabel.label,
+          chaosEmoji: chaosLabel.emoji,
+        });
         setShowCompletionCelebration(true);
-      }, 800);
+      };
+
+      if (delayMs > 0) {
+        window.setTimeout(open, delayMs);
+        return;
+      }
+
+      open();
+    },
+    [teamsById]
+  );
+
+  useEffect(() => {
+    if (!bracketComplete || !currentBracketKey) {
+      completionPromptArmedRef.current = true;
+      return;
     }
-  }, [pickCount, nonFFGameCount, games]);
+
+    if (!completionPromptArmedRef.current || Date.now() - mountTimeRef.current <= 1000) {
+      return;
+    }
+
+    openCompletionCelebration(games, currentBracketKey, 800);
+  }, [bracketComplete, currentBracketKey, games, openCompletionCelebration]);
+
+  useEffect(() => {
+    if (saveStatus !== "saved" || !lastSubmittedBracketKeyRef.current) return;
+    if (currentBracketKey === lastSubmittedBracketKeyRef.current) return;
+
+    lastSubmittedBracketKeyRef.current = null;
+    setSaveStatus(null);
+  }, [currentBracketKey, saveStatus]);
 
   const applyCustomProbability = (gameId: string, customProbA: number | null) => {
     setCustomProbByGame((prev) => {
@@ -2075,19 +2116,11 @@ function App() {
     }
 
     const wasComplete = Object.keys(resolveGamesWithKnownResults(lockedPicks).sanitized).length === URL_EXPECTED_GAME_COUNT;
-    const nextResolved = resolveGamesWithKnownResults(next, customProbByGame).games;
+    const nextResolution = resolveGamesWithKnownResults(next, customProbByGame);
+    const nextResolved = nextResolution.games;
     const nowComplete = nextResolved.every((resolvedGame) => Boolean(resolvedGame.winnerId));
     if (!wasComplete && nowComplete && game.round === "CHAMP") {
-      const champion = nextResolved.find((resolvedGame) => resolvedGame.round === "CHAMP");
-      const championName = champion?.winnerId ? teamsById.get(champion.winnerId)?.name ?? "Your champion" : "Your champion";
-      const completedChaosScore = computeChaosScoreFromGames(nextResolved);
-      const chaosLabelData = getChaosLabel(completedChaosScore, URL_EXPECTED_GAME_COUNT) ?? { label: "Chalk", emoji: "📋" };
-      setCompletionCelebrationData({
-        championName,
-        chaosLabel: chaosLabelData.label,
-        chaosEmoji: chaosLabelData.emoji,
-      });
-      setShowCompletionCelebration(true);
+      openCompletionCelebration(nextResolved, encodeBracketState(stripNcaaKnownResults(nextResolution.sanitized)));
     }
 
     applyLockedPicksUpdate(next);
@@ -2325,6 +2358,7 @@ function App() {
       await maybePromptForGroupAssignment(savedBracket);
     }
 
+    lastSubmittedBracketKeyRef.current = currentBracketKey;
     setSaveStatus("saved");
     setSaveErrorText(null);
     queueSaveStatusReset(2000);
@@ -2540,6 +2574,7 @@ function App() {
     pushUndo(lockedPicks);
     setTopHalfManuallyExpanded(false);
     setBottomHalfManuallyExpanded(false);
+    completionPromptArmedRef.current = true;
     const baseLocks = getUserLockedPicks(lockedPicks);
     const effectiveBaseLocks = mergeNcaaKnownResults(baseLocks);
     const nextLocks = stripNcaaKnownResults(
@@ -2567,6 +2602,7 @@ function App() {
     setFirstPickNudgeVisible(false);
     setMajorShiftNudgeVisible(false);
     closeProbabilityPopup(true);
+    completionPromptArmedRef.current = true;
     const baseLocks = getUserLockedPicks(lockedPicks);
     const effectiveBaseLocks = mergeNcaaKnownResults(baseLocks);
     const steps = generateSimulatedBracketSteps(
