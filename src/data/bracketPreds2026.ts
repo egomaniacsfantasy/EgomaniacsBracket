@@ -275,12 +275,12 @@ export const BRACKET_PREDS_2026: Record<string, BracketPred> = {
     "champProb": 0
   },
   "Michigan": {
-    "round2Prob": 0.911,
-    "sweet16Prob": 0.741,
-    "elite8Prob": 0.521,
-    "final4Prob": 0.331,
-    "titleGameProb": 0.183,
-    "champProb": 0.105
+    "round2Prob": 0.908,
+    "sweet16Prob": 0.738,
+    "elite8Prob": 0.519,
+    "final4Prob": 0.33,
+    "titleGameProb": 0.182,
+    "champProb": 0.104
   },
   "Iowa St": {
     "round2Prob": 0.949,
@@ -301,7 +301,7 @@ export const BRACKET_PREDS_2026: Record<string, BracketPred> = {
   "Alabama": {
     "round2Prob": 0.77,
     "sweet16Prob": 0.455,
-    "elite8Prob": 0.201,
+    "elite8Prob": 0.202,
     "final4Prob": 0.1,
     "titleGameProb": 0.039,
     "champProb": 0.017
@@ -332,7 +332,7 @@ export const BRACKET_PREDS_2026: Record<string, BracketPred> = {
   },
   "Georgia": {
     "round2Prob": 0.552,
-    "sweet16Prob": 0.134,
+    "sweet16Prob": 0.135,
     "elite8Prob": 0.058,
     "final4Prob": 0.017,
     "titleGameProb": 0.005,
@@ -340,7 +340,7 @@ export const BRACKET_PREDS_2026: Record<string, BracketPred> = {
   },
   "St Louis": {
     "round2Prob": 0.448,
-    "sweet16Prob": 0.113,
+    "sweet16Prob": 0.114,
     "elite8Prob": 0.043,
     "final4Prob": 0.011,
     "titleGameProb": 0.003,
@@ -403,7 +403,7 @@ export const BRACKET_PREDS_2026: Record<string, BracketPred> = {
     "champProb": 0
   },
   "UMBC": {
-    "round2Prob": 0.07,
+    "round2Prob": 0.075,
     "sweet16Prob": 0.011,
     "elite8Prob": 0.002,
     "final4Prob": 0,
@@ -411,7 +411,7 @@ export const BRACKET_PREDS_2026: Record<string, BracketPred> = {
     "champProb": 0
   },
   "Howard": {
-    "round2Prob": 0.019,
+    "round2Prob": 0.017,
     "sweet16Prob": 0.002,
     "elite8Prob": 0,
     "final4Prob": 0,
@@ -423,23 +423,23 @@ export const BRACKET_PREDS_2026: Record<string, BracketPred> = {
     "sweet16Prob": 0.75,
     "elite8Prob": 0.56,
     "final4Prob": 0.386,
-    "titleGameProb": 0.258,
+    "titleGameProb": 0.257,
     "champProb": 0.164
   },
   "Purdue": {
     "round2Prob": 0.943,
     "sweet16Prob": 0.747,
-    "elite8Prob": 0.472,
+    "elite8Prob": 0.471,
     "final4Prob": 0.233,
     "titleGameProb": 0.131,
     "champProb": 0.072
   },
   "Gonzaga": {
     "round2Prob": 0.949,
-    "sweet16Prob": 0.606,
-    "elite8Prob": 0.313,
-    "final4Prob": 0.147,
-    "titleGameProb": 0.073,
+    "sweet16Prob": 0.611,
+    "elite8Prob": 0.315,
+    "final4Prob": 0.148,
+    "titleGameProb": 0.074,
     "champProb": 0.034
   },
   "Arkansas": {
@@ -459,10 +459,10 @@ export const BRACKET_PREDS_2026: Record<string, BracketPred> = {
     "champProb": 0.006
   },
   "BYU": {
-    "round2Prob": 0.704,
-    "sweet16Prob": 0.301,
-    "elite8Prob": 0.119,
-    "final4Prob": 0.043,
+    "round2Prob": 0.692,
+    "sweet16Prob": 0.296,
+    "elite8Prob": 0.117,
+    "final4Prob": 0.042,
     "titleGameProb": 0.016,
     "champProb": 0.006
   },
@@ -499,18 +499,18 @@ export const BRACKET_PREDS_2026: Record<string, BracketPred> = {
     "champProb": 0
   },
   "NC State": {
-    "round2Prob": 0.139,
-    "sweet16Prob": 0.04,
-    "elite8Prob": 0.011,
-    "final4Prob": 0.003,
-    "titleGameProb": 0.001,
+    "round2Prob": 0.125,
+    "sweet16Prob": 0.032,
+    "elite8Prob": 0.009,
+    "final4Prob": 0.002,
+    "titleGameProb": 0,
     "champProb": 0
   },
   "Texas": {
-    "round2Prob": 0.157,
-    "sweet16Prob": 0.045,
-    "elite8Prob": 0.012,
-    "final4Prob": 0.003,
+    "round2Prob": 0.183,
+    "sweet16Prob": 0.052,
+    "elite8Prob": 0.014,
+    "final4Prob": 0.004,
     "titleGameProb": 0.001,
     "champProb": 0
   },
