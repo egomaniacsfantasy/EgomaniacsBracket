@@ -302,13 +302,27 @@ export async function saveBracket(
 }
 
 export async function getUserBrackets(userId: string) {
+  const hydrateSavedBracket = (bracket: SavedBracket): SavedBracket => {
+    const picks = deserializePicks(bracket.picks);
+    const derivedMeta = extractBracketMeta(picks);
+    return {
+      ...bracket,
+      picks,
+      champion_name: bracket.champion_name ?? derivedMeta.champion_name,
+      champion_seed: bracket.champion_seed ?? derivedMeta.champion_seed,
+      champion_logo_url: bracket.champion_logo_url ?? derivedMeta.champion_logo_url,
+      final_four: bracket.final_four ?? derivedMeta.final_four,
+      boldest_pick: bracket.boldest_pick ?? derivedMeta.boldest_pick,
+    };
+  };
+
   const withAll = await supabase
     .from("brackets")
     .select("id, user_id, bracket_name, picks, chaos_score, created_at, updated_at, is_locked, submitted_at, champion_name, champion_seed, champion_logo_url, final_four, boldest_pick")
     .eq("user_id", userId)
     .order("created_at", { ascending: true });
   if (!withAll.error) {
-    return { data: (withAll.data as SavedBracket[] | null) ?? [], error: null };
+    return { data: (((withAll.data as SavedBracket[] | null) ?? []).map(hydrateSavedBracket)), error: null };
   }
 
   const withSubmittedAndChaos = await supabase
@@ -317,7 +331,7 @@ export async function getUserBrackets(userId: string) {
     .eq("user_id", userId)
     .order("created_at", { ascending: true });
   if (!withSubmittedAndChaos.error) {
-    return { data: (withSubmittedAndChaos.data as SavedBracket[] | null) ?? [], error: null };
+    return { data: (((withSubmittedAndChaos.data as SavedBracket[] | null) ?? []).map(hydrateSavedBracket)), error: null };
   }
 
   const withSubmitted = await supabase
@@ -326,7 +340,7 @@ export async function getUserBrackets(userId: string) {
     .eq("user_id", userId)
     .order("created_at", { ascending: true });
   if (!withSubmitted.error) {
-    return { data: (withSubmitted.data as SavedBracket[] | null) ?? [], error: null };
+    return { data: (((withSubmitted.data as SavedBracket[] | null) ?? []).map(hydrateSavedBracket)), error: null };
   }
 
   const withChaos = await supabase
