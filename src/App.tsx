@@ -1845,11 +1845,11 @@ function App() {
     if (chaosScore === null || pickedChaosGameIds.length === 0 || !chaosDistribution) return null;
     return getChaosScorePercentileForPickedGames(chaosScore, pickedChaosGameIds, chaosDistribution);
   }, [chaosDistribution, chaosScore, pickedChaosGameIds]);
-  const chaosScaleInvertedPct = useMemo(() => {
-    if (chaosScore === null) return 0;
-    const clampedPct = Math.min(100, Math.max(0, (chaosScore / 60) * 100));
-    return 100 - clampedPct;
-  }, [chaosScore]);
+  const chaosScalePct = useMemo(() => {
+    if (chaosScore === null || pickCount === 0) return 0;
+    const perGame = chaosScore / pickCount;
+    return Math.min(100, Math.max(0, (perGame / 0.8) * 100));
+  }, [chaosScore, pickCount]);
   const chaosLabelData = useMemo(() => getChaosLabel(chaosScore, pickCount), [chaosScore, pickCount]);
   const chaosPillLevel = useMemo(() => {
     const label = chaosLabelData?.label.toLowerCase() ?? "";
@@ -5086,8 +5086,8 @@ function App() {
             </div>
             <div className="chaos-scale">
               <div className="chaos-scale-bar">
-                <div className="chaos-scale-fill" style={{ width: `${chaosScaleInvertedPct}%` }} />
-                <div className="chaos-scale-marker" style={{ left: `${chaosScaleInvertedPct}%` }} />
+                <div className="chaos-scale-fill" style={{ width: `${chaosScalePct}%` }} />
+                <div className="chaos-scale-marker" style={{ left: `${chaosScalePct}%` }} />
               </div>
               <div className="chaos-scale-labels">
                 <span>🧊 Chalk</span>
