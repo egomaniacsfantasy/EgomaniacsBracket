@@ -219,6 +219,30 @@ export function MyBracketsModal({
                     {!bracket.is_locked && bracket.submitted_at ? <span className="my-bracket-lock-badge">✓ Submitted</span> : null}
                   </div>
 
+                  <div className={`my-bracket-champion-strip${bracket.champion_name ? "" : " my-bracket-champion-strip--missing"}`}>
+                    <span className="my-bracket-champion-label">Champion</span>
+                    <div className="my-bracket-champion-main">
+                      <div className="my-bracket-champion-logo-wrap" aria-hidden="true">
+                        {bracket.champion_logo_url ? (
+                          <img
+                            className="my-bracket-champion-logo"
+                            src={bracket.champion_logo_url}
+                            alt=""
+                            loading="lazy"
+                          />
+                        ) : (
+                          <span className="my-bracket-champion-logo-fallback">🏆</span>
+                        )}
+                      </div>
+                      <div className="my-bracket-champion-copy">
+                        <span className="my-bracket-champion-name">{bracket.champion_name ?? "Champion pending"}</span>
+                        <span className="my-bracket-champion-meta">
+                          {typeof bracket.champion_seed === "number" ? `#${bracket.champion_seed} seed` : "No title pick saved yet"}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
                   <div className="my-bracket-stats-row">
                     <div className="my-bracket-stat">
                       <span className="my-bracket-stat-value">{completion.completedGames}/{completion.totalGames}</span>
