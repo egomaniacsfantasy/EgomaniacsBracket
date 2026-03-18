@@ -151,6 +151,9 @@ export function GroupStandingsTab({
           const isLeader = Boolean(tournamentStarted && hasBracket && soleLeader === entry.user_id);
           const championId = hasBracket && canSee ? getChampionPick(entry.picks) : null;
           const championInfo = championId ? getTeamInfo(championId) : null;
+          const championLogoUrl = championInfo?.logoUrl ?? entry.champion_logo_url ?? null;
+          const championName = championInfo?.name ?? entry.champion_name ?? championId ?? "Champion pending";
+          const championSeed = championInfo?.seed ?? entry.champion_seed ?? null;
           const chaosScore =
             hasBracket && canSee && entry.picks && Object.keys(entry.picks).length > 0
               ? computeChaosScoreForPicks(entry.picks as LockedPicks)
@@ -225,9 +228,9 @@ export function GroupStandingsTab({
                   )
                 ) : canSee ? (
                   <div className="gd-player-champion">
-                    {championInfo?.logoUrl ? (
+                    {championLogoUrl ? (
                       <img
-                        src={championInfo.logoUrl}
+                        src={championLogoUrl}
                         className="gd-champion-logo"
                         alt=""
                         onError={(event) => {
@@ -237,9 +240,9 @@ export function GroupStandingsTab({
                     ) : null}
 
                     <div className="gd-champion-info">
-                      <span className="gd-champion-name">{championInfo?.name ?? championId ?? "Champion pending"}</span>
+                      <span className="gd-champion-name">{championName}</span>
                       <span className="gd-champion-seed">
-                        {championInfo?.seed ? `#${championInfo.seed} seed` : "Champion pick"}
+                        {championSeed ? `#${championSeed} seed` : "Champion pick"}
                       </span>
                     </div>
                   </div>

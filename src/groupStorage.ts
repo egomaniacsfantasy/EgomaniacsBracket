@@ -1,6 +1,6 @@
 import { supabase } from "./supabaseClient";
-import { resolveGames, type LockedPicks } from "./lib/bracket";
-import { getBracketCompletionSummary } from "./lib/bracketCompletion";
+import { type LockedPicks } from "./lib/bracket";
+import { getBracketCompletionSummary, resolveBracketWithKnownResults } from "./lib/bracketCompletion";
 import { teamsById } from "./data/teams";
 import { teamLogoUrl } from "./lib/logo";
 import { extractInviteCode } from "./lib/inviteCode";
@@ -57,6 +57,9 @@ export type GroupStanding = {
   champ_score: number | null;
   global_rank: number | null;
   score_updated_at: string | null;
+  champion_name?: string | null;
+  champion_seed?: number | null;
+  champion_logo_url?: string | null;
 };
 
 export type GroupMember = {
@@ -75,7 +78,7 @@ export type GroupMember = {
 const GROUP_QUERY_TIMEOUT_MS = 10000;
 const GROUP_COUNTS_QUERY_TIMEOUT_MS = 3500;
 const USER_GROUPS_CACHE_PREFIX = "og_user_groups_v1";
-const GROUP_STANDINGS_CACHE_PREFIX = "og_group_standings_v1";
+const GROUP_STANDINGS_CACHE_PREFIX = "og_group_standings_v2";
 const GROUP_MEMBERS_CACHE_PREFIX = "og_group_members_v1";
 
 async function validateGroupBracketSelection(userId: string, bracketId: string) {
@@ -120,7 +123,7 @@ function getChampionPreviewFromPicks(picks: LockedPicks | null | undefined) {
     };
   }
 
-  const { games } = resolveGames(picks);
+  const { games } = resolveBracketWithKnownResults(picks);
   const championId = games.find((game) => game.round === "CHAMP")?.winnerId ?? null;
   if (!championId) {
     return {
@@ -438,7 +441,15 @@ export async function getGroupStandings(groupId: string) {
 
     const standings = (result.data as GroupStanding[] | null) ?? [];
     const bracketIds = [...new Set(standings.map((entry) => entry.bracket_id).filter((value): value is string => Boolean(value)))];
-    let hydratedStandings = standings;
+    let hydratedStandings: GroupStanding[] = standings.map((entry) => {
+      const championPreview = getChampionPreviewFromPicks(entry.picks ?? null);
+      return {
+        ...entry,
+        champion_name: entry.champion_name ?? championPreview.champion_name ?? null,
+        champion_seed: entry.champion_seed ?? championPreview.champion_seed ?? null,
+        champion_logo_url: entry.champion_logo_url ?? championPreview.champion_logo_url ?? null,
+      } satisfies GroupStanding;
+    });
 
     if (bracketIds.length > 0) {
       try {
@@ -464,11 +475,16 @@ export async function getGroupStandings(groupId: string) {
           hydratedStandings = standings.map((entry) => {
             const liveBracket = entry.bracket_id ? bracketMap.get(entry.bracket_id) : null;
             if (!liveBracket) return entry;
+            const livePicks = (liveBracket.picks ?? entry.picks ?? null) as LockedPicks | null;
+            const championPreview = getChampionPreviewFromPicks(livePicks);
             return {
               ...entry,
-              picks: (liveBracket.picks ?? entry.picks ?? null) as LockedPicks | null,
+              picks: livePicks,
               bracket_name: liveBracket.bracket_name ?? entry.bracket_name,
               is_locked: typeof liveBracket.is_locked === "boolean" ? liveBracket.is_locked : entry.is_locked,
+              champion_name: championPreview.champion_name,
+              champion_seed: championPreview.champion_seed,
+              champion_logo_url: championPreview.champion_logo_url,
             } satisfies GroupStanding;
           });
         }
