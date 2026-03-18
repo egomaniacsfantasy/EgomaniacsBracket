@@ -27,28 +27,32 @@ export type BracketViewerPerformance = {
 };
 
 type TeamDisplay = {
+  id: string | null;
   name: string;
   abbr: string;
   seed: string;
   logoUrl: string | null;
 };
 
-type TeamRowState = "default" | "pending" | "correct" | "incorrect" | "missing";
+type TeamRowState = "default" | "correct" | "incorrect" | "missing";
+type RegionDirection = "to-right" | "to-left";
 
 const LEFT_REGION_ROUNDS: Round[] = ["R64", "R32", "S16", "E8"];
 const RIGHT_REGION_ROUNDS: Round[] = ["E8", "S16", "R32", "R64"];
-const FINALS_COLUMNS: Array<{ id: string; label: string }> = [
-  { id: "F4-Left-0", label: "F4" },
-  { id: "CHAMP-0", label: "CH" },
-  { id: "F4-Right-0", label: "F4" },
-];
+
+function getRoundTemplates(region: Region, round: Round) {
+  return gameTemplates
+    .filter((template) => template.region === region && template.round === round)
+    .sort((templateA, templateB) => templateA.slot - templateB.slot);
+}
 
 function getTeamDisplay(teamId: string | null): TeamDisplay {
   if (!teamId) {
     return {
+      id: null,
       name: "TBD",
       abbr: "TBD",
-      seed: "",
+      seed: "—",
       logoUrl: null,
     };
   }
@@ -56,14 +60,16 @@ function getTeamDisplay(teamId: string | null): TeamDisplay {
   const team = teamsById.get(teamId);
   if (!team) {
     return {
+      id: teamId,
       name: teamId,
       abbr: teamId,
-      seed: "",
+      seed: "—",
       logoUrl: null,
     };
   }
 
   return {
+    id: team.id,
     name: team.name,
     abbr: abbreviationForTeam(team.name) || team.name,
     seed: team.seedLabel ?? String(team.seed),
@@ -165,96 +171,115 @@ function normalizeTournamentResults(tournamentResults: unknown) {
   return resultsByGame;
 }
 
-function TeamLogo({ team }: { team: TeamDisplay }) {
-  const [failed, setFailed] = useState(false);
+function getPickedRowState(game: ResolvedGame, actualWinnerId: string | null): TeamRowState {
+  if (!game.winnerId) return "missing";
+  if (!actualWinnerId) return "default";
+  return actualWinnerId === game.winnerId ? "correct" : "incorrect";
+}
 
-  if (!team.logoUrl || failed) {
+function TeamLogo({ team, large = false }: { team: TeamDisplay; large?: boolean }) {
+  const [failedUrl, setFailedUrl] = useState<string | null>(null);
+  const shouldFallback = !team.logoUrl || failedUrl === team.logoUrl;
+
+  if (shouldFallback) {
     return (
-      <span className="grp-bv-team-logo-fallback" aria-hidden="true">
-        {team.seed || "?"}
+      <span
+        className={[
+          "grp-bv-logo-fallback",
+          large ? "grp-bv-logo-fallback--large" : "",
+        ]
+          .filter(Boolean)
+          .join(" ")}
+        aria-hidden="true"
+      >
+        {team.abbr.slice(0, 1)}
       </span>
     );
   }
 
   return (
     <img
-      src={team.logoUrl}
+      src={team.logoUrl ?? undefined}
       alt={`${team.name} logo`}
-      className="grp-bv-team-logo"
+      className={large ? "grp-bv-logo grp-bv-logo--large" : "grp-bv-logo"}
       loading="lazy"
-      onError={() => setFailed(true)}
+      onError={() => setFailedUrl(team.logoUrl ?? null)}
     />
   );
-}
-
-function getPickedRowState(game: ResolvedGame, actualWinnerId: string | null): TeamRowState {
-  if (!game.winnerId) return "missing";
-  if (!actualWinnerId) return "pending";
-  return actualWinnerId === game.winnerId ? "correct" : "incorrect";
 }
 
 function TeamRow({
   team,
   isPicked,
   rowState,
+  faded,
 }: {
   team: TeamDisplay;
   isPicked: boolean;
   rowState: TeamRowState;
+  faded: boolean;
 }) {
   return (
     <div
       className={[
-        "grp-bv-team",
-        isPicked ? "grp-bv-team--picked" : "",
-        rowState !== "default" ? `grp-bv-team--${rowState}` : "",
+        "grp-bv-team-row",
+        isPicked ? "grp-bv-team-row--picked" : "",
+        faded ? "grp-bv-team-row--faded" : "",
+        rowState !== "default" ? `grp-bv-team-row--${rowState}` : "",
       ]
         .filter(Boolean)
         .join(" ")}
     >
+      <span className="grp-bv-team-seed">{team.seed}</span>
       <TeamLogo team={team} />
-      <div className="grp-bv-team-copy">
-        <div className="grp-bv-team-main">
-          <span className="grp-bv-team-name">{team.abbr}</span>
-          {isPicked && rowState === "correct" ? <span className="grp-bv-team-icon">✓</span> : null}
-        </div>
-        <span className="grp-bv-team-seed">{team.seed ? `#${team.seed}` : "—"}</span>
-      </div>
+      <span className="grp-bv-team-name" title={team.name}>
+        {team.abbr}
+      </span>
+      {isPicked && rowState === "correct" ? <span className="grp-bv-team-check">✓</span> : null}
     </div>
   );
 }
 
-function GameCard({
+function PlaceholderSlot() {
+  const placeholder = getTeamDisplay(null);
+
+  return (
+    <div className="grp-bv-slot grp-bv-slot--placeholder">
+      <TeamRow team={placeholder} isPicked={false} rowState="missing" faded={false} />
+      <TeamRow team={placeholder} isPicked={false} rowState="missing" faded={false} />
+    </div>
+  );
+}
+
+function GameSlot({
   game,
-  direction,
-  showConnector,
+  className = "",
   resultsByGame,
 }: {
   game: ResolvedGame;
-  direction: "to-left" | "to-right";
-  showConnector: boolean;
+  className?: string;
   resultsByGame: Map<string, string>;
 }) {
   const teamA = getTeamDisplay(game.teamAId);
   const teamB = getTeamDisplay(game.teamBId);
   const actualWinnerId = resultsByGame.get(game.id) ?? null;
   const pickedRowState = getPickedRowState(game, actualWinnerId);
-  const rowStateA = game.winnerId === game.teamAId ? pickedRowState : pickedRowState === "missing" ? "missing" : "default";
-  const rowStateB = game.winnerId === game.teamBId ? pickedRowState : pickedRowState === "missing" ? "missing" : "default";
+  const hasPick = Boolean(game.winnerId);
 
   return (
-    <div
-      className={[
-        "grp-bv-game",
-        `grp-bv-game--${direction}`,
-        showConnector ? "grp-bv-game--linked" : "",
-        pickedRowState === "missing" ? "grp-bv-game--missing" : "",
-      ]
-        .filter(Boolean)
-        .join(" ")}
-    >
-      <TeamRow team={teamA} isPicked={game.winnerId === game.teamAId} rowState={rowStateA} />
-      <TeamRow team={teamB} isPicked={game.winnerId === game.teamBId} rowState={rowStateB} />
+    <div className={["grp-bv-slot", className, hasPick ? "" : "grp-bv-slot--missing"].filter(Boolean).join(" ")}>
+      <TeamRow
+        team={teamA}
+        isPicked={game.winnerId === game.teamAId}
+        rowState={hasPick ? (game.winnerId === game.teamAId ? pickedRowState : "default") : "missing"}
+        faded={hasPick && game.winnerId !== game.teamAId}
+      />
+      <TeamRow
+        team={teamB}
+        isPicked={game.winnerId === game.teamBId}
+        rowState={hasPick ? (game.winnerId === game.teamBId ? pickedRowState : "default") : "missing"}
+        faded={hasPick && game.winnerId !== game.teamBId}
+      />
     </div>
   );
 }
@@ -266,7 +291,7 @@ function RegionBoard({
   resultsByGame,
 }: {
   region: Region;
-  direction: "to-left" | "to-right";
+  direction: RegionDirection;
   gamesById: Map<string, ResolvedGame>;
   resultsByGame: Map<string, string>;
 }) {
@@ -274,39 +299,57 @@ function RegionBoard({
 
   return (
     <section className={`grp-bv-region grp-bv-region--${direction} grp-bv-region--${region.toLowerCase()}`}>
-      <div className="grp-bv-region-topline">
-        <h3 className="grp-bv-region-title">{region.toUpperCase()}</h3>
-      </div>
+      <div className="grp-bv-region-label">{region}</div>
 
-      <div className="grp-bv-region-grid">
-        {rounds.map((round, roundIndex) => {
-          const showConnector =
-            direction === "to-right" ? roundIndex < rounds.length - 1 : roundIndex > 0;
-          const gamesForRound = gameTemplates
-            .filter((template) => template.region === region && template.round === round)
-            .sort((templateA, templateB) => templateA.slot - templateB.slot)
+      <div className="grp-bv-region-rounds">
+        {rounds.map((round) => {
+          const gamesForRound = getRoundTemplates(region, round)
             .map((template) => gamesById.get(template.id))
             .filter((game): game is ResolvedGame => Boolean(game));
 
           return (
-            <div key={`${region}-${round}`} className="grp-bv-round">
-              <div className="grp-bv-round-label">{round}</div>
-              <div className="grp-bv-round-games">
-                {gamesForRound.map((game) => (
-                  <GameCard
-                    key={game.id}
-                    game={game}
-                    direction={direction}
-                    showConnector={showConnector}
-                    resultsByGame={resultsByGame}
-                  />
-                ))}
+            <div key={`${region}-${round}`} className="grp-bv-round-column">
+              <div className="grp-bv-round-heading">{round}</div>
+              <div className="grp-bv-round-stack">
+                {gamesForRound.length > 0
+                  ? gamesForRound.map((game) => <GameSlot key={game.id} game={game} resultsByGame={resultsByGame} />)
+                  : <PlaceholderSlot />}
               </div>
             </div>
           );
         })}
       </div>
     </section>
+  );
+}
+
+function ChampionBadge({
+  championship,
+  resultsByGame,
+}: {
+  championship: ResolvedGame | null;
+  resultsByGame: Map<string, string>;
+}) {
+  const championTeam = getTeamDisplay(championship?.winnerId ?? null);
+  const actualWinnerId = championship ? resultsByGame.get(championship.id) ?? null : null;
+  const state = championship ? getPickedRowState(championship, actualWinnerId) : "missing";
+
+  return (
+    <div
+      className={[
+        "grp-bv-champion",
+        state === "correct" ? "grp-bv-champion--correct" : "",
+        state === "incorrect" ? "grp-bv-champion--incorrect" : "",
+      ]
+        .filter(Boolean)
+        .join(" ")}
+    >
+      <span className="grp-bv-champion-trophy" aria-hidden="true">
+        🏆
+      </span>
+      <TeamLogo team={championTeam} large />
+      <span className="grp-bv-champion-name">{championTeam.name === "TBD" ? "Champion TBD" : championTeam.name}</span>
+    </div>
   );
 }
 
@@ -317,34 +360,26 @@ function FinalsBoard({
   gamesById: Map<string, ResolvedGame>;
   resultsByGame: Map<string, string>;
 }) {
+  const topSemifinal = gamesById.get("F4-Left-0") ?? null;
+  const bottomSemifinal = gamesById.get("F4-Right-0") ?? null;
+  const championship = gamesById.get("CHAMP-0") ?? null;
+
   return (
     <section className="grp-bv-finals">
-      <div className="grp-bv-region-topline">
-        <h3 className="grp-bv-region-title">FINALS</h3>
+      <div className="grp-bv-finals-section">
+        <div className="grp-bv-round-heading">F4</div>
+        {topSemifinal ? <GameSlot game={topSemifinal} resultsByGame={resultsByGame} className="grp-bv-slot--final" /> : <PlaceholderSlot />}
       </div>
 
-      <div className="grp-bv-finals-grid">
-        {FINALS_COLUMNS.map((column) => {
-          const game = gamesById.get(column.id);
-          return (
-            <div key={column.id} className="grp-bv-finals-column">
-              <div className="grp-bv-round-label">{column.label}</div>
-              {game ? (
-                <GameCard
-                  game={game}
-                  direction={column.id === "F4-Right-0" ? "to-left" : "to-right"}
-                  showConnector={false}
-                  resultsByGame={resultsByGame}
-                />
-              ) : (
-                <div className="grp-bv-game grp-bv-game--placeholder">
-                  <TeamRow team={getTeamDisplay(null)} isPicked={false} rowState="default" />
-                  <TeamRow team={getTeamDisplay(null)} isPicked={false} rowState="default" />
-                </div>
-              )}
-            </div>
-          );
-        })}
+      <div className="grp-bv-finals-section grp-bv-finals-section--champ">
+        <div className="grp-bv-round-heading">Champ</div>
+        {championship ? <GameSlot game={championship} resultsByGame={resultsByGame} className="grp-bv-slot--championship" /> : <PlaceholderSlot />}
+        <ChampionBadge championship={championship} resultsByGame={resultsByGame} />
+      </div>
+
+      <div className="grp-bv-finals-section">
+        <div className="grp-bv-round-heading">F4</div>
+        {bottomSemifinal ? <GameSlot game={bottomSemifinal} resultsByGame={resultsByGame} className="grp-bv-slot--final" /> : <PlaceholderSlot />}
       </div>
     </section>
   );
@@ -359,33 +394,33 @@ export function GroupBracketViewerSurface({
 }) {
   const resultsByGame = useMemo(() => normalizeTournamentResults(tournamentResults), [tournamentResults]);
   const resultsAvailable = resultsByGame.size > 0;
-  const { games } = useMemo(() => resolveGames(bracket.picks ?? ({} as LockedPicks)), [bracket.picks]);
+  const { games } = useMemo(() => resolveGames(bracket.picks ?? {}), [bracket.picks]);
   const gamesById = useMemo(() => new Map(games.map((game) => [game.id, game])), [games]);
   const displayName = bracket.isCurrentUser ? "Your Bracket" : bracket.displayName;
 
   return (
-    <div className="grp-bv-surface">
-      <div className="grp-bv-header">
-        <div className="grp-bv-header-main">
-          <h3 className="grp-bv-header-name">{displayName}</h3>
-          <span className="grp-bv-header-bracket">{bracket.bracketName || "Bracket submitted"}</span>
+    <div className="grp-bv-panel">
+      <div className="grp-bv-scorebar">
+        <div className="grp-bv-scorebar-main">
+          <h3 className="grp-bv-scorebar-name">{displayName}</h3>
+          <div className="grp-bv-scorebar-bracket">{bracket.bracketName || "Bracket submitted"}</div>
         </div>
 
-        <div className="grp-bv-stats">
-          <div className="grp-bv-stat-pill">
-            <span className="grp-bv-stat-label">RANK</span>
+        <div className="grp-bv-scorebar-stats">
+          <div className="grp-bv-stat">
+            <span className="grp-bv-stat-label">Rank</span>
             <span className="grp-bv-stat-value grp-bv-stat-value--amber">
               {resultsAvailable ? formatOrdinal(bracket.rank) : "—"}
             </span>
           </div>
 
-          <div className="grp-bv-stat-pill">
-            <span className="grp-bv-stat-label">SCORE</span>
+          <div className="grp-bv-stat">
+            <span className="grp-bv-stat-label">Score</span>
             <span className="grp-bv-stat-value">{formatScoreValue(bracket.score, resultsAvailable)}</span>
           </div>
 
-          <div className="grp-bv-stat-pill">
-            <span className="grp-bv-stat-label">CORRECT</span>
+          <div className="grp-bv-stat">
+            <span className="grp-bv-stat-label">Correct</span>
             <span className="grp-bv-stat-value grp-bv-stat-value--success">
               {formatCorrectValue(bracket.correctPicks, bracket.possiblePicks, resultsAvailable)}
             </span>
@@ -393,13 +428,33 @@ export function GroupBracketViewerSurface({
         </div>
       </div>
 
-      <div className="grp-bv-board-wrap">
-        <div className="grp-bv-board">
-          <RegionBoard region={BRACKET_HALVES[0].regions[0]} direction="to-right" gamesById={gamesById} resultsByGame={resultsByGame} />
-          <RegionBoard region={BRACKET_HALVES[0].regions[1]} direction="to-left" gamesById={gamesById} resultsByGame={resultsByGame} />
+      <div className="grp-bv-scroll">
+        <div className="grp-bv-board-grid">
+          <RegionBoard
+            region={BRACKET_HALVES[0].regions[0]}
+            direction="to-right"
+            gamesById={gamesById}
+            resultsByGame={resultsByGame}
+          />
           <FinalsBoard gamesById={gamesById} resultsByGame={resultsByGame} />
-          <RegionBoard region={BRACKET_HALVES[1].regions[0]} direction="to-right" gamesById={gamesById} resultsByGame={resultsByGame} />
-          <RegionBoard region={BRACKET_HALVES[1].regions[1]} direction="to-left" gamesById={gamesById} resultsByGame={resultsByGame} />
+          <RegionBoard
+            region={BRACKET_HALVES[0].regions[1]}
+            direction="to-left"
+            gamesById={gamesById}
+            resultsByGame={resultsByGame}
+          />
+          <RegionBoard
+            region={BRACKET_HALVES[1].regions[0]}
+            direction="to-right"
+            gamesById={gamesById}
+            resultsByGame={resultsByGame}
+          />
+          <RegionBoard
+            region={BRACKET_HALVES[1].regions[1]}
+            direction="to-left"
+            gamesById={gamesById}
+            resultsByGame={resultsByGame}
+          />
         </div>
       </div>
     </div>

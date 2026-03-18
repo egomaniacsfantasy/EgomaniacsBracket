@@ -9,11 +9,11 @@ import { teamLogoUrl } from "./lib/logo";
 import type { GameTemplate, Region } from "./types";
 
 type RankedStanding = GroupStanding & { groupRank: number };
+type PicksViewMode = "brackets" | "compare";
 type RegionTab = "east" | "south" | "west" | "midwest" | "finalfour";
 type RegionalRound = "R64" | "R32" | "S16" | "E8";
 type FinalFourRound = "FF1" | "FF2" | "champion";
 type RoundTab = RegionalRound | FinalFourRound;
-type PicksViewMode = "bracket" | "compare";
 
 type MemberPick = {
   userId: string;
@@ -38,6 +38,7 @@ type LockedMemberRow = {
   id: string;
   displayName: string;
   isCurrentUser: boolean;
+  submitted: boolean;
   hasBracket: boolean;
   role: "admin" | "member" | null;
 };
@@ -106,21 +107,7 @@ function compareTeams(teamAId: string, teamBId: string) {
   return (teamA?.name ?? teamAId).localeCompare(teamB?.name ?? teamBId);
 }
 
-function getDisplayInitials(name: string) {
-  return (
-    name
-      .split(/\s+/)
-      .filter(Boolean)
-      .slice(0, 2)
-      .map((part) => part[0]?.toUpperCase() ?? "")
-      .join("") || "?"
-  );
-}
-
-function sortSelectableBrackets(
-  bracketA: SelectableBracket,
-  bracketB: SelectableBracket,
-) {
+function sortSelectableBrackets(bracketA: SelectableBracket, bracketB: SelectableBracket) {
   if (bracketA.isCurrentUser && !bracketB.isCurrentUser) return -1;
   if (bracketB.isCurrentUser && !bracketA.isCurrentUser) return 1;
   if (bracketA.groupRank !== bracketB.groupRank) return bracketA.groupRank - bracketB.groupRank;
@@ -135,8 +122,16 @@ function sortLockedMembers(memberA: LockedMemberRow, memberB: LockedMemberRow) {
   if (memberB.isCurrentUser && !memberA.isCurrentUser) return 1;
   if (memberA.role === "admin" && memberB.role !== "admin") return -1;
   if (memberB.role === "admin" && memberA.role !== "admin") return 1;
+  if (memberA.submitted && !memberB.submitted) return -1;
+  if (memberB.submitted && !memberA.submitted) return 1;
   if (memberA.hasBracket && !memberB.hasBracket) return -1;
   if (memberB.hasBracket && !memberA.hasBracket) return 1;
+  return memberA.displayName.localeCompare(memberB.displayName);
+}
+
+function sortMemberPicks(memberA: MemberPick, memberB: MemberPick) {
+  if (memberA.isCurrentUser && !memberB.isCurrentUser) return -1;
+  if (memberB.isCurrentUser && !memberA.isCurrentUser) return 1;
   return memberA.displayName.localeCompare(memberB.displayName);
 }
 
@@ -160,16 +155,19 @@ function getSlotLabel(template: GameTemplate) {
     return matchup ? `${matchup[0]} vs ${matchup[1]}` : `Slot ${template.slot + 1}`;
   }
   if (template.round === "R32") {
-    return `Slot ${template.slot * 2 + 1} vs ${template.slot * 2 + 2}`;
+    return `R32 · ${template.slot + 1}`;
   }
   if (template.round === "S16") {
-    return `Sweet 16 • ${template.slot + 1}`;
+    return `S16 · ${template.slot + 1}`;
   }
   if (template.round === "E8") {
     return "Elite 8";
   }
-  if (template.round === "F4") {
-    return template.id === "F4-Left-0" ? "East vs South" : "West vs Midwest";
+  if (template.id === "F4-Left-0") {
+    return "FF1";
+  }
+  if (template.id === "F4-Right-0") {
+    return "FF2";
   }
   return "Champion";
 }
@@ -177,8 +175,7 @@ function getSlotLabel(template: GameTemplate) {
 function getGridVariant(regionTab: RegionTab, roundTab: RoundTab) {
   if (regionTab === "finalfour" && roundTab === "champion") return "champion";
   if (regionTab === "finalfour") return "single";
-  if (roundTab === "R64") return "r64";
-  if (roundTab === "R32") return "r32";
+  if (roundTab === "R64" || roundTab === "R32") return roundTab.toLowerCase();
   if (roundTab === "S16") return "s16";
   return "single";
 }
@@ -188,9 +185,9 @@ function buildSlotTeamGroup(teamId: string, members: MemberPick[]): SlotTeamGrou
   return {
     teamId,
     teamName: team?.name ?? teamId,
-    teamSeedLabel: team?.seedLabel ?? (team ? String(team.seed) : null),
+    teamSeedLabel: team?.seedLabel ?? (team?.seed ? String(team.seed) : null),
     logoUrl: team ? teamLogoUrl(team) : null,
-    members,
+    members: [...members].sort(sortMemberPicks),
   };
 }
 
@@ -199,8 +196,8 @@ function SlotTeamLogo({ group }: { group: SlotTeamGroup }) {
 
   if (!group.logoUrl || failed) {
     return (
-      <span className="grp-picks-team-logo-fallback" aria-hidden="true">
-        {group.teamSeedLabel ?? "?"}
+      <span className="grp-sp-team-logo-fallback" aria-hidden="true">
+        {(group.teamName || "?").slice(0, 1).toUpperCase()}
       </span>
     );
   }
@@ -209,7 +206,7 @@ function SlotTeamLogo({ group }: { group: SlotTeamGroup }) {
     <img
       src={group.logoUrl}
       alt={`${group.teamName} logo`}
-      className="grp-picks-team-logo"
+      className="grp-sp-team-logo"
       loading="lazy"
       onError={() => setFailed(true)}
     />
@@ -229,21 +226,29 @@ export function GroupPicksTab({
   canPreviewHidden?: boolean;
   tournamentResults?: unknown;
 }) {
-  const [viewMode, setViewMode] = useState<PicksViewMode>("bracket");
+  const [viewMode, setViewMode] = useState<PicksViewMode>("brackets");
   const [selectedBracketIdOverride, setSelectedBracketIdOverride] = useState<string | null>(null);
   const [selectedRegion, setSelectedRegion] = useState<RegionTab>("east");
   const [selectedRound, setSelectedRound] = useState<RoundTab>("R64");
 
   const allBracketsLocked = areAllGroupBracketsLocked(standings, canPreviewHidden);
+
   const visibleStandings = useMemo(
     () => standings.filter((entry) => canSeeDetails(entry, currentUserId, canPreviewHidden)),
     [canPreviewHidden, currentUserId, standings],
   );
 
+  const bracketEntries = useMemo(
+    () =>
+      visibleStandings.filter(
+        (entry): entry is RankedStanding & { bracket_id: string; picks: LockedPicks } => Boolean(entry.bracket_id && entry.picks),
+      ),
+    [visibleStandings],
+  );
+
   const selectableBrackets = useMemo(
     () =>
-      visibleStandings
-        .filter((entry): entry is RankedStanding & { bracket_id: string; picks: LockedPicks } => Boolean(entry.bracket_id && entry.picks))
+      bracketEntries
         .map((entry) => ({
           bracketId: entry.bracket_id,
           displayName: entry.display_name,
@@ -257,7 +262,7 @@ export function GroupPicksTab({
           isCurrentUser: entry.user_id === currentUserId,
         }))
         .sort(sortSelectableBrackets),
-    [currentUserId, visibleStandings],
+    [bracketEntries, currentUserId],
   );
 
   const selectedBracketId =
@@ -275,6 +280,7 @@ export function GroupPicksTab({
           id: member.id,
           displayName: member.display_name,
           isCurrentUser: member.user_id === currentUserId,
+          submitted: member.has_submitted_bracket,
           hasBracket: member.has_assigned_bracket,
           role: member.role,
         }))
@@ -288,6 +294,7 @@ export function GroupPicksTab({
         id: entry.user_id,
         displayName: entry.display_name,
         isCurrentUser: entry.user_id === currentUserId,
+        submitted: Boolean(entry.bracket_id),
         hasBracket: Boolean(entry.bracket_id),
         role: entry.role === "admin" ? "admin" : "member",
       });
@@ -296,30 +303,26 @@ export function GroupPicksTab({
     return [...fallbackMembers.values()].sort(sortLockedMembers);
   }, [currentUserId, members, standings]);
 
-  const resolvedStandings = useMemo(
+  const resolvedBracketEntries = useMemo(
     () =>
-      visibleStandings.map((entry) => {
-        const picks = entry.picks ?? ({} as LockedPicks);
-        const { games } = resolveGames(picks);
+      bracketEntries.map((entry) => {
+        const { games } = resolveGames(entry.picks);
         return {
           entry,
           gamesById: new Map(games.map((game) => [game.id, game])),
         };
       }),
-    [visibleStandings],
+    [bracketEntries],
   );
 
-  const slotTemplates = useMemo(
-    () => getSlotTemplates(selectedRegion, selectedRound),
-    [selectedRegion, selectedRound],
-  );
+  const slotTemplates = useMemo(() => getSlotTemplates(selectedRegion, selectedRound), [selectedRegion, selectedRound]);
 
   const slotCards = useMemo<SlotCardData[]>(
     () =>
       slotTemplates.map((template) => {
         const groupsByTeam = new Map<string, MemberPick[]>();
 
-        resolvedStandings.forEach(({ entry, gamesById }) => {
+        resolvedBracketEntries.forEach(({ entry, gamesById }) => {
           const winnerId = gamesById.get(template.id)?.winnerId;
           if (!winnerId) return;
 
@@ -329,9 +332,9 @@ export function GroupPicksTab({
             isCurrentUser: entry.user_id === currentUserId,
           };
 
-          const membersForTeam = groupsByTeam.get(winnerId);
-          if (membersForTeam) {
-            membersForTeam.push(member);
+          const existing = groupsByTeam.get(winnerId);
+          if (existing) {
+            existing.push(member);
             return;
           }
           groupsByTeam.set(winnerId, [member]);
@@ -352,56 +355,63 @@ export function GroupPicksTab({
           label: getSlotLabel(template),
           groups,
           totalMembers,
-          isUnanimous: groups.length === 1 && totalMembers > 1,
+          isUnanimous:
+            groups.length === 1 &&
+            totalMembers === resolvedBracketEntries.length &&
+            resolvedBracketEntries.length > 1,
         };
       }),
-    [currentUserId, resolvedStandings, slotTemplates],
+    [currentUserId, resolvedBracketEntries, slotTemplates],
   );
 
   const roundOptions = selectedRegion === "finalfour" ? FINAL_FOUR_ROUNDS : REGIONAL_ROUNDS;
   const gridVariant = getGridVariant(selectedRegion, selectedRound);
 
   if (!allBracketsLocked) {
-    if (lockedMembers.length === 0) {
-      return (
-        <div className="gd-locked-state">
-          <span className="gd-locked-icon">🔒</span>
-          <h3>Picks are hidden until tipoff</h3>
-          <p>Members will appear here once brackets are attached to the group.</p>
-        </div>
-      );
-    }
-
     return (
-      <div className="grp-bv-locked-list">
-        {lockedMembers.map((member) => (
-          <div key={member.id} className="grp-bv-locked-row">
-            <span className="grp-bv-locked-name">{member.displayName}</span>
-            <span className="grp-bv-locked-copy">
-              {member.hasBracket ? (
-                <>
-                  <span className="grp-bv-locked-icon" aria-hidden="true">🔒</span>
-                  <span>Bracket hidden until tip-off</span>
-                </>
-              ) : (
-                <span className="grp-bv-locked-missing">No bracket selected</span>
-              )}
-            </span>
+      <div className="grp-picks-shell">
+        <div className="grp-picks-locked">
+          <div className="grp-picks-locked-icon" aria-hidden="true">
+            🔒
           </div>
-        ))}
+          <h3 className="grp-picks-locked-title">Brackets are hidden until tip-off</h3>
+          <p className="grp-picks-locked-copy">
+            Once the tournament starts, you&apos;ll be able to view everyone&apos;s bracket and compare picks.
+          </p>
+        </div>
+
+        <div className="grp-picks-locked-list">
+          {lockedMembers.map((member) => (
+            <div key={member.id} className="grp-picks-locked-row">
+              <span className="grp-picks-locked-name">
+                {member.isCurrentUser ? `${member.displayName} (You)` : member.displayName}
+              </span>
+              <span
+                className={[
+                  "grp-picks-locked-status",
+                  member.submitted ? "grp-picks-locked-status--submitted" : "",
+                ]
+                  .filter(Boolean)
+                  .join(" ")}
+              >
+                {member.submitted ? "Bracket Locked" : "Not Submitted"}
+              </span>
+            </div>
+          ))}
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="group-picks grp-picks">
-      <div className="grp-bv-toggle-row" role="tablist" aria-label="Picks view mode">
+    <div className="grp-picks-shell">
+      <div className="grp-picks-toggle-bar" role="tablist" aria-label="Picks view mode">
         <button
           type="button"
           role="tab"
-          aria-selected={viewMode === "bracket"}
-          className={`grp-bv-toggle ${viewMode === "bracket" ? "grp-bv-toggle--active" : ""}`}
-          onClick={() => setViewMode("bracket")}
+          aria-selected={viewMode === "brackets"}
+          className={`grp-picks-toggle ${viewMode === "brackets" ? "grp-picks-toggle--active" : ""}`}
+          onClick={() => setViewMode("brackets")}
         >
           View Brackets
         </button>
@@ -409,16 +419,16 @@ export function GroupPicksTab({
           type="button"
           role="tab"
           aria-selected={viewMode === "compare"}
-          className={`grp-bv-toggle ${viewMode === "compare" ? "grp-bv-toggle--active" : ""}`}
+          className={`grp-picks-toggle ${viewMode === "compare" ? "grp-picks-toggle--active" : ""}`}
           onClick={() => setViewMode("compare")}
         >
           Compare Picks
         </button>
       </div>
 
-      {viewMode === "bracket" ? (
-        <>
-          <div className="grp-bv-member-pills" role="tablist" aria-label="Select a bracket to view">
+      {viewMode === "brackets" ? (
+        <div className="grp-picks-brackets-view">
+          <div className="grp-picks-member-pills" role="tablist" aria-label="Select member bracket">
             {selectableBrackets.map((bracket) => {
               const label = bracket.isCurrentUser ? "Your Bracket" : bracket.displayName;
               const isActive = bracket.bracketId === selectedBracket?.bracketId;
@@ -429,9 +439,9 @@ export function GroupPicksTab({
                   role="tab"
                   aria-selected={isActive}
                   className={[
-                    "grp-bv-member-pill",
-                    isActive ? "grp-bv-member-pill--active" : "",
-                    bracket.isCurrentUser ? "grp-bv-member-pill--self" : "",
+                    "grp-picks-member-pill",
+                    isActive ? "grp-picks-member-pill--active" : "",
+                    bracket.isCurrentUser ? "grp-picks-member-pill--self" : "",
                   ]
                     .filter(Boolean)
                     .join(" ")}
@@ -458,22 +468,24 @@ export function GroupPicksTab({
               tournamentResults={tournamentResults}
             />
           ) : (
-            <div className="grp-bv-empty">
-              <span className="grp-bv-empty-icon">📋</span>
-              <p>No submitted brackets are available to view yet.</p>
+            <div className="grp-picks-empty">
+              <div className="grp-picks-empty-icon" aria-hidden="true">
+                📋
+              </div>
+              <p className="grp-picks-empty-copy">No submitted brackets are available to view yet.</p>
             </div>
           )}
-        </>
+        </div>
       ) : (
-        <>
-          <div className="grp-picks-region-row" role="tablist" aria-label="Pick region">
+        <div className="grp-sp-shell">
+          <div className="grp-sp-region-row" role="tablist" aria-label="Pick region">
             {REGION_OPTIONS.map((region) => (
               <button
                 key={region.id}
                 type="button"
                 role="tab"
                 aria-selected={selectedRegion === region.id}
-                className={`grp-picks-pill ${selectedRegion === region.id ? "grp-picks-pill--active" : ""}`}
+                className={`grp-sp-pill ${selectedRegion === region.id ? "grp-sp-pill--active" : ""}`}
                 onClick={() => {
                   setSelectedRegion(region.id);
                   setSelectedRound(region.id === "finalfour" ? "champion" : "R64");
@@ -484,14 +496,20 @@ export function GroupPicksTab({
             ))}
           </div>
 
-          <div className="grp-picks-round-row" role="tablist" aria-label="Pick round">
+          <div className="grp-sp-round-row" role="tablist" aria-label="Pick round">
             {roundOptions.map((round) => (
               <button
                 key={round.id}
                 type="button"
                 role="tab"
                 aria-selected={selectedRound === round.id}
-                className={`grp-picks-pill grp-picks-pill--round ${selectedRound === round.id ? "grp-picks-pill--active" : ""}`}
+                className={[
+                  "grp-sp-pill",
+                  "grp-sp-pill--round",
+                  selectedRound === round.id ? "grp-sp-pill--active" : "",
+                ]
+                  .filter(Boolean)
+                  .join(" ")}
                 onClick={() => setSelectedRound(round.id)}
               >
                 {round.label}
@@ -499,34 +517,35 @@ export function GroupPicksTab({
             ))}
           </div>
 
-          <div className={`grp-picks-slot-grid grp-picks-slot-grid--${gridVariant}`}>
+          <div className={`grp-sp-grid grp-sp-grid--${gridVariant}`}>
             {slotCards.map((slotCard) => (
-              <article key={slotCard.id} className="grp-picks-slot-card">
-                <div className="grp-picks-slot-label">{slotCard.label}</div>
+              <article key={slotCard.id} className="grp-sp-card">
+                <div className="grp-sp-card-label">{slotCard.label}</div>
 
                 {slotCard.groups.length === 0 ? (
-                  <p className="grp-picks-slot-empty">No picks yet.</p>
+                  <p className="grp-sp-empty">No picks yet.</p>
                 ) : (
-                  <div className="grp-picks-slot-groups">
-                    {slotCard.groups.map((group) => (
-                      <div key={`${slotCard.id}-${group.teamId}`} className="grp-picks-team-group">
-                        <div className="grp-picks-team-row">
+                  <div className="grp-sp-groups">
+                    {slotCard.groups.map((group, index) => (
+                      <div key={`${slotCard.id}-${group.teamId}`} className="grp-sp-team-group">
+                        {index > 0 ? <div className="grp-sp-divider" /> : null}
+
+                        <div className="grp-sp-team-row">
                           <SlotTeamLogo group={group} />
-                          <span className="grp-picks-team-name">{group.teamName}</span>
-                          {slotCard.isUnanimous ? <span className="grp-picks-unanimous">UNANIMOUS</span> : null}
-                          {group.teamSeedLabel ? <span className="grp-picks-team-seed">#{group.teamSeedLabel}</span> : null}
+                          <div className="grp-sp-team-copy">
+                            <span className="grp-sp-team-name">{group.teamName}</span>
+                            {slotCard.isUnanimous ? <span className="grp-sp-unanimous">UNANIMOUS</span> : null}
+                          </div>
+                          {group.teamSeedLabel ? <span className="grp-sp-team-seed">#{group.teamSeedLabel}</span> : null}
                         </div>
 
-                        <div className="grp-picks-member-row">
+                        <div className="grp-sp-chip-row">
                           {group.members.map((member) => (
                             <span
                               key={`${slotCard.id}-${group.teamId}-${member.userId}`}
-                              className={`grp-picks-member-chip ${member.isCurrentUser ? "grp-picks-member-chip--you" : ""}`}
+                              className={`grp-sp-chip ${member.isCurrentUser ? "grp-sp-chip--you" : ""}`}
                             >
-                              <span className="grp-picks-member-avatar" aria-hidden="true">
-                                {getDisplayInitials(member.displayName)}
-                              </span>
-                              <span className="grp-picks-member-name">{member.displayName}</span>
+                              {member.displayName}
                             </span>
                           ))}
                         </div>
@@ -537,7 +556,7 @@ export function GroupPicksTab({
               </article>
             ))}
           </div>
-        </>
+        </div>
       )}
     </div>
   );
