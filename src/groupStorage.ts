@@ -437,8 +437,47 @@ export async function getGroupStandings(groupId: string) {
     }
 
     const standings = (result.data as GroupStanding[] | null) ?? [];
-    writeCachedValue(cacheKey, standings);
-    return { data: standings, error: null };
+    const bracketIds = [...new Set(standings.map((entry) => entry.bracket_id).filter((value): value is string => Boolean(value)))];
+    let hydratedStandings = standings;
+
+    if (bracketIds.length > 0) {
+      try {
+        const bracketsResult = await withTimeout(
+          supabase
+            .from("brackets")
+            .select("id, picks, bracket_name, is_locked")
+            .in("id", bracketIds),
+          GROUP_COUNTS_QUERY_TIMEOUT_MS,
+          "Timed out loading live bracket standings."
+        );
+
+        if (!bracketsResult.error) {
+          const bracketMap = new Map(
+            (((bracketsResult.data ?? []) as Array<{
+              id: string;
+              picks?: LockedPicks | null;
+              bracket_name?: string | null;
+              is_locked?: boolean | null;
+            }>)).map((bracket) => [bracket.id, bracket])
+          );
+
+          hydratedStandings = standings.map((entry) => {
+            const liveBracket = entry.bracket_id ? bracketMap.get(entry.bracket_id) : null;
+            if (!liveBracket) return entry;
+            return {
+              ...entry,
+              picks: (liveBracket.picks ?? entry.picks ?? null) as LockedPicks | null,
+              bracket_name: liveBracket.bracket_name ?? entry.bracket_name,
+              is_locked: typeof liveBracket.is_locked === "boolean" ? liveBracket.is_locked : entry.is_locked,
+            } satisfies GroupStanding;
+          });
+        }
+      } catch {
+        // If the live bracket hydration fails, fall back to the standings view payload.
+      }
+    }
+    writeCachedValue(cacheKey, hydratedStandings);
+    return { data: hydratedStandings, error: null };
   } catch (error) {
     return { data: cachedStandings ?? [], error: { message: (error as Error).message } };
   }
