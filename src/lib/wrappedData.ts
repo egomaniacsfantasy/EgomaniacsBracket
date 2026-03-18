@@ -14,6 +14,7 @@ export interface WrappedData {
   identity: {
     chaosLabel: string;
     chaosEmoji: string;
+    chaosMeterPct: number;
     chaosPercentile: number;
     chaosScore: number;
     numUpsets: number;
@@ -343,6 +344,13 @@ export function computeWrappedData(args: {
     }
   }
 
+  const decidedNonPlayInGames = resolvedGames.filter(
+    (game) => game.round !== "FF" && Boolean(game.winnerId)
+  ).length;
+  const chaosMeterPct = decidedNonPlayInGames > 0
+    ? Math.max(0, Math.min(100, Math.round((chaosScore / decidedNonPlayInGames) * 100)))
+    : 0;
+
   // =========================================================================
   // CARD 2: BOLDEST PICK
   // =========================================================================
@@ -589,6 +597,7 @@ export function computeWrappedData(args: {
     identity: {
       chaosLabel,
       chaosEmoji,
+      chaosMeterPct,
       chaosPercentile,
       chaosScore,
       numUpsets,

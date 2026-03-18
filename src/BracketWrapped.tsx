@@ -320,6 +320,8 @@ function Screen1Identity({
 }: {
   identity: WrappedData["identity"];
 }) {
+  const spectrumPct = Math.max(2, Math.min(98, identity.chaosMeterPct));
+
   return (
     <div className="bw-content bw-content--identity">
       <span className="bw-pre-label">THE GODS HAVE SPOKEN</span>
@@ -334,11 +336,11 @@ function Screen1Identity({
         <div className="bw-spectrum-track">
           <div
             className="bw-spectrum-fill"
-            style={{ width: `${Math.max(2, Math.min(98, identity.chaosPercentile))}%` }}
+            style={{ width: `${spectrumPct}%` }}
           />
           <div
             className="bw-spectrum-marker"
-            style={{ left: `${Math.max(2, Math.min(98, identity.chaosPercentile))}%` }}
+            style={{ left: `${spectrumPct}%` }}
           />
         </div>
       </div>
