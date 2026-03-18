@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import { useAuth } from "./AuthContext";
 import { getGroupByCode, joinGroup, type GroupRow } from "./groupStorage";
 import { getUserBrackets, type SavedBracket } from "./bracketStorage";
-import { extractInviteCode } from "./lib/inviteCode";
+import { extractInviteCode, INVITE_CODE_LENGTH } from "./lib/inviteCode";
 
 export function JoinGroupModal({
   isOpen,
@@ -26,6 +26,7 @@ export function JoinGroupModal({
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [joinedWithoutBracket, setJoinedWithoutBracket] = useState(false);
+  const normalizedInitialCode = extractInviteCode(initialCode);
 
   const lookupGroup = useCallback(async (lookupCodeRaw: string) => {
     const lookupCode = extractInviteCode(lookupCodeRaw);
@@ -64,16 +65,20 @@ export function JoinGroupModal({
 
   // Auto-lookup once user is available (key prop ensures initialCode is baked into state on mount)
   useEffect(() => {
-    if (!isOpen || !initialCode || step !== "code" || !user) return;
+    if (!isOpen || !normalizedInitialCode || step !== "code" || !user) return;
 
     const timeoutId = window.setTimeout(() => {
-      void lookupGroup(initialCode);
+      void lookupGroup(normalizedInitialCode);
     }, 100);
 
     return () => window.clearTimeout(timeoutId);
-  }, [initialCode, isOpen, lookupGroup, step, user]);
+  }, [isOpen, lookupGroup, normalizedInitialCode, step, user]);
 
   function handleLookup() {
+    if (code.trim().length !== INVITE_CODE_LENGTH) {
+      setError(`Enter the full ${INVITE_CODE_LENGTH}-character invite code.`);
+      return;
+    }
     if (!user) {
       // Not logged in — request auth first
       onRequestAuth?.(code);
@@ -162,7 +167,7 @@ export function JoinGroupModal({
             <button
               className="group-cta-btn"
               onClick={handleLookup}
-              disabled={code.trim().length < 4 || loading}
+              disabled={code.trim().length !== INVITE_CODE_LENGTH || loading}
             >
               {loading ? "Looking up..." : "Find Group"}
             </button>

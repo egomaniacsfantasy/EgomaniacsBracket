@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState, type FormEvent, type MouseEvent } from "react";
 import { useAuth } from "./AuthContext";
+import { buildAuthRedirectUrl } from "./authRedirectUrl";
 import { MAX_SUBMITTED_BRACKETS } from "./bracketStorage";
 import { supabase } from "./supabaseClient";
 import { captureError } from "./lib/errorMonitoring";
@@ -14,7 +15,7 @@ export type AuthContext = "submit" | "default" | "groups" | "join";
 
 type Mode = "signup" | "signin" | "verify-otp" | "check-email" | "forgot" | "forgot-sent";
 
-const OTP_LENGTH = 8;
+const OTP_LENGTH = 6;
 
 function getFriendlyAuthError(error: { message?: string } | null | undefined): string {
   const raw = error?.message ?? "";
@@ -350,7 +351,7 @@ export function AuthModal({
         type: "signup",
         email: email.trim(),
         options: {
-          emailRedirectTo: window.location.origin,
+          emailRedirectTo: buildAuthRedirectUrl({ includePendingJoinCode: context === "join" }),
         },
       });
 
@@ -386,7 +387,7 @@ export function AuthModal({
       const { error: verifyError } = await supabase.auth.verifyOtp({
         email: email.trim(),
         token: code,
-        type: "signup",
+        type: "email",
       });
 
       setVerifyingOtp(false);
@@ -416,7 +417,9 @@ export function AuthModal({
     if (password.length < 6) return setError("Password must be at least 6 characters");
 
     setSubmitting(true);
-    const authResult = await signUp(email.trim(), displayName.trim(), password);
+    const authResult = await signUp(email.trim(), displayName.trim(), password, {
+      includePendingJoinCode: context === "join",
+    });
     const authError = authResult.error;
     setSubmitting(false);
     if (authError) return setError(getFriendlyAuthError(authError as { message?: string }));
@@ -497,7 +500,7 @@ export function AuthModal({
 
     onBeforeGoogleSignIn?.();
     setSubmitting(true);
-    const authResult = await signInWithGoogle();
+    const authResult = await signInWithGoogle({ includePendingJoinCode: context === "join" });
     setSubmitting(false);
 
     if (authResult.error) {
@@ -518,7 +521,7 @@ export function AuthModal({
             <span className="auth-modal-icon">✉</span>
             <h3 className="auth-modal-title">Enter your code</h3>
             <p className="auth-modal-subtitle">
-              We sent a {OTP_LENGTH}-digit code to <strong>{email}</strong>
+              We sent a verification code to <strong>{email}</strong>
             </p>
             <form onSubmit={handleVerifyOtp}>
               <OtpInput

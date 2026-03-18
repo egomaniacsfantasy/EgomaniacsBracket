@@ -65,15 +65,36 @@ const regionSections: Region[][] = BRACKET_HALVES.map((half) => [...half.regions
 const mobileRegionOrder: Region[] = ["East", "West", "Midwest", "South"];
 const invertedRegions = new Set<Region>([regionSections[0][1], regionSections[1][1]]);
 
-function getInviteCodeFromUrl(url: URL): string {
+function getInviteCodeFromUrl(url: URL): {
+  code: string;
+  removeJoinParam: boolean;
+  removeLegacyCodeParam: boolean;
+} {
   const joinCode = extractInviteCode(url.searchParams.get("join"));
-  if (joinCode) return joinCode;
+  if (joinCode) {
+    return {
+      code: joinCode,
+      removeJoinParam: true,
+      removeLegacyCodeParam: false,
+    };
+  }
 
   const legacyCode = url.searchParams.get("code");
   // OAuth callbacks also use `code`, so only honor the legacy param when it already
   // looks exactly like one of our 8-character invite codes.
-  if (!legacyCode || !/^[A-Za-z0-9]{8}$/.test(legacyCode.trim())) return "";
-  return extractInviteCode(legacyCode);
+  if (!legacyCode || !/^[A-Za-z0-9]{8}$/.test(legacyCode.trim())) {
+    return {
+      code: "",
+      removeJoinParam: false,
+      removeLegacyCodeParam: false,
+    };
+  }
+
+  return {
+    code: extractInviteCode(legacyCode),
+    removeJoinParam: false,
+    removeLegacyCodeParam: true,
+  };
 }
 
 const ConferenceTournaments = lazy(() =>
@@ -979,12 +1000,13 @@ function App() {
     if (typeof window === "undefined") return;
 
     const url = new URL(window.location.href);
-    const code = getInviteCodeFromUrl(url);
+    const invite = getInviteCodeFromUrl(url);
+    const code = invite.code;
     if (code) {
       setJoinCode(code);
       sessionStorage.setItem("pendingJoinCode", code);
-      url.searchParams.delete("join");
-      url.searchParams.delete("code");
+      if (invite.removeJoinParam) url.searchParams.delete("join");
+      if (invite.removeLegacyCodeParam) url.searchParams.delete("code");
       window.history.replaceState({}, "", `${url.pathname}${url.search}${url.hash}`);
     } else {
       const saved = sessionStorage.getItem("pendingJoinCode");

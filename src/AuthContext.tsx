@@ -3,6 +3,7 @@ import type { ReactNode } from "react";
 import type { User } from "@supabase/supabase-js";
 import { supabase } from "./supabaseClient";
 import { saveBracket } from "./bracketStorage";
+import { buildAuthRedirectUrl } from "./authRedirectUrl";
 import { captureError } from "./lib/errorMonitoring";
 
 type Profile = {
@@ -13,9 +14,14 @@ type AuthContextValue = {
   user: User | null;
   profile: Profile | null;
   loading: boolean;
-  signUp: (email: string, displayName: string, password: string) => Promise<{ data: unknown; error: unknown }>;
+  signUp: (
+    email: string,
+    displayName: string,
+    password: string,
+    options?: { includePendingJoinCode?: boolean }
+  ) => Promise<{ data: unknown; error: unknown }>;
   signIn: (email: string, password: string) => Promise<{ data: unknown; error: unknown }>;
-  signInWithGoogle: () => Promise<{ data: unknown; error: unknown }>;
+  signInWithGoogle: (options?: { includePendingJoinCode?: boolean }) => Promise<{ data: unknown; error: unknown }>;
   isDisplayNameAvailable: (displayName: string, excludeUserId?: string | null) => Promise<{ available: boolean; error: unknown }>;
   signOut: () => Promise<void>;
   isAuthenticated: boolean;
@@ -143,7 +149,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     };
   }, []);
 
-  const signUp = async (email: string, displayName: string, password: string) => {
+  const signUp = async (
+    email: string,
+    displayName: string,
+    password: string,
+    options?: { includePendingJoinCode?: boolean },
+  ) => {
     const normalizedDisplayName = displayName.trim();
     const { data: existingName, error: existingNameError } = await supabase
       .from("profiles")
@@ -159,7 +170,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       password,
       options: {
         data: { display_name: normalizedDisplayName },
-        emailRedirectTo: window.location.origin,
+        emailRedirectTo: buildAuthRedirectUrl({ includePendingJoinCode: options?.includePendingJoinCode }),
       },
     });
 
@@ -172,7 +183,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const { error: resendError } = await supabase.auth.resend({
         type: "signup",
         email,
-        options: { emailRedirectTo: window.location.origin },
+        options: { emailRedirectTo: buildAuthRedirectUrl({ includePendingJoinCode: options?.includePendingJoinCode }) },
       });
       if (resendError) {
         // If resend also fails, the account likely already exists and is confirmed
@@ -193,16 +204,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return { data, error };
   };
 
-  const signInWithGoogle = async () => {
-    const redirectTo =
-      typeof window === "undefined"
-        ? undefined
-        : `${window.location.origin}${window.location.pathname}`;
-
+  const signInWithGoogle = async (options?: { includePendingJoinCode?: boolean }) => {
     const { data, error } = await supabase.auth.signInWithOAuth({
       provider: "google",
       options: {
-        redirectTo,
+        redirectTo: buildAuthRedirectUrl({ includePendingJoinCode: options?.includePendingJoinCode }),
       },
     });
     return { data, error };
