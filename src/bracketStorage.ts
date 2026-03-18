@@ -1,5 +1,9 @@
 import { supabase } from "./supabaseClient";
-import { getModelGameWinProb, resolveGames, type LockedPicks } from "./lib/bracket";
+import { getModelGameWinProb, type LockedPicks } from "./lib/bracket";
+import {
+  getBracketCompletionSummary,
+  resolveBracketWithKnownResults,
+} from "./lib/bracketCompletion";
 import { teamsById } from "./data/teams";
 
 export type LeaderboardFinalFourTeam = {
@@ -156,6 +160,7 @@ export async function saveBracket(
 ) {
   const shouldSubmit = options.submit ?? true;
   const serialized = serializePicks(picks);
+  const completion = getBracketCompletionSummary(serialized);
   const meta = extractBracketMeta(serialized);
   const derivedChaosScore = typeof chaosScore === "number" ? chaosScore : computeChaosScoreForPicks(serialized);
   const normalizedChaosScore = Math.round(derivedChaosScore * 10) / 10;
@@ -254,6 +259,14 @@ export async function saveBracket(
   }
 
   if (shouldSubmit) {
+    if (!completion.isComplete) {
+      return {
+        data: null,
+        error: {
+          message: `Complete the full bracket before submitting. ${completion.remainingSubmittableGames} required pick${completion.remainingSubmittableGames !== 1 ? "s" : ""} remaining.`,
+        },
+      };
+    }
     const { count, error: countError } = await supabase
       .from("brackets")
       .select("id", { count: "exact", head: true })
@@ -341,7 +354,7 @@ export async function setBracketSubmissionStatus(bracketId: string, userId: stri
   };
   const { data: bracket, error: existingError } = await supabase
     .from("brackets")
-    .select("id, is_locked")
+    .select("id, is_locked, picks")
     .eq("id", bracketId)
     .eq("user_id", userId)
     .single();
@@ -351,6 +364,16 @@ export async function setBracketSubmissionStatus(bracketId: string, userId: stri
   }
 
   if (submit) {
+    const completion = getBracketCompletionSummary(
+      ((bracket as { picks?: LockedPicks | null } | null)?.picks ?? {}) as LockedPicks
+    );
+    if (!completion.isComplete) {
+      return {
+        error: {
+          message: `Complete the full bracket before submitting. ${completion.remainingSubmittableGames} required pick${completion.remainingSubmittableGames !== 1 ? "s" : ""} remaining.`,
+        },
+      };
+    }
     const { count, error: countError } = await supabase
       .from("brackets")
       .select("id", { count: "exact", head: true })
@@ -582,7 +605,7 @@ export const formatChaosScore = (score: number | null | undefined): string => {
 };
 
 export function computeChaosScoreForPicks(picks: LockedPicks): number {
-  const { games } = resolveGames(picks);
+  const { games } = resolveBracketWithKnownResults(picks);
   let total = 0;
   for (const game of games) {
     if (!game.winnerId) continue;
@@ -594,7 +617,7 @@ export function computeChaosScoreForPicks(picks: LockedPicks): number {
 }
 
 export function extractBracketMeta(picks: LockedPicks): BracketMeta {
-  const { games } = resolveGames(picks);
+  const { games } = resolveBracketWithKnownResults(picks);
   const champGame = games.find((game) => game.round === "CHAMP");
   const champion = champGame?.winnerId ? teamsById.get(champGame.winnerId) ?? null : null;
 

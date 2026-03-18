@@ -10,8 +10,8 @@ import {
   saveBracket,
 } from "./bracketStorage";
 import { getUserGroups, updateMemberBracket, type UserGroup } from "./groupStorage";
-import { gameTemplates } from "./data/bracket";
 import type { LockedPicks } from "./lib/bracket";
+import { getBracketCompletionSummary } from "./lib/bracketCompletion";
 
 export function MyBracketsModal({
   isOpen,
@@ -30,7 +30,6 @@ export function MyBracketsModal({
   currentPicks: LockedPicks;
   currentChaosScore: number;
 }) {
-  const totalGames = gameTemplates.length;
   const { user } = useAuth();
   const [brackets, setBrackets] = useState<SavedBracket[]>([]);
   const [userGroups, setUserGroups] = useState<UserGroup[]>([]);
@@ -100,6 +99,13 @@ export function MyBracketsModal({
 
   const handleSaveNew = async () => {
     if (!user) return;
+    const completion = getBracketCompletionSummary(currentPicks);
+    if (!completion.isComplete) {
+      setActionError(
+        `Complete the full bracket before submitting. ${completion.remainingSubmittableGames} required pick${completion.remainingSubmittableGames !== 1 ? "s" : ""} remaining.`
+      );
+      return;
+    }
     setWorkingAction("submit:new");
     setActionError(null);
     const submittedCount = brackets.filter((bracket) => Boolean(bracket.submitted_at)).length;
@@ -116,6 +122,15 @@ export function MyBracketsModal({
   };
 
   const openGroupPicker = (bracketId: string) => {
+    const candidate = brackets.find((bracket) => bracket.id === bracketId);
+    if (!candidate) return;
+    const completion = getBracketCompletionSummary(candidate.picks ?? {});
+    if (!completion.isComplete) {
+      setActionError(
+        `Complete the full bracket before using it in a group. ${completion.remainingSubmittableGames} required pick${completion.remainingSubmittableGames !== 1 ? "s" : ""} remaining.`
+      );
+      return;
+    }
     setGroupPickerBracketId(bracketId);
     setGroupPickerSavingGroupId(null);
     setGroupPickerError(null);
@@ -171,8 +186,7 @@ export function MyBracketsModal({
         ) : (
           <div className="my-brackets-list">
             {brackets.map((bracket) => {
-              const pickCount = Object.keys(bracket.picks ?? {}).length;
-              const completionPct = Math.round((pickCount / totalGames) * 100);
+              const completion = getBracketCompletionSummary(bracket.picks ?? {});
               const isEditing = editingName === bracket.id;
               const assignedGroups = bracketGroups[bracket.id] ?? [];
               return (
@@ -207,11 +221,11 @@ export function MyBracketsModal({
 
                   <div className="my-bracket-stats-row">
                     <div className="my-bracket-stat">
-                      <span className="my-bracket-stat-value">{pickCount}/{totalGames}</span>
+                      <span className="my-bracket-stat-value">{completion.completedGames}/{completion.totalGames}</span>
                       <span className="my-bracket-stat-label">picks</span>
                     </div>
                     <div className="my-bracket-stat">
-                      <span className="my-bracket-stat-value">{completionPct}%</span>
+                      <span className="my-bracket-stat-value">{completion.completionPct}%</span>
                       <span className="my-bracket-stat-label">complete</span>
                     </div>
                     <div className="my-bracket-stat">
@@ -221,7 +235,7 @@ export function MyBracketsModal({
                   </div>
 
                   <div className="my-bracket-progress-track">
-                    <div className="my-bracket-progress-fill" style={{ width: `${completionPct}%` }} />
+                    <div className="my-bracket-progress-fill" style={{ width: `${completion.completionPct}%` }} />
                   </div>
 
                   {assignedGroups.length > 0 ? (
@@ -267,7 +281,8 @@ export function MyBracketsModal({
                         {userGroups.length > 0 ? (
                           <button
                             className="my-bracket-action-secondary"
-                            disabled={workingAction !== null}
+                            disabled={workingAction !== null || !completion.isComplete}
+                            title={!completion.isComplete ? "Complete the full bracket before using it in a group." : undefined}
                             onClick={() => openGroupPicker(bracket.id)}
                           >
                             {assignedGroups.length > 0 ? "Change Group Bracket" : "Use in Group"}

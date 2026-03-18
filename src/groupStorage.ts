@@ -1,5 +1,6 @@
 import { supabase } from "./supabaseClient";
 import { resolveGames, type LockedPicks } from "./lib/bracket";
+import { getBracketCompletionSummary } from "./lib/bracketCompletion";
 import { teamsById } from "./data/teams";
 import { teamLogoUrl } from "./lib/logo";
 import { extractInviteCode } from "./lib/inviteCode";
@@ -76,6 +77,34 @@ const GROUP_COUNTS_QUERY_TIMEOUT_MS = 3500;
 const USER_GROUPS_CACHE_PREFIX = "og_user_groups_v1";
 const GROUP_STANDINGS_CACHE_PREFIX = "og_group_standings_v1";
 const GROUP_MEMBERS_CACHE_PREFIX = "og_group_members_v1";
+
+async function validateGroupBracketSelection(userId: string, bracketId: string) {
+  const { data: bracket, error } = await supabase
+    .from("brackets")
+    .select("id, picks")
+    .eq("id", bracketId)
+    .eq("user_id", userId)
+    .maybeSingle();
+
+  if (error) return { error };
+  if (!bracket) {
+    return { error: { message: "Bracket not found. Please reload and try again." } };
+  }
+
+  const completion = getBracketCompletionSummary(
+    ((bracket as { picks?: LockedPicks | null }).picks ?? {}) as LockedPicks
+  );
+
+  if (!completion.isComplete) {
+    return {
+      error: {
+        message: `Complete the full bracket before using it in a group. ${completion.remainingSubmittableGames} required pick${completion.remainingSubmittableGames !== 1 ? "s" : ""} remaining.`,
+      },
+    };
+  }
+
+  return { error: null };
+}
 
 type CachedValue<T> = {
   savedAt: number;
@@ -202,6 +231,11 @@ export async function joinGroup(inviteCode: string, userId: string, bracketId: s
     return { data: null, error: { message: "You're already in this group." } };
   }
 
+  if (bracketId) {
+    const { error: bracketError } = await validateGroupBracketSelection(userId, bracketId);
+    if (bracketError) return { data: null, error: bracketError };
+  }
+
   const { data: membership, error: joinError } = await supabase
     .from("group_members")
     .insert({
@@ -227,6 +261,11 @@ export async function joinGroup(inviteCode: string, userId: string, bracketId: s
 }
 
 export async function joinOwnGroup(groupId: string, userId: string, bracketId: string | null) {
+  if (bracketId) {
+    const { error: bracketError } = await validateGroupBracketSelection(userId, bracketId);
+    if (bracketError) return { data: null, error: bracketError };
+  }
+
   const { data, error } = await supabase
     .from("group_members")
     .insert({
@@ -530,6 +569,9 @@ export async function getGroupByCode(inviteCode: string) {
 }
 
 export async function updateMemberBracket(groupId: string, userId: string, bracketId: string) {
+  const { error: bracketError } = await validateGroupBracketSelection(userId, bracketId);
+  if (bracketError) return { data: null, error: bracketError };
+
   const { error } = await supabase
     .from("group_members")
     .update({ bracket_id: bracketId })

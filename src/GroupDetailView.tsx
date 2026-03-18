@@ -20,6 +20,7 @@ import { BracketViewer } from "./BracketViewer";
 import { GROUP_EMOJIS } from "./constants";
 import { hasElevatedAccess } from "./groupVisibility";
 import { captureError } from "./lib/errorMonitoring";
+import { getBracketCompletionSummary } from "./lib/bracketCompletion";
 
 type RankedStanding = GroupStanding & { groupRank: number };
 
@@ -187,6 +188,10 @@ export function GroupDetailView({
       setBracketPickerError("You need at least one saved bracket. Save your current bracket first!");
       return;
     }
+    if (!data.some((bracket) => getBracketCompletionSummary(bracket.picks ?? {}).isComplete)) {
+      setBracketPickerError("Complete a full bracket before entering it into a group.");
+      return;
+    }
     setShowBracketPicker(true);
   }
 
@@ -225,6 +230,18 @@ export function GroupDetailView({
 
   async function handleConfirmBracket() {
     if (!group || !user || !selectedBracket) return;
+    const selected = brackets.find((bracket) => bracket.id === selectedBracket);
+    if (!selected) {
+      setBracketPickerError("Bracket not found. Please reload and try again.");
+      return;
+    }
+    const completion = getBracketCompletionSummary(selected.picks ?? {});
+    if (!completion.isComplete) {
+      setBracketPickerError(
+        `Complete the full bracket before using it in a group. ${completion.remainingSubmittableGames} required pick${completion.remainingSubmittableGames !== 1 ? "s" : ""} remaining.`
+      );
+      return;
+    }
     setBracketPickerLoading(true);
     const { error } = await updateMemberBracket(group.id, user.id, selectedBracket);
     if (error) {
@@ -428,24 +445,31 @@ export function GroupDetailView({
             </div>
             <div className="group-modal-body">
               <div className="group-bracket-list">
-                {brackets.map((b) => (
-                  <button
-                    key={b.id}
-                    className={`group-bracket-option ${selectedBracket === b.id ? "group-bracket-option--selected" : ""}`}
-                    onClick={() => setSelectedBracket(b.id)}
-                  >
-                    <div className="group-bracket-option-info">
-                      <span className="group-bracket-option-name">{b.bracket_name}</span>
-                      <span className="group-bracket-option-meta">
-                        {Object.keys(b.picks || {}).length} picks
-                        {b.is_locked && " · 🔒 Locked"}
-                      </span>
-                    </div>
-                    <div
-                      className={`group-bracket-radio ${selectedBracket === b.id ? "group-bracket-radio--checked" : ""}`}
-                    />
-                  </button>
-                ))}
+                {brackets.map((b) => {
+                  const completion = getBracketCompletionSummary(b.picks ?? {});
+                  return (
+                    <button
+                      key={b.id}
+                      className={`group-bracket-option ${selectedBracket === b.id ? "group-bracket-option--selected" : ""}`}
+                      disabled={!completion.isComplete}
+                      onClick={() => setSelectedBracket(b.id)}
+                    >
+                      <div className="group-bracket-option-info">
+                        <span className="group-bracket-option-name">{b.bracket_name}</span>
+                        <span className="group-bracket-option-meta">
+                          {completion.completedGames}/{completion.totalGames} picks
+                          {!completion.isComplete
+                            ? ` · ${completion.remainingSubmittableGames} required pick${completion.remainingSubmittableGames !== 1 ? "s" : ""} remaining`
+                            : ""}
+                          {b.is_locked && " · 🔒 Locked"}
+                        </span>
+                      </div>
+                      <div
+                        className={`group-bracket-radio ${selectedBracket === b.id ? "group-bracket-radio--checked" : ""}`}
+                      />
+                    </button>
+                  );
+                })}
               </div>
               {bracketPickerError && <p className="group-error">{bracketPickerError}</p>}
             </div>
