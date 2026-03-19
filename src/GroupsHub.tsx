@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import { createPortal } from "react-dom";
 import { useAuth } from "./AuthContext";
 import { BRACKET_PREDS_2026 } from "./data/bracketPreds2026";
+import { NCAA_KNOWN_RESULT_IDS } from "./data/ncaaKnownResults";
 import { teams } from "./data/teams";
 import { getCachedUserGroups, getUserGroups, type UserGroup } from "./groupStorage";
 import { captureError } from "./lib/errorMonitoring";
@@ -127,7 +128,7 @@ export function GroupsHub({
 
   if (!isOpen) return null;
 
-  const showEntryCtas = !submissionsLocked;
+  const showEntryCtas = !submissionsLocked && NCAA_KNOWN_RESULT_IDS.size === 0;
 
   const content = (
     <section className="grp-hub-screen" aria-labelledby="groups-hub-title">
