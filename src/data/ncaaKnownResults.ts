@@ -10,6 +10,7 @@ export const NCAA_KNOWN_RESULTS: LockedPicks = {
   "Midwest-FF-16": "Midwest-16b", // Howard (16b) def UMBC (16a)
   "West-FF-11": "West-11b", // Texas (11b) def NC State (11a)
   "East-R64-1": "East-9", // TCU (9) def Ohio St (8)
+  "South-R64-3": "South-4", // Nebraska (4) def Troy (13)
 };
 
 export const NCAA_KNOWN_RESULT_IDS = new Set(Object.keys(NCAA_KNOWN_RESULTS));
