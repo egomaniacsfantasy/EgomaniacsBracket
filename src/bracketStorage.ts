@@ -155,7 +155,40 @@ type LeaderboardDisplayMeta = {
   runner_up_logo_url: string | null;
 };
 
+function getDirectTitlePickMeta(picks: LockedPicks | null | undefined): LeaderboardDisplayMeta | null {
+  if (!picks) return null;
+  const championId = typeof picks["CHAMP-0"] === "string" ? picks["CHAMP-0"] : null;
+  const leftFinalistId = typeof picks["F4-Left-0"] === "string" ? picks["F4-Left-0"] : null;
+  const rightFinalistId = typeof picks["F4-Right-0"] === "string" ? picks["F4-Right-0"] : null;
+  if (!championId) return null;
+
+  const champion = teamsById.get(championId) ?? null;
+  const runnerUpId =
+    championId && leftFinalistId && rightFinalistId
+      ? championId === leftFinalistId
+        ? rightFinalistId
+        : championId === rightFinalistId
+          ? leftFinalistId
+          : null
+      : null;
+  const runnerUp = runnerUpId ? teamsById.get(runnerUpId) ?? null : null;
+
+  return {
+    champion_name: champion?.name ?? null,
+    champion_seed: champion?.seed ?? null,
+    champion_logo_url: champion ? teamLogoUrl(champion) : null,
+    runner_up_name: runnerUp?.name ?? null,
+    runner_up_seed: runnerUp?.seed ?? null,
+    runner_up_logo_url: runnerUp ? teamLogoUrl(runnerUp) : null,
+  };
+}
+
 function deriveLeaderboardDisplayMeta(picks: LockedPicks | null | undefined): LeaderboardDisplayMeta {
+  const directMeta = getDirectTitlePickMeta(picks);
+  if (directMeta?.champion_name) {
+    return directMeta;
+  }
+
   const { games } = resolveBracketWithKnownResults(picks ?? {});
   const champGame = games.find((game) => game.round === "CHAMP");
   const championId = champGame?.winnerId ?? null;
@@ -858,7 +891,12 @@ export function computeChaosScoreForPicks(picks: LockedPicks): number {
 export function extractBracketMeta(picks: LockedPicks): BracketMeta {
   const { games } = resolveBracketWithKnownResults(picks);
   const champGame = games.find((game) => game.round === "CHAMP");
-  const champion = champGame?.winnerId ? teamsById.get(champGame.winnerId) ?? null : null;
+  const directTitleMeta = getDirectTitlePickMeta(picks);
+  const champion =
+    (directTitleMeta?.champion_name
+      ? [...teamsById.values()].find((team) => team.name === directTitleMeta.champion_name) ?? null
+      : null) ??
+    (champGame?.winnerId ? teamsById.get(champGame.winnerId) ?? null : null);
 
   const finalFour = games
     .filter((game) => game.round === "E8")
@@ -892,9 +930,9 @@ export function extractBracketMeta(picks: LockedPicks): BracketMeta {
   }
 
   return {
-    champion_name: champion?.name ?? null,
-    champion_seed: champion?.seed ?? null,
-    champion_logo_url: champion?.logoUrl ?? null,
+    champion_name: directTitleMeta?.champion_name ?? champion?.name ?? null,
+    champion_seed: directTitleMeta?.champion_seed ?? champion?.seed ?? null,
+    champion_logo_url: directTitleMeta?.champion_logo_url ?? champion?.logoUrl ?? null,
     champion_eliminated: false,
     final_four: finalFour,
     boldest_pick: boldest,

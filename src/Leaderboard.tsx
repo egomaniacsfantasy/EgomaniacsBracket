@@ -120,6 +120,18 @@ function getRunnerUpDisplay(entry: LeaderboardEntry): PickDisplay | null {
 
   const picks = entry.picks ?? null;
   if (!picks) return null;
+  const championId = typeof picks["CHAMP-0"] === "string" ? picks["CHAMP-0"] : null;
+  const leftFinalistId = typeof picks["F4-Left-0"] === "string" ? picks["F4-Left-0"] : null;
+  const rightFinalistId = typeof picks["F4-Right-0"] === "string" ? picks["F4-Right-0"] : null;
+  if (championId && leftFinalistId && rightFinalistId) {
+    const runnerUpId =
+      championId === leftFinalistId ? rightFinalistId : championId === rightFinalistId ? leftFinalistId : null;
+    const runnerUpTeam = runnerUpId ? teams.find((team) => team.id === runnerUpId) : null;
+    if (runnerUpTeam) {
+      return buildPickDisplay(runnerUpTeam.name, runnerUpTeam.seed, teamLogoUrl(runnerUpTeam));
+    }
+  }
+
   const { games } = resolveBracketWithKnownResults(picks);
   const champGame = games.find((game) => game.round === "CHAMP");
   if (!champGame?.winnerId || !champGame.teamAId || !champGame.teamBId) return null;
@@ -135,6 +147,14 @@ function getChampionDisplay(entry: LeaderboardEntry): PickDisplay | null {
 
   const picks = entry.picks ?? null;
   if (!picks) return null;
+  const championId = typeof picks["CHAMP-0"] === "string" ? picks["CHAMP-0"] : null;
+  if (championId) {
+    const championTeam = teams.find((team) => team.id === championId);
+    if (championTeam) {
+      return buildPickDisplay(championTeam.name, championTeam.seed, teamLogoUrl(championTeam));
+    }
+  }
+
   const { games } = resolveBracketWithKnownResults(picks);
   const champGame = games.find((game) => game.round === "CHAMP");
   if (!champGame?.winnerId) return null;
