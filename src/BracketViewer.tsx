@@ -37,9 +37,18 @@ type TeamDisplay = {
 type TeamRowState = "default" | "correct" | "incorrect" | "missing";
 type RegionDirection = "to-right" | "to-left";
 type SlotTone = "r64" | "r32" | "s16" | "e8" | "f4" | "championship";
+type MobileBracketSection = Region | "FF";
 
 const LEFT_REGION_ROUNDS: Round[] = ["R64", "R32", "S16", "E8"];
 const RIGHT_REGION_ROUNDS: Round[] = ["E8", "S16", "R32", "R64"];
+const MOBILE_REGION_OPTIONS: Array<{ id: MobileBracketSection; label: string }> = [
+  { id: "East", label: "EAST" },
+  { id: "South", label: "SOUTH" },
+  { id: "West", label: "WEST" },
+  { id: "Midwest", label: "MIDWEST" },
+  { id: "FF", label: "FF" },
+];
+const MOBILE_REGION_ROUNDS: Round[] = ["R64", "R32", "S16", "E8"];
 
 function getRoundTemplates(region: Region, round: Round) {
   return gameTemplates
@@ -73,7 +82,7 @@ function getTeamDisplay(teamId: string | null): TeamDisplay {
     id: team.id,
     name: team.name,
     abbr: abbreviationForTeam(team.name) || team.name,
-    seed: team.seedLabel ?? String(team.seed),
+    seed: String(team.seed),
     logoUrl: teamLogoUrl(team),
   };
 }
@@ -212,6 +221,37 @@ function TeamLogo({ team, large = false }: { team: TeamDisplay; large?: boolean 
       src={team.logoUrl ?? undefined}
       alt={`${team.name} logo`}
       className={large ? "grp-bv-logo grp-bv-logo--large" : "grp-bv-logo"}
+      loading="lazy"
+      onError={() => setFailedUrl(team.logoUrl ?? null)}
+    />
+  );
+}
+
+function MobileTeamLogo({
+  team,
+  className,
+  fallbackClassName,
+}: {
+  team: TeamDisplay;
+  className: string;
+  fallbackClassName: string;
+}) {
+  const [failedUrl, setFailedUrl] = useState<string | null>(null);
+  const shouldFallback = !team.logoUrl || failedUrl === team.logoUrl;
+
+  if (shouldFallback) {
+    return (
+      <span className={fallbackClassName} aria-hidden="true">
+        {team.abbr.slice(0, 1)}
+      </span>
+    );
+  }
+
+  return (
+    <img
+      src={team.logoUrl ?? undefined}
+      alt={`${team.name} logo`}
+      className={className}
       loading="lazy"
       onError={() => setFailedUrl(team.logoUrl ?? null)}
     />
@@ -419,6 +459,212 @@ function FinalsBoard({
   );
 }
 
+function MobileTeamRow({
+  team,
+  isPicked,
+  rowState,
+  faded,
+  large = false,
+}: {
+  team: TeamDisplay;
+  isPicked: boolean;
+  rowState: TeamRowState;
+  faded: boolean;
+  large?: boolean;
+}) {
+  return (
+    <div
+      className={[
+        "grp-bv-m-team-row",
+        isPicked ? "grp-bv-m-team-row--picked" : "",
+        faded ? "grp-bv-m-team-row--faded" : "",
+        rowState !== "default" ? `grp-bv-m-team-row--${rowState}` : "",
+        large ? "grp-bv-m-team-row--large" : "",
+      ]
+        .filter(Boolean)
+        .join(" ")}
+    >
+      <MobileTeamLogo
+        team={team}
+        className={large ? "grp-bv-m-team-logo grp-bv-m-team-logo--large" : "grp-bv-m-team-logo"}
+        fallbackClassName={
+          large ? "grp-bv-m-team-logo-fallback grp-bv-m-team-logo-fallback--large" : "grp-bv-m-team-logo-fallback"
+        }
+      />
+      <span className="grp-bv-m-team-seed">{team.seed}</span>
+      <span className="grp-bv-m-team-name" title={team.name}>
+        {team.name}
+      </span>
+      {isPicked && rowState === "correct" ? <span className="grp-bv-m-team-check">✓</span> : null}
+      {isPicked ? <span className="grp-bv-m-team-arrow">→</span> : null}
+    </div>
+  );
+}
+
+function MobileGameCard({
+  game,
+  resultsByGame,
+  contextLabel,
+  championship = false,
+}: {
+  game: ResolvedGame;
+  resultsByGame: Map<string, string>;
+  contextLabel?: string;
+  championship?: boolean;
+}) {
+  const teamA = getTeamDisplay(game.teamAId);
+  const teamB = getTeamDisplay(game.teamBId);
+  const actualWinnerId = resultsByGame.get(game.id) ?? null;
+  const pickedRowState = getPickedRowState(game, actualWinnerId);
+  const hasPick = Boolean(game.winnerId);
+  const slotTone = getSlotTone(game.round);
+  const cardTone = championship ? "championship" : slotTone;
+
+  return (
+    <article
+      className={[
+        "grp-bv-m-card",
+        `grp-bv-m-card--${cardTone}`,
+        hasPick ? "" : "grp-bv-m-card--missing",
+      ]
+        .filter(Boolean)
+        .join(" ")}
+    >
+      {contextLabel ? <div className="grp-bv-m-context">{contextLabel}</div> : null}
+      <MobileTeamRow
+        team={teamA}
+        isPicked={game.winnerId === game.teamAId}
+        rowState={hasPick ? (game.winnerId === game.teamAId ? pickedRowState : "default") : "missing"}
+        faded={hasPick && game.winnerId !== game.teamAId}
+        large={championship}
+      />
+      <MobileTeamRow
+        team={teamB}
+        isPicked={game.winnerId === game.teamBId}
+        rowState={hasPick ? (game.winnerId === game.teamBId ? pickedRowState : "default") : "missing"}
+        faded={hasPick && game.winnerId !== game.teamBId}
+        large={championship}
+      />
+    </article>
+  );
+}
+
+function MobileChampionCard({
+  championship,
+  resultsByGame,
+}: {
+  championship: ResolvedGame | null;
+  resultsByGame: Map<string, string>;
+}) {
+  const championTeam = getTeamDisplay(championship?.winnerId ?? null);
+  const actualWinnerId = championship ? resultsByGame.get(championship.id) ?? null : null;
+  const state = championship ? getPickedRowState(championship, actualWinnerId) : "missing";
+
+  return (
+    <div
+      className={[
+        "grp-bv-m-champion-card",
+        state === "correct" ? "grp-bv-m-champion-card--correct" : "",
+        state === "incorrect" ? "grp-bv-m-champion-card--incorrect" : "",
+      ]
+        .filter(Boolean)
+        .join(" ")}
+    >
+      <span className="grp-bv-m-champion-trophy" aria-hidden="true">
+        🏆
+      </span>
+      <span className="grp-bv-m-champion-label">Champion</span>
+      <MobileTeamLogo
+        team={championTeam}
+        className="grp-bv-m-champion-logo"
+        fallbackClassName="grp-bv-m-champion-logo-fallback"
+      />
+      <span className="grp-bv-m-champion-name">{championTeam.name === "TBD" ? "Champion TBD" : championTeam.name}</span>
+      <span className="grp-bv-m-champion-seed">{championTeam.seed !== "—" ? `#${championTeam.seed} seed` : "Awaiting result"}</span>
+    </div>
+  );
+}
+
+function MobileRegionBoard({
+  region,
+  gamesById,
+  resultsByGame,
+}: {
+  region: Region;
+  gamesById: Map<string, ResolvedGame>;
+  resultsByGame: Map<string, string>;
+}) {
+  return (
+    <div className="grp-bv-m-region-view">
+      {MOBILE_REGION_ROUNDS.map((round, index) => {
+        const gamesForRound = getRoundTemplates(region, round)
+          .map((template) => gamesById.get(template.id))
+          .filter((game): game is ResolvedGame => Boolean(game));
+
+        return (
+          <section
+            key={`${region}-${round}`}
+            className={`grp-bv-m-round-section ${index === 0 ? "grp-bv-m-round-section--first" : ""}`}
+          >
+            <div className="grp-bv-m-round-header">{round}</div>
+            <div className="grp-bv-m-round-stack">
+              {gamesForRound.map((game) => (
+                <MobileGameCard key={game.id} game={game} resultsByGame={resultsByGame} />
+              ))}
+            </div>
+          </section>
+        );
+      })}
+    </div>
+  );
+}
+
+function MobileFinalFourBoard({
+  gamesById,
+  resultsByGame,
+}: {
+  gamesById: Map<string, ResolvedGame>;
+  resultsByGame: Map<string, string>;
+}) {
+  const topSemifinal = gamesById.get("F4-Left-0") ?? null;
+  const bottomSemifinal = gamesById.get("F4-Right-0") ?? null;
+  const championship = gamesById.get("CHAMP-0") ?? null;
+
+  return (
+    <div className="grp-bv-m-region-view grp-bv-m-region-view--ff">
+      <section className="grp-bv-m-round-section grp-bv-m-round-section--first">
+        <div className="grp-bv-m-round-header">F4</div>
+        <div className="grp-bv-m-round-stack">
+          {topSemifinal ? (
+            <MobileGameCard
+              game={topSemifinal}
+              resultsByGame={resultsByGame}
+              contextLabel={`${BRACKET_HALVES[0].regions[0]} vs ${BRACKET_HALVES[0].regions[1]}`}
+            />
+          ) : null}
+          {bottomSemifinal ? (
+            <MobileGameCard
+              game={bottomSemifinal}
+              resultsByGame={resultsByGame}
+              contextLabel={`${BRACKET_HALVES[1].regions[0]} vs ${BRACKET_HALVES[1].regions[1]}`}
+            />
+          ) : null}
+        </div>
+      </section>
+
+      <section className="grp-bv-m-round-section">
+        <div className="grp-bv-m-round-header">Champ</div>
+        <div className="grp-bv-m-round-stack">
+          {championship ? (
+            <MobileGameCard game={championship} resultsByGame={resultsByGame} championship />
+          ) : null}
+          <MobileChampionCard championship={championship} resultsByGame={resultsByGame} />
+        </div>
+      </section>
+    </div>
+  );
+}
+
 export function GroupBracketViewerSurface({
   bracket,
   tournamentResults,
@@ -426,6 +672,7 @@ export function GroupBracketViewerSurface({
   bracket: BracketViewerPerformance & { picks: LockedPicks };
   tournamentResults?: unknown;
 }) {
+  const [selectedMobileSection, setSelectedMobileSection] = useState<MobileBracketSection>("East");
   const resultsByGame = useMemo(() => normalizeTournamentResults(tournamentResults), [tournamentResults]);
   const resultsAvailable = resultsByGame.size > 0;
   const { games } = useMemo(() => resolveGames(bracket.picks ?? {}), [bracket.picks]);
@@ -434,6 +681,28 @@ export function GroupBracketViewerSurface({
 
   return (
     <div className="grp-bv-panel">
+      <div className="grp-bv-m-shell">
+        <div className="grp-bv-m-region-row" role="tablist" aria-label="View bracket region">
+          {MOBILE_REGION_OPTIONS.map((option) => (
+            <button
+              key={option.id}
+              type="button"
+              role="tab"
+              aria-selected={selectedMobileSection === option.id}
+              className={[
+                "grp-bv-m-region-pill",
+                selectedMobileSection === option.id ? "grp-bv-m-region-pill--active" : "",
+              ]
+                .filter(Boolean)
+                .join(" ")}
+              onClick={() => setSelectedMobileSection(option.id)}
+            >
+              {option.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
       <div className="grp-bv-scorebar">
         <div className="grp-bv-scorebar-main">
           <h3 className="grp-bv-scorebar-name">{displayName}</h3>
@@ -460,6 +729,14 @@ export function GroupBracketViewerSurface({
             </span>
           </div>
         </div>
+      </div>
+
+      <div className="grp-bv-m-shell">
+        {selectedMobileSection === "FF" ? (
+          <MobileFinalFourBoard gamesById={gamesById} resultsByGame={resultsByGame} />
+        ) : (
+          <MobileRegionBoard region={selectedMobileSection} gamesById={gamesById} resultsByGame={resultsByGame} />
+        )}
       </div>
 
       <div className="grp-bv-scroll">
