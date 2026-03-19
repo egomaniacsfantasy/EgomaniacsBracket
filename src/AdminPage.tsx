@@ -4,8 +4,8 @@ import { teamsById } from "./data/teams";
 import { supabase } from "./supabaseClient";
 import { useAuth } from "./AuthContext";
 import { hasElevatedAccess } from "./groupVisibility";
+import { buildScoringResultMap, scoreBracketPicks } from "./lib/bracketScoring";
 
-const POINTS: Record<number, number> = { 64: 10, 32: 20, 16: 40, 8: 80, 4: 160, 2: 320 };
 const ROUND_TO_INT: Record<string, number> = { R64: 64, R32: 32, S16: 16, E8: 8, F4: 4, CHAMP: 2 };
 const TOTAL_GAMES = gameTemplates.length;
 
@@ -23,6 +23,79 @@ type MatchupRow = {
   teamA: { id: string; name: string; seed: string } | null;
   teamB: { id: string; name: string; seed: string } | null;
 };
+
+type BracketScoreRow = {
+  id: string;
+  user_id: string;
+  picks: Record<string, string> | null;
+};
+
+type ScoreAllBracketsResult =
+  | {
+      ok: true;
+      bracketCount: number;
+      scoredResultCount: number;
+    }
+  | {
+      ok: false;
+      error: string;
+    };
+
+async function scoreAndRankAllBrackets(): Promise<ScoreAllBracketsResult> {
+  const { data: results, error: resultsError } = await supabase.from("tournament_results").select("*");
+  if (resultsError) {
+    return { ok: false, error: resultsError.message };
+  }
+
+  const resultMap = buildScoringResultMap((results as ResultRow[] | null) ?? []);
+  const scoredResultCount = Object.keys(resultMap).length;
+
+  const { data: brackets, error: bracketsError } = await supabase.from("brackets").select("id, user_id, picks");
+  if (bracketsError) {
+    return { ok: false, error: bracketsError.message };
+  }
+
+  const typedBrackets = (brackets as BracketScoreRow[] | null) ?? [];
+  if (typedBrackets.length === 0) {
+    return { ok: true, bracketCount: 0, scoredResultCount };
+  }
+
+  const updatedAt = new Date().toISOString();
+  const scoreUpdates = typedBrackets.map((bracket) => {
+    const score = scoreBracketPicks(bracket.picks ?? {}, resultMap);
+    return {
+      bracket_id: bracket.id,
+      user_id: bracket.user_id,
+      total_score: score.totalScore,
+      r64_score: score.roundScores[64],
+      r32_score: score.roundScores[32],
+      s16_score: score.roundScores[16],
+      e8_score: score.roundScores[8],
+      f4_score: score.roundScores[4],
+      champ_score: score.roundScores[2],
+      correct_picks: score.correctPicks,
+      possible_picks: score.possiblePicks,
+      max_remaining: score.maxRemaining,
+      updated_at: updatedAt,
+    };
+  });
+
+  const { error: upsertError } = await supabase.from("bracket_scores").upsert(scoreUpdates);
+  if (upsertError) {
+    return { ok: false, error: upsertError.message };
+  }
+
+  const { error: rankError } = await supabase.rpc("compute_bracket_ranks");
+  if (rankError) {
+    return { ok: false, error: `Scores saved but rank computation failed: ${rankError.message}` };
+  }
+
+  return {
+    ok: true,
+    bracketCount: typedBrackets.length,
+    scoredResultCount,
+  };
+}
 
 export function AdminPage() {
   const { user, loading } = useAuth();
@@ -51,7 +124,7 @@ export function AdminPage() {
   return (
     <div style={{ padding: 40, maxWidth: 1000, margin: "0 auto", fontFamily: "monospace", color: "#f0e6d0" }}>
       <h2 style={{ color: "#b87d18" }}>Bracket Lab Admin</h2>
-      <AdminResultsEntry onResultsChange={() => setResultsRefresh((v) => v + 1)} />
+      <AdminResultsEntry onResultsChange={() => setResultsRefresh((v) => v + 1)} setScoringStatus={setScoringStatus} />
       <AdminScoringControls scoringStatus={scoringStatus} setScoringStatus={setScoringStatus} />
       <AdminLockControls lockStatus={lockStatus} setLockStatus={setLockStatus} />
       <AdminResultsLog refreshKey={resultsRefresh} />
@@ -60,7 +133,13 @@ export function AdminPage() {
   );
 }
 
-function AdminResultsEntry({ onResultsChange }: { onResultsChange?: () => void }) {
+function AdminResultsEntry({
+  onResultsChange,
+  setScoringStatus,
+}: {
+  onResultsChange?: () => void;
+  setScoringStatus: (status: string) => void;
+}) {
   const [allMatchups, setAllMatchups] = useState<MatchupRow[]>([]);
   const [existingResults, setExistingResults] = useState<Record<string, string>>({});
   const [submitting, setSubmitting] = useState<string | null>(null);
@@ -139,6 +218,15 @@ function AdminResultsEntry({ onResultsChange }: { onResultsChange?: () => void }
       const next = { ...existingResults, [matchupId]: winnerTeamId };
       setExistingResults(next);
       buildMatchups(next);
+      setScoringStatus("Scoring leaderboard...");
+      const scoringResult = await scoreAndRankAllBrackets();
+      if (!scoringResult.ok) {
+        setScoringStatus(`Result saved, but scoring failed: ${scoringResult.error}`);
+      } else if (scoringResult.bracketCount === 0) {
+        setScoringStatus(`Result saved. No brackets to score yet. ${scoringResult.scoredResultCount}/${TOTAL_GAMES} games entered.`);
+      } else {
+        setScoringStatus(`Auto-scored ${scoringResult.bracketCount} brackets. ${scoringResult.scoredResultCount}/${TOTAL_GAMES} games entered.`);
+      }
       onResultsChange?.();
     }
     setSubmitting(null);
@@ -146,11 +234,24 @@ function AdminResultsEntry({ onResultsChange }: { onResultsChange?: () => void }
 
   const removeResult = async (matchupId: string) => {
     if (!window.confirm(`Remove result for ${matchupId}?`)) return;
-    await supabase.from("tournament_results").delete().eq("matchup_id", matchupId);
+    const { error } = await supabase.from("tournament_results").delete().eq("matchup_id", matchupId);
+    if (error) {
+      alert(`Error: ${error.message}`);
+      return;
+    }
     const next = { ...existingResults };
     delete next[matchupId];
     setExistingResults(next);
     buildMatchups(next);
+    setScoringStatus("Scoring leaderboard...");
+    const scoringResult = await scoreAndRankAllBrackets();
+    if (!scoringResult.ok) {
+      setScoringStatus(`Result removed, but scoring failed: ${scoringResult.error}`);
+    } else if (scoringResult.bracketCount === 0) {
+      setScoringStatus(`Result removed. No brackets to score yet. ${scoringResult.scoredResultCount}/${TOTAL_GAMES} games entered.`);
+    } else {
+      setScoringStatus(`Auto-scored ${scoringResult.bracketCount} brackets. ${scoringResult.scoredResultCount}/${TOTAL_GAMES} games entered.`);
+    }
     onResultsChange?.();
   };
 
@@ -269,84 +370,18 @@ function AdminScoringControls({
 }) {
   const scoreAllBrackets = async () => {
     setScoringStatus("Scoring...");
-    try {
-      const { data: results } = await supabase.from("tournament_results").select("*");
-      if (!results || results.length === 0) {
-        setScoringStatus("No results entered yet.");
-        return;
-      }
-      const resultMap: Record<string, { winner: string; round: number }> = {};
-      (results as ResultRow[]).forEach((result) => {
-        resultMap[result.matchup_id] = { winner: result.winner_team_id, round: Number(result.round) };
-      });
-
-      const { data: brackets } = await supabase.from("brackets").select("id, user_id, picks");
-      if (!brackets || brackets.length === 0) {
-        setScoringStatus("No brackets to score.");
-        return;
-      }
-
-      const gamesPerRound: Record<number, number> = { 64: 32, 32: 16, 16: 8, 8: 4, 4: 2, 2: 1 };
-      const gamesPlayed = results.length;
-
-      const scoreUpdates = (brackets as Array<{ id: string; user_id: string; picks: Record<string, string> }>).map((bracket) => {
-        let totalScore = 0;
-        let correctPicks = 0;
-        const roundScores: Record<number, number> = { 64: 0, 32: 0, 16: 0, 8: 0, 4: 0, 2: 0 };
-        const picks = bracket.picks ?? {};
-
-        for (const [matchupId, pickedWinner] of Object.entries(picks)) {
-          const result = resultMap[matchupId];
-          if (!result) continue;
-          if (pickedWinner === result.winner) {
-            const points = POINTS[result.round] ?? 0;
-            totalScore += points;
-            roundScores[result.round] = (roundScores[result.round] ?? 0) + points;
-            correctPicks += 1;
-          }
-        }
-
-        let maxRemaining = 0;
-        for (const [roundStr, totalInRound] of Object.entries(gamesPerRound)) {
-          const round = Number(roundStr);
-          const playedInRound = (results as ResultRow[]).filter((result) => Number(result.round) === round).length;
-          const remainingInRound = totalInRound - playedInRound;
-          maxRemaining += Math.max(0, remainingInRound) * (POINTS[round] ?? 0);
-        }
-
-        return {
-          bracket_id: bracket.id,
-          user_id: bracket.user_id,
-          total_score: totalScore,
-          r64_score: roundScores[64] ?? 0,
-          r32_score: roundScores[32] ?? 0,
-          s16_score: roundScores[16] ?? 0,
-          e8_score: roundScores[8] ?? 0,
-          f4_score: roundScores[4] ?? 0,
-          champ_score: roundScores[2] ?? 0,
-          correct_picks: correctPicks,
-          possible_picks: gamesPlayed,
-          max_remaining: totalScore + maxRemaining,
-          updated_at: new Date().toISOString(),
-        };
-      });
-
-      const { error: upsertError } = await supabase.from("bracket_scores").upsert(scoreUpdates);
-      if (upsertError) {
-        setScoringStatus(`Error: ${upsertError.message}`);
-        return;
-      }
-
-      const { error: rankError } = await supabase.rpc("compute_bracket_ranks");
-      if (rankError) {
-        setScoringStatus(`Scores saved but rank computation failed: ${rankError.message}`);
-        return;
-      }
-
-      setScoringStatus(`✓ Scored ${brackets.length} brackets. ${results.length}/${TOTAL_GAMES} games entered.`);
-    } catch (error) {
-      setScoringStatus(`Error: ${(error as Error).message}`);
+    const result = await scoreAndRankAllBrackets();
+    if (!result.ok) {
+      setScoringStatus(`Error: ${result.error}`);
+      return;
     }
+
+    if (result.bracketCount === 0) {
+      setScoringStatus(`No brackets to score. ${result.scoredResultCount}/${TOTAL_GAMES} games entered.`);
+      return;
+    }
+
+    setScoringStatus(`Scored ${result.bracketCount} brackets. ${result.scoredResultCount}/${TOTAL_GAMES} games entered.`);
   };
 
   return (
@@ -372,7 +407,7 @@ function AdminScoringControls({
         Score All Brackets & Update Leaderboard
       </button>
       {scoringStatus ? (
-        <p style={{ marginTop: 8, fontSize: 12, color: scoringStatus.startsWith("✓") ? "#b87d18" : "#e85d5d" }}>
+        <p style={{ marginTop: 8, fontSize: 12, color: scoringStatus.startsWith("Error") ? "#e85d5d" : "#b87d18" }}>
           {scoringStatus}
         </p>
       ) : null}
