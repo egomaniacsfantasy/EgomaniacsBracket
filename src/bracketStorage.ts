@@ -361,6 +361,26 @@ export async function getUserBrackets(userId: string) {
   return { data: (data as SavedBracket[] | null) ?? [], error: error ?? withAll.error };
 }
 
+export async function getGlobalBracketLockState() {
+  const exact = await supabase
+    .from("brackets")
+    .select("id", { count: "exact", head: true })
+    .eq("is_locked", true);
+
+  if (!exact.error) {
+    return { data: (exact.count ?? 0) > 0, error: null };
+  }
+
+  const fallback = await supabase
+    .from("brackets")
+    .select("id")
+    .eq("is_locked", true)
+    .limit(1);
+
+  if (fallback.error) return { data: false, error: fallback.error };
+  return { data: ((fallback.data as Array<{ id: string }> | null) ?? []).length > 0, error: null };
+}
+
 export async function setBracketSubmissionStatus(bracketId: string, userId: string, submit: boolean, bypassLock = false) {
   const isMissingSubmissionColumn = (message?: string) => {
     const msg = (message ?? "").toLowerCase();

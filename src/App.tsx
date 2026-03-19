@@ -38,7 +38,7 @@ import { CreateGroupModal } from "./CreateGroupModal";
 import { JoinGroupModal } from "./JoinGroupModal";
 import { GroupsHub } from "./GroupsHub";
 import { GroupDetailView } from "./GroupDetailView";
-import { MAX_SUBMITTED_BRACKETS, deserializePicks, getUserBrackets, saveBracket, serializePicks, type SavedBracket } from "./bracketStorage";
+import { MAX_SUBMITTED_BRACKETS, deserializePicks, getGlobalBracketLockState, getUserBrackets, saveBracket, serializePicks, type SavedBracket } from "./bracketStorage";
 import { TEAM_STAT_IMPORTANCE, TEAM_STAT_ORDER, TEAM_STATS_2026, type TeamStatKey } from "./data/teamStats2026";
 import type { OddsDisplayMode, Region, ResolvedGame, SimulationOutput } from "./types";
 import { computeWrappedData, type WrappedData } from "./lib/wrappedData";
@@ -722,6 +722,7 @@ function App() {
   const [joinCode, setJoinCode] = useState<string | null>(null);
   const [activeGroup, setActiveGroup] = useState<UserGroup | null>(null);
   const [userBrackets, setUserBrackets] = useState<SavedBracket[]>([]);
+  const [globalBracketsLocked, setGlobalBracketsLocked] = useState(false);
   const [groupAssignmentPrompt, setGroupAssignmentPrompt] = useState<GroupAssignmentPromptState | null>(null);
   const [groupAssignmentSavingId, setGroupAssignmentSavingId] = useState<string | null>(null);
   const [groupAssignmentError, setGroupAssignmentError] = useState<string | null>(null);
@@ -1021,6 +1022,22 @@ function App() {
   useEffect(() => {
     refreshUserBrackets();
   }, [user]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const loadGlobalLockState = async () => {
+      const { data } = await getGlobalBracketLockState();
+      if (!cancelled) {
+        setGlobalBracketsLocked(Boolean(data));
+      }
+    };
+
+    void loadGlobalLockState();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -5288,6 +5305,18 @@ function App() {
             </div>
           </div>
         </>
+      ) : null}
+
+      {globalBracketsLocked ? (
+        <div className="bracket-locked-overlay" role="dialog" aria-modal="true" aria-label="Bracket locked">
+          <div className="bracket-locked-overlay__card">
+            <span className="bracket-locked-overlay__icon">🔒</span>
+            <h2 className="bracket-locked-overlay__title">BRACKET LOCKED!</h2>
+            <p className="bracket-locked-overlay__body">
+              The tournament has tipped off. Brackets are locked while we finish the full post-lock experience.
+            </p>
+          </div>
+        </div>
       ) : null}
 
     </div>
