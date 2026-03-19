@@ -3695,6 +3695,14 @@ function App() {
       return;
     }
 
+    setWelcomeGateOpen(false);
+    setShowMobileOnboarding(false);
+    setWalkthroughActive(false);
+    document.body.classList.remove("og-onboarding-open", "walkthrough-active", "walkthrough-step-make-pick");
+    const topValue = Math.abs(parseInt(document.body.style.top || "0", 10));
+    document.body.style.top = "";
+    if (topValue > 0) window.scrollTo(0, topValue);
+
     setActiveGroup(null);
     setGroupsHubRefreshKey((current) => current + 1);
     setGroupsHubOpen(true);
@@ -5077,8 +5085,7 @@ function App() {
         isOpen={createGroupOpen}
         onClose={() => setCreateGroupOpen(false)}
         onGroupCreated={() => {
-          setGroupsHubOpen(true);
-          setGroupsHubRefreshKey((current) => current + 1);
+          openGroupsHub();
         }}
       />
 
@@ -5094,8 +5101,7 @@ function App() {
           setJoinCode(null);
           sessionStorage.removeItem("pendingJoinCode");
           if (hadBracket) {
-            setGroupsHubOpen(true);
-            setGroupsHubRefreshKey((current) => current + 1);
+            openGroupsHub();
           } else {
             setGroupsHubOpen(false);
             // Joined without a bracket — store pending group for auto-assign on submit
@@ -6497,6 +6503,7 @@ function MobileMatchupCard({
   const probB = getGameWinProb(game, teamB.id) ?? 0;
   const isPicked = Boolean(game.winnerId);
   const isEdited = game.customProbA !== null;
+  const matchupResultFinal = NCAA_KNOWN_RESULT_IDS.has(game.id);
   const teamAOdds = formatOddsDisplay(probA, displayMode).primary;
   const teamBOdds = formatOddsDisplay(probB, displayMode).primary;
   const dataSeeds = `${Math.min(teamA.seed, teamB.seed)}-${Math.max(teamA.seed, teamB.seed)}`;
@@ -6553,18 +6560,20 @@ function MobileMatchupCard({
         {isPicked ? (
           <>
             <div className="m-card-footer-left">
-              <button
-                type="button"
-                className="matchup-stats-icon matchup-stats-icon--mobile"
-                onClick={(event) => {
-                  event.stopPropagation();
-                  onOpenMatchupStats(game);
-                }}
-                title="View matchup stats"
-                aria-label="View matchup stats"
-              >
-                {"i"}
-              </button>
+              {!matchupResultFinal ? (
+                <button
+                  type="button"
+                  className="matchup-stats-icon matchup-stats-icon--mobile"
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    onOpenMatchupStats(game);
+                  }}
+                  title="View matchup stats"
+                  aria-label="View matchup stats"
+                >
+                  {"i"}
+                </button>
+              ) : null}
               <span className="m-winner-label">✓ {(game.winnerId === teamA.id ? teamA.name : teamB.name)} advances</span>
             </div>
             <button className="m-undo-btn" onClick={() => onUndoPick(game.id)}>
@@ -6574,18 +6583,20 @@ function MobileMatchupCard({
         ) : (
           <>
             <div className="m-card-footer-left">
-              <button
-                type="button"
-                className="matchup-stats-icon matchup-stats-icon--mobile"
-                onClick={(event) => {
-                  event.stopPropagation();
-                  onOpenMatchupStats(game);
-                }}
-                title="View matchup stats"
-                aria-label="View matchup stats"
-              >
-                {"i"}
-              </button>
+              {!matchupResultFinal ? (
+                <button
+                  type="button"
+                  className="matchup-stats-icon matchup-stats-icon--mobile"
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    onOpenMatchupStats(game);
+                  }}
+                  title="View matchup stats"
+                  aria-label="View matchup stats"
+                >
+                  {"i"}
+                </button>
+              ) : null}
             </div>
             <button
               className="m-edit-prob-btn"
@@ -6854,6 +6865,7 @@ function FinalsChampionshipCard({
     game?.winnerId && game.teamAId && game.teamBId
       ? teamsById.get(game.winnerId === game.teamAId ? game.teamBId : game.teamAId) ?? null
       : null;
+  const matchupResultFinal = game ? NCAA_KNOWN_RESULT_IDS.has(game.id) : false;
 
   return (
     <div className="championship-container championship-panel">
@@ -6863,18 +6875,20 @@ function FinalsChampionshipCard({
       </div>
       {game && winnerTeam && loserTeam ? (
         <div className="championship-card championship-card--celebration">
-          <button
-            type="button"
-            className="matchup-stats-icon matchup-stats-icon--championship-card"
-            onClick={(event) => {
-              event.stopPropagation();
-              onOpenMatchupStats(game);
-            }}
-            title="View matchup stats"
-            aria-label="View matchup stats"
-          >
-            {"i"}
-          </button>
+          {!matchupResultFinal ? (
+            <button
+              type="button"
+              className="matchup-stats-icon matchup-stats-icon--championship-card"
+              onClick={(event) => {
+                event.stopPropagation();
+                onOpenMatchupStats(game);
+              }}
+              title="View matchup stats"
+              aria-label="View matchup stats"
+            >
+              {"i"}
+            </button>
+          ) : null}
           <ChampionConfetti />
           <div className="championship-card-inner">
             <div className="championship-trophy">🏆</div>
@@ -7331,6 +7345,7 @@ function GameCard({
   const ffNudgeCardRef = useRef<HTMLElement | null>(null);
   const showCompactGrid = !useShowdownCard && rows.length > 0 && game.round !== "R64";
   const showCompactCardActions = showCompactGrid && Boolean(game.teamAId && game.teamBId);
+  const matchupResultFinal = NCAA_KNOWN_RESULT_IDS.has(game.id);
 
   const showFfNudgeTooltip = useCallback(() => {
     if (!ffPending) return;
@@ -7467,7 +7482,7 @@ function GameCard({
           onMouseEnter={() => showFfNudgeTooltip()}
         />
       ) : null}
-      {game.teamAId && game.teamBId && !useShowdownCard && !showCompactCardActions ? (
+      {game.teamAId && game.teamBId && !useShowdownCard && !showCompactCardActions && !matchupResultFinal ? (
         <button
           type="button"
           className="matchup-stats-icon"
@@ -7497,18 +7512,20 @@ function GameCard({
               ✎
             </button>
           ) : null}
-          <button
-            type="button"
-            className="matchup-stats-icon matchup-stats-icon--card"
-            onClick={(event) => {
-              event.stopPropagation();
-              onOpenMatchupStats(game);
-            }}
-            title="View matchup stats"
-            aria-label="View matchup stats"
-          >
-            {"i"}
-          </button>
+          {!matchupResultFinal ? (
+            <button
+              type="button"
+              className="matchup-stats-icon matchup-stats-icon--card"
+              onClick={(event) => {
+                event.stopPropagation();
+                onOpenMatchupStats(game);
+              }}
+              title="View matchup stats"
+              aria-label="View matchup stats"
+            >
+              {"i"}
+            </button>
+          ) : null}
         </div>
       ) : null}
       <div className="eg-game-list">
@@ -7814,6 +7831,7 @@ function ShowdownCard({
   const roundClass = game.round === "CHAMP" ? "round-champ" : game.round === "F4" ? "round-f4" : "round-e8";
   const roundLabel = game.round === "CHAMP" ? "National Championship" : game.round === "F4" ? "Final Four" : "Elite 8";
   const decided = Boolean(game.lockedByUser && game.winnerId);
+  const matchupResultFinal = NCAA_KNOWN_RESULT_IDS.has(game.id);
   const isMobileViewport = typeof window !== "undefined" && window.matchMedia("(max-width: 767px)").matches;
   const matchupKey = `${game.id}:${game.teamAId ?? ""}:${game.teamBId ?? ""}`;
   const previousMatchupKeyRef = useRef<string | null>(null);
@@ -7842,7 +7860,7 @@ function ShowdownCard({
   return (
     <div className={`eg-showdown-card ${roundClass} ${isEntering ? "eg-showdown-card--entering" : ""} ${decided ? "decided" : ""}`}>
       <p className="eg-showdown-label">{roundLabel}</p>
-      {onOpenMatchupStats ? (
+      {onOpenMatchupStats && !matchupResultFinal ? (
         <button
           type="button"
           className="matchup-stats-icon"

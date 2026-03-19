@@ -7957,10 +7957,12 @@ body {
 .grp-hub-screen {
   position: fixed;
   inset: 0;
-  z-index: 3300;
+  z-index: 10900;
   display: flex;
   flex-direction: column;
   background: var(--bg-base, #0e0c09);
+  isolation: isolate;
+  pointer-events: auto;
 }
 
 .grp-hub-scroll {
