@@ -5095,12 +5095,15 @@ function App() {
         submissionsLocked={submissionsLocked}
         onClose={() => setGroupsHubOpen(false)}
         onCreateGroup={() => {
+          setGroupsHubOpen(false);
           setCreateGroupOpen(true);
         }}
         onJoinGroup={() => {
+          setGroupsHubOpen(false);
           setJoinGroupOpen(true);
         }}
         onOpenGroup={(group) => {
+          setGroupsHubOpen(false);
           setActiveGroup(group);
         }}
       />
