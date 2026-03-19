@@ -1,7 +1,8 @@
 import { useMemo } from "react";
 import { computeChaosScoreForPicks } from "./bracketStorage";
 import { teamsById } from "./data/teams";
-import { resolveGames, type LockedPicks } from "./lib/bracket";
+import { type LockedPicks } from "./lib/bracket";
+import { resolveBracketWithKnownResults } from "./lib/bracketCompletion";
 import { teamLogoUrl } from "./lib/logo";
 import { canSeeDetails } from "./groupVisibility";
 import type { GroupStanding } from "./groupStorage";
@@ -23,7 +24,7 @@ function getChaosTier(score: number | null) {
 
 function getChampionPick(picks: LockedPicks | null): string | null {
   if (!picks || typeof picks !== "object") return null;
-  const { games } = resolveGames(picks);
+  const { games } = resolveBracketWithKnownResults(picks);
   const champGame = games.find((game) => game.round === "CHAMP");
   return champGame?.winnerId ?? null;
 }

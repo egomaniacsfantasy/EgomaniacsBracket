@@ -4,7 +4,8 @@ import { gameTemplates } from "./data/bracket";
 import { teamsById } from "./data/teams";
 import { areAllGroupBracketsLocked, canSeeDetails } from "./groupVisibility";
 import type { GroupMember, GroupStanding } from "./groupStorage";
-import { resolveGames, type LockedPicks } from "./lib/bracket";
+import { type LockedPicks } from "./lib/bracket";
+import { resolveBracketWithKnownResults } from "./lib/bracketCompletion";
 import { teamLogoUrl } from "./lib/logo";
 import type { GameTemplate, Region } from "./types";
 
@@ -315,7 +316,7 @@ export function GroupPicksTab({
   const resolvedBracketEntries = useMemo(
     () =>
       bracketEntries.map((entry) => {
-        const { games } = resolveGames(entry.picks);
+        const { games } = resolveBracketWithKnownResults(entry.picks);
         return {
           entry,
           gamesById: new Map(games.map((game) => [game.id, game])),

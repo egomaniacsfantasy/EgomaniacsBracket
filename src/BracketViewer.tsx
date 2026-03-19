@@ -3,7 +3,8 @@ import { BRACKET_HALVES, gameTemplates } from "./data/bracket";
 import { teamsById } from "./data/teams";
 import { getBracketPicks } from "./groupStorage";
 import { abbreviationForTeam } from "./lib/abbreviation";
-import { resolveGames, type LockedPicks } from "./lib/bracket";
+import { type LockedPicks } from "./lib/bracket";
+import { resolveBracketWithKnownResults } from "./lib/bracketCompletion";
 import { teamLogoUrl } from "./lib/logo";
 import type { Region, ResolvedGame, Round } from "./types";
 
@@ -675,7 +676,7 @@ export function GroupBracketViewerSurface({
   const [selectedMobileSection, setSelectedMobileSection] = useState<MobileBracketSection>("East");
   const resultsByGame = useMemo(() => normalizeTournamentResults(tournamentResults), [tournamentResults]);
   const resultsAvailable = resultsByGame.size > 0;
-  const { games } = useMemo(() => resolveGames(bracket.picks ?? {}), [bracket.picks]);
+  const { games } = useMemo(() => resolveBracketWithKnownResults(bracket.picks ?? {}), [bracket.picks]);
   const gamesById = useMemo(() => new Map(games.map((game) => [game.id, game])), [games]);
   const displayName = bracket.isCurrentUser ? "Your Bracket" : bracket.displayName;
 
