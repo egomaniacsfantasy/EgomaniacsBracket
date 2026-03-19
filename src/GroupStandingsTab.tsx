@@ -61,54 +61,17 @@ export function GroupStandingsTab({
   onSelectBracket?: () => void;
   onInvite: () => void;
 }) {
-  const forecasts = useMemo(() => {
-    const withBrackets = standings.filter((entry) => entry.bracket_id != null);
-    if (withBrackets.length === 0) return {} as Record<string, number>;
+  const orderedStandings = useMemo(
+    () =>
+      [...standings].sort((a, b) => {
+        if ((b.total_score || 0) !== (a.total_score || 0)) return (b.total_score || 0) - (a.total_score || 0);
+        if ((b.correct_picks || 0) !== (a.correct_picks || 0)) return (b.correct_picks || 0) - (a.correct_picks || 0);
+        return (a.groupRank || Number.MAX_SAFE_INTEGER) - (b.groupRank || Number.MAX_SAFE_INTEGER);
+      }),
+    [standings]
+  );
 
-    if (!tournamentStarted) {
-      const equalPct = Math.round(100 / withBrackets.length);
-      const map: Record<string, number> = {};
-      withBrackets.forEach((entry) => {
-        map[entry.bracket_id!] = equalPct;
-      });
-      return map;
-    }
-
-    const ceilings = withBrackets.map((entry) => ({
-      bracketId: entry.bracket_id!,
-      score: entry.total_score || 0,
-      ceiling: (entry.total_score || 0) + (entry.max_remaining || 0),
-    }));
-
-    const maxCeiling = Math.max(...ceilings.map((entry) => entry.ceiling));
-    const topScore = Math.max(...ceilings.map((entry) => entry.score));
-
-    if (topScore === 0) {
-      const equalPct = Math.round(100 / withBrackets.length);
-      const map: Record<string, number> = {};
-      withBrackets.forEach((entry) => {
-        map[entry.bracket_id!] = equalPct;
-      });
-      return map;
-    }
-
-    const weights = ceilings.map((entry) => {
-      if (entry.ceiling < topScore) return { ...entry, weight: 0 };
-      const leadProximity = 1 - (topScore - entry.score) / Math.max(1, topScore);
-      const ceilingRatio = entry.ceiling / Math.max(1, maxCeiling);
-      return { ...entry, weight: leadProximity * ceilingRatio };
-    });
-
-    const totalWeight = weights.reduce((sum, entry) => sum + entry.weight, 0);
-    const map: Record<string, number> = {};
-    weights.forEach((entry) => {
-      map[entry.bracketId] = totalWeight > 0 ? Math.max(0, Math.round((entry.weight / totalWeight) * 100)) : 0;
-    });
-
-    return map;
-  }, [standings, tournamentStarted]);
-
-  const standingsCount = standings.length;
+  const standingsCount = orderedStandings.length;
 
   return (
     <div className="gd-standings">
@@ -135,7 +98,7 @@ export function GroupStandingsTab({
         </div>
       )}
 
-      {standings.length === 0 ? (
+      {orderedStandings.length === 0 ? (
         <div className="gd-empty-state">
           <span className="gd-empty-state-icon">📋</span>
           <h3>No brackets in the standings yet</h3>
@@ -144,7 +107,7 @@ export function GroupStandingsTab({
       ) : null}
 
       <div className="gd-standings-list">
-        {standings.map((entry) => {
+        {orderedStandings.map((entry) => {
           const isCurrentUser = entry.user_id === currentUserId;
           const hasBracket = entry.bracket_id != null;
           const canSee = canSeeDetails(entry, currentUserId, canPreviewHidden);
@@ -159,7 +122,6 @@ export function GroupStandingsTab({
               ? computeChaosScoreForPicks(entry.picks as LockedPicks)
               : null;
           const chaosTier = getChaosTier(chaosScore);
-          const forecast = hasBracket ? forecasts[entry.bracket_id!] || 0 : 0;
           const canOpenBracket = Boolean(hasBracket && canSee);
 
           return (
@@ -256,18 +218,14 @@ export function GroupStandingsTab({
 
               {hasBracket && canSee && tournamentStarted && (
                 <div className="gd-player-stats">
-                  <div className="gd-player-score">
-                    <span>Score: {entry.total_score ?? 0}</span>
-                    <span>·</span>
+                  <div className="gd-player-score-main">
+                    <span className="gd-player-score-label">Score</span>
+                    <span className="gd-player-score-value">{entry.total_score ?? 0}</span>
+                  </div>
+                  <div className="gd-player-score-meta">
                     <span>{entry.correct_picks ?? 0}/{entry.possible_picks ?? 63} correct</span>
-                    <span>·</span>
                     <span>Max remaining: {entry.max_remaining ?? 0}</span>
                   </div>
-
-                  <div className="gd-forecast-bar">
-                    <div className="gd-forecast-fill" style={{ width: `${Math.min(forecast, 100)}%` }} />
-                  </div>
-                  <span className="gd-forecast-pct">{forecast}% win chance</span>
                 </div>
               )}
             </div>

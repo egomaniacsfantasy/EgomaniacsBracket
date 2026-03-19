@@ -7689,6 +7689,51 @@ body {
   color: rgba(240, 230, 208, 0.72);
 }
 
+.gd-player-stats {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  margin-top: 14px;
+  padding-top: 14px;
+  border-top: 1px solid rgba(171, 138, 69, 0.12);
+}
+
+.gd-player-score-main {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.gd-player-score-label {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: rgba(240, 230, 208, 0.46);
+}
+
+.gd-player-score-value {
+  font-family: var(--font-mono);
+  font-size: 32px;
+  line-height: 0.95;
+  font-weight: 700;
+  color: var(--text-amber);
+}
+
+.gd-player-score-meta {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 4px;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: rgba(240, 230, 208, 0.72);
+  text-align: right;
+}
+
 .groups-hub-header {
   display: flex;
   align-items: center;
@@ -15316,6 +15361,21 @@ body.walkthrough-active .odds-value--changed::after {
 }
 
 @media (max-width: 767px) {
+  .gd-player-stats {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .gd-player-score-value {
+    font-size: 28px;
+  }
+
+  .gd-player-score-meta {
+    align-items: flex-start;
+    text-align: left;
+  }
+
   .leaderboard-full {
     padding: 16px;
   }
