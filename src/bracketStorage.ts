@@ -178,7 +178,7 @@ async function hydrateLeaderboardEntries(entries: LeaderboardEntry[]): Promise<L
     const bracketResult = await withTimeout(
       supabase
         .from("brackets")
-        .select("id, picks, champion_name, champion_seed, champion_logo_url, champion_eliminated, boldest_pick")
+        .select("id, picks, chaos_score")
         .in("id", bracketIds),
       LEADERBOARD_QUERY_TIMEOUT_MS,
       "Timed out loading leaderboard bracket details."
@@ -190,11 +190,7 @@ async function hydrateLeaderboardEntries(entries: LeaderboardEntry[]): Promise<L
       ((bracketResult.data ?? []) as Array<{
         id: string;
         picks?: LockedPicks | null;
-        champion_name?: string | null;
-        champion_seed?: number | null;
-        champion_logo_url?: string | null;
-        champion_eliminated?: boolean | null;
-        boldest_pick?: LeaderboardBoldestPick | string | null;
+        chaos_score?: number | null;
       }>).map((bracket) => [bracket.id, bracket])
     );
 
@@ -202,17 +198,19 @@ async function hydrateLeaderboardEntries(entries: LeaderboardEntry[]): Promise<L
       const bracket = bracketMap.get(entry.bracket_id);
       const picks = (bracket?.picks ?? null) as LockedPicks | null;
       const derivedMeta = deriveLeaderboardDisplayMeta(picks);
+      const extractedMeta = picks ? extractBracketMeta(picks) : null;
       return {
         ...entry,
         picks,
-        champion_name: entry.champion_name ?? bracket?.champion_name ?? derivedMeta.champion_name,
-        champion_seed: entry.champion_seed ?? bracket?.champion_seed ?? derivedMeta.champion_seed,
-        champion_logo_url: entry.champion_logo_url ?? bracket?.champion_logo_url ?? derivedMeta.champion_logo_url,
-        champion_eliminated: entry.champion_eliminated ?? bracket?.champion_eliminated ?? false,
+        chaos_score: entry.chaos_score ?? bracket?.chaos_score ?? null,
+        champion_name: entry.champion_name ?? extractedMeta?.champion_name ?? derivedMeta.champion_name,
+        champion_seed: entry.champion_seed ?? extractedMeta?.champion_seed ?? derivedMeta.champion_seed,
+        champion_logo_url: entry.champion_logo_url ?? extractedMeta?.champion_logo_url ?? derivedMeta.champion_logo_url,
+        champion_eliminated: entry.champion_eliminated ?? extractedMeta?.champion_eliminated ?? false,
         runner_up_name: entry.runner_up_name ?? derivedMeta.runner_up_name,
         runner_up_seed: entry.runner_up_seed ?? derivedMeta.runner_up_seed,
         runner_up_logo_url: entry.runner_up_logo_url ?? derivedMeta.runner_up_logo_url,
-        boldest_pick: entry.boldest_pick ?? bracket?.boldest_pick ?? null,
+        boldest_pick: entry.boldest_pick ?? extractedMeta?.boldest_pick ?? null,
       } satisfies LeaderboardEntry;
     });
   } catch {
