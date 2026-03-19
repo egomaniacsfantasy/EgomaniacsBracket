@@ -14,6 +14,7 @@ export const NCAA_KNOWN_RESULTS: LockedPicks = {
   "East-R64-1": "East-9", // TCU (9) def Ohio St (8)
   "East-R64-4": "East-6", // Louisville (6) def South Florida (11)
   "South-R64-3": "South-4", // Nebraska (4) def Troy (13)
+  "West-R64-2": "West-12", // High Point (12) def Wisconsin (5)
 };
 
 export const NCAA_KNOWN_RESULT_IDS = new Set(Object.keys(NCAA_KNOWN_RESULTS));
