@@ -1,4 +1,5 @@
 import type { LockedPicks } from "./bracket";
+import { normalizeBracketPicks } from "./bracketCompletion";
 
 export type ScoringRound = 64 | 32 | 16 | 8 | 4 | 2;
 
@@ -71,6 +72,7 @@ export function scoreBracketPicks(
   picks: LockedPicks,
   resultMap: Record<string, ScoringResult>
 ): BracketScore {
+  const normalizedPicks = normalizeBracketPicks(picks ?? {});
   const roundScores = emptyByRound();
   const playedByRound = emptyByRound();
   let totalScore = 0;
@@ -81,7 +83,7 @@ export function scoreBracketPicks(
   }
 
   for (const [matchupId, result] of Object.entries(resultMap)) {
-    const pickedWinner = picks[matchupId];
+    const pickedWinner = normalizedPicks[matchupId];
     if (!pickedWinner) continue;
     if (pickedWinner !== result.winner) continue;
     const points = ROUND_POINTS[result.round];
