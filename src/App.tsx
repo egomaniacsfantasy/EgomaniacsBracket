@@ -38,7 +38,16 @@ import { CreateGroupModal } from "./CreateGroupModal";
 import { JoinGroupModal } from "./JoinGroupModal";
 import { GroupsHub } from "./GroupsHub";
 import { GroupDetailView } from "./GroupDetailView";
-import { MAX_SUBMITTED_BRACKETS, deserializePicks, getGlobalBracketLockState, getUserBrackets, saveBracket, serializePicks, type SavedBracket } from "./bracketStorage";
+import {
+  BRACKETS_LOCKED_MESSAGE,
+  MAX_SUBMITTED_BRACKETS,
+  deserializePicks,
+  getGlobalBracketLockState,
+  getUserBrackets,
+  saveBracket,
+  serializePicks,
+  type SavedBracket,
+} from "./bracketStorage";
 import { TEAM_STAT_IMPORTANCE, TEAM_STAT_ORDER, TEAM_STATS_2026, type TeamStatKey } from "./data/teamStats2026";
 import type { OddsDisplayMode, Region, ResolvedGame, SimulationOutput } from "./types";
 import { computeWrappedData, type WrappedData } from "./lib/wrappedData";
@@ -49,7 +58,6 @@ import { OverflowMenu, type OverflowMenuItem } from "./OverflowMenu";
 import { TopNavBar, type TopNavView } from "./TopNavBar";
 import BugReportModal, { type BugReportModalProps } from "./BugReportModal";
 import { getUserGroups, updateMemberBracket, type UserGroup } from "./groupStorage";
-import { hasElevatedAccess } from "./groupVisibility";
 import { FirstFourBar } from "./components/FirstFourBar";
 
 const DEFAULT_SIM_RUNS = 10000;
@@ -58,6 +66,7 @@ const ONBOARDING_STORAGE_KEY = "oddsGods_onboardingDismissed";
 const HINTS_STORAGE_KEY = "oddsGods_hintsShown";
 const FIRST_PICK_NUDGE_SESSION_KEY = "oddsGods_firstPickCascadeNudgeSeen";
 const PROMO_DISMISSED_KEY = "bracketlab-promo-dismissed";
+const LOCK_POPUP_SEEN_KEY = "bracketlab-lock-popup-seen";
 const ODDS_FORMAT_STORAGE_KEY = "bracketlab-odds-format";
 const STAGGERED_SIM_DELAY_MS = 2000;
 const MIN_STAGGERED_SIM_DELAY_MS = 1000;
@@ -723,6 +732,7 @@ function App() {
   const [activeGroup, setActiveGroup] = useState<UserGroup | null>(null);
   const [userBrackets, setUserBrackets] = useState<SavedBracket[]>([]);
   const [globalBracketsLocked, setGlobalBracketsLocked] = useState(false);
+  const [lockPopupOpen, setLockPopupOpen] = useState(false);
   const [groupAssignmentPrompt, setGroupAssignmentPrompt] = useState<GroupAssignmentPromptState | null>(null);
   const [groupAssignmentSavingId, setGroupAssignmentSavingId] = useState<string | null>(null);
   const [groupAssignmentError, setGroupAssignmentError] = useState<string | null>(null);
@@ -969,7 +979,7 @@ function App() {
 
   const maybePromptForGroupAssignment = useCallback(
     async (savedBracket: SavedBracket | null) => {
-      if (!user || !savedBracket) return;
+      if (!user || !savedBracket || globalBracketsLocked) return;
       const { data: groups } = await getUserGroups(user.id);
       const eligibleGroups = groups.filter((group) => !group.bracketId);
       if (eligibleGroups.length === 0) {
@@ -983,7 +993,7 @@ function App() {
       setGroupAssignmentSavingId(null);
       setGroupAssignmentError(null);
     },
-    [dismissGroupAssignmentPrompt, user],
+    [dismissGroupAssignmentPrompt, globalBracketsLocked, user],
   );
 
   const assignBracketToGroup = useCallback(
@@ -1040,6 +1050,19 @@ function App() {
   }, []);
 
   useEffect(() => {
+    if (!globalBracketsLocked || typeof window === "undefined") return;
+
+    window.localStorage.setItem(PROMO_DISMISSED_KEY, "1");
+    setPromoDismissed(true);
+    setPromoCTAVisible(false);
+    setPostOnboardingPromoGateOpen(false);
+
+    if (window.localStorage.getItem(LOCK_POPUP_SEEN_KEY) !== "1") {
+      setLockPopupOpen(true);
+    }
+  }, [globalBracketsLocked]);
+
+  useEffect(() => {
     if (typeof window === "undefined") return;
 
     const url = new URL(window.location.href);
@@ -1084,6 +1107,11 @@ function App() {
       dismissGroupAssignmentPrompt();
     }
   }, [dismissGroupAssignmentPrompt, user]);
+
+  useEffect(() => {
+    if (!globalBracketsLocked) return;
+    dismissGroupAssignmentPrompt();
+  }, [dismissGroupAssignmentPrompt, globalBracketsLocked]);
 
   useEffect(() => {
     if (!isAuthenticated) return;
@@ -1256,7 +1284,7 @@ function App() {
 
   const maybeShowPromoCTA = useCallback(() => {
     if (typeof window === "undefined") return false;
-    if (authLoading || isAuthenticated || promoShown || promoDismissed) return false;
+    if (globalBracketsLocked || authLoading || isAuthenticated || promoShown || promoDismissed) return false;
     if (promoCTATimerRef.current !== null) window.clearTimeout(promoCTATimerRef.current);
     promoCTATimerRef.current = window.setTimeout(() => {
       setPromoCTAVisible(true);
@@ -1264,7 +1292,7 @@ function App() {
       promoCTATimerRef.current = null;
     }, 800);
     return true;
-  }, [authLoading, isAuthenticated, promoDismissed, promoShown]);
+  }, [authLoading, globalBracketsLocked, isAuthenticated, promoDismissed, promoShown]);
 
   const handlePromoDismiss = () => {
     setPromoCTAVisible(false);
@@ -1284,6 +1312,18 @@ function App() {
     }
     setAuthModalOpen(true);
   };
+
+  const dismissLockPopup = useCallback(() => {
+    if (typeof window !== "undefined") {
+      window.localStorage.setItem(LOCK_POPUP_SEEN_KEY, "1");
+    }
+    setLockPopupOpen(false);
+  }, []);
+
+  const openPredictorFromLockPopup = useCallback(() => {
+    dismissLockPopup();
+    window.location.assign("/predictor");
+  }, [dismissLockPopup]);
 
   const dismissMobileOnboarding = useCallback(() => {
     setShowMobileOnboarding(false);
@@ -1843,20 +1883,22 @@ function App() {
     () => userBrackets.filter((bracket) => Boolean(bracket.submitted_at)).length,
     [userBrackets]
   );
-  const _elevated = hasElevatedAccess(user?.email);
-  const submissionsLocked = useMemo(() => _elevated ? false : userBrackets.some((bracket) => bracket.is_locked), [_elevated, userBrackets]);
+  const submissionsLocked = useMemo(
+    () => globalBracketsLocked || userBrackets.some((bracket) => bracket.is_locked),
+    [globalBracketsLocked, userBrackets]
+  );
   const bracketComplete = pickCount >= SUBMIT_EXPECTED_PICK_COUNT;
   const currentBracketKey = useMemo(
     () => (Object.keys(sanitizedUserPicks).length > 0 ? encodeBracketState(sanitizedUserPicks) : null),
     [sanitizedUserPicks]
   );
-  const submissionLimitReached = _elevated ? false : submittedBracketCount >= MAX_SUBMITTED_BRACKETS;
+  const submissionLimitReached = submittedBracketCount >= MAX_SUBMITTED_BRACKETS;
   const canSubmitBrackets = isAuthenticated && !submissionsLocked && !submissionLimitReached;
   const tournamentStarted = useMemo(() => {
-    if (userBrackets.some((bracket) => bracket.is_locked)) return true;
+    if (globalBracketsLocked || userBrackets.some((bracket) => bracket.is_locked)) return true;
     const tipoff = new Date("2026-03-20T12:00:00-04:00");
     return new Date() >= tipoff;
-  }, [userBrackets]);
+  }, [globalBracketsLocked, userBrackets]);
   const pickedChaosGameIds = useMemo(() => getPickedChaosGameIds(games), [games]);
   const chaosPercentile = useMemo(() => {
     if (chaosScore === null || pickedChaosGameIds.length === 0 || !chaosDistribution) return null;
@@ -2318,6 +2360,13 @@ function App() {
       }, delayMs);
     };
 
+    if (submissionsLocked) {
+      setSaveStatus("error");
+      setSaveErrorText(BRACKETS_LOCKED_MESSAGE);
+      queueSaveStatusReset(3000, true);
+      return null;
+    }
+
     if (!isAuthenticated || !user) {
       window.sessionStorage.setItem("pendingBracketSave", JSON.stringify(serializePicks(sanitizedUserPicks)));
       setAuthModalOpen(true);
@@ -2328,13 +2377,6 @@ function App() {
       const remaining = SUBMIT_EXPECTED_PICK_COUNT - pickCount;
       setSaveStatus("error");
       setSaveErrorText(`Complete all ${SUBMIT_EXPECTED_PICK_COUNT} picks before submitting. ${remaining} pick${remaining !== 1 ? "s" : ""} remaining.`);
-      queueSaveStatusReset(3000, true);
-      return null;
-    }
-
-    if (submissionsLocked) {
-      setSaveStatus("error");
-      setSaveErrorText("Submissions are locked at tip-off.");
       queueSaveStatusReset(3000, true);
       return null;
     }
@@ -2456,6 +2498,7 @@ function App() {
   };
 
   const onCompletionSave = async () => {
+    if (submissionsLocked) return;
     if (!isAuthenticated) {
       await onSaveBracket();
       return;
@@ -3659,7 +3702,7 @@ function App() {
 
   const showChaosInToolbar = !isMobile && chaosScore !== null;
   const showToolbarFirstFour = visiblePlayInGames.length > 0;
-  const showToolbarSubmitAction = true;
+  const showToolbarSubmitAction = !submissionsLocked;
   const firstFourToolbarBadge = visiblePlayInGames.length > 0
     ? (allPlayInDecided ? "✓" : `${decidedPlayInCount}/${visiblePlayInGames.length}`)
     : null;
@@ -3954,7 +3997,7 @@ function App() {
           </button>
         </div>
 
-        {!isMobile ? (
+        {!isMobile && showToolbarSubmitAction ? (
           <button
             onClick={() => void onSaveBracket()}
             className={`eg-btn toolbar-btn--save toolbar-btn--save-action${
@@ -4781,6 +4824,7 @@ function App() {
                   <LeaderboardFullWidth
                     isVisible={visibleMobileTab === "leaderboard"}
                     refreshKey={leaderboardRefreshKey}
+                    submissionsLocked={submissionsLocked}
                   />
                 </Suspense>
               </div>
@@ -4943,6 +4987,7 @@ function App() {
                       isVisible={visibleMainView === "leaderboard"}
                       refreshKey={leaderboardRefreshKey}
                       onClose={() => setMainView("bracket")}
+                      submissionsLocked={submissionsLocked}
                     />
                   </Suspense>
                 </div>
@@ -4997,6 +5042,7 @@ function App() {
             setAuthModalContext("default");
           }}
           context={authModalContext}
+          isLocked={submissionsLocked}
           onBeforeGoogleSignIn={preserveDraftForGoogleAuth}
         />
       ) : null}
@@ -5009,6 +5055,7 @@ function App() {
         onBracketsChanged={onBracketsChanged}
         currentPicks={sanitizedUserPicks}
         currentChaosScore={chaosScore ?? 0}
+        isLocked={submissionsLocked}
       />
 
       <GroupsHub
@@ -5056,6 +5103,7 @@ function App() {
           }
         }}
         initialCode={joinCode || undefined}
+        isLocked={submissionsLocked}
         onRequestAuth={(pendingCode) => {
           const extractedCode = extractInviteCode(pendingCode);
           if (extractedCode) {
@@ -5086,6 +5134,7 @@ function App() {
           setGroupsHubRefreshKey((current) => current + 1);
         }}
         tournamentStarted={tournamentStarted}
+        submissionsLocked={submissionsLocked}
       />
 
       {statsModalGame ? (
@@ -5140,6 +5189,7 @@ function App() {
           chaosEmoji={completionCelebrationData.chaosEmoji}
           onSave={onCompletionSave}
           onClose={() => setShowCompletionCelebration(false)}
+          submissionsLocked={submissionsLocked}
           wrappedSeen={wrappedSeen}
           onWrapped={wrappedData ? () => {
             trackEvent("wrapped_opened", { trigger: "completion", chaosLabel: wrappedData.identity.chaosLabel, champion: wrappedData.champion.teamName });
@@ -5158,6 +5208,7 @@ function App() {
         <BracketWrapped
           data={wrappedData}
           isBracketSubmitted={saveStatus === "saved"}
+          submissionsLocked={submissionsLocked}
           onSubmitBracket={async () => Boolean(await onSaveBracket())}
           onClose={() => { setShowWrappedFlow(false); setWrappedSeen(true); }}
         />
@@ -5181,11 +5232,13 @@ function App() {
         />
       ) : null}
 
-      <PromoCTA
-        visible={promoCTAVisible}
-        onDismiss={handlePromoDismiss}
-        onSignUp={handlePromoSignUp}
-      />
+      {!submissionsLocked ? (
+        <PromoCTA
+          visible={promoCTAVisible}
+          onDismiss={handlePromoDismiss}
+          onSignUp={handlePromoSignUp}
+        />
+      ) : null}
 
       {showMobileOnboarding ? (
         <MobileOnboarding
@@ -5307,14 +5360,20 @@ function App() {
         </>
       ) : null}
 
-      {globalBracketsLocked ? (
-        <div className="bracket-locked-overlay" role="dialog" aria-modal="true" aria-label="Bracket locked">
+      {lockPopupOpen && !welcomeGateOpen ? (
+        <div className="bracket-locked-overlay" role="dialog" aria-modal="true" aria-label="Brackets are locked">
           <div className="bracket-locked-overlay__card">
-            <span className="bracket-locked-overlay__icon">🔒</span>
-            <h2 className="bracket-locked-overlay__title">BRACKET LOCKED!</h2>
+            <span className="bracket-locked-overlay__icon">🏀</span>
+            <h2 className="bracket-locked-overlay__title">Brackets are locked.</h2>
             <p className="bracket-locked-overlay__body">
-              The tournament has tipped off. Brackets are locked while we finish the full post-lock experience.
+              The tournament has tipped off — brackets can no longer be submitted. But the full Bracket Lab is still yours to explore. Pick outcomes, watch odds shift, and follow the tournament through Futures and the Matchup Predictor.
             </p>
+            <button className="bracket-locked-overlay__primary" onClick={dismissLockPopup}>
+              Explore the Bracket
+            </button>
+            <button className="bracket-locked-overlay__secondary" onClick={openPredictorFromLockPopup}>
+              Open Matchup Predictor →
+            </button>
           </div>
         </div>
       ) : null}
@@ -5439,6 +5498,7 @@ function BracketCompletionCelebration({
   onWrapped,
   onShareCard,
   wrappedSeen,
+  submissionsLocked = false,
 }: {
   championName: string;
   chaosLabel: string;
@@ -5448,6 +5508,7 @@ function BracketCompletionCelebration({
   onWrapped?: () => void;
   onShareCard?: () => void;
   wrappedSeen?: boolean;
+  submissionsLocked?: boolean;
 }) {
   const championTeam = Array.from(teamsById.values()).find((team) => team.name === championName) ?? null;
   const championLogoSrc = championTeam ? teamLogoUrl(championTeam) : fallbackLogo(championName);
@@ -5488,9 +5549,11 @@ function BracketCompletionCelebration({
               View Share Card
             </button>
           ) : null}
-          <button className="completion-btn-submit" onClick={onSave}>
-            Submit Bracket
-          </button>
+          {!submissionsLocked ? (
+            <button className="completion-btn-submit" onClick={onSave}>
+              Submit Bracket
+            </button>
+          ) : null}
           <button className="completion-btn-keep-editing" onClick={onClose}>
             Keep editing
           </button>

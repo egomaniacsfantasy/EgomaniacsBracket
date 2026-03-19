@@ -66,6 +66,7 @@ export type LeaderboardEntry = {
 };
 
 export const MAX_SUBMITTED_BRACKETS = 10;
+export const BRACKETS_LOCKED_MESSAGE = "Brackets are locked — you can no longer save or submit brackets.";
 
 type BracketMeta = {
   champion_name: string | null;
@@ -235,6 +236,19 @@ export async function saveBracket(
   const shouldRetry = (message?: string) =>
     isMissingChaosColumn(message) || isMissingMetaColumn(message) || isMissingSubmissionColumn(message) || isChaosTypeMismatch(message);
 
+  if (!options.bypassLock) {
+    const { data: globallyLocked, error: lockError } = await getGlobalBracketLockState();
+    if (lockError) return { data: null, error: lockError };
+    if (globallyLocked) {
+      return {
+        data: null,
+        error: {
+          message: BRACKETS_LOCKED_MESSAGE,
+        },
+      };
+    }
+  }
+
   if (bracketId) {
     let lastData: unknown = null;
     let lastError: { message?: string } | null = null;
@@ -393,8 +407,12 @@ export async function setBracketSubmissionStatus(bracketId: string, userId: stri
     .eq("user_id", userId)
     .single();
   if (existingError) return { error: existingError };
-  if (!bypassLock && (bracket as { is_locked?: boolean } | null)?.is_locked) {
-    return { error: { message: "Submissions are locked at tip-off." } };
+  if (!bypassLock) {
+    const { data: globallyLocked, error: lockError } = await getGlobalBracketLockState();
+    if (lockError) return { error: lockError };
+    if (globallyLocked || (bracket as { is_locked?: boolean } | null)?.is_locked) {
+      return { error: { message: BRACKETS_LOCKED_MESSAGE } };
+    }
   }
 
   if (submit) {

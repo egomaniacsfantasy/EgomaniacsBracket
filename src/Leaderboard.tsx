@@ -145,15 +145,29 @@ function LBFooter() {
   );
 }
 
-function LBEmptyState({ onClose, onSubmitBracket }: { onClose?: () => void; onSubmitBracket?: () => void }) {
+function LBEmptyState({
+  submissionsLocked,
+  onClose,
+  onSubmitBracket,
+}: {
+  submissionsLocked: boolean;
+  onClose?: () => void;
+  onSubmitBracket?: () => void;
+}) {
   return (
     <div className="lb-empty-state">
       <span className="lb-empty-icon">🏀</span>
       <h3 className="lb-empty-title">No brackets yet</h3>
-      <p className="lb-empty-body">Be the first to submit your bracket and compete for the $100 prize.</p>
-      <button className="lb-empty-cta" onClick={() => (onSubmitBracket ?? onClose)?.()}>
-        Submit my bracket →
-      </button>
+      <p className="lb-empty-body">
+        {submissionsLocked
+          ? "Brackets are locked. Scores will populate here as results come in."
+          : "Be the first to submit your bracket and compete for the $100 prize."}
+      </p>
+      {!submissionsLocked ? (
+        <button className="lb-empty-cta" onClick={() => (onSubmitBracket ?? onClose)?.()}>
+          Submit my bracket →
+        </button>
+      ) : null}
     </div>
   );
 }
@@ -419,11 +433,13 @@ export function LeaderboardFullWidth({
   refreshKey = 0,
   onClose,
   onSubmitBracket,
+  submissionsLocked = false,
 }: {
   isVisible?: boolean;
   refreshKey?: number;
   onClose?: () => void;
   onSubmitBracket?: () => void;
+  submissionsLocked?: boolean;
 }) {
   const { user } = useAuth();
   const [entries, setEntries] = useState<LeaderboardEntry[]>([]);
@@ -431,7 +447,7 @@ export function LeaderboardFullWidth({
   const [loadError, setLoadError] = useState<string | null>(null);
   const [deletingBracketId, setDeletingBracketId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
-  const canAdminDelete = hasElevatedAccess(user?.email);
+  const canAdminDelete = hasElevatedAccess(user?.email) && !submissionsLocked;
 
   const loadLeaderboard = async () => {
     setLoading(entries.length === 0);
@@ -532,12 +548,16 @@ export function LeaderboardFullWidth({
         {adminDeleteError ? <div className="lb-admin-error">{adminDeleteError}</div> : null}
         {loadError ? <div className="lb-admin-error">{loadError}</div> : null}
 
-        <LBPrizeHero />
+        {submissionsLocked ? (
+          <div className="lb-lock-banner">Brackets are locked. Scores update as results come in.</div>
+        ) : null}
+
+        {!submissionsLocked ? <LBPrizeHero /> : null}
 
         {loading ? (
           <div className="lb-loading">Loading leaderboard...</div>
         ) : parsedEntries.length === 0 ? (
-          <LBEmptyState onClose={onClose} onSubmitBracket={onSubmitBracket} />
+          <LBEmptyState submissionsLocked={submissionsLocked} onClose={onClose} onSubmitBracket={onSubmitBracket} />
         ) : tournamentStarted ? (
           <TournamentLeaderboard
             canAdminDelete={canAdminDelete}

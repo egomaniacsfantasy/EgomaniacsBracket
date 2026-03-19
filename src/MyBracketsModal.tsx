@@ -21,6 +21,7 @@ export function MyBracketsModal({
   onBracketsChanged,
   currentPicks,
   currentChaosScore,
+  isLocked = false,
 }: {
   isOpen: boolean;
   onClose: () => void;
@@ -29,6 +30,7 @@ export function MyBracketsModal({
   onBracketsChanged?: () => void | Promise<void>;
   currentPicks: LockedPicks;
   currentChaosScore: number;
+  isLocked?: boolean;
 }) {
   const { user } = useAuth();
   const [brackets, setBrackets] = useState<SavedBracket[]>([]);
@@ -99,6 +101,10 @@ export function MyBracketsModal({
 
   const handleSaveNew = async () => {
     if (!user) return;
+    if (isLocked) {
+      setActionError("Brackets are locked — submissions are closed.");
+      return;
+    }
     const completion = getBracketCompletionSummary(currentPicks);
     if (!completion.isComplete) {
       setActionError(
@@ -122,6 +128,10 @@ export function MyBracketsModal({
   };
 
   const openGroupPicker = (bracketId: string) => {
+    if (isLocked) {
+      setActionError("Brackets are locked — submissions are closed.");
+      return;
+    }
     const candidate = brackets.find((bracket) => bracket.id === bracketId);
     if (!candidate) return;
     const completion = getBracketCompletionSummary(candidate.picks ?? {});
@@ -165,7 +175,7 @@ export function MyBracketsModal({
   if (!isOpen) return null;
 
   const submittedCount = brackets.filter((bracket) => Boolean(bracket.submitted_at)).length;
-  const submissionsLocked = brackets.some((bracket) => bracket.is_locked);
+  const submissionsLocked = isLocked || brackets.some((bracket) => bracket.is_locked);
   const groupPickerBracket = groupPickerBracketId ? brackets.find((bracket) => bracket.id === groupPickerBracketId) ?? null : null;
 
   return (
@@ -176,9 +186,9 @@ export function MyBracketsModal({
         </button>
         <h3 className="auth-modal-title">My Brackets</h3>
         <p className="auth-modal-subtitle">
-          Submitted {submittedCount}/{MAX_SUBMITTED_BRACKETS} brackets. Load a bracket to view it, or submit your current picks.
+          Submitted {submittedCount}/{MAX_SUBMITTED_BRACKETS} brackets. Load a bracket to view it{!submissionsLocked ? ", or submit your current picks." : "."}
         </p>
-        {submissionsLocked ? <p className="auth-modal-hint auth-modal-hint--error">Submissions locked at tip-off.</p> : null}
+        {submissionsLocked ? <p className="my-brackets-lock-note">Brackets are locked — submissions are closed.</p> : null}
         {actionError ? <p className="auth-modal-hint auth-modal-hint--error">{actionError}</p> : null}
 
         {loading ? (
@@ -290,33 +300,29 @@ export function MyBracketsModal({
                     >
                       Load bracket
                     </button>
-                    {!bracket.is_locked ? (
-                      <>
-                        <button
-                          className="my-bracket-action-secondary"
-                          disabled={workingAction !== null}
-                          onClick={() => {
-                            setEditingName(bracket.id);
-                            setNewName(bracket.bracket_name);
-                          }}
-                        >
-                          Rename
-                        </button>
-                        {userGroups.length > 0 ? (
-                          <button
-                            className="my-bracket-action-secondary"
-                            disabled={workingAction !== null || !completion.isComplete}
-                            title={!completion.isComplete ? "Complete the full bracket before using it in a group." : undefined}
-                            onClick={() => openGroupPicker(bracket.id)}
-                          >
-                            {assignedGroups.length > 0 ? "Change Group Bracket" : "Use in Group"}
-                          </button>
-                        ) : null}
-                        <button className="my-bracket-action-danger" disabled={workingAction !== null} onClick={() => handleDelete(bracket.id)}>
-                          Delete
-                        </button>
-                      </>
+                    <button
+                      className="my-bracket-action-secondary"
+                      disabled={workingAction !== null}
+                      onClick={() => {
+                        setEditingName(bracket.id);
+                        setNewName(bracket.bracket_name);
+                      }}
+                    >
+                      Rename
+                    </button>
+                    {!submissionsLocked && userGroups.length > 0 ? (
+                      <button
+                        className="my-bracket-action-secondary"
+                        disabled={workingAction !== null || !completion.isComplete}
+                        title={!completion.isComplete ? "Complete the full bracket before using it in a group." : undefined}
+                        onClick={() => openGroupPicker(bracket.id)}
+                      >
+                        {assignedGroups.length > 0 ? "Change Group Bracket" : "Use in Group"}
+                      </button>
                     ) : null}
+                    <button className="my-bracket-action-danger" disabled={workingAction !== null} onClick={() => handleDelete(bracket.id)}>
+                      Delete
+                    </button>
                   </div>
                 </div>
               );

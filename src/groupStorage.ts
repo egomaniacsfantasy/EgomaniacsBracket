@@ -4,6 +4,7 @@ import { getBracketCompletionSummary, resolveBracketWithKnownResults } from "./l
 import { teamsById } from "./data/teams";
 import { teamLogoUrl } from "./lib/logo";
 import { extractInviteCode } from "./lib/inviteCode";
+import { getGlobalBracketLockState } from "./bracketStorage";
 
 export type GroupRow = {
   id: string;
@@ -80,6 +81,8 @@ const GROUP_COUNTS_QUERY_TIMEOUT_MS = 3500;
 const USER_GROUPS_CACHE_PREFIX = "og_user_groups_v1";
 const GROUP_STANDINGS_CACHE_PREFIX = "og_group_standings_v2";
 const GROUP_MEMBERS_CACHE_PREFIX = "og_group_members_v1";
+export const GROUP_JOIN_LOCKED_MESSAGE =
+  "Brackets are locked — you can no longer join groups with a new bracket. You can still view groups you're already a member of.";
 
 async function validateGroupBracketSelection(userId: string, bracketId: string) {
   const { data: bracket, error } = await supabase
@@ -202,6 +205,12 @@ export async function createGroup(userId: string, groupName: string, emoji: stri
 }
 
 export async function joinGroup(inviteCode: string, userId: string, bracketId: string | null) {
+  const { data: globallyLocked, error: lockError } = await getGlobalBracketLockState();
+  if (lockError) return { data: null, error: lockError };
+  if (globallyLocked) {
+    return { data: null, error: { message: GROUP_JOIN_LOCKED_MESSAGE } };
+  }
+
   const normalizedInviteCode = extractInviteCode(inviteCode);
   if (normalizedInviteCode.length === 0) {
     return { data: null, error: { message: "Group not found. Check the invite code." } };
@@ -624,6 +633,12 @@ export async function getGroupByCode(inviteCode: string) {
 }
 
 export async function updateMemberBracket(groupId: string, userId: string, bracketId: string) {
+  const { data: globallyLocked, error: lockError } = await getGlobalBracketLockState();
+  if (lockError) return { data: null, error: lockError };
+  if (globallyLocked) {
+    return { data: null, error: { message: GROUP_JOIN_LOCKED_MESSAGE } };
+  }
+
   const { error: bracketError } = await validateGroupBracketSelection(userId, bracketId);
   if (bracketError) return { data: null, error: bracketError };
 

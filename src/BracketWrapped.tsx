@@ -8,6 +8,7 @@ import { exportWrappedCard } from "./lib/wrappedExport";
 interface BracketWrappedProps {
   data: WrappedData;
   isBracketSubmitted: boolean;
+  submissionsLocked?: boolean;
   onSubmitBracket: () => Promise<boolean>;
   onClose: () => void;
 }
@@ -44,7 +45,7 @@ function unlikelyRunContextLine(teamName: string, roundReached: string, baseline
   return `Before any picks were made, the model gave ${teamName} a ${formatPercent(baselineProb)} chance of ${destination}.`;
 }
 
-export function BracketWrapped({ data, isBracketSubmitted, onSubmitBracket, onClose }: BracketWrappedProps) {
+export function BracketWrapped({ data, isBracketSubmitted, submissionsLocked = false, onSubmitBracket, onClose }: BracketWrappedProps) {
   const [screen, setScreen] = useState(0);
   const [submitState, setSubmitState] = useState<"idle" | "submitting" | "submitted">(isBracketSubmitted ? "submitted" : "idle");
   const hasTrackedRef = useRef<Set<number>>(new Set());
@@ -249,19 +250,21 @@ export function BracketWrapped({ data, isBracketSubmitted, onSubmitBracket, onCl
                 <BracketWrappedCard data={data} />
                 <div className="bw-screen5-actions" onClick={(e) => e.stopPropagation()}>
                   <div className="bw-screen5-cta-row">
-                    <button
-                      className={`bw-btn ${
-                        submitState === "submitted" ? "bw-btn--secondary bw-screen5-submit-btn bw-screen5-submit-btn--submitted" : "bw-btn--primary bw-screen5-submit-btn"
-                      }`}
-                      onClick={handleSubmitBracket}
-                      disabled={submitState === "submitting" || submitState === "submitted"}
-                    >
-                      {submitState === "submitting"
-                        ? "Submitting..."
-                        : submitState === "submitted"
-                          ? "Submitted"
-                          : "Submit Bracket"}
-                    </button>
+                    {!submissionsLocked ? (
+                      <button
+                        className={`bw-btn ${
+                          submitState === "submitted" ? "bw-btn--secondary bw-screen5-submit-btn bw-screen5-submit-btn--submitted" : "bw-btn--primary bw-screen5-submit-btn"
+                        }`}
+                        onClick={handleSubmitBracket}
+                        disabled={submitState === "submitting" || submitState === "submitted"}
+                      >
+                        {submitState === "submitting"
+                          ? "Submitting..."
+                          : submitState === "submitted"
+                            ? "Submitted"
+                            : "Submit Bracket"}
+                      </button>
+                    ) : null}
                     <button className="bw-btn bw-btn--secondary bw-screen5-share-btn" onClick={handleShareCard}>
                       Share Card
                     </button>

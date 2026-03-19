@@ -11,13 +11,17 @@ export function JoinGroupModal({
   onGroupJoined,
   initialCode,
   onRequestAuth,
+  isLocked = false,
 }: {
   isOpen: boolean;
   onClose: () => void;
   onGroupJoined?: (group: GroupRow, hadBracket: boolean) => void;
   initialCode?: string | null;
   onRequestAuth?: (code?: string) => void;
+  isLocked?: boolean;
 }) {
+  const lockedMessage =
+    "Brackets are locked — you can no longer join groups with a new bracket. You can still view groups you're already a member of.";
   const { user } = useAuth();
   const [step, setStep] = useState<"code" | "bracket" | "done">("code");
   const [code, setCode] = useState(extractInviteCode(initialCode));
@@ -32,6 +36,10 @@ export function JoinGroupModal({
   const lookupGroup = useCallback(async (lookupCodeRaw: string) => {
     const lookupCode = extractInviteCode(lookupCodeRaw);
     if (!lookupCode || !user) return;
+    if (isLocked) {
+      setError(lockedMessage);
+      return;
+    }
     setLoading(true);
     setError("");
 
@@ -63,20 +71,33 @@ export function JoinGroupModal({
     }
 
     setStep("bracket");
-  }, [user, onGroupJoined]);
+  }, [isLocked, lockedMessage, user, onGroupJoined]);
 
   // Auto-lookup once user is available (key prop ensures initialCode is baked into state on mount)
   useEffect(() => {
     if (!isOpen || !normalizedInitialCode || step !== "code" || !user) return;
+    if (isLocked) {
+      setError(lockedMessage);
+      return;
+    }
 
     const timeoutId = window.setTimeout(() => {
       void lookupGroup(normalizedInitialCode);
     }, 100);
 
     return () => window.clearTimeout(timeoutId);
-  }, [isOpen, lookupGroup, normalizedInitialCode, step, user]);
+  }, [isLocked, isOpen, lockedMessage, lookupGroup, normalizedInitialCode, step, user]);
+
+  useEffect(() => {
+    if (!isOpen || !isLocked) return;
+    setError(lockedMessage);
+  }, [isLocked, isOpen, lockedMessage]);
 
   function handleLookup() {
+    if (isLocked) {
+      setError(lockedMessage);
+      return;
+    }
     if (code.trim().length !== INVITE_CODE_LENGTH) {
       setError(`Enter the full ${INVITE_CODE_LENGTH}-character invite code.`);
       return;
@@ -97,6 +118,10 @@ export function JoinGroupModal({
   }
 
   async function handleJoin() {
+    if (isLocked) {
+      setError(lockedMessage);
+      return;
+    }
     if (!selectedBracket || !group || !user) return;
     const selected = brackets.find((bracket) => bracket.id === selectedBracket);
     if (!selected) {
@@ -181,7 +206,7 @@ export function JoinGroupModal({
             <button
               className="group-cta-btn"
               onClick={handleLookup}
-              disabled={code.trim().length !== INVITE_CODE_LENGTH || loading}
+              disabled={isLocked || code.trim().length !== INVITE_CODE_LENGTH || loading}
             >
               {loading ? "Looking up..." : "Find Group"}
             </button>
@@ -237,7 +262,7 @@ export function JoinGroupModal({
               >
                 ← Back
               </button>
-              <button className="group-cta-btn" onClick={handleJoin} disabled={!selectedBracket || loading}>
+              <button className="group-cta-btn" onClick={handleJoin} disabled={isLocked || !selectedBracket || loading}>
                 {loading ? "Joining..." : "Join Group"}
               </button>
             </div>

@@ -21404,18 +21404,17 @@ body.br-modal-open {
   align-items: center;
   justify-content: center;
   padding: 24px;
-  background: rgba(0, 0, 0, 0.82);
-  backdrop-filter: blur(3px);
+  background: rgba(0, 0, 0, 0.7);
 }
 
 .bracket-locked-overlay__card {
-  max-width: 520px;
+  max-width: 480px;
   width: 100%;
-  border-radius: 18px;
-  border: 1px solid rgba(184, 125, 24, 0.3);
+  border-radius: 16px;
+  border: 1px solid rgba(184, 125, 24, 0.25);
   background: linear-gradient(180deg, rgba(23, 16, 8, 0.97), rgba(16, 12, 7, 0.99));
   box-shadow: 0 24px 80px rgba(0, 0, 0, 0.45);
-  padding: 36px 32px;
+  padding: 40px 36px;
   text-align: center;
 }
 
@@ -21434,9 +21433,57 @@ body.br-modal-open {
 }
 
 .bracket-locked-overlay__body {
-  margin: 0;
+  margin: 0 0 28px;
   color: var(--text-dim);
   font-family: var(--font-mono);
   font-size: 14px;
   line-height: 1.6;
+}
+
+.bracket-locked-overlay__primary {
+  width: 100%;
+  border: 1px solid rgba(184, 125, 24, 0.5);
+  border-radius: 999px;
+  background: rgba(184, 125, 24, 0.15);
+  color: var(--text-amber);
+  font-family: var(--font-mono);
+  font-size: 14px;
+  font-weight: 600;
+  padding: 12px 32px;
+  cursor: pointer;
+  transition: background 150ms ease, border-color 150ms ease;
+}
+
+.bracket-locked-overlay__primary:hover {
+  background: rgba(184, 125, 24, 0.25);
+}
+
+.bracket-locked-overlay__secondary {
+  margin-top: 12px;
+  border: none;
+  background: transparent;
+  color: var(--text-amber);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.my-brackets-lock-note {
+  margin: 0 0 12px;
+  color: var(--text-soft);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  text-align: center;
+}
+
+.lb-lock-banner {
+  margin-bottom: 16px;
+  border: 1px solid rgba(184, 125, 24, 0.12);
+  border-radius: 8px;
+  background: rgba(184, 125, 24, 0.04);
+  padding: 10px;
+  color: var(--text-soft);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  text-align: center;
 }

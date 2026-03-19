@@ -29,6 +29,7 @@ export function GroupDetailView({
   isOpen,
   onClose,
   tournamentStarted,
+  submissionsLocked = false,
   tournamentResults,
   onGroupUpdated,
 }: {
@@ -36,6 +37,7 @@ export function GroupDetailView({
   isOpen: boolean;
   onClose: () => void;
   tournamentStarted: boolean;
+  submissionsLocked?: boolean;
   tournamentResults?: unknown;
   onGroupUpdated?: (updated: { name: string; emoji: string }) => void;
 }) {
@@ -179,6 +181,10 @@ export function GroupDetailView({
 
   async function handleOpenBracketPicker() {
     if (!user) return;
+    if (submissionsLocked) {
+      setBracketPickerError("Brackets are locked — submissions are closed.");
+      return;
+    }
     setBracketPickerLoading(true);
     setBracketPickerError("");
     const { data } = await getUserBrackets(user.id);
@@ -230,6 +236,10 @@ export function GroupDetailView({
 
   async function handleConfirmBracket() {
     if (!group || !user || !selectedBracket) return;
+    if (submissionsLocked) {
+      setBracketPickerError("Brackets are locked — submissions are closed.");
+      return;
+    }
     const selected = brackets.find((bracket) => bracket.id === selectedBracket);
     if (!selected) {
       setBracketPickerError("Bracket not found. Please reload and try again.");
@@ -401,7 +411,7 @@ export function GroupDetailView({
                 canPreviewHidden={canPreviewHidden}
                 onViewBracket={setViewingBracket}
                 onRefresh={loadGroupData}
-                onSelectBracket={handleOpenBracketPicker}
+                onSelectBracket={submissionsLocked ? undefined : handleOpenBracketPicker}
                 onInvite={() => void handleInvite()}
               />
             )}
@@ -409,7 +419,7 @@ export function GroupDetailView({
               <GroupMembersTab
                 members={members}
                 currentUserId={user?.id}
-                onSelectBracket={handleOpenBracketPicker}
+                onSelectBracket={submissionsLocked ? undefined : handleOpenBracketPicker}
               />
             )}
             {activeTab === "picks" && (

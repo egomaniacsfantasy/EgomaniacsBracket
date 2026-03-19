@@ -2,7 +2,7 @@ import { createContext, useContext, useEffect, useRef, useState } from "react";
 import type { ReactNode } from "react";
 import type { User } from "@supabase/supabase-js";
 import { supabase } from "./supabaseClient";
-import { saveBracket } from "./bracketStorage";
+import { getGlobalBracketLockState, saveBracket } from "./bracketStorage";
 import { buildAuthRedirectUrl } from "./authRedirectUrl";
 import { captureError } from "./lib/errorMonitoring";
 
@@ -133,7 +133,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           window.sessionStorage.removeItem("pendingBracketSave");
           try {
             const pendingPicks = JSON.parse(pendingRaw) as Record<string, string>;
-            void saveBracket(userId, pendingPicks, "My Bracket", null, undefined, { submit: false }).catch((error) => {
+            void (async () => {
+              const { data: globallyLocked } = await getGlobalBracketLockState();
+              if (globallyLocked) return;
+              await saveBracket(userId, pendingPicks, "My Bracket", null, undefined, { submit: false });
+            })().catch((error) => {
               captureError("auth_pending_bracket_save", error);
             });
           } catch (error) {

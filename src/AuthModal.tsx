@@ -103,8 +103,15 @@ function getEmbeddedBrowserName(): string | null {
   return null;
 }
 
-function getAuthCopy(context: AuthContext, mode: string) {
+function getAuthCopy(context: AuthContext, mode: string, isLocked: boolean) {
   if (mode === "check-email" || mode === "verify-otp" || mode === "forgot" || mode === "forgot-sent") return null;
+
+  if (isLocked && (context === "submit" || context === "default")) {
+    return {
+      title: "Welcome to The Bracket Lab",
+      subtitle: "Sign up to access your saved brackets and groups.",
+    };
+  }
 
   switch (context) {
     case "submit":
@@ -247,11 +254,13 @@ export function AuthModal({
   isOpen,
   onClose,
   context = "default",
+  isLocked = false,
   onBeforeGoogleSignIn,
 }: {
   isOpen: boolean;
   onClose: () => void;
   context?: AuthContext;
+  isLocked?: boolean;
   onBeforeGoogleSignIn?: () => void;
 }) {
   const pendingVerification = getPendingAuthVerification();
@@ -486,7 +495,7 @@ export function AuthModal({
 
   if (!isOpen) return null;
 
-  const copy = getAuthCopy(context, mode);
+  const copy = getAuthCopy(context, mode, isLocked);
   const embeddedBrowserName = getEmbeddedBrowserName();
 
   const handleGoogleSignIn = async () => {
