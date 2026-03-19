@@ -1,9 +1,9 @@
-import { Fragment, Suspense, lazy, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { Fragment, Suspense, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import html2canvas from "html2canvas";
+import "./index.css";
 import { teamsById } from "./data/teams";
 import { BRACKET_HALVES, gameTemplates, regionRounds } from "./data/bracket";
-import { NCAA_KNOWN_RESULT_IDS, NCAA_KNOWN_RESULTS } from "./data/ncaaKnownResults";
 import {
   finalRounds,
   gamesByRegionAndRound,
@@ -13,11 +13,12 @@ import {
   resetRegionPicks,
   resolveGames,
   sanitizeLockedPicks,
+  BRACKET_KNOWN_RESULTS,
   type CustomProbByGame,
   type LockedPicks,
 } from "./lib/bracket";
 import { abbreviationForTeam } from "./lib/abbreviation";
-import { formatLikelihood, formatOddsDisplay, toAmericanOdds, toImpliedLabel, toOneInX } from "./lib/odds";
+import { formatOddsDisplay, toAmericanOdds, toImpliedLabel, toOneInX } from "./lib/odds";
 import {
   generateSimulatedBracket,
   generateSimulatedBracketSteps,
@@ -28,29 +29,16 @@ import {
 import { fallbackLogo, teamLogoUrl } from "./lib/logo";
 import { fullTeamName } from "./lib/teamNames";
 import { trackEvent } from "./lib/analytics";
-import { extractInviteCode } from "./lib/inviteCode";
+import { ConferenceTournaments } from "./conferences/ConferenceTournaments";
+import { ExpandedRankings } from "./rankings/ExpandedRankings";
+import { MatchupPredictor } from "./MatchupPredictor";
 import { useAuth } from "./AuthContext";
 import { AuthModal } from "./AuthModal";
-import { consumePendingAuthDraft, savePendingAuthDraft } from "./authRedirectState";
-import { clearPendingAuthVerification, getPendingAuthVerification } from "./authVerificationSession";
 import { MyBracketsModal } from "./MyBracketsModal";
-import { CreateGroupModal } from "./CreateGroupModal";
-import { JoinGroupModal } from "./JoinGroupModal";
-import { GroupsHub } from "./GroupsHub";
-import { GroupDetailView } from "./GroupDetailView";
-import { MAX_SUBMITTED_BRACKETS, deserializePicks, getUserBrackets, saveBracket, serializePicks, type SavedBracket } from "./bracketStorage";
+import { LeaderboardFullWidth } from "./Leaderboard";
+import { deserializePicks, getUserBrackets, saveBracket, serializePicks, type SavedBracket } from "./bracketStorage";
 import { TEAM_STAT_IMPORTANCE, TEAM_STAT_ORDER, TEAM_STATS_2026, type TeamStatKey } from "./data/teamStats2026";
 import type { OddsDisplayMode, Region, ResolvedGame, SimulationOutput } from "./types";
-import { computeWrappedData, type WrappedData } from "./lib/wrappedData";
-import { BracketWrapped } from "./BracketWrapped";
-import { BracketWrappedCard } from "./BracketWrappedCard";
-import { MobileOnboarding } from "./MobileOnboarding";
-import { OverflowMenu, type OverflowMenuItem } from "./OverflowMenu";
-import { TopNavBar, type TopNavView } from "./TopNavBar";
-import BugReportModal, { type BugReportModalProps } from "./BugReportModal";
-import { getUserGroups, updateMemberBracket, type UserGroup } from "./groupStorage";
-import { hasElevatedAccess } from "./groupVisibility";
-import { FirstFourBar } from "./components/FirstFourBar";
 
 const DEFAULT_SIM_RUNS = 10000;
 const CHAOS_DISTRIBUTION_SIM_RUNS = 10000;
@@ -58,58 +46,16 @@ const ONBOARDING_STORAGE_KEY = "oddsGods_onboardingDismissed";
 const HINTS_STORAGE_KEY = "oddsGods_hintsShown";
 const FIRST_PICK_NUDGE_SESSION_KEY = "oddsGods_firstPickCascadeNudgeSeen";
 const PROMO_DISMISSED_KEY = "bracketlab-promo-dismissed";
+const DESKTOP_FIRST_SEEN_KEY = "bracketlab-desktop-first-seen";
 const ODDS_FORMAT_STORAGE_KEY = "bracketlab-odds-format";
 const STAGGERED_SIM_DELAY_MS = 2000;
 const MIN_STAGGERED_SIM_DELAY_MS = 1000;
 const MAX_STAGGERED_SIM_DELAY_MS = 5000;
+const LANDING_URL = "https://oddsgods.net";
+
 const regionSections: Region[][] = BRACKET_HALVES.map((half) => [...half.regions]);
 const mobileRegionOrder: Region[] = ["East", "West", "Midwest", "South"];
 const invertedRegions = new Set<Region>([regionSections[0][1], regionSections[1][1]]);
-
-function getInviteCodeFromUrl(url: URL): {
-  code: string;
-  removeJoinParam: boolean;
-  removeLegacyCodeParam: boolean;
-} {
-  const joinCode = extractInviteCode(url.searchParams.get("join"));
-  if (joinCode) {
-    return {
-      code: joinCode,
-      removeJoinParam: true,
-      removeLegacyCodeParam: false,
-    };
-  }
-
-  const legacyCode = url.searchParams.get("code");
-  // OAuth callbacks also use `code`, so only honor the legacy param when it already
-  // looks exactly like one of our 8-character invite codes.
-  if (!legacyCode || !/^[A-Za-z0-9]{8}$/.test(legacyCode.trim())) {
-    return {
-      code: "",
-      removeJoinParam: false,
-      removeLegacyCodeParam: false,
-    };
-  }
-
-  return {
-    code: extractInviteCode(legacyCode),
-    removeJoinParam: false,
-    removeLegacyCodeParam: true,
-  };
-}
-
-const ConferenceTournaments = lazy(() =>
-  import("./conferences/ConferenceTournaments").then((module) => ({ default: module.ConferenceTournaments })),
-);
-const ExpandedRankings = lazy(() =>
-  import("./rankings/ExpandedRankings").then((module) => ({ default: module.ExpandedRankings })),
-);
-const MatchupPredictor = lazy(() =>
-  import("./MatchupPredictor").then((module) => ({ default: module.MatchupPredictor })),
-);
-const LeaderboardFullWidth = lazy(() =>
-  import("./Leaderboard").then((module) => ({ default: module.LeaderboardFullWidth })),
-);
 
 const gameRoundLabel: Record<string, string> = {
   FF: "First Four",
@@ -138,65 +84,21 @@ const MOBILE_ROUND_ORDER: Record<"FF" | "R64" | "R32" | "S16" | "E8", number> = 
   E8: 4,
 };
 
-const mergeNcaaKnownResults = (locks: LockedPicks): LockedPicks => ({
-  ...locks,
-  ...NCAA_KNOWN_RESULTS,
-});
-
-const stripNcaaKnownResults = (locks: LockedPicks): LockedPicks => {
-  const next = { ...locks };
-  for (const gameId of NCAA_KNOWN_RESULT_IDS) {
-    delete next[gameId];
-  }
-  return next;
-};
-
-function DeferredViewFallback() {
-  return (
-    <div
-      style={{
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        minHeight: "200px",
-        color: "rgba(240,230,208,0.4)",
-        fontFamily: '"Space Grotesk", sans-serif',
-        fontSize: "13px",
-      }}
-    >
-      Loading...
-    </div>
-  );
-}
-
 const URL_REGION_ORDER: Region[] = ["South", "West", "East", "Midwest"];
 const URL_ROUND_ORDER: ResolvedGame["round"][] = ["FF", "R64", "R32", "S16", "E8", "F4", "CHAMP"];
 const URL_EXPECTED_GAME_COUNT = gameTemplates.length;
 const URL_EXPECTED_BITS = URL_EXPECTED_GAME_COUNT * 2;
-const SUBMIT_EXPECTED_PICK_COUNT = gameTemplates.filter((game) => game.round !== "FF").length;
-const SHOW_CONFERENCE_TOURNAMENTS = false;
-const MOBILE_TAB_BODY_CLASSES = [
-  "mobile-tab-bracket",
-  "mobile-tab-futures",
-  "mobile-tab-leaderboard",
-  "mobile-tab-leaders",
-  "mobile-tab-conferences",
-  "mobile-tab-conf",
-  "mobile-tab-rankings",
-  "mobile-tab-ranks",
-  "mobile-tab-predictor",
-] as const;
 
-const MOBILE_BODY_CLASSES_BY_TAB: Record<
-  "bracket" | "futures" | "leaderboard" | "conferences" | "rankings" | "predictor",
-  readonly string[]
-> = {
-  bracket: ["mobile-tab-bracket"],
-  futures: ["mobile-tab-futures"],
-  leaderboard: ["mobile-tab-leaderboard", "mobile-tab-leaders"],
-  conferences: ["mobile-tab-conferences", "mobile-tab-conf"],
-  rankings: ["mobile-tab-rankings", "mobile-tab-ranks"],
-  predictor: ["mobile-tab-predictor"],
+const getRecommendedSimRuns = (): number => {
+  if (typeof window === "undefined") return DEFAULT_SIM_RUNS;
+  const nav = navigator as Navigator & { deviceMemory?: number };
+  const cores = nav.hardwareConcurrency ?? 4;
+  const memory = nav.deviceMemory ?? 4;
+  const isMobileViewport = window.matchMedia("(max-width: 767px)").matches;
+
+  if (isMobileViewport || memory <= 4 || cores <= 4) return 1500;
+  if (memory <= 8 || cores <= 8) return 2500;
+  return DEFAULT_SIM_RUNS;
 };
 
 const canonicalGameTemplates = (() => {
@@ -248,26 +150,19 @@ function encodeBracketState(locks: LockedPicks): string {
   let pickedBits = "";
   let winnerBits = "";
 
-  const { games } = resolveGames(mergeNcaaKnownResults(locks));
+  const { games } = resolveGames(locks);
   const gameById = new Map(games.map((game) => [game.id, game]));
 
   for (const gameId of canonicalGameIds) {
     const game = gameById.get(gameId);
-    const pickedWinnerId = locks[gameId] ?? null;
-    if (
-      !game ||
-      !pickedWinnerId ||
-      !game.teamAId ||
-      !game.teamBId ||
-      (pickedWinnerId !== game.teamAId && pickedWinnerId !== game.teamBId)
-    ) {
+    if (!game || !game.winnerId || !game.teamAId || !game.teamBId) {
       pickedBits += "0";
       winnerBits += "0";
       continue;
     }
 
     pickedBits += "1";
-    winnerBits += pickedWinnerId === game.teamAId ? "0" : "1";
+    winnerBits += game.winnerId === game.teamAId ? "0" : "1";
   }
 
   return bitsToBase64Url(pickedBits + winnerBits);
@@ -301,26 +196,13 @@ function decodeBracketState(hash: string): LockedPicks | null {
       const side = decodedByGame.get(gameId);
       if (!side) continue;
 
-      const resolvedGame = resolveGames(mergeNcaaKnownResults(nextLocks)).games.find((game) => game.id === gameId);
+      const resolvedGame = resolveGames(nextLocks).games.find((game) => game.id === gameId);
       if (!resolvedGame || !resolvedGame.teamAId || !resolvedGame.teamBId) return null;
       nextLocks[gameId] = side === "A" ? resolvedGame.teamAId : resolvedGame.teamBId;
     }
   }
 
-  return stripNcaaKnownResults(resolveGames(mergeNcaaKnownResults(nextLocks)).sanitized);
-}
-
-function areAllFirstFourGamesDecided(locks: LockedPicks): boolean {
-  const ffGames = resolveGames(mergeNcaaKnownResults(locks)).games.filter((game) => game.round === "FF");
-  return ffGames.length === 4 && ffGames.every((game) => Boolean(game.winnerId));
-}
-
-function getInitialFirstFourExpanded(): boolean {
-  if (typeof window === "undefined") return true;
-  const rawHash = window.location.hash.startsWith("#") ? window.location.hash.slice(1) : "";
-  if (!rawHash) return true;
-  const decoded = decodeBracketState(rawHash);
-  return decoded ? !areAllFirstFourGamesDecided(decoded) : true;
+  return sanitizeLockedPicks(nextLocks);
 }
 
 type ProbabilityPopupState = {
@@ -351,15 +233,6 @@ type ResetModalConfig = {
   confirmLabel: string;
   onConfirm: () => void;
 };
-type GroupAssignmentPromptState = {
-  bracket: SavedBracket;
-  groups: UserGroup[];
-};
-type AppToastState = {
-  message: string;
-  tone: "default" | "success";
-};
-type ToolbarMenuId = "sim" | "reset" | "overflow";
 type RegionalRound = "FF" | "R64" | "R32" | "S16" | "E8";
 type ManualRoundExpansionState = Partial<Record<`${Region}-${RegionalRound}`, boolean>>;
 type WalkthroughStepConfig = {
@@ -496,6 +369,8 @@ const DEFAULT_HINTS_SHOWN: HintsShown = {
 };
 
 const ONBOARDING_UPSET_REGION: Region = "South";
+const ONBOARDING_UPSET_WINNER = "Merrimack";
+const ONBOARDING_UPSET_LOSER = "Florida";
 
 const WALKTHROUGH_STEPS: WalkthroughStepConfig[] = [
   {
@@ -578,25 +453,17 @@ const formatDelta = (delta: number, displayMode: OddsDisplayMode): string => {
   return `${sign}${rounded}`;
 };
 
-const getEliminatedTeamIds = (resolvedGames: ResolvedGame[]): Set<string> => {
-  const eliminated = new Set<string>();
-
-  for (const game of resolvedGames) {
-    if (!game.lockedByUser || !game.winnerId) continue;
-    if (game.teamAId && game.teamAId !== game.winnerId) eliminated.add(game.teamAId);
-    if (game.teamBId && game.teamBId !== game.winnerId) eliminated.add(game.teamBId);
-  }
-
-  return eliminated;
-};
-
-const splitIntoColumns = <T,>(items: T[]): [T[], T[]] => {
-  const midpoint = Math.ceil(items.length / 2);
-  return [items.slice(0, midpoint), items.slice(midpoint)];
-};
-
 const findOnboardingUpsetMatchupId = (games: ResolvedGame[]): string => {
-  const match = games.find((game) => {
+  const byNames = games.find((game) => {
+    if (game.round !== "R64" || game.region !== ONBOARDING_UPSET_REGION || !game.teamAId || !game.teamBId) return false;
+    const teamA = teamsById.get(game.teamAId);
+    const teamB = teamsById.get(game.teamBId);
+    if (!teamA || !teamB) return false;
+    const names = new Set([teamA.name, teamB.name]);
+    return names.has(ONBOARDING_UPSET_WINNER) && names.has(ONBOARDING_UPSET_LOSER);
+  });
+  if (byNames) return byNames.id;
+  const bySeed = games.find((game) => {
     if (game.round !== "R64" || game.region !== ONBOARDING_UPSET_REGION || !game.teamAId || !game.teamBId) return false;
     const teamA = teamsById.get(game.teamAId);
     const teamB = teamsById.get(game.teamBId);
@@ -604,7 +471,7 @@ const findOnboardingUpsetMatchupId = (games: ResolvedGame[]): string => {
     const seeds = new Set([teamA.seedLabel, teamB.seedLabel]);
     return seeds.has("15") && seeds.has("2");
   });
-  return match?.id ?? "South-R64-2";
+  return bySeed?.id ?? "South-R64-2";
 };
 
 const ROUND_TO_DATA_ATTR: Record<"R32" | "S16" | "E8", string> = {
@@ -638,9 +505,7 @@ const getOnboardingPathByRound = (startGameId: string | null): Record<"R32" | "S
 
 function App() {
   const { user, profile, isAuthenticated, signOut, loading: authLoading } = useAuth();
-  const [lockedPicks, setLockedPicks] = useState<LockedPicks>({});
-  const [firstFourExpanded, setFirstFourExpanded] = useState(() => getInitialFirstFourExpanded());
-  const [firstFourPillHintActive, setFirstFourPillHintActive] = useState(false);
+  const [lockedPicks, setLockedPicks] = useState<LockedPicks>(BRACKET_KNOWN_RESULTS);
   const [customProbByGame, setCustomProbByGame] = useState<CustomProbByGame>({});
   const [undoStack, setUndoStack] = useState<LockedPicks[]>([]);
   const [displayMode, setDisplayMode] = useState<OddsDisplayMode>(() => {
@@ -648,7 +513,7 @@ function App() {
     const saved = window.localStorage.getItem(ODDS_FORMAT_STORAGE_KEY);
     return saved === "american" || saved === "implied" ? saved : "implied";
   });
-  const [simRuns] = useState<number>(DEFAULT_SIM_RUNS);
+  const [simRuns] = useState<number>(() => getRecommendedSimRuns());
   const [futuresFieldExpanded, setFuturesFieldExpanded] = useState(false);
   const [futuresEliminatedExpanded, setFuturesEliminatedExpanded] = useState(false);
   const [mainView, setMainView] = useState<"bracket" | "futures" | "leaderboard" | "conferences" | "rankings" | "predictor">("bracket");
@@ -659,7 +524,7 @@ function App() {
     typeof window !== "undefined" ? window.matchMedia("(max-width: 767px)").matches : false
   );
   const [mobileTab, setMobileTab] = useState<MobileTab>("bracket");
-  const [mobileSection, setMobileSection] = useState<MobileSection>("East");
+  const [mobileSection, setMobileSection] = useState<MobileSection>("South");
   const [mobileRound, setMobileRound] = useState<MobileRegionRound>("FF");
   const [mobileFfRound, setMobileFfRound] = useState<MobileFfRound>("F4");
   const [liveOddsChangedIds, setLiveOddsChangedIds] = useState<Set<string>>(new Set());
@@ -677,8 +542,11 @@ function App() {
   const [staggeredSimRunning, setStaggeredSimRunning] = useState(false);
   const [staggeredSimPaused, setStaggeredSimPaused] = useState(false);
   const [staggeredSimDelayMs, setStaggeredSimDelayMs] = useState(STAGGERED_SIM_DELAY_MS);
-  const [welcomeGateOpen, setWelcomeGateOpen] = useState(false);
-  const [showMobileOnboarding, setShowMobileOnboarding] = useState(false);
+  const [welcomeGateOpen, setWelcomeGateOpen] = useState(() => {
+    if (typeof window === "undefined") return false;
+    return window.localStorage.getItem(ONBOARDING_STORAGE_KEY) !== "true";
+  });
+  const [showDesktopFirst, setShowDesktopFirst] = useState(false);
   const [walkthroughActive, setWalkthroughActive] = useState(false);
   const [walkthroughStep, setWalkthroughStep] = useState(0);
   const [walkthroughTargetEl, setWalkthroughTargetEl] = useState<HTMLElement | null>(null);
@@ -708,47 +576,27 @@ function App() {
   });
   const [activeHint, setActiveHint] = useState<ActiveHint | null>(null);
   const [resetModalConfig, setResetModalConfig] = useState<ResetModalConfig | null>(null);
-  const [openToolbarMenu, setOpenToolbarMenu] = useState<ToolbarMenuId | null>(null);
   const [linkCopied, setLinkCopied] = useState(false);
   const [saveStatus, setSaveStatus] = useState<null | "saving" | "saved" | "error">(null);
   const [saveErrorText, setSaveErrorText] = useState<string | null>(null);
   const [authModalOpen, setAuthModalOpen] = useState(false);
-  const [authModalContext, setAuthModalContext] = useState<import("./AuthModal").AuthContext>("default");
   const [myBracketsOpen, setMyBracketsOpen] = useState(false);
-  const [groupsHubOpen, setGroupsHubOpen] = useState(false);
-  const [groupsHubRefreshKey, setGroupsHubRefreshKey] = useState(0);
-  const [createGroupOpen, setCreateGroupOpen] = useState(false);
-  const [joinGroupOpen, setJoinGroupOpen] = useState(false);
-  const [joinCode, setJoinCode] = useState<string | null>(null);
-  const [activeGroup, setActiveGroup] = useState<UserGroup | null>(null);
   const [userBrackets, setUserBrackets] = useState<SavedBracket[]>([]);
-  const [groupAssignmentPrompt, setGroupAssignmentPrompt] = useState<GroupAssignmentPromptState | null>(null);
-  const [groupAssignmentSavingId, setGroupAssignmentSavingId] = useState<string | null>(null);
-  const [groupAssignmentError, setGroupAssignmentError] = useState<string | null>(null);
   const [leaderboardRefreshKey, setLeaderboardRefreshKey] = useState(0);
-  const [hasLoadedDesktopLeaderboard, setHasLoadedDesktopLeaderboard] = useState(false);
   const [promoCTAVisible, setPromoCTAVisible] = useState(false);
   const [promoShown, setPromoShown] = useState(false);
-  const [promoDismissed, setPromoDismissed] = useState(() => {
-    if (typeof window === "undefined") return false;
-    return window.localStorage.getItem(PROMO_DISMISSED_KEY) === "1";
-  });
-  const [postOnboardingPromoGateOpen, setPostOnboardingPromoGateOpen] = useState(false);
   const [manuallyExpandedRounds, setManuallyExpandedRounds] = useState<ManualRoundExpansionState>({});
   const [topHalfManuallyExpanded, setTopHalfManuallyExpanded] = useState(false);
   const [bottomHalfManuallyExpanded, setBottomHalfManuallyExpanded] = useState(false);
   const [shareToastVisible, setShareToastVisible] = useState(false);
-  const [appToast, setAppToast] = useState<AppToastState | null>(null);
   const [shareModalVisible, setShareModalVisible] = useState(false);
   const [shareExporting, setShareExporting] = useState<ShareFormat | null>(null);
   const [chaosScoreChanged, setChaosScoreChanged] = useState(false);
   const [showChaosModal, setShowChaosModal] = useState(false);
   const [showCompletionCelebration, setShowCompletionCelebration] = useState(false);
   const [completionCelebrationData, setCompletionCelebrationData] = useState<CompletionCelebrationData | null>(null);
-  const [showWrappedFlow, setShowWrappedFlow] = useState(false);
-  const [showWrappedCard, setShowWrappedCard] = useState(false);
-  const [wrappedSeen, setWrappedSeen] = useState(false);
   const [statsModalGameId, setStatsModalGameId] = useState<string | null>(null);
+  const [showFirstFourModal, setShowFirstFourModal] = useState(false);
   const [staggeredChaosTotal, setStaggeredChaosTotal] = useState(0);
   const [staggeredLastGameChaos, setStaggeredLastGameChaos] = useState<number | null>(null);
   const [staggeredLastGameLabel, setStaggeredLastGameLabel] = useState("");
@@ -782,15 +630,9 @@ function App() {
   const contextualHintTimerRef = useRef<number | null>(null);
   const copyLinkTimerRef = useRef<number | null>(null);
   const saveStatusTimerRef = useRef<number | null>(null);
-  const completionPromptArmedRef = useRef(true);
-  const lastCompletionPromptBracketKeyRef = useRef<string | null>(null);
-  const lastSubmittedBracketKeyRef = useRef<string | null>(null);
-  const simMenuRef = useRef<HTMLDivElement | null>(null);
-  const resetMenuRef = useRef<HTMLDivElement | null>(null);
-  const overflowMenuRef = useRef<HTMLDivElement | null>(null);
   const promoCTATimerRef = useRef<number | null>(null);
+  const firstFourAutoShownRef = useRef(false);
   const shareToastTimerRef = useRef<number | null>(null);
-  const appToastTimerRef = useRef<number | null>(null);
   const shareStoryRef = useRef<HTMLDivElement | null>(null);
   const shareTwitterRef = useRef<HTMLDivElement | null>(null);
   const suppressHashSyncRef = useRef(true);
@@ -798,41 +640,19 @@ function App() {
   const previousChaosScoreRef = useRef<number | null>(null);
   const chaosScoreSourceRef = useRef<"manual" | "staggered_sim" | "instant_sim">("manual");
   const previousStaggeredRunningRef = useRef(false);
-  const previousPlayInDecidedCountRef = useRef(0);
   const walkthroughBeforeTeamOddsRef = useRef<Map<string, Map<string, number>>>(new Map());
   const walkthroughCascadeTimerRef = useRef<number | null>(null);
   const walkthroughCascadeStepTimersRef = useRef<number[]>([]);
 
-  const visibleMainView = !SHOW_CONFERENCE_TOURNAMENTS && mainView === "conferences" ? "bracket" : mainView;
-  const visibleMobileTab = !SHOW_CONFERENCE_TOURNAMENTS && mobileTab === "conferences" ? "bracket" : mobileTab;
-  const effectiveLockedPicks = useMemo(() => mergeNcaaKnownResults(lockedPicks), [lockedPicks]);
-
   const { games, sanitized } = useMemo(
-    () => resolveGames(effectiveLockedPicks, customProbByGame),
-    [customProbByGame, effectiveLockedPicks]
+    () => resolveGames(lockedPicks, customProbByGame),
+    [lockedPicks, customProbByGame]
   );
-  const sanitizedUserPicks = useMemo(() => stripNcaaKnownResults(sanitized), [sanitized]);
   const possibleWinners = useMemo(() => possibleWinnersByGame(sanitized), [sanitized]);
   const walkthroughMatchup = useMemo(
     () => (walkthroughMatchupId ? games.find((game) => game.id === walkthroughMatchupId) ?? null : null),
     [games, walkthroughMatchupId]
   );
-  const walkthroughUpsetInfo = useMemo(() => {
-    if (!walkthroughMatchup) return null;
-    const teamA = walkthroughMatchup.teamAId ? teamsById.get(walkthroughMatchup.teamAId) : null;
-    const teamB = walkthroughMatchup.teamBId ? teamsById.get(walkthroughMatchup.teamBId) : null;
-    if (!teamA || !teamB) return null;
-    const isTeamAUpset = teamA.seedLabel === "15" || teamA.seed === 15;
-    const winner = isTeamAUpset ? teamA : teamB;
-    const loser = isTeamAUpset ? teamB : teamA;
-    return {
-      winnerName: winner.name,
-      winnerSeed: seedLabel(winner),
-      loserName: loser.name,
-      loserSeed: seedLabel(loser),
-      region: walkthroughMatchup.region,
-    };
-  }, [walkthroughMatchup]);
 
   useEffect(() => {
     staggeredDelayRef.current = staggeredSimDelayMs;
@@ -845,50 +665,6 @@ function App() {
       if (!activeGameIds.has(gameId)) simGeneratedGameIdsRef.current.delete(gameId);
     }
   }, [lockedPicks]);
-
-  useEffect(() => {
-    if (!openToolbarMenu) return;
-
-    const activeRef =
-      openToolbarMenu === "sim"
-        ? simMenuRef
-        : openToolbarMenu === "reset"
-          ? resetMenuRef
-          : overflowMenuRef;
-
-    const handleMouseDown = (event: MouseEvent) => {
-      if (activeRef.current?.contains(event.target as Node)) return;
-      setOpenToolbarMenu(null);
-    };
-
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape") setOpenToolbarMenu(null);
-    };
-
-    document.addEventListener("mousedown", handleMouseDown);
-    document.addEventListener("keydown", handleKeyDown);
-    return () => {
-      document.removeEventListener("mousedown", handleMouseDown);
-      document.removeEventListener("keydown", handleKeyDown);
-    };
-  }, [openToolbarMenu]);
-
-  useEffect(() => {
-    setOpenToolbarMenu(null);
-  }, [isMobile, mainView, mobileTab]);
-
-  useEffect(() => {
-    if (SHOW_CONFERENCE_TOURNAMENTS) return;
-    if (mainView === "conferences") setMainView("bracket");
-    if (mobileTab === "conferences") setMobileTab("bracket");
-  }, [mainView, mobileTab]);
-
-  useEffect(() => {
-    document.body.classList.remove(...MOBILE_TAB_BODY_CLASSES);
-    if (!isMobile) return () => document.body.classList.remove(...MOBILE_TAB_BODY_CLASSES);
-    document.body.classList.add(...MOBILE_BODY_CLASSES_BY_TAB[visibleMobileTab]);
-    return () => document.body.classList.remove(...MOBILE_TAB_BODY_CLASSES);
-  }, [isMobile, visibleMobileTab]);
 
   useEffect(() => {
     const media = window.matchMedia("(max-width: 1850px)");
@@ -907,15 +683,18 @@ function App() {
   }, []);
 
   useEffect(() => {
-    if (isMobile) {
-      setWelcomeGateOpen(false);
-      setShowMobileOnboarding(false);
-      setWalkthroughActive(false);
+    if (typeof window === "undefined") return;
+    if (!isMobile) {
+      setShowDesktopFirst(false);
+      setWelcomeGateOpen(window.localStorage.getItem(ONBOARDING_STORAGE_KEY) !== "true");
       return;
     }
 
-    setShowMobileOnboarding(false);
-    setWelcomeGateOpen(false);
+    // Mobile now uses the same 5-step walkthrough after the desktop-first gate.
+    setWelcomeGateOpen(window.localStorage.getItem(ONBOARDING_STORAGE_KEY) !== "true");
+    setWalkthroughActive(false);
+    const desktopFirstSeen = window.localStorage.getItem(DESKTOP_FIRST_SEEN_KEY) === "1";
+    setShowDesktopFirst(!desktopFirstSeen);
   }, [isMobile]);
 
   useEffect(() => {
@@ -942,137 +721,17 @@ function App() {
     setUserBrackets(data);
   };
 
-  const showAppToast = useCallback((message: string, durationMs = 2600, tone: AppToastState["tone"] = "default") => {
-    setAppToast({ message, tone });
-    if (appToastTimerRef.current !== null) {
-      window.clearTimeout(appToastTimerRef.current);
-    }
-    appToastTimerRef.current = window.setTimeout(() => {
-      setAppToast(null);
-      appToastTimerRef.current = null;
-    }, durationMs);
-  }, []);
-
-  const dismissGroupAssignmentPrompt = useCallback(() => {
-    setGroupAssignmentPrompt(null);
-    setGroupAssignmentSavingId(null);
-    setGroupAssignmentError(null);
-  }, []);
-
-  const closeGroupAssignmentPrompt = useCallback(() => {
-    if (groupAssignmentPrompt) {
-      showAppToast(`✓ ${groupAssignmentPrompt.bracket.bracket_name} submitted`, 2800, "success");
-    }
-    dismissGroupAssignmentPrompt();
-  }, [dismissGroupAssignmentPrompt, groupAssignmentPrompt, showAppToast]);
-
-  const maybePromptForGroupAssignment = useCallback(
-    async (savedBracket: SavedBracket | null) => {
-      if (!user || !savedBracket) return;
-      const { data: groups } = await getUserGroups(user.id);
-      const eligibleGroups = groups.filter((group) => !group.bracketId);
-      if (eligibleGroups.length === 0) {
-        dismissGroupAssignmentPrompt();
-        return;
-      }
-      setGroupAssignmentPrompt({
-        bracket: savedBracket,
-        groups: eligibleGroups,
-      });
-      setGroupAssignmentSavingId(null);
-      setGroupAssignmentError(null);
-    },
-    [dismissGroupAssignmentPrompt, user],
-  );
-
-  const assignBracketToGroup = useCallback(
-    async (groupId: string) => {
-      if (!user || !groupAssignmentPrompt) return;
-      const targetGroup = groupAssignmentPrompt.groups.find((group) => group.id === groupId) ?? null;
-      setGroupAssignmentSavingId(groupId);
-      setGroupAssignmentError(null);
-      const { error } = await updateMemberBracket(groupId, user.id, groupAssignmentPrompt.bracket.id);
-      if (error) {
-        setGroupAssignmentSavingId(null);
-        setGroupAssignmentError(error.message || "Failed to add bracket to group.");
-        return;
-      }
-      setGroupAssignmentSavingId(null);
-      if (targetGroup) {
-        setActiveGroup((current) =>
-          current && current.id === targetGroup.id
-            ? { ...current, bracketId: groupAssignmentPrompt.bracket.id, memberCount: Math.max(1, current.memberCount) }
-            : current,
-        );
-        showAppToast(`Added ${groupAssignmentPrompt.bracket.bracket_name} to ${targetGroup.name}`, 2600, "success");
-      } else {
-        showAppToast("Bracket added to group", 2600, "success");
-      }
-      setGroupAssignmentPrompt((current) => {
-        if (!current) return null;
-        const remainingGroups = current.groups.filter((group) => group.id !== groupId);
-        return remainingGroups.length > 0 ? { ...current, groups: remainingGroups } : null;
-      });
-      setGroupAssignmentError(null);
-    },
-    [groupAssignmentPrompt, showAppToast, user],
-  );
-
   useEffect(() => {
     refreshUserBrackets();
   }, [user]);
 
   useEffect(() => {
-    if (typeof window === "undefined") return;
-
-    const url = new URL(window.location.href);
-    const invite = getInviteCodeFromUrl(url);
-    const code = invite.code;
-    if (code) {
-      setJoinCode(code);
-      sessionStorage.setItem("pendingJoinCode", code);
-      if (invite.removeJoinParam) url.searchParams.delete("join");
-      if (invite.removeLegacyCodeParam) url.searchParams.delete("code");
-      window.history.replaceState({}, "", `${url.pathname}${url.search}${url.hash}`);
-    } else {
-      const saved = sessionStorage.getItem("pendingJoinCode");
-      const extractedSaved = extractInviteCode(saved);
-      if (extractedSaved) setJoinCode(extractedSaved);
-    }
-  }, []);
-
-  useEffect(() => {
-    if (joinCode) setJoinGroupOpen(true);
-  }, [joinCode]);
-
-  useEffect(() => {
-    if (isAuthenticated) {
-      clearPendingAuthVerification();
-      setAuthModalOpen(false);
-    }
+    if (isAuthenticated) setAuthModalOpen(false);
   }, [isAuthenticated]);
 
   useEffect(() => {
-    if (typeof window === "undefined" || isAuthenticated) return;
-
-    const pendingVerification = getPendingAuthVerification();
-    if (!pendingVerification) return;
-
-    setAuthModalContext(pendingVerification.context);
-    setAuthModalOpen(true);
-  }, [isAuthenticated]);
-
-  useEffect(() => {
-    if (!user) {
-      dismissGroupAssignmentPrompt();
-    }
-  }, [dismissGroupAssignmentPrompt, user]);
-
-  useEffect(() => {
-    if (!isAuthenticated) return;
-    if (promoCTAVisible) setPromoCTAVisible(false);
-    if (postOnboardingPromoGateOpen) setPostOnboardingPromoGateOpen(false);
-  }, [isAuthenticated, postOnboardingPromoGateOpen, promoCTAVisible]);
+    if (isAuthenticated && promoCTAVisible) setPromoCTAVisible(false);
+  }, [isAuthenticated, promoCTAVisible]);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -1089,10 +748,7 @@ function App() {
       return;
     }
 
-    const sanitizedSharedPicks = stripNcaaKnownResults(resolveGames(mergeNcaaKnownResults(decoded)).sanitized);
-    setLockedPicks(sanitizedSharedPicks);
-    setFirstFourExpanded(!areAllFirstFourGamesDecided(sanitizedSharedPicks));
-    setFirstFourPillHintActive(false);
+    setLockedPicks(decoded);
     trackEvent("shared_bracket_loaded", {
       total_picks: Object.keys(decoded).length,
     });
@@ -1100,32 +756,15 @@ function App() {
   }, []);
 
   useEffect(() => {
-    if (typeof window === "undefined") return;
-    if (window.location.hash) return;
-
-    const restoredDraft = consumePendingAuthDraft();
-    if (!restoredDraft || Object.keys(restoredDraft).length === 0) return;
-
-    const sanitizedDraft = stripNcaaKnownResults(resolveGames(mergeNcaaKnownResults(restoredDraft)).sanitized);
-    setLockedPicks(sanitizedDraft);
-    setFirstFourExpanded(!areAllFirstFourGamesDecided(sanitizedDraft));
-    setFirstFourPillHintActive(false);
-  }, []);
-
-  useEffect(() => {
     if (typeof window === "undefined" || suppressHashSyncRef.current) return;
-    if (Object.keys(sanitizedUserPicks).length === 0) {
+    if (Object.keys(sanitized).length === 0) {
       window.history.replaceState(null, "", window.location.pathname + window.location.search);
       return;
     }
 
-    const encoded = encodeBracketState(sanitizedUserPicks);
+    const encoded = encodeBracketState(sanitized);
     window.history.replaceState(null, "", `${window.location.pathname}${window.location.search}#${encoded}`);
-  }, [sanitizedUserPicks]);
-
-  const preserveDraftForGoogleAuth = useCallback(() => {
-    savePendingAuthDraft(sanitizedUserPicks);
-  }, [sanitizedUserPicks]);
+  }, [sanitized]);
 
   useEffect(() => {
     if (isMobile) return;
@@ -1237,22 +876,20 @@ function App() {
     setWelcomeGateOpen(false);
   };
 
-  const maybeShowPromoCTA = useCallback(() => {
-    if (typeof window === "undefined") return false;
-    if (authLoading || isAuthenticated || promoShown || promoDismissed) return false;
+  const maybeShowPromoCTA = () => {
+    if (typeof window === "undefined") return;
+    if (authLoading || isAuthenticated || promoShown) return;
+    if (window.localStorage.getItem(PROMO_DISMISSED_KEY)) return;
     if (promoCTATimerRef.current !== null) window.clearTimeout(promoCTATimerRef.current);
     promoCTATimerRef.current = window.setTimeout(() => {
       setPromoCTAVisible(true);
       setPromoShown(true);
       promoCTATimerRef.current = null;
     }, 800);
-    return true;
-  }, [authLoading, isAuthenticated, promoDismissed, promoShown]);
+  };
 
   const handlePromoDismiss = () => {
     setPromoCTAVisible(false);
-    setPostOnboardingPromoGateOpen(false);
-    setPromoDismissed(true);
     if (typeof window !== "undefined") {
       window.localStorage.setItem(PROMO_DISMISSED_KEY, "1");
     }
@@ -1260,35 +897,16 @@ function App() {
 
   const handlePromoSignUp = () => {
     setPromoCTAVisible(false);
-    setPostOnboardingPromoGateOpen(false);
-    setPromoDismissed(true);
     if (typeof window !== "undefined") {
       window.localStorage.setItem(PROMO_DISMISSED_KEY, "1");
     }
     setAuthModalOpen(true);
   };
 
-  const dismissMobileOnboarding = useCallback(() => {
-    setShowMobileOnboarding(false);
-    setWelcomeGateOpen(false);
-    if (typeof window !== "undefined") {
-      window.localStorage.setItem(ONBOARDING_STORAGE_KEY, "true");
-    }
-  }, []);
-
-  const startMobileOnboardingFromFirstFour = useCallback(() => {
-    dismissMobileOnboarding();
-    setMobileTab("bracket");
-    setMobileSection("East");
-    setMobileRound("FF");
-    setFirstFourPillHintActive(false);
-    window.scrollTo({ top: 0, behavior: "smooth" });
-  }, [dismissMobileOnboarding]);
-
   const completeWalkthrough = () => {
     trackEvent("onboarding_completed");
     closeWalkthrough();
-    setPostOnboardingPromoGateOpen(true);
+    maybeShowPromoCTA();
   };
 
   const skipWalkthrough = () => {
@@ -1296,7 +914,7 @@ function App() {
       skipped_at_step: walkthroughStep + 1,
     });
     closeWalkthrough();
-    setPostOnboardingPromoGateOpen(true);
+    maybeShowPromoCTA();
   };
 
   const startWalkthrough = (opts?: { replay?: boolean }) => {
@@ -1346,6 +964,12 @@ function App() {
     setWalkthroughActive(true);
   };
 
+  const handleDismissDesktopFirst = () => {
+    setShowDesktopFirst(false);
+    if (typeof window !== "undefined") {
+      window.localStorage.setItem(DESKTOP_FIRST_SEEN_KEY, "1");
+    }
+  };
 
   const showContextualHint = (key: HintKey, message: string, selector: string, durationMs: number) => {
     if (hintsShown[key]) return;
@@ -1797,7 +1421,7 @@ function App() {
       winProbPct: Math.round(row.winProb * 100),
     }));
 
-    const totalPicks = Math.min(URL_EXPECTED_GAME_COUNT, Object.keys(sanitizedUserPicks).length);
+    const totalPicks = Math.min(URL_EXPECTED_GAME_COUNT, Object.keys(sanitized).length);
     const chaosScoreValue = computeChaosScoreFromGames(games) ?? 0;
     const chaosLabelData = getChaosLabel(chaosScoreValue, totalPicks) ?? { label: "Chalk", emoji: "📋" };
     const bracketLikelihood = simResult.likelihoodSimulation > 0 ? toOneInX(simResult.likelihoodSimulation) : null;
@@ -1812,13 +1436,13 @@ function App() {
       chaosEmoji: chaosLabelData.emoji,
       bracketLikelihood,
     };
-  }, [baselineByTeamId, games, sanitizedUserPicks, simResult.futures, simResult.likelihoodSimulation]);
+  }, [baselineByTeamId, games, sanitized, simResult.futures, simResult.likelihoodSimulation]);
 
   const pickCount = useMemo(() => {
     const count = games.filter(
       (game) => game.round !== "FF" && Boolean(game.winnerId && game.teamAId && game.teamBId)
     ).length;
-    return Math.min(SUBMIT_EXPECTED_PICK_COUNT, count);
+    return Math.min(URL_EXPECTED_GAME_COUNT, count);
   }, [games]);
 
   const chaosScore = useMemo(() => computeChaosScoreFromGames(games), [games]);
@@ -1826,30 +1450,19 @@ function App() {
     () => userBrackets.filter((bracket) => Boolean(bracket.submitted_at)).length,
     [userBrackets]
   );
-  const _elevated = hasElevatedAccess(user?.email);
-  const submissionsLocked = useMemo(() => _elevated ? false : userBrackets.some((bracket) => bracket.is_locked), [_elevated, userBrackets]);
-  const bracketComplete = pickCount >= SUBMIT_EXPECTED_PICK_COUNT;
-  const currentBracketKey = useMemo(
-    () => (Object.keys(sanitizedUserPicks).length > 0 ? encodeBracketState(sanitizedUserPicks) : null),
-    [sanitizedUserPicks]
-  );
-  const submissionLimitReached = _elevated ? false : submittedBracketCount >= MAX_SUBMITTED_BRACKETS;
+  const submissionsLocked = useMemo(() => userBrackets.some((bracket) => bracket.is_locked), [userBrackets]);
+  const submissionLimitReached = submittedBracketCount >= 25;
   const canSubmitBrackets = isAuthenticated && !submissionsLocked && !submissionLimitReached;
-  const tournamentStarted = useMemo(() => {
-    if (userBrackets.some((bracket) => bracket.is_locked)) return true;
-    const tipoff = new Date("2026-03-20T12:00:00-04:00");
-    return new Date() >= tipoff;
-  }, [userBrackets]);
   const pickedChaosGameIds = useMemo(() => getPickedChaosGameIds(games), [games]);
   const chaosPercentile = useMemo(() => {
     if (chaosScore === null || pickedChaosGameIds.length === 0 || !chaosDistribution) return null;
     return getChaosScorePercentileForPickedGames(chaosScore, pickedChaosGameIds, chaosDistribution);
   }, [chaosDistribution, chaosScore, pickedChaosGameIds]);
-  const chaosScalePct = useMemo(() => {
-    if (chaosScore === null || pickCount === 0) return 0;
-    const perGame = chaosScore / pickCount;
-    return Math.min(100, Math.max(0, (perGame / 0.8) * 100));
-  }, [chaosScore, pickCount]);
+  const chaosScaleInvertedPct = useMemo(() => {
+    if (chaosScore === null) return 0;
+    const clampedPct = Math.min(100, Math.max(0, (chaosScore / 60) * 100));
+    return 100 - clampedPct;
+  }, [chaosScore]);
   const chaosLabelData = useMemo(() => getChaosLabel(chaosScore, pickCount), [chaosScore, pickCount]);
   const chaosPillLevel = useMemo(() => {
     const label = chaosLabelData?.label.toLowerCase() ?? "";
@@ -1859,75 +1472,6 @@ function App() {
     if (label.includes("mild")) return "mild";
     return "chalk";
   }, [chaosLabelData]);
-
-  const nonFFGameCount = useMemo(() => games.filter((g) => g.round !== "FF").length, [games]);
-  const wrappedData: WrappedData | null = useMemo(() => {
-    if (pickCount < nonFFGameCount || simResult.futures.length === 0) return null;
-    return computeWrappedData({
-      resolvedGames: games,
-      simResult,
-      baselineByTeamId,
-      chaosScore: chaosScore ?? 0,
-      chaosPercentile: chaosPercentile ?? 50,
-      chaosLabel: chaosLabelData?.label ?? "Balanced",
-      chaosEmoji: chaosLabelData?.emoji ?? "⚖️",
-    });
-  }, [pickCount, nonFFGameCount, simResult, baselineByTeamId, games, chaosScore, chaosPercentile, chaosLabelData]);
-
-  useEffect(() => { setWrappedSeen(false); }, [lockedPicks]);
-
-  const mountTimeRef = useRef(Date.now());
-  const openCompletionCelebration = useCallback(
-    (resolvedGames: ResolvedGame[], bracketKey: string, delayMs = 0) => {
-      if (lastCompletionPromptBracketKeyRef.current === bracketKey) return;
-
-      const champGame = resolvedGames.find((game) => game.round === "CHAMP");
-      const champId = champGame?.winnerId;
-      const champName = champId ? teamsById.get(champId)?.name ?? "Your champion" : "Your champion";
-      const completedChaos = computeChaosScoreFromGames(resolvedGames);
-      const chaosLabel = getChaosLabel(completedChaos, URL_EXPECTED_GAME_COUNT) ?? { label: "Chalk", emoji: "📋" };
-
-      const open = () => {
-        lastCompletionPromptBracketKeyRef.current = bracketKey;
-        completionPromptArmedRef.current = false;
-        setCompletionCelebrationData({
-          championName: champName,
-          chaosLabel: chaosLabel.label,
-          chaosEmoji: chaosLabel.emoji,
-        });
-        setShowCompletionCelebration(true);
-      };
-
-      if (delayMs > 0) {
-        window.setTimeout(open, delayMs);
-        return;
-      }
-
-      open();
-    },
-    [teamsById]
-  );
-
-  useEffect(() => {
-    if (!bracketComplete || !currentBracketKey) {
-      completionPromptArmedRef.current = true;
-      return;
-    }
-
-    if (!completionPromptArmedRef.current || Date.now() - mountTimeRef.current <= 1000) {
-      return;
-    }
-
-    openCompletionCelebration(games, currentBracketKey, 800);
-  }, [bracketComplete, currentBracketKey, games, openCompletionCelebration]);
-
-  useEffect(() => {
-    if (saveStatus !== "saved" || !lastSubmittedBracketKeyRef.current) return;
-    if (currentBracketKey === lastSubmittedBracketKeyRef.current) return;
-
-    lastSubmittedBracketKeyRef.current = null;
-    setSaveStatus(null);
-  }, [currentBracketKey, saveStatus]);
 
   const applyCustomProbability = (gameId: string, customProbA: number | null) => {
     setCustomProbByGame((prev) => {
@@ -1957,14 +1501,6 @@ function App() {
     return next;
   };
 
-  const sanitizeUserLockedPicks = (nextRawLocks: LockedPicks): LockedPicks =>
-    stripNcaaKnownResults(resolveGames(mergeNcaaKnownResults(nextRawLocks)).sanitized);
-
-  const resolveGamesWithKnownResults = (
-    nextRawLocks: LockedPicks,
-    nextCustomProbByGame: CustomProbByGame = customProbByGame
-  ) => resolveGames(mergeNcaaKnownResults(nextRawLocks), nextCustomProbByGame);
-
   const sanitizeCustomProbByParticipants = (
     prevLocks: LockedPicks,
     nextLocks: LockedPicks,
@@ -1972,8 +1508,8 @@ function App() {
   ): CustomProbByGame => {
     if (Object.keys(currentCustom).length === 0) return currentCustom;
 
-    const prevResolved = resolveGamesWithKnownResults(prevLocks).games;
-    const nextResolved = resolveGamesWithKnownResults(nextLocks).games;
+    const prevResolved = resolveGames(prevLocks).games;
+    const nextResolved = resolveGames(nextLocks).games;
     const prevById = new Map(prevResolved.map((game) => [game.id, game]));
     const nextById = new Map(nextResolved.map((game) => [game.id, game]));
 
@@ -2007,7 +1543,7 @@ function App() {
   };
 
   const applyLockedPicksUpdate = (nextRawLocks: LockedPicks) => {
-    const nextSanitizedLocks = sanitizeUserLockedPicks(nextRawLocks);
+    const nextSanitizedLocks = sanitizeLockedPicks(nextRawLocks);
     const nextCustomProbByGame = sanitizeCustomProbByParticipants(lockedPicks, nextSanitizedLocks, customProbByGame);
 
     if (nextCustomProbByGame !== customProbByGame) {
@@ -2021,7 +1557,7 @@ function App() {
   };
 
   const openProbabilityPopup = (game: ResolvedGame, anchorEl: HTMLElement) => {
-    if (!game.teamAId || !game.teamBId || game.winnerId || NCAA_KNOWN_RESULT_IDS.has(game.id)) return;
+    if (!game.teamAId || !game.teamBId || game.winnerId) return;
     if (probPopup) {
       closeProbabilityPopup(true);
     }
@@ -2058,13 +1594,17 @@ function App() {
 
   const onPick = (game: ResolvedGame, teamId: string | null) => {
     if (!teamId) return;
-    if (NCAA_KNOWN_RESULT_IDS.has(game.id)) return;
     if (teamId !== game.teamAId && teamId !== game.teamBId) return;
+    if (game.id in BRACKET_KNOWN_RESULTS) return;
     if (walkthroughActive && currentWalkthroughStep?.id === "upset-pick" && walkthroughCascadePhase === "pick") {
       const pickedTeam = teamsById.get(teamId);
       const isForcedUpsetPick =
         game.id === walkthroughMatchupId &&
-        Boolean(pickedTeam && pickedTeam.seedLabel === "15" && pickedTeam.region === ONBOARDING_UPSET_REGION);
+        Boolean(
+          pickedTeam &&
+            (pickedTeam.name === ONBOARDING_UPSET_WINNER ||
+              (pickedTeam.seedLabel === "15" && pickedTeam.region === ONBOARDING_UPSET_REGION))
+        );
       if (!isForcedUpsetPick) return;
       setWalkthroughCascadePathByRound(getOnboardingPathByRound(game.id));
       walkthroughBeforeTeamOddsRef.current = new Map(
@@ -2089,7 +1629,7 @@ function App() {
       action: pickAction,
     });
     const isFirstPick =
-      Object.keys(sanitizedUserPicks).length === 0 &&
+      Object.keys(sanitized).length === 0 &&
       lockedPicks[game.id] !== teamId &&
       mobileSection !== "FF" &&
       mobileRound === "R64" &&
@@ -2115,12 +1655,20 @@ function App() {
       setProbPopup(null);
     }
 
-    const wasComplete = Object.keys(resolveGamesWithKnownResults(lockedPicks).sanitized).length === URL_EXPECTED_GAME_COUNT;
-    const nextResolution = resolveGamesWithKnownResults(next, customProbByGame);
-    const nextResolved = nextResolution.games;
+    const wasComplete = Object.keys(sanitizeLockedPicks(lockedPicks)).length === URL_EXPECTED_GAME_COUNT;
+    const nextResolved = resolveGames(next, customProbByGame).games;
     const nowComplete = nextResolved.every((resolvedGame) => Boolean(resolvedGame.winnerId));
     if (!wasComplete && nowComplete && game.round === "CHAMP") {
-      openCompletionCelebration(nextResolved, encodeBracketState(stripNcaaKnownResults(nextResolution.sanitized)));
+      const champion = nextResolved.find((resolvedGame) => resolvedGame.round === "CHAMP");
+      const championName = champion?.winnerId ? teamsById.get(champion.winnerId)?.name ?? "Your champion" : "Your champion";
+      const completedChaosScore = computeChaosScoreFromGames(nextResolved);
+      const chaosLabelData = getChaosLabel(completedChaosScore, URL_EXPECTED_GAME_COUNT) ?? { label: "Chalk", emoji: "📋" };
+      setCompletionCelebrationData({
+        championName,
+        chaosLabel: chaosLabelData.label,
+        chaosEmoji: chaosLabelData.emoji,
+      });
+      setShowCompletionCelebration(true);
     }
 
     applyLockedPicksUpdate(next);
@@ -2221,8 +1769,6 @@ function App() {
     });
     cancelStaggeredSim();
     chaosScoreSourceRef.current = "manual";
-    setFirstFourExpanded(true);
-    setFirstFourPillHintActive(false);
     setManuallyExpandedRounds({});
     setTopHalfManuallyExpanded(false);
     setBottomHalfManuallyExpanded(false);
@@ -2233,7 +1779,7 @@ function App() {
     setMajorShiftNudgeVisible(false);
     pushUndo(lockedPicks);
     simGeneratedGameIdsRef.current.clear();
-    setLockedPicks({});
+    setLockedPicks(BRACKET_KNOWN_RESULTS);
     setCustomProbByGame({});
     setProbPopup(null);
   };
@@ -2287,86 +1833,50 @@ function App() {
     });
   };
 
-  const onSaveBracket = async (): Promise<SavedBracket | null> => {
-    const queueSaveStatusReset = (delayMs: number, clearError = false) => {
-      if (saveStatusTimerRef.current !== null) {
-        window.clearTimeout(saveStatusTimerRef.current);
-      }
-      saveStatusTimerRef.current = window.setTimeout(() => {
-        setSaveStatus(null);
-        if (clearError) {
-          setSaveErrorText(null);
-        }
-        saveStatusTimerRef.current = null;
-      }, delayMs);
-    };
-
+  const onSaveBracket = async () => {
     if (!isAuthenticated || !user) {
-      window.sessionStorage.setItem("pendingBracketSave", JSON.stringify(serializePicks(sanitizedUserPicks)));
+      window.sessionStorage.setItem("pendingBracketSave", JSON.stringify(serializePicks(sanitized)));
       setAuthModalOpen(true);
-      return null;
-    }
-
-    if (!bracketComplete) {
-      const remaining = SUBMIT_EXPECTED_PICK_COUNT - pickCount;
-      setSaveStatus("error");
-      setSaveErrorText(`Complete all ${SUBMIT_EXPECTED_PICK_COUNT} picks before submitting. ${remaining} pick${remaining !== 1 ? "s" : ""} remaining.`);
-      queueSaveStatusReset(3000, true);
-      return null;
+      return;
     }
 
     if (submissionsLocked) {
       setSaveStatus("error");
       setSaveErrorText("Submissions are locked at tip-off.");
-      queueSaveStatusReset(3000, true);
-      return null;
+      return;
     }
     if (submissionLimitReached) {
       setSaveStatus("error");
-      setSaveErrorText(`Submission limit reached (${MAX_SUBMITTED_BRACKETS}/${MAX_SUBMITTED_BRACKETS})`);
-      queueSaveStatusReset(3000, true);
-      return null;
+      setSaveErrorText("Submission limit reached (25/25)");
+      return;
     }
 
     setSaveStatus("saving");
-    const defaultName =
-      submittedBracketCount === 0 ? "My Bracket" : `Bracket #${Math.min(MAX_SUBMITTED_BRACKETS, submittedBracketCount + 1)}`;
-    const { data, error } = await saveBracket(user.id, sanitizedUserPicks, defaultName, null, chaosScore ?? 0, { submit: true });
+    const defaultName = submittedBracketCount === 0 ? "My Bracket" : `Bracket #${Math.min(25, submittedBracketCount + 1)}`;
+    const { error } = await saveBracket(user.id, sanitized, defaultName, null, chaosScore ?? 0, { submit: true });
     if (error) {
       setSaveStatus("error");
       setSaveErrorText((error as { message?: string })?.message ?? "Save failed");
-      queueSaveStatusReset(3000, true);
-      return null;
+      if (saveStatusTimerRef.current !== null) window.clearTimeout(saveStatusTimerRef.current);
+      saveStatusTimerRef.current = window.setTimeout(() => {
+        setSaveStatus(null);
+        setSaveErrorText(null);
+        saveStatusTimerRef.current = null;
+      }, 3000);
+      return;
     }
     await refreshUserBrackets();
-
-    const savedBracket = (data as SavedBracket | null) ?? null;
-
-    // Auto-assign bracket to pending invite group (joined via invite link without a bracket)
-    const pendingRaw = sessionStorage.getItem("pendingInviteGroup");
-    if (pendingRaw && savedBracket) {
-      sessionStorage.removeItem("pendingInviteGroup");
-      try {
-        const pending = JSON.parse(pendingRaw) as { id: string; name: string };
-        await updateMemberBracket(pending.id, user.id, savedBracket.id);
-        showAppToast(`Your bracket was submitted to ${pending.name}!`, 4000, "success");
-      } catch {
-        // Fall through to normal group assignment prompt
-        await maybePromptForGroupAssignment(savedBracket);
-      }
-    } else {
-      await maybePromptForGroupAssignment(savedBracket);
-    }
-
-    lastSubmittedBracketKeyRef.current = currentBracketKey;
     setSaveStatus("saved");
     setSaveErrorText(null);
-    queueSaveStatusReset(2000);
-    return savedBracket;
+    if (saveStatusTimerRef.current !== null) window.clearTimeout(saveStatusTimerRef.current);
+    saveStatusTimerRef.current = window.setTimeout(() => {
+      setSaveStatus(null);
+      saveStatusTimerRef.current = null;
+    }, 2000);
   };
 
   const onLoadSavedBracket = (bracket: SavedBracket) => {
-    const picks = sanitizeUserLockedPicks(deserializePicks(bracket.picks));
+    const picks = sanitizeLockedPicks(deserializePicks(bracket.picks));
     cancelStaggeredSim();
     chaosScoreSourceRef.current = "manual";
     pendingPickMetaRef.current = null;
@@ -2377,10 +1887,6 @@ function App() {
     setProbPopup(null);
     setShowCompletionCelebration(false);
     setCustomProbByGame({});
-    setSaveStatus(null);
-    setSaveErrorText(null);
-    setFirstFourExpanded(!areAllFirstFourGamesDecided(picks));
-    setFirstFourPillHintActive(false);
     setLockedPicks(picks);
     setMainView("bracket");
     setMobileTab("bracket");
@@ -2396,18 +1902,6 @@ function App() {
     if (!leaderboardVisible) return;
     setLeaderboardRefreshKey((value) => value + 1);
   };
-
-  const onBracketsChanged = useCallback(async () => {
-    await refreshUserBrackets();
-    setSaveStatus(null);
-    setSaveErrorText(null);
-  }, [refreshUserBrackets]);
-
-  useEffect(() => {
-    if (!isMobile && mainView === "leaderboard") {
-      setHasLoadedDesktopLeaderboard(true);
-    }
-  }, [isMobile, mainView]);
 
   const onCopyShareLink = async () => {
     if (typeof window === "undefined") return;
@@ -2425,8 +1919,8 @@ function App() {
 
     setLinkCopied(true);
     trackEvent("bracket_link_copied", {
-      total_picks: Object.keys(sanitizedUserPicks).length,
-      bracket_complete: pickCount === SUBMIT_EXPECTED_PICK_COUNT,
+      total_picks: Object.keys(sanitized).length,
+      bracket_complete: Object.keys(sanitized).length === URL_EXPECTED_GAME_COUNT,
     });
 
     if (copyLinkTimerRef.current !== null) {
@@ -2443,10 +1937,8 @@ function App() {
       await onSaveBracket();
       return;
     }
-    const savedBracket = await onSaveBracket();
-    if (savedBracket) {
-      setShowCompletionCelebration(false);
-    }
+    await onSaveBracket();
+    setShowCompletionCelebration(false);
   };
 
   const onCloseShareModal = () => {
@@ -2574,12 +2066,8 @@ function App() {
     pushUndo(lockedPicks);
     setTopHalfManuallyExpanded(false);
     setBottomHalfManuallyExpanded(false);
-    completionPromptArmedRef.current = true;
     const baseLocks = getUserLockedPicks(lockedPicks);
-    const effectiveBaseLocks = mergeNcaaKnownResults(baseLocks);
-    const nextLocks = stripNcaaKnownResults(
-      sanitizeLockedPicks(generateSimulatedBracket(effectiveBaseLocks, customProbByGame))
-    );
+    const nextLocks = sanitizeLockedPicks(generateSimulatedBracket(baseLocks, customProbByGame));
     simGeneratedGameIdsRef.current = new Set(
       Object.keys(nextLocks).filter((gameId) => !Object.prototype.hasOwnProperty.call(baseLocks, gameId))
     );
@@ -2602,14 +2090,8 @@ function App() {
     setFirstPickNudgeVisible(false);
     setMajorShiftNudgeVisible(false);
     closeProbabilityPopup(true);
-    completionPromptArmedRef.current = true;
     const baseLocks = getUserLockedPicks(lockedPicks);
-    const effectiveBaseLocks = mergeNcaaKnownResults(baseLocks);
-    const steps = generateSimulatedBracketSteps(
-      effectiveBaseLocks,
-      ["South", "East", "West", "Midwest"],
-      customProbByGame
-    );
+    const steps = generateSimulatedBracketSteps(baseLocks, ["South", "East", "West", "Midwest"], customProbByGame);
     if (steps.length === 0) {
       simGeneratedGameIdsRef.current = new Set();
       return;
@@ -2618,7 +2100,7 @@ function App() {
     pushUndo(baseLocks);
     setTopHalfManuallyExpanded(false);
     setBottomHalfManuallyExpanded(false);
-    setStaggeredChaosTotal(computeChaosScoreFromGames(resolveGamesWithKnownResults(baseLocks).games) ?? 0);
+    setStaggeredChaosTotal(computeChaosScoreFromGames(resolveGames(baseLocks).games) ?? 0);
     setStaggeredLastGameChaos(null);
     setStaggeredLastGameLabel("");
     setStaggeredGamesResolved(Object.keys(baseLocks).length);
@@ -2644,8 +2126,8 @@ function App() {
       const step = staggeredStepsRef.current[staggeredIndexRef.current];
       setLastPickedKey(`${step.gameId}:${step.winnerId}`);
       setLockedPicks((prev) => {
-        const nextLocks = sanitizeUserLockedPicks({ ...prev, [step.gameId]: step.winnerId });
-        const resolved = resolveGamesWithKnownResults(nextLocks).games.find((game) => game.id === step.gameId);
+        const nextLocks = sanitizeLockedPicks({ ...prev, [step.gameId]: step.winnerId });
+        const resolved = resolveGames(nextLocks).games.find((game) => game.id === step.gameId);
         if (resolved && resolved.teamAId && resolved.teamBId) {
           const modelProbA = getModelGameWinProb(resolved, resolved.teamAId);
           if (modelProbA !== null) {
@@ -2692,8 +2174,8 @@ function App() {
       const step = staggeredStepsRef.current[staggeredIndexRef.current];
       setLastPickedKey(`${step.gameId}:${step.winnerId}`);
       setLockedPicks((prev) => {
-        const nextLocks = sanitizeUserLockedPicks({ ...prev, [step.gameId]: step.winnerId });
-        const resolved = resolveGamesWithKnownResults(nextLocks).games.find((game) => game.id === step.gameId);
+        const nextLocks = sanitizeLockedPicks({ ...prev, [step.gameId]: step.winnerId });
+        const resolved = resolveGames(nextLocks).games.find((game) => game.id === step.gameId);
         if (resolved && resolved.teamAId && resolved.teamBId) {
           const modelProbA = getModelGameWinProb(resolved, resolved.teamAId);
           if (modelProbA !== null) {
@@ -2746,9 +2228,6 @@ function App() {
       }
       if (shareToastTimerRef.current !== null) {
         window.clearTimeout(shareToastTimerRef.current);
-      }
-      if (appToastTimerRef.current !== null) {
-        window.clearTimeout(appToastTimerRef.current);
       }
       if (chaosScoreTimerRef.current !== null) {
         window.clearTimeout(chaosScoreTimerRef.current);
@@ -2819,13 +2298,13 @@ function App() {
   );
   const allPlayInDecided = playInGames.length === 0 || decidedPlayInCount === playInGames.length;
   const pointsTrackingEnabled = false;
+  const onboardingFlowReady = !showDesktopFirst && !walkthroughActive;
   const leftSemi = finalGames.find((g) => g.id === "F4-Left-0") ?? null;
   const rightSemi = finalGames.find((g) => g.id === "F4-Right-0") ?? null;
   const titleGame = finalGames.find((g) => g.id === "CHAMP-0") ?? null;
   const regionE8Status = Object.fromEntries(
     mobileRegionOrder.map((region) => [region, games.some((game) => game.region === region && game.round === "E8" && game.winnerId !== null)])
   ) as Record<Region, boolean>;
-  const previousRegionE8StatusRef = useRef<Record<Region, boolean>>(regionE8Status);
   const allRegionE8Complete = mobileRegionOrder.every((region) =>
     regionE8Status[region]
   );
@@ -2848,69 +2327,16 @@ function App() {
   }, [displayMode, preTournamentBaseline.futures]);
 
   useEffect(() => {
-    if (!postOnboardingPromoGateOpen || authLoading || promoCTAVisible) return;
-    if (maybeShowPromoCTA()) return;
-    setPostOnboardingPromoGateOpen(false);
-  }, [authLoading, maybeShowPromoCTA, postOnboardingPromoGateOpen, promoCTAVisible]);
-
-  useEffect(() => {
-    const previous = previousPlayInDecidedCountRef.current;
-    previousPlayInDecidedCountRef.current = decidedPlayInCount;
-
-    if (!firstFourExpanded) return;
-    if (playInGames.length !== 4) return;
-    if (previous >= playInGames.length || decidedPlayInCount !== playInGames.length) return;
-
-    const timer = window.setTimeout(() => {
-      setFirstFourExpanded(false);
-      setFirstFourPillHintActive(true);
-    }, 600);
-
-    return () => window.clearTimeout(timer);
-  }, [decidedPlayInCount, firstFourExpanded, playInGames.length]);
-
-  useEffect(() => {
-    if (!firstFourPillHintActive) return;
-    const timer = window.setTimeout(() => setFirstFourPillHintActive(false), 3000);
-    return () => window.clearTimeout(timer);
-  }, [firstFourPillHintActive]);
-
-  useEffect(() => {
-    if (!allPlayInDecided) return;
-    if (mobileSection === "FF") return;
-    if (mobileRound !== "FF") return;
-    setMobileRound("R64");
-  }, [allPlayInDecided, mobileRound, mobileSection]);
+    if (!onboardingFlowReady || allPlayInDecided || firstFourAutoShownRef.current) return;
+    setShowFirstFourModal(true);
+    firstFourAutoShownRef.current = true;
+  }, [allPlayInDecided, onboardingFlowReady]);
 
   useEffect(() => {
     if (mobileSection === "FF") return;
     const preferred = getPreferredMobileRegionRound(games, mobileSection);
     setMobileRound((current) => (isRegionRoundAccessible(games, mobileSection, current) ? current : preferred));
   }, [games, mobileSection]);
-
-  useEffect(() => {
-    const previousRegionE8Status = previousRegionE8StatusRef.current;
-
-    if (!isMobile || mobileSection === "FF" || mobileRound !== "E8") {
-      previousRegionE8StatusRef.current = regionE8Status;
-      return;
-    }
-
-    const regionJustCompletedE8 = !previousRegionE8Status[mobileSection] && regionE8Status[mobileSection];
-    if (!regionJustCompletedE8) {
-      previousRegionE8StatusRef.current = regionE8Status;
-      return;
-    }
-
-    const currentRegionIndex = mobileRegionOrder.indexOf(mobileSection);
-    const nextRegion = currentRegionIndex >= 0 ? mobileRegionOrder[currentRegionIndex + 1] : null;
-    previousRegionE8StatusRef.current = regionE8Status;
-    if (!nextRegion) return;
-
-    setMobileSection(nextRegion);
-    setMobileRound("R64");
-    window.scrollTo({ top: 0, behavior: "smooth" });
-  }, [isMobile, mobileRound, mobileSection, regionE8Status]);
 
   useEffect(() => {
     if (mobileSection !== "FF") return;
@@ -2925,15 +2351,10 @@ function App() {
     if (!currentWalkthroughStep) return null;
 
     if (currentWalkthroughStep.id === "upset-pick") {
-      const winnerName = walkthroughUpsetInfo?.winnerName ?? "the 15 seed";
-      const winnerSeed = walkthroughUpsetInfo?.winnerSeed ?? "15";
-      const loserName = walkthroughUpsetInfo?.loserName ?? "the 2 seed";
-      const loserSeed = walkthroughUpsetInfo?.loserSeed ?? "2";
-      const region = walkthroughUpsetInfo?.region ?? ONBOARDING_UPSET_REGION;
       return {
         ...currentWalkthroughStep,
         heading: "Pick the upset.",
-        body: `Tap #${winnerSeed} ${winnerName} to knock off #${loserSeed} ${loserName}. Then watch what happens to every team in the ${region}.`,
+        body: "Tap #15 Merrimack to knock off #2 Florida. Then watch what happens to every team in the South.",
         ctaText: "Pick a team",
       };
     }
@@ -2947,16 +2368,14 @@ function App() {
     }
 
     if (currentWalkthroughStep.id === "futures-panel") {
-      const winnerName = walkthroughUpsetInfo?.winnerName ?? "the 15 seed";
-      const loserName = walkthroughUpsetInfo?.loserName ?? "the 2 seed";
       return {
         ...currentWalkthroughStep,
-        body: `Notice how ${winnerName} appears and ${loserName} drops. Red/green deltas show exactly how much your upset shifted each team. Scroll to see the pre-tournament baseline.`,
+        body: "Notice how Merrimack appears and Florida drops. Red/green deltas show exactly how much your upset shifted each team. Scroll to see the pre-tournament baseline.",
       };
     }
 
     return currentWalkthroughStep;
-  }, [currentWalkthroughStep, walkthroughCascadePhase, walkthroughUpsetInfo]);
+  }, [currentWalkthroughStep, walkthroughCascadePhase]);
   const walkthroughCtaLabel =
     currentWalkthroughStep?.id === "upset-pick"
       ? "Pick a team"
@@ -3025,7 +2444,7 @@ function App() {
       };
       window.requestAnimationFrame(tick);
     };
-    const loserName = walkthroughUpsetInfo?.loserName ?? "the 2 seed";
+    const loserName = ONBOARDING_UPSET_LOSER;
     const steps: Array<{
       round: "R32" | "S16" | "E8";
       spotlightAt: number;
@@ -3041,8 +2460,8 @@ function App() {
         fadeAt: 1600,
         fadeMs: 1200,
         oddsAt: 3300,
-        preCaption: `${loserName} was projected here. Now they're gone.`,
-        postCaption: `The remaining teams just absorbed ${loserName}'s odds.`,
+        preCaption: "Florida was projected here. Now they're gone.",
+        postCaption: "The remaining teams just absorbed Florida's odds.",
       },
       {
         round: "S16",
@@ -3051,7 +2470,7 @@ function App() {
         fadeMs: 1000,
         oddsAt: 7500,
         preCaption: "Now watch the Sweet 16.",
-        postCaption: "The remaining teams just got a much easier path.",
+        postCaption: "Connecticut and Purdue just got a much easier path.",
       },
       {
         round: "E8",
@@ -3156,7 +2575,6 @@ function App() {
     walkthroughCascadePhase,
     walkthroughCascadePathByRound,
     walkthroughMatchupId,
-    walkthroughUpsetInfo,
   ]);
 
   useEffect(() => {
@@ -3208,18 +2626,15 @@ function App() {
         if (currentWalkthroughStep.id === "futures-panel") {
           setMainView("futures");
           window.setTimeout(() => {
-            const winnerName = walkthroughUpsetInfo?.winnerName;
-            const loserName = walkthroughUpsetInfo?.loserName;
-            const winnerRow = winnerName ? document.querySelector<HTMLElement>(`.ft-card[data-team-name="${winnerName}"]`) : null;
-            const loserRow = loserName ? document.querySelector<HTMLElement>(`.ft-card[data-team-name="${loserName}"]`) : null;
-            const target = winnerRow ?? loserRow;
+            const merrimackRow = document.querySelector<HTMLElement>(`.ft-card[data-team-name="${ONBOARDING_UPSET_WINNER}"]`);
+            const floridaRow = document.querySelector<HTMLElement>(`.ft-card[data-team-name="${ONBOARDING_UPSET_LOSER}"]`);
+            const target = merrimackRow ?? floridaRow;
             target?.scrollIntoView({ behavior: "smooth", block: "center" });
-            winnerRow?.classList.add("futures-row--onboarding-highlight");
-            loserRow?.classList.add("futures-row--onboarding-highlight");
+            merrimackRow?.classList.add("futures-row--onboarding-highlight");
+            floridaRow?.classList.add("futures-row--onboarding-highlight");
           }, 350);
         }
         if (currentWalkthroughStep.id === "ready") {
-          setMainView("bracket");
           if (walkthroughMatchupId && lockedPicks[walkthroughMatchupId]) {
             const nextLocks = { ...lockedPicks };
             delete nextLocks[walkthroughMatchupId];
@@ -3302,7 +2717,6 @@ function App() {
     walkthroughCascadePathByRound,
     walkthroughMatchup,
     walkthroughMatchupId,
-    walkthroughUpsetInfo,
   ]);
 
   useEffect(() => {
@@ -3412,6 +2826,12 @@ function App() {
   }, [walkthroughActive]);
 
   useEffect(() => {
+    if (!welcomeGateOpen || walkthroughActive) return;
+    if (isMobile && showDesktopFirst) return;
+    startWalkthrough();
+  }, [isMobile, showDesktopFirst, startWalkthrough, walkthroughActive, welcomeGateOpen]);
+
+  useEffect(() => {
     const inWalkthroughSession = welcomeGateOpen || walkthroughActive;
     if (!inWalkthroughSession) return;
     const handleWalkthroughKeydown = (event: KeyboardEvent) => {
@@ -3451,13 +2871,13 @@ function App() {
   }, [isMobile, mainView, mobileTab]);
 
   useEffect(() => {
-    if (welcomeGateOpen || showMobileOnboarding) {
+    if (welcomeGateOpen) {
       document.body.classList.add("og-onboarding-open");
     } else {
       document.body.classList.remove("og-onboarding-open");
     }
     return () => document.body.classList.remove("og-onboarding-open");
-  }, [showMobileOnboarding, welcomeGateOpen]);
+  }, [welcomeGateOpen]);
 
   useEffect(() => {
     if (!walkthroughActive) {
@@ -3509,460 +2929,237 @@ function App() {
     return () => observer.disconnect();
   }, [isMobile, mainView]);
 
-  const userLabel = profile?.display_name || user?.email || "User";
-  const showToolbar = isMobile
-    ? visibleMobileTab === "bracket" || visibleMobileTab === "futures"
-    : visibleMainView === "bracket" || visibleMainView === "futures";
-  const predictorViewActive = isMobile ? visibleMobileTab === "predictor" : visibleMainView === "predictor";
-  const showDesktopLiveOddsBand = !isMobile && visibleMainView !== "predictor";
-  const showDesktopBracketHero = !isMobile && visibleMainView !== "predictor";
-  const topNavActiveView: TopNavView = activeGroup || groupsHubOpen
-    ? "groups"
-    : isMobile
-      ? visibleMobileTab === "leaderboard"
-      ? "leaderboard"
-      : visibleMobileTab === "rankings"
-          ? "rankings"
-          : visibleMobileTab === "predictor"
-            ? "predictor"
-        : "bracket"
-    : visibleMainView === "leaderboard"
-      ? "leaderboard"
-      : visibleMainView === "rankings"
-          ? "rankings"
-          : visibleMainView === "predictor"
-            ? "predictor"
-        : "bracket";
-  const bugReportContext = useMemo<BugReportModalProps>(
-    () => ({
-      activeRegion:
-        isMobile && visibleMobileTab === "bracket"
-          ? (mobileSection === "FF" ? "Final Four" : mobileSection)
-          : undefined,
-      activeRound:
-        isMobile && visibleMobileTab === "bracket"
-          ? (mobileSection === "FF" ? mobileFfRound : mobileRound)
-          : undefined,
-      activeTab: isMobile ? visibleMobileTab : visibleMainView,
-      pickCount,
-      chaosScore,
-      displayMode,
-      isFuturesOpen: isMobile ? visibleMobileTab === "futures" : visibleMainView === "futures",
-      isSimRunning: staggeredSimRunning || isUpdating,
-      bracketHash: Object.keys(sanitizedUserPicks).length > 0 ? encodeBracketState(sanitizedUserPicks) : null,
-      isMobile,
-    }),
-    [
-      chaosScore,
-      displayMode,
-      isMobile,
-      isUpdating,
-      visibleMainView,
-      mobileFfRound,
-      mobileRound,
-      mobileSection,
-      visibleMobileTab,
-      pickCount,
-      sanitizedUserPicks,
-      staggeredSimRunning,
-    ],
-  );
-
-  const switchTopNavView = (view: TopNavView) => {
-    if (view === "groups") {
-      openGroupsHub();
-      return;
-    }
-
-    setGroupsHubOpen(false);
-    setActiveGroup(null);
-    if (isMobile) {
-      setMobileTab(view === "bracket" ? "bracket" : view);
-    } else {
-      setMainView(view === "bracket" ? "bracket" : view);
-    }
-    window.scrollTo({ top: 0, behavior: "smooth" });
-  };
-
-  const openWrappedFromToolbar = () => {
-    if (!wrappedData) return;
-    trackEvent("wrapped_opened", {
-      trigger: "toolbar",
-      chaosLabel: wrappedData.identity.chaosLabel,
-      champion: wrappedData.champion.teamName,
-      repeat: wrappedSeen,
-    });
-    setShowWrappedCard(false);
-    setShowWrappedFlow(true);
-  };
-
-  const toggleFirstFourFromToolbar = () => {
-    setOpenToolbarMenu(null);
-    if (playInGames.length === 0) return;
-    setFirstFourPillHintActive(false);
-
-    if (isMobile) {
-      if (visibleMobileTab !== "bracket") setMobileTab("bracket");
-      setMobileSection((current) => (current === "FF" ? "East" : current));
-      setMobileRound("FF");
-      window.scrollTo({ top: 0, behavior: "smooth" });
-      return;
-    }
-
-    if (visibleMainView !== "bracket") {
-      setMainView("bracket");
-      setFirstFourExpanded(true);
-      window.scrollTo({ top: 0, behavior: "smooth" });
-      return;
-    }
-
-    setFirstFourExpanded((current) => !current);
-  };
-
-  const openGroupsHub = () => {
-    setOpenToolbarMenu(null);
-    if (!isAuthenticated || !user) {
-      setAuthModalContext("groups");
-      setAuthModalOpen(true);
-      return;
-    }
-
-    setActiveGroup(null);
-    setGroupsHubRefreshKey((current) => current + 1);
-    setGroupsHubOpen(true);
-  };
-
-  const showChaosInToolbar = !isMobile && chaosScore !== null;
-  const showToolbarFirstFour = playInGames.length > 0;
-  const showToolbarSubmitAction = true;
-  const firstFourToolbarBadge = playInGames.length > 0
-    ? (allPlayInDecided ? "✓" : `${decidedPlayInCount}/${playInGames.length}`)
-    : null;
-  const remainingPicks = SUBMIT_EXPECTED_PICK_COUNT - pickCount;
-  const submitButtonTitle = !isAuthenticated
-    ? "Sign in to submit your bracket"
-    : !bracketComplete
-      ? `${remainingPicks} pick${remainingPicks !== 1 ? "s" : ""} remaining`
-    : submissionsLocked
-        ? "Submissions locked at tip-off"
-        : submissionLimitReached
-          ? `Submission limit reached (${MAX_SUBMITTED_BRACKETS}/${MAX_SUBMITTED_BRACKETS})`
-          : `Submitted: ${submittedBracketCount}/${MAX_SUBMITTED_BRACKETS}`;
-  const submitButtonLabel = saveStatus === "saving"
-    ? "Submitting..."
-    : saveStatus === "saved"
-      ? "Bracket Submitted"
-    : saveStatus === "error"
-        ? (saveErrorText?.toLowerCase().includes("complete all")
-            ? `${remainingPicks} picks left`
-            : saveErrorText?.includes(String(MAX_SUBMITTED_BRACKETS))
-              ? `Limit reached (${MAX_SUBMITTED_BRACKETS}/${MAX_SUBMITTED_BRACKETS})`
-              : saveErrorText?.toLowerCase().includes("locked")
-                ? "Submissions locked"
-                : "Error — try again")
-        : bracketComplete
-          ? `Submit${isAuthenticated ? ` (${submittedBracketCount}/${MAX_SUBMITTED_BRACKETS})` : ""}`
-          : `${pickCount}/${SUBMIT_EXPECTED_PICK_COUNT} picks`;
-
-  const overflowPrimaryItems: OverflowMenuItem[] = [
-    ...(isMobile
-      ? [{
-          id: "reset-bracket",
-          label: "Reset Bracket",
-          onSelect: () => {
-            setOpenToolbarMenu(null);
-            onRequestResetAll();
-          },
-        }]
-      : []),
-    {
-      id: "copy-link",
-      label: linkCopied ? "✓ Copied!" : "Copy Link",
-      onSelect: () => {
-        setOpenToolbarMenu(null);
-        void onCopyShareLink();
-      },
-    },
-    ...(isMobile && undoStack.length > 0
-      ? [{
-          id: "undo-last-pick",
-          label: "↩ Undo Last Pick",
-          onSelect: () => {
-            setOpenToolbarMenu(null);
-            onUndo();
-          },
-        }]
-      : []),
-    ...(wrappedData
-      ? [{
-          id: "wrapped",
-          label: "🎁 Wrapped",
-          onSelect: () => {
-            setOpenToolbarMenu(null);
-            openWrappedFromToolbar();
-          },
-        }]
-      : []),
-    ...(isAuthenticated
-      ? [{
-          id: "my-brackets",
-          label: "My Brackets",
-          onSelect: () => {
-            setOpenToolbarMenu(null);
-            setMyBracketsOpen(true);
-          },
-        }]
-      : []),
-    ...(!walkthroughActive && !welcomeGateOpen
-      ? [{
-          id: "replay-tour",
-          label: "Get Tour",
-          onSelect: () => {
-            setOpenToolbarMenu(null);
-            if (isMobile) setShowMobileOnboarding(true);
-            else startWalkthrough();
-          },
-        }]
-      : []),
-  ];
-
-  const overflowSecondaryItems: OverflowMenuItem[] = isMobile
-    ? []
-    : [
-        {
-          id: "reset-all",
-          label: "Reset All",
-          onSelect: () => {
-            setOpenToolbarMenu(null);
-            onRequestResetAll();
-          },
-          tone: "accent",
-        },
-      ];
-
   const toolbar = (
     <div className="eg-main-actions toolbar">
-      <div className="toolbar-group toolbar-group--left">
+      <button
+        onClick={onUndo}
+        disabled={undoStack.length === 0}
+        className="eg-btn toolbar-btn--undo"
+        style={!isMobile && mainView !== "bracket" && mainView !== "futures" ? { display: "none" } : undefined}
+      >
+        Undo
+      </button>
+      <button
+        onClick={onRequestResetAll}
+        className="eg-btn toolbar-btn--reset"
+        style={!isMobile && mainView !== "bracket" && mainView !== "futures" ? { display: "none" } : undefined}
+      >
+        Reset All
+      </button>
+      {!isMobile ? (
         <button
-          onClick={onUndo}
-          disabled={undoStack.length === 0}
-          className="eg-btn toolbar-btn--undo"
+          onClick={() => setMainView((prev) => (prev === "futures" ? "bracket" : "futures"))}
+          className={`eg-btn toolbar-btn--futures ${mainView === "futures" ? "toolbar-btn--futures-active" : ""}`}
+          style={!isMobile && mainView !== "bracket" && mainView !== "futures" ? { display: "none" } : undefined}
         >
-          ↩ Undo
+          <span className="futures-btn-icon">📊</span>
+          <span className="futures-btn-label">Futures</span>
+          {pickCount > 0 ? <span className="futures-btn-badge">{pickCount}</span> : null}
         </button>
-
-        <div className="toolbar-dropdown-wrap toolbar-dropdown-wrap--sim" ref={simMenuRef}>
+      ) : null}
+      <button
+        onClick={onModelSim}
+        className="eg-btn toolbar-btn--instant"
+      >
+        Instant Sim
+      </button>
+      <button
+        onClick={onModelSimStaggered}
+        className="eg-btn toolbar-btn--staggered"
+        disabled={staggeredSimRunning}
+      >
+        {staggeredSimRunning ? "Staggered Sim Running..." : "Staggered Sim"}
+      </button>
+      <button
+        onClick={onSaveBracket}
+        className="eg-btn toolbar-btn--save toolbar-btn--save-action"
+        disabled={saveStatus === "saving" || (isAuthenticated && !canSubmitBrackets)}
+        title={
+          !isAuthenticated
+            ? "Sign in to submit your bracket"
+            : submissionsLocked
+              ? "Submissions locked at tip-off"
+              : submissionLimitReached
+                ? "Submission limit reached (25/25)"
+                : `Submitted: ${submittedBracketCount}/25`
+        }
+        style={!isMobile && mainView !== "bracket" && mainView !== "futures" ? { display: "none" } : undefined}
+      >
+        {saveStatus === "saving"
+          ? "Submitting..."
+          : saveStatus === "saved"
+            ? "✓ Submitted"
+            : saveStatus === "error"
+              ? (saveErrorText?.includes("25")
+                  ? "Submission limit reached (25/25)"
+                  : saveErrorText?.toLowerCase().includes("locked")
+                    ? "Submissions locked"
+                    : "Error — try again")
+              : `Submit Bracket ${isAuthenticated ? `(${submittedBracketCount}/25)` : ""}`}
+      </button>
+      <button
+        onClick={() => setShowFirstFourModal(true)}
+        className="eg-btn toolbar-btn--firstfour"
+        style={!isMobile && mainView !== "bracket" && mainView !== "futures" ? { display: "none" } : undefined}
+      >
+        {playInGames.length > 0
+          ? `First Four ${allPlayInDecided ? "✓" : `(${decidedPlayInCount}/${playInGames.length})`}`
+          : "First Four"}
+      </button>
+      {isAuthenticated ? (
+        <button
+          onClick={() => setMyBracketsOpen(true)}
+          className="eg-btn toolbar-btn--mybrackets"
+          style={!isMobile && mainView !== "bracket" && mainView !== "futures" ? { display: "none" } : undefined}
+        >
+          My Brackets
+        </button>
+      ) : null}
+      {isMobile ? (
+        <button
+          onClick={() => setMobileTab("leaderboard")}
+          className="eg-btn toolbar-btn--leaderboard"
+        >
+          🏆 Leaderboard
+        </button>
+      ) : (
+        <>
           <button
-            type="button"
-            className="eg-btn toolbar-btn--simulate"
-            onClick={() => setOpenToolbarMenu((prev) => (prev === "sim" ? null : "sim"))}
-            aria-expanded={openToolbarMenu === "sim"}
-            aria-haspopup="menu"
+            onClick={() => setMainView((prev) => (prev === "conferences" ? "bracket" : "conferences"))}
+            className={`eg-btn toolbar-btn--conferences ${mainView === "conferences" ? "toolbar-btn--active-view" : ""}`}
           >
-            🎲 Simulate ▾
+            {mainView === "conferences" ? "← Bracket" : "Conf. Tourneys"}
           </button>
-          {openToolbarMenu === "sim" ? (
-            <div className="toolbar-dropdown" role="menu" aria-label="Simulation options">
-              <button
-                type="button"
-                className="toolbar-dropdown-item"
-                onClick={() => {
-                  setOpenToolbarMenu(null);
-                  onModelSim();
-                }}
-              >
-                Instant Sim
-              </button>
-              <button
-                type="button"
-                className="toolbar-dropdown-item"
-                disabled={staggeredSimRunning}
-                onClick={() => {
-                  setOpenToolbarMenu(null);
-                  onModelSimStaggered();
-                }}
-              >
-                {staggeredSimRunning ? "Staggered Sim Running..." : "Staggered Sim"}
-              </button>
-            </div>
-          ) : null}
+          <button
+            onClick={() => setMainView((prev) => (prev === "rankings" ? "bracket" : "rankings"))}
+            className={`eg-btn toolbar-btn--rankings ${mainView === "rankings" ? "toolbar-btn--active-view" : ""}`}
+          >
+            {mainView === "rankings" ? "← Bracket" : "Rankings"}
+          </button>
+          <button
+            onClick={() => setMainView((prev) => (prev === "leaderboard" ? "bracket" : "leaderboard"))}
+            className={`eg-btn toolbar-btn--leaderboard ${mainView === "leaderboard" ? "toolbar-btn--active-view" : ""}`}
+          >
+            {mainView === "leaderboard" ? "← Bracket" : "🏆 Leaderboard"}
+          </button>
+          <button
+            onClick={() => setMainView((prev) => (prev === "predictor" ? "bracket" : "predictor"))}
+            className={`eg-btn toolbar-btn--predictor ${mainView === "predictor" ? "toolbar-btn--active-view" : ""}`}
+          >
+            {mainView === "predictor" ? "← Bracket" : "Predictor"}
+          </button>
+        </>
+      )}
+      <button
+        onClick={onCopyShareLink}
+        className="eg-btn copy-link-btn toolbar-btn--copy"
+        data-copied={linkCopied ? "true" : "false"}
+        aria-label="Copy shareable bracket link"
+        style={!isMobile && mainView !== "bracket" && mainView !== "futures" ? { display: "none" } : undefined}
+      >
+        {linkCopied ? "✓ Copied!" : "Copy Link"}
+      </button>
+      {staggeredSimRunning ? (
+        <button
+          onClick={onToggleStaggeredPause}
+          className="eg-btn toolbar-btn--staggered-toggle"
+          aria-label={staggeredSimPaused ? "Resume staggered simulation" : "Pause staggered simulation"}
+          title={staggeredSimPaused ? "Resume staggered simulation" : "Pause staggered simulation"}
+          style={!isMobile && mainView !== "bracket" && mainView !== "futures" ? { display: "none" } : undefined}
+        >
+          {staggeredSimPaused ? "▶" : "⏸"}
+        </button>
+      ) : null}
+      {staggeredSimRunning ? (
+        <div
+          className="eg-stagger-controls toolbar-btn--stagger-controls"
+          style={!isMobile && mainView !== "bracket" && mainView !== "futures" ? { display: "none" } : undefined}
+        >
+          <label htmlFor="stagger-delay" className="eg-stagger-label">
+            Stagger Delay: {(staggeredSimDelayMs / 1000).toFixed(1)}s
+          </label>
+          <input
+            id="stagger-delay"
+            type="range"
+            min={MIN_STAGGERED_SIM_DELAY_MS}
+            max={MAX_STAGGERED_SIM_DELAY_MS}
+            step={250}
+            value={staggeredSimDelayMs}
+            onChange={(event) => setStaggeredSimDelayMs(Number(event.target.value))}
+            className="eg-stagger-slider"
+          />
         </div>
-
-        {!isMobile ? (
-          <div className="toolbar-dropdown-wrap toolbar-dropdown-wrap--reset" ref={resetMenuRef}>
-            <button
-              type="button"
-              className="eg-btn toolbar-btn--reset"
-              onClick={() => setOpenToolbarMenu((prev) => (prev === "reset" ? null : "reset"))}
-              aria-expanded={openToolbarMenu === "reset"}
-              aria-haspopup="menu"
-            >
-              Reset ▾
-            </button>
-            {openToolbarMenu === "reset" ? (
-              <div className="toolbar-dropdown" role="menu" aria-label="Reset options">
-                <button
-                  type="button"
-                  className="toolbar-dropdown-item"
-                  onClick={() => {
-                    setOpenToolbarMenu(null);
-                    onRequestResetAll();
-                  }}
-                >
-                  Reset All
-                </button>
-              </div>
-            ) : null}
-          </div>
-        ) : null}
-
-        <BugReportModal {...bugReportContext} />
+      ) : null}
+      <div
+        className="odds-mode-toggle toolbar-btn--odds"
+        style={
+          !isMobile && mainView !== "bracket" && mainView !== "futures" && mainView !== "conferences"
+            ? { display: "none" }
+            : undefined
+        }
+      >
+        <button
+          className={`odds-mode-btn ${displayMode === "american" ? "odds-mode-btn--active" : ""}`}
+          onClick={() => {
+            showContextualHint(
+              "toggle",
+              "Switch between American odds (+300) and implied win probability (25.0%) across the entire product.",
+              ".odds-mode-toggle",
+              4000
+            );
+            trackEvent("odds_mode_toggled", {
+              from: displayMode,
+              to: "american",
+            });
+            setDisplayMode("american");
+          }}
+          aria-label="Show American odds"
+        >
+          +/-
+        </button>
+        <button
+          className={`odds-mode-btn ${displayMode === "implied" ? "odds-mode-btn--active" : ""}`}
+          onClick={() => {
+            showContextualHint(
+              "toggle",
+              "Switch between American odds (+300) and implied win probability (25.0%) across the entire product.",
+              ".odds-mode-toggle",
+              4000
+            );
+            trackEvent("odds_mode_toggled", {
+              from: displayMode,
+              to: "implied",
+            });
+            setDisplayMode("implied");
+          }}
+          aria-label="Show implied percentage"
+        >
+          %
+        </button>
       </div>
-
-      <div className="toolbar-group toolbar-group--right">
-        {showToolbarFirstFour ? (
+      {!isMobile && chaosScore !== null ? (
+        <div
+          className={`chaos-score-wrap ${chaosScoreChanged ? "chaos-score-pill--changed" : ""}`}
+        >
           <button
             type="button"
-            onClick={toggleFirstFourFromToolbar}
-            aria-pressed={
-              isMobile
-                ? Boolean(visibleMobileTab === "bracket" && mobileSection !== "FF" && mobileRound === "FF")
-                : Boolean(visibleMainView === "bracket" && firstFourExpanded)
-            }
-            className={`eg-btn toolbar-btn--first-four ${
-              !isMobile && allPlayInDecided && !firstFourExpanded && firstFourPillHintActive ? "ff-pill-collapsed-done" : ""
-            }`}
-            title={
-              isMobile
-                ? "Jump to the First Four round"
-                : visibleMainView === "bracket"
-                  ? (firstFourExpanded ? "Collapse the First Four bar" : "Expand the First Four bar")
-                  : "Open the First Four bar"
-            }
+            className="chaos-pill"
+            data-level={chaosPillLevel}
+            title={`Chaos Score: ${chaosScore.toFixed(1)} across ${pickCount} games. Higher = more unlikely bracket.`}
+            onClick={onChaosPillTap}
           >
-            <span>First Four</span>
-            {firstFourToolbarBadge
-              ? <span className={`toolbar-btn-badge ${allPlayInDecided ? "toolbar-btn-badge--done" : ""}`}>{firstFourToolbarBadge}</span>
-              : null}
-          </button>
-        ) : null}
-
-        {isMobile && showToolbarSubmitAction ? (
-          <button
-            onClick={() => void onSaveBracket()}
-            className={`eg-btn toolbar-btn--save toolbar-btn--save-action${
-              bracketComplete && saveStatus !== "saving" && saveStatus !== "saved"
-                ? " toolbar-btn--save-ready"
-                : ""
-            }`}
-            disabled={saveStatus === "saving" || (isAuthenticated && !canSubmitBrackets)}
-            title={submitButtonTitle}
-          >
-            {submitButtonLabel}
-          </button>
-        ) : null}
-
-        {!isMobile ? (
-          <button
-            onClick={() => {
-              setMainView((prev) => (prev === "futures" ? "bracket" : "futures"));
-            }}
-            className={`eg-btn toolbar-btn--futures ${
-              mainView === "futures" ? "toolbar-btn--futures-active" : ""
-            }`}
-          >
-            <span className="futures-btn-icon">📊</span>
-            <span className="futures-btn-label">Futures</span>
-            {pickCount > 0 ? <span className="futures-btn-badge">{pickCount}</span> : null}
-          </button>
-        ) : null}
-
-
-        {showChaosInToolbar ? (
-          <div className={`chaos-score-wrap ${chaosScoreChanged ? "chaos-score-pill--changed" : ""}`}>
-            <button
-              type="button"
-              className="chaos-pill"
-              data-level={chaosPillLevel}
-              title={`Chaos Score: ${chaosScore.toFixed(1)} across ${pickCount} games. Higher = more unlikely bracket.`}
-              onClick={onChaosPillTap}
-            >
-              <span className="chaos-pill-emoji">{chaosLabelData?.emoji ?? "📋"}</span>
-              <span className="chaos-pill-label">{chaosLabelData?.label ?? "Chalk"}</span>
-              <span className="chaos-pill-score">{chaosScore.toFixed(1)}</span>
-            </button>
-          </div>
-        ) : null}
-
-        <div className="odds-mode-toggle toolbar-btn--odds">
-          <button
-            className={`odds-mode-btn ${displayMode === "implied" ? "odds-mode-btn--active" : ""}`}
-            onClick={() => {
-              showContextualHint(
-                "toggle",
-                "Switch between American odds (+300) and implied win probability (25.0%) across the entire product.",
-                ".odds-mode-toggle",
-                4000
-              );
-              trackEvent("odds_mode_toggled", { from: displayMode, to: "implied" });
-              setDisplayMode("implied");
-            }}
-            aria-label="Show implied percentage"
-          >
-            %
-          </button>
-          <button
-            className={`odds-mode-btn ${displayMode === "american" ? "odds-mode-btn--active" : ""}`}
-            onClick={() => {
-              showContextualHint(
-                "toggle",
-                "Switch between American odds (+300) and implied win probability (25.0%) across the entire product.",
-                ".odds-mode-toggle",
-                4000
-              );
-              trackEvent("odds_mode_toggled", { from: displayMode, to: "american" });
-              setDisplayMode("american");
-            }}
-            aria-label="Show American odds"
-          >
-            US
+            <span className="chaos-pill-emoji">{chaosLabelData?.emoji ?? "📋"}</span>
+            <span className="chaos-pill-label">{chaosLabelData?.label ?? "Chalk"}</span>
+            <span className="chaos-pill-score">{chaosScore.toFixed(1)}</span>
+            {chaosPercentile !== null ? <span className="chaos-pill-pct">Top {Math.max(1, Math.round(100 - chaosPercentile))}%</span> : null}
           </button>
         </div>
-
-        {!isMobile ? (
-          <button
-            onClick={() => void onSaveBracket()}
-            className={`eg-btn toolbar-btn--save toolbar-btn--save-action${
-              bracketComplete && saveStatus !== "saving" && saveStatus !== "saved"
-                ? " toolbar-btn--save-ready"
-                : ""
-            }`}
-            disabled={saveStatus === "saving" || (isAuthenticated && !canSubmitBrackets)}
-            title={submitButtonTitle}
-          >
-            {submitButtonLabel}
-          </button>
-        ) : null}
-
-        <div className="toolbar-dropdown-wrap toolbar-dropdown-wrap--overflow toolbar-dropdown-wrap--right" ref={overflowMenuRef}>
-          <button
-            type="button"
-            className="eg-btn toolbar-btn--overflow"
-            onClick={() => setOpenToolbarMenu((prev) => (prev === "overflow" ? null : "overflow"))}
-            aria-expanded={openToolbarMenu === "overflow"}
-            aria-haspopup="menu"
-            aria-label="More actions"
-          >
-            •••
-          </button>
-          {openToolbarMenu === "overflow" ? (
-            <OverflowMenu
-              primaryItems={overflowPrimaryItems}
-              secondaryItems={overflowSecondaryItems}
-            />
-          ) : null}
+      ) : null}
+      {isAuthenticated && submissionsLocked ? (
+        <div className="bracket-lock-banner" style={!isMobile && mainView !== "bracket" && mainView !== "futures" ? { display: "none" } : undefined}>
+          🔒 Submissions locked at tip-off. Tournament is live — check the leaderboard.
         </div>
-      </div>
+      ) : null}
     </div>
   );
 
@@ -3982,51 +3179,39 @@ function App() {
           ) : null}
         </div>
         <div className="chaos-tracker-right">
-          <div className="chaos-tracker-progress">
-            <span className="chaos-tracker-count">
-              {staggeredGamesResolved}/{staggeredTotalGames}
-            </span>
-            <span className="chaos-tracker-count-label">games</span>
-          </div>
-          <div className="chaos-tracker-controls">
-            <button
-              type="button"
-              className="chaos-tracker-toggle"
-              onClick={onToggleStaggeredPause}
-              aria-label={staggeredSimPaused ? "Resume staggered simulation" : "Pause staggered simulation"}
-            >
-              {staggeredSimPaused ? "▶ Resume" : "⏸ Pause"}
-            </button>
-            <label htmlFor="stagger-delay" className="chaos-tracker-delay">
-              Speed {(staggeredSimDelayMs / 1000).toFixed(1)}s
-            </label>
-            <input
-              id="stagger-delay"
-              type="range"
-              min={MIN_STAGGERED_SIM_DELAY_MS}
-              max={MAX_STAGGERED_SIM_DELAY_MS}
-              step={250}
-              value={staggeredSimDelayMs}
-              onChange={(event) => setStaggeredSimDelayMs(Number(event.target.value))}
-              className="chaos-tracker-slider"
-            />
-          </div>
+          <span className="chaos-tracker-count">
+            {staggeredGamesResolved}/{staggeredTotalGames}
+          </span>
+          <span className="chaos-tracker-count-label">games</span>
         </div>
       </div>
     ) : null;
 
+  const mobileChaosBadge =
+    chaosScore !== null ? (
+      <button
+        type="button"
+        className={`chaos-pill chaos-pill--mobile ${chaosScoreChanged ? "chaos-score-pill--changed" : ""}`}
+        data-level={chaosPillLevel}
+        title={`Chaos Score: ${chaosScore.toFixed(1)} across ${pickCount} games. Higher = more unlikely bracket.`}
+        onClick={onChaosPillTap}
+      >
+        <span className="chaos-pill-emoji">{chaosLabelData?.emoji ?? "📋"}</span>
+        <span className="chaos-pill-label">{chaosLabelData?.label ?? "Chalk"}</span>
+        <span className="chaos-pill-score">{chaosScore.toFixed(1)}</span>
+        {chaosPercentile !== null ? (
+          <span className="chaos-pill-pct">Top {Math.max(1, Math.round(100 - chaosPercentile))}%</span>
+        ) : null}
+      </button>
+    ) : null;
+
   const championGame = games.find((game) => game.round === "CHAMP");
   const championPickId = championGame?.winnerId ?? null;
-  const finalFourPickIds = useMemo(
-    () =>
-      new Set(
-        games
-          .filter((game) => game.round === "E8" && game.winnerId)
-          .map((game) => game.winnerId as string)
-      ),
-    [games]
+  const finalFourPickIds = new Set(
+    games
+      .filter((game) => game.round === "E8" && game.winnerId)
+      .map((game) => game.winnerId as string)
   );
-  const eliminatedTeamIds = useMemo(() => getEliminatedTeamIds(games), [games]);
   const futuresViewRows = useMemo(
     () =>
       simResult.futures
@@ -4040,39 +3225,28 @@ function App() {
             team,
             baseline,
             champDelta,
-            isEliminated: eliminatedTeamIds.has(row.teamId),
+            isEliminated: row.champProb <= 0.000001,
             isChampionPick: championPickId === row.teamId,
             isFinalFourPick: finalFourPickIds.has(row.teamId),
           };
         })
         .filter((entry): entry is NonNullable<typeof entry> => Boolean(entry)),
-    [simResult.futures, baselineByTeamId, championPickId, eliminatedTeamIds, finalFourPickIds]
+    [simResult.futures, baselineByTeamId, championPickId, finalFourPickIds]
   );
 
   const championPickTeam = championPickId ? teamsById.get(championPickId) ?? null : null;
   const championPickRow = championPickId ? simResult.futures.find((row) => row.teamId === championPickId) ?? null : null;
-  const championPickDelta = championPickRow
-    ? computeDelta(championPickRow.champProb, baselineByTeamId.get(championPickRow.teamId)?.champProb ?? 0, displayMode)
-    : null;
-  const finalFourPickTeams = useMemo(
-    () =>
-      games
-        .filter((game) => game.round === "E8")
-        .map((game) => (game.winnerId ? teamsById.get(game.winnerId) ?? null : null)),
-    [games]
-  );
-  const hasNoFuturePicks = !championPickTeam && finalFourPickTeams.every((team) => !team);
+  const finalFourPickTeams = games
+    .filter((game) => game.round === "E8")
+    .map((game) => (game.winnerId ? teamsById.get(game.winnerId) ?? null : null));
   const estimatedChalkScore =
     pickCount === 0 || chaosScore === null
       ? 100
       : Math.max(0, Math.min(100, Math.round((1 - chaosScore / Math.max(1, pickCount)) * 100)));
-  const displayedPickCount = Math.min(pickCount, SUBMIT_EXPECTED_PICK_COUNT);
-  const likelihoodLabel = formatLikelihood(simResult.likelihoodSimulation);
-  const approximateLikelihoodLabel = formatLikelihood(simResult.likelihoodApprox);
-  const futuresOddsLabel = (prob: number, options?: { lockAsHundred?: boolean }): string => {
-    const primary = formatOddsDisplay(prob, displayMode).primary;
-    if (options?.lockAsHundred && primary === "LOCK") return "100%";
-    return primary;
+  const displayedPickCount = Math.min(pickCount, URL_EXPECTED_GAME_COUNT);
+  const futuresOddsLabel = (prob: number): string => {
+    if (displayMode === "american" && prob <= 0) return "0%";
+    return formatOddsDisplay(prob, displayMode).primary;
   };
 
   const futuresMovers = useMemo(() => {
@@ -4131,21 +3305,22 @@ function App() {
         .sort((a, b) => a.team.name.localeCompare(b.team.name)),
     [futuresViewRows]
   );
-  const topContenderColumns = useMemo(() => splitIntoColumns(topContenders), [topContenders]);
-  const showFuturesMovers = futuresMovers.gainers.length > 0 || futuresMovers.losers.length > 0;
-  const goBackFromFutures = () => {
-    if (isMobile) setMobileTab("bracket");
-    else setMainView("bracket");
-  };
 
-  const mobileFuturesContent = (
+  const futuresContent = (
     <div className="futures-full">
       <div className="futures-header">
         <div className="futures-header-left">
           <h2 className="futures-title">FUTURES</h2>
           <span className="futures-subtitle">How your picks shift every team&apos;s odds</span>
         </div>
-        <button className="ft-back-btn" type="button" onClick={goBackFromFutures}>
+        <button
+          className="ft-back-btn"
+          type="button"
+          onClick={() => {
+            if (isMobile) setMobileTab("bracket");
+            else setMainView("bracket");
+          }}
+        >
           ← Back to Bracket
         </button>
       </div>
@@ -4163,12 +3338,12 @@ function App() {
         </div>
         <div className="ft-stat-divider" />
         <div className="ft-stat">
-          <span className="ft-stat-value">{likelihoodLabel}</span>
+          <span className="ft-stat-value">{toImpliedLabel(simResult.likelihoodSimulation)}</span>
           <span className="ft-stat-label">LIKELIHOOD</span>
         </div>
       </div>
 
-      {hasNoFuturePicks ? (
+      {!championPickTeam && finalFourPickTeams.every((team) => !team) ? (
         <section className="ft-section">
           <div className="ft-picks-empty-compact">
             <span className="ft-picks-empty-label">YOUR PICKS</span>
@@ -4197,14 +3372,20 @@ function App() {
                 </div>
               </div>
               <div className="ft-pick-card-odds">
-                <span className="ft-pick-card-odds-value">{futuresOddsLabel(championPickRow?.champProb ?? 0, { lockAsHundred: true })}</span>
+                <span className="ft-pick-card-odds-value">{futuresOddsLabel(championPickRow?.champProb ?? 0)}</span>
                 <span className="ft-pick-card-odds-label">TITLE</span>
               </div>
-              {championPickDelta !== null && hasMeaningfulDelta(championPickDelta, displayMode) ? (
-                <span className={championPickDelta > 0 ? "ft-delta--up" : "ft-delta--down"}>
-                  {championPickDelta > 0 ? "▲" : "▼"}
-                  {formatDelta(Math.abs(championPickDelta), displayMode)}
-                </span>
+              {championPickRow ? (
+                (() => {
+                  const championDelta = computeDelta(championPickRow.champProb, baselineByTeamId.get(championPickRow.teamId)?.champProb ?? 0, displayMode);
+                  if (!hasMeaningfulDelta(championDelta, displayMode)) return null;
+                  return (
+                    <span className={championDelta > 0 ? "ft-delta--up" : "ft-delta--down"}>
+                      {championDelta > 0 ? "▲" : "▼"}
+                      {formatDelta(Math.abs(championDelta), displayMode)}
+                    </span>
+                  );
+                })()
               ) : null}
               </article>
             ) : (
@@ -4225,6 +3406,7 @@ function App() {
                 }
                 const teamRow = futuresViewRows.find((entry) => entry.team.id === team.id);
                 const isChampion = championPickId === team.id;
+                const shownProb = isChampion ? teamRow?.row.champProb ?? 0 : teamRow?.row.final4Prob ?? 0;
                 return (
                   <article key={`${team.id}-${idx}`} className="ft-pick-card ft-pick-card--f4">
                     <span className="ft-pick-card-badge-muted">F4 · {team.region}</span>
@@ -4237,7 +3419,7 @@ function App() {
                     </div>
                     <div className="ft-pick-card-odds">
                       <span className="ft-pick-card-odds-value ft-pick-card-odds-value--sm">
-                        {futuresOddsLabel(teamRow?.row.champProb ?? 0, { lockAsHundred: true })}
+                        {futuresOddsLabel(shownProb)}
                       </span>
                       <span className="ft-pick-card-odds-label">{isChampion ? "TITLE" : "F4"}</span>
                     </div>
@@ -4249,7 +3431,7 @@ function App() {
         </section>
       )}
 
-      {showFuturesMovers ? (
+      {futuresMovers.gainers.length > 0 || futuresMovers.losers.length > 0 ? (
         <section className="ft-section ft-section--movers">
           <div className="ft-section-header">
             <h3 className="ft-section-title">BIGGEST MOVERS</h3>
@@ -4372,8 +3554,8 @@ function App() {
       <div className="ft-footer">
         <div className="ft-footer-likelihood">
           <span className="ft-footer-label">YOUR BRACKET LIKELIHOOD</span>
-          <span className="ft-footer-value">{likelihoodLabel}</span>
-          <span className="ft-footer-approx">(approx {approximateLikelihoodLabel})</span>
+          <span className="ft-footer-value">{toImpliedLabel(simResult.likelihoodSimulation)}</span>
+          <span className="ft-footer-approx">(approx {toImpliedLabel(simResult.likelihoodApprox)})</span>
         </div>
         <p className="ft-footer-explainer">
           Odds shown are conditioned on your picks. Make a pick in the bracket to see how every team&apos;s odds shift.
@@ -4382,255 +3564,8 @@ function App() {
     </div>
   );
 
-  const desktopFuturesContent = (
-    <div className="futures-full">
-      <div className="futures-header ft-desktop-header">
-        <button className="ft-back-btn ft-back-btn--desktop" type="button" onClick={goBackFromFutures}>
-          ← Back to Bracket
-        </button>
-        <div className="ft-desktop-content">
-          <div className="ft-desktop-header-block">
-            <div className="ft-desktop-header-copy">
-              <div className="futures-header-left">
-                <h2 className="futures-title">FUTURES</h2>
-                <span className="futures-subtitle">How your picks shift every team&apos;s odds</span>
-              </div>
-              {isUpdating ? <p className="eg-updating">Updating…</p> : null}
-            </div>
-            <div className="ft-stats-row">
-              <div className="ft-stat-pill">
-                <span className="ft-stat-pill-value">{displayedPickCount}/63</span>
-                <span className="ft-stat-pill-label">PICKS</span>
-              </div>
-              <div className="ft-stat-pill">
-                <span className="ft-stat-pill-value">{estimatedChalkScore}%</span>
-                <span className="ft-stat-pill-label">CHALK</span>
-              </div>
-              <div className="ft-stat-pill ft-stat-pill--likelihood">
-                <span className="ft-stat-pill-value">{likelihoodLabel}</span>
-                <span className="ft-stat-pill-label">LIKELIHOOD</span>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div className="ft-desktop-content">
-        {hasNoFuturePicks ? (
-          <section className="ft-section">
-            <div className="ft-picks-empty-compact">
-              <span className="ft-picks-empty-text">Champion and Final Four will appear here as you pick.</span>
-            </div>
-          </section>
-        ) : (
-          <section className="ft-section ft-section--picks">
-            <div className="ft-section-header">
-              <h3 className="ft-section-title">YOUR PICKS</h3>
-            </div>
-            <div className="ft-picks-grid">
-              {championPickTeam ? (
-                <article className="ft-champion-card">
-                  <span className="ft-champion-card-label">🏆 YOUR CHAMPION</span>
-                  <TeamLogo
-                    teamName={championPickTeam.name}
-                    src={teamLogoUrl(championPickTeam)}
-                    className="ft-champion-card-logo"
-                    teamSeed={seedLabel(championPickTeam)}
-                  />
-                  <span className="ft-champion-card-meta">#{seedLabel(championPickTeam)} · {championPickTeam.region}</span>
-                  <span className="ft-champion-card-name">{championPickTeam.name}</span>
-                  <span className="ft-champion-card-divider" aria-hidden="true" />
-                  <div className="ft-champion-card-odds">
-                    <span className="ft-champion-card-odds-value">
-                      {futuresOddsLabel(championPickRow?.champProb ?? 0, { lockAsHundred: true })}
-                    </span>
-                    {championPickDelta !== null && hasMeaningfulDelta(championPickDelta, displayMode) ? (
-                      <span className={championPickDelta > 0 ? "ft-delta--up" : "ft-delta--down"}>
-                        {championPickDelta > 0 ? "▲" : "▼"}
-                        {formatDelta(Math.abs(championPickDelta), displayMode)}
-                      </span>
-                    ) : null}
-                  </div>
-                  <span className="ft-champion-card-caption">TITLE ODDS</span>
-                </article>
-              ) : (
-                <article className="ft-champion-card ft-champion-card--empty">
-                  <span className="ft-champion-card-label">🏆 YOUR CHAMPION</span>
-                  <span className="ft-champion-card-empty-text">Champion not yet picked.</span>
-                </article>
-              )}
-
-              <div className="ft-f4-grid">
-                {[0, 1, 2, 3].map((idx) => {
-                  const team = finalFourPickTeams[idx];
-                  if (!team) {
-                    return (
-                      <article key={`desktop-f4-empty-${idx}`} className="ft-f4-card ft-f4-card--empty">
-                        <span className="ft-f4-card-region">F4 SLOT</span>
-                        <span className="ft-f4-card-tbd">TBD</span>
-                      </article>
-                    );
-                  }
-
-                  const teamRow = futuresViewRows.find((entry) => entry.team.id === team.id);
-                  return (
-                    <article key={`desktop-f4-${team.id}-${idx}`} className="ft-f4-card">
-                      <span className="ft-f4-card-region">F4 · {team.region.toUpperCase()}</span>
-                      <TeamLogo
-                        teamName={team.name}
-                        src={teamLogoUrl(team)}
-                        className="ft-f4-card-logo"
-                        teamSeed={seedLabel(team)}
-                      />
-                      <span className="ft-f4-card-name">#{seedLabel(team)} {team.name}</span>
-                      <span className="ft-f4-card-odds">
-                        {futuresOddsLabel(teamRow?.row.champProb ?? 0, { lockAsHundred: true })}
-                      </span>
-                      <span className="ft-f4-card-caption">CHAMP</span>
-                    </article>
-                  );
-                })}
-              </div>
-            </div>
-          </section>
-        )}
-
-        {showFuturesMovers ? (
-          <section className="ft-section">
-            <div className="ft-section-header">
-              <h3 className="ft-section-title">BIGGEST MOVERS</h3>
-              <span className="ft-section-subtitle">How your picks shifted the landscape</span>
-            </div>
-            <div className="ft-movers-grid">
-              <div className="ft-movers-col">
-                <span className="ft-movers-col-label ft-movers-col-label--up">▲ GAINING</span>
-                <div className="ft-movers-panel">
-                  {futuresMovers.gainers.map((entry) => {
-                    const delta = computeDelta(entry.row.champProb, entry.baseline?.champProb ?? 0, displayMode);
-                    return (
-                      <div key={`desktop-gainer-${entry.team.id}`} className="ft-mover-row">
-                        <TeamLogo teamName={entry.team.name} src={teamLogoUrl(entry.team)} className="ft-mover-logo" teamSeed={seedLabel(entry.team)} />
-                        <span className="ft-mover-seed">#{seedLabel(entry.team)}</span>
-                        <span className="ft-mover-name">{entry.team.name}</span>
-                        <span className="ft-delta--up">▲{formatDelta(Math.abs(delta), displayMode)}</span>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-              <div className="ft-movers-col">
-                <span className="ft-movers-col-label ft-movers-col-label--down">▼ DROPPING</span>
-                <div className="ft-movers-panel">
-                  {futuresMovers.losers.map((entry) => {
-                    const delta = computeDelta(entry.row.champProb, entry.baseline?.champProb ?? 0, displayMode);
-                    return (
-                      <div key={`desktop-loser-${entry.team.id}`} className="ft-mover-row">
-                        <TeamLogo teamName={entry.team.name} src={teamLogoUrl(entry.team)} className="ft-mover-logo" teamSeed={seedLabel(entry.team)} />
-                        <span className="ft-mover-seed">#{seedLabel(entry.team)}</span>
-                        <span className="ft-mover-name">{entry.team.name}</span>
-                        <span className="ft-delta--down">▼{formatDelta(Math.abs(delta), displayMode)}</span>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            </div>
-          </section>
-        ) : null}
-
-        {topContenders.length > 0 ? (
-          <section className="ft-section">
-            <div className="ft-section-header">
-              <h3 className="ft-section-title">TOP CONTENDERS</h3>
-            </div>
-            <div className="ft-contenders-grid">
-              {topContenderColumns.map((column, columnIndex) => (
-                <div
-                  key={`contender-column-${columnIndex}`}
-                  className={`ft-contenders-col ${columnIndex === 0 ? "ft-contenders-col--split" : ""}`}
-                >
-                  {column.map((entry) => (
-                    <div key={`desktop-contender-${entry.team.id}`} className="ft-contender-row">
-                      <TeamLogo teamName={entry.team.name} src={teamLogoUrl(entry.team)} className="ft-contender-logo" teamSeed={seedLabel(entry.team)} />
-                      <span className="ft-contender-meta">#{seedLabel(entry.team)}·{entry.team.region}</span>
-                      <span className="ft-contender-name">{entry.team.name}</span>
-                      <span className="ft-contender-odds">{futuresOddsLabel(entry.row.champProb)}</span>
-                    </div>
-                  ))}
-                </div>
-              ))}
-            </div>
-          </section>
-        ) : null}
-
-        {fieldRows.length > 0 ? (
-          <section className="ft-section">
-            <button type="button" className="ft-section-toggle" onClick={() => setFuturesFieldExpanded((prev) => !prev)}>
-              <h3 className="ft-section-title">THE FIELD · {fieldRows.length} teams</h3>
-              <span className="ft-section-chevron">{futuresFieldExpanded ? "▾" : "▸"}</span>
-            </button>
-            {futuresFieldExpanded ? (
-              <div className="ft-field-chips">
-                {fieldRows.map((entry) => (
-                  <span key={`desktop-field-${entry.team.id}`} className="ft-team-chip">
-                    <TeamLogo teamName={entry.team.name} src={teamLogoUrl(entry.team)} className="ft-team-chip-logo" teamSeed={seedLabel(entry.team)} />
-                    <span className="ft-team-chip-name">{entry.team.name}</span>
-                    <span className="ft-team-chip-odds">{futuresOddsLabel(entry.row.champProb)}</span>
-                  </span>
-                ))}
-              </div>
-            ) : null}
-          </section>
-        ) : null}
-
-        {eliminatedRows.length > 0 ? (
-          <section className="ft-section">
-            <button type="button" className="ft-section-toggle" onClick={() => setFuturesEliminatedExpanded((prev) => !prev)}>
-              <h3 className="ft-section-title">ELIMINATED · {eliminatedRows.length} teams</h3>
-              <span className="ft-section-chevron">{futuresEliminatedExpanded ? "▾" : "▸"}</span>
-            </button>
-            {futuresEliminatedExpanded ? (
-              <div className="ft-eliminated-chips">
-                {eliminatedRows.map((entry) => (
-                  <span key={`desktop-eliminated-${entry.team.id}`} className="ft-team-chip ft-team-chip--eliminated">
-                    <span className="ft-eliminated-x">✗</span>
-                    <span className="ft-team-chip-name">{entry.team.name}</span>
-                  </span>
-                ))}
-              </div>
-            ) : null}
-          </section>
-        ) : null}
-
-        <section className="ft-section ft-likelihood-section">
-          <span className="ft-section-title">YOUR BRACKET LIKELIHOOD</span>
-          <span className="ft-likelihood-value">{likelihoodLabel}</span>
-          <span className="ft-likelihood-approx">(approx {approximateLikelihoodLabel})</span>
-          <p className="ft-likelihood-copy">
-            Odds shown are conditioned on your picks. Make a pick in the bracket to see how every team&apos;s odds shift.
-          </p>
-        </section>
-      </div>
-    </div>
-  );
-
-  const futuresContent = isMobile ? mobileFuturesContent : desktopFuturesContent;
-  const firstFourBar = playInGames.length > 0 ? (
-    <FirstFourBar
-      games={playInGames}
-      gameWinProbs={simResult.gameWinProbs}
-      displayMode={displayMode}
-      expanded={firstFourExpanded}
-      lastPickedKey={lastPickedKey}
-      onPick={onPick}
-      onEditProb={openProbabilityPopup}
-      onOpenMatchupStats={openMatchupStats}
-      onRandomize={handleRandomizeFirstFour}
-    />
-  ) : null;
-
   return (
-    <div className={`eg-shell ${compactDesktop ? "compact-desktop" : ""} ${predictorViewActive ? "eg-shell--predictor-view" : ""}`}>
+    <div className={`eg-shell ${compactDesktop ? "compact-desktop" : ""}`}>
       <div className="bg-glow" aria-hidden="true" />
       <canvas id="bg-stats" className="bg-canvas" aria-hidden="true" />
       <canvas id="bg-lightning" className="bg-canvas" aria-hidden="true" />
@@ -4639,21 +3574,74 @@ function App() {
       <div className="bg-shape bg-bottom" aria-hidden="true" />
 
       <main className="eg-app">
-        <TopNavBar
-          activeView={topNavActiveView}
-          authLoading={authLoading}
-          isAuthenticated={isAuthenticated}
-          userLabel={userLabel}
-          showBeta
-          onSelectBracket={() => switchTopNavView("bracket")}
-          onSelectLeaderboard={() => switchTopNavView("leaderboard")}
-          onSelectGroups={() => switchTopNavView("groups")}
-          onSelectRankings={() => switchTopNavView("rankings")}
-          onSelectPredictor={() => switchTopNavView("predictor")}
-          onSignIn={() => setAuthModalOpen(true)}
-          onSignOut={() => signOut()}
-        />
-        {showDesktopLiveOddsBand ? (
+        <nav className="og-top-nav" aria-label="Odds Gods tools">
+          <div className="og-top-nav-desktop">
+            <a className="og-top-nav-brand" href={LANDING_URL}>
+              <img className="og-top-nav-logo" src="/logo-icon.png?v=20260225" alt="Odds Gods" />
+              <span className="odds">ODDS</span> <span className="gods">GODS</span>
+              <span className="beta-badge">BETA</span>
+            </a>
+            <div className="og-top-nav-tabs">
+              <a
+                className="og-top-nav-link"
+                href="https://oddsgods.net/blog"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                Blog
+              </a>
+              <a className="og-top-nav-link" href="/god-rankings.html" target="_blank" rel="noopener noreferrer">
+                Odds Gods Rankings
+              </a>
+            </div>
+            <div className="og-top-nav-auth">
+              {authLoading ? (
+                <span className="nav-auth-loading">...</span>
+              ) : isAuthenticated ? (
+                <div className="nav-user-info">
+                  <span className="nav-user-name">{profile?.display_name || user?.email || "User"}</span>
+                  <button className="nav-signout-btn" onClick={() => signOut()}>
+                    Sign out
+                  </button>
+                </div>
+              ) : (
+                <button className="nav-signin-btn" onClick={() => setAuthModalOpen(true)}>
+                  Log in / Sign up
+                </button>
+              )}
+            </div>
+          </div>
+          <div className="og-top-nav-mobile">
+            <div className="nav-left">
+              <a className="og-mobile-logo-link" href={LANDING_URL} aria-label="Odds Gods home">
+                <img className="nav-logo-icon nav-logo" src="/logo-icon.png?v=20260225" alt="Odds Gods" />
+              </a>
+              <span className="nav-product-title nav-wordmark">ODDS GODS</span>
+              <span className="beta-badge nav-beta">BETA</span>
+            </div>
+            <div className="nav-right">
+              <a className="og-top-nav-link" href="https://oddsgods.net/blog" target="_blank" rel="noopener noreferrer">
+                Blog
+              </a>
+              <a className="og-top-nav-link" href="/god-rankings.html" target="_blank" rel="noopener noreferrer">
+                Rankings
+              </a>
+              {isAuthenticated ? (
+                <>
+                  <span className="nav-user-name nav-user-name--mobile">{profile?.display_name || user?.email || "User"}</span>
+                  <button className="nav-signout-btn nav-signout-btn--mobile nav-auth-btn" onClick={() => signOut()}>
+                    Sign out
+                  </button>
+                </>
+              ) : (
+                <button className="nav-signin-btn nav-signin-btn--mobile nav-auth-btn" onClick={() => setAuthModalOpen(true)}>
+                  Log in
+                </button>
+              )}
+            </div>
+          </div>
+        </nav>
+        {!isMobile ? (
           <div className="live-odds-band">
             <LiveOddsStrip
               topContenders={liveOddsTopContenders}
@@ -4663,22 +3651,17 @@ function App() {
             />
           </div>
         ) : null}
-        <header
-          className={`eg-header ${showDesktopBracketHero ? "" : "mobile-hidden"}`}
-          style={showDesktopBracketHero ? undefined : { display: "none" }}
-        >
+        <header className={`eg-header ${isMobile ? "mobile-hidden" : ""}`}>
           <h1>The Bracket Lab</h1>
           <p className="eg-subtitle">
-            The bracket that thinks back. Lock a pick. See who it helps, who it hurts, and what it costs.
+            March Madness what-if odds. Click picks to update futures in real time based on your picks.
           </p>
         </header>
         {isMobile ? (
           <section className="eg-mobile-shell">
-            {showToolbar ? <div className="mobile-toolbar-wrapper">{toolbar}</div> : null}
-            {isAuthenticated && submissionsLocked && showToolbar ? (
-              <div className="bracket-lock-banner">🔒 Submissions locked at tip-off. Tournament is live — check the leaderboard.</div>
-            ) : null}
-            {visibleMobileTab === "bracket" ? (
+            <div className="mobile-toolbar-wrapper">{toolbar}</div>
+            {chaosTrackerBar}
+            {mobileTab === "bracket" ? (
               <>
                 <MobileRegionTabs activeSection={mobileSection} onChange={setMobileSection} />
                 <div className="mobile-bracket-scroll">
@@ -4700,6 +3683,7 @@ function App() {
                       onUndoPick={onUndoGame}
                       onEditProb={openProbabilityPopup}
                       onOpenMatchupStats={openMatchupStats}
+                      mobileChaosBadge={mobileChaosBadge}
                     />
                   ) : (
                     <MobileRegionView
@@ -4725,38 +3709,27 @@ function App() {
                       onUndoPick={onUndoGame}
                       onEditProb={openProbabilityPopup}
                       onOpenMatchupStats={openMatchupStats}
+                      mobileChaosBadge={mobileChaosBadge}
                     />
                   )}
                 </div>
               </>
-            ) : visibleMobileTab === "futures" ? (
+            ) : mobileTab === "futures" ? (
               <div className="mobile-futures-view">{futuresContent}</div>
-            ) : SHOW_CONFERENCE_TOURNAMENTS && visibleMobileTab === "conferences" ? (
+            ) : mobileTab === "conferences" ? (
               <div className="mobile-futures-view">
-                <Suspense fallback={<DeferredViewFallback />}>
-                  <ConferenceTournaments displayMode={displayMode} isMobile={isMobile} />
-                </Suspense>
+                <ConferenceTournaments displayMode={displayMode} isMobile={isMobile} />
               </div>
-            ) : visibleMobileTab === "rankings" ? (
+            ) : mobileTab === "rankings" ? (
               <div className="mobile-futures-view">
-                <Suspense fallback={<DeferredViewFallback />}>
-                  <ExpandedRankings displayMode={displayMode} isMobile={isMobile} />
-                </Suspense>
-              </div>
-            ) : visibleMobileTab === "predictor" ? (
-              <div className="mobile-futures-view">
-                <Suspense fallback={<DeferredViewFallback />}>
-                  <MatchupPredictor displayMode={displayMode} />
-                </Suspense>
+                <ExpandedRankings displayMode={displayMode} isMobile={isMobile} />
               </div>
             ) : (
               <div className="mobile-futures-view">
-                <Suspense fallback={<DeferredViewFallback />}>
-                  <LeaderboardFullWidth
-                    isVisible={visibleMobileTab === "leaderboard"}
-                    refreshKey={leaderboardRefreshKey}
-                  />
-                </Suspense>
+                <LeaderboardFullWidth
+                  isVisible={mobileTab === "leaderboard"}
+                  refreshKey={leaderboardRefreshKey}
+                />
               </div>
             )}
             <LiveOddsStrip
@@ -4765,24 +3738,14 @@ function App() {
               displayMode={displayMode}
               onOpenFutures={() => setMobileTab("futures")}
             />
-            <MobileTabBar activeTab={visibleMobileTab} onTabChange={setMobileTab} />
+            <MobileTabBar activeTab={mobileTab} onTabChange={setMobileTab} />
           </section>
         ) : (
           <section className="eg-layout">
             <div className="eg-main-panel">
-              {showToolbar ? toolbar : null}
-              {visibleMainView === "bracket" ? firstFourBar : null}
-              {showToolbar ? chaosTrackerBar : null}
-              {isAuthenticated && submissionsLocked && showToolbar ? (
-                <div className="bracket-lock-banner">🔒 Submissions locked at tip-off. Tournament is live — check the leaderboard.</div>
-              ) : null}
-              <div className="eg-bracket-stack" style={{ display: visibleMainView === "bracket" ? undefined : "none" }}>
-                {!isMobile && !allPlayInDecided && playInGames.length > 0 ? (
-                  <div className="ff-nudge-banner">
-                    <span className="ff-nudge-banner-arrow">↑</span>
-                    <span className="ff-nudge-banner-text">Pick your First Four games above to unlock the full bracket</span>
-                  </div>
-                ) : null}
+              {toolbar}
+              {chaosTrackerBar}
+              <div className="eg-bracket-stack" style={{ display: mainView === "bracket" ? undefined : "none" }}>
                 <section
                   className="eg-bracket-section top-half"
                   data-half-expanded={topHalfManuallyExpanded ? "true" : "false"}
@@ -4869,6 +3832,7 @@ function App() {
                 </section>
 
                 <section className="eg-finals-card bracket-finals">
+                  <h2 className="ff-section-header">Final Four & Championship</h2>
                   <div className="ff-championship-section">
                     <FinalsSemifinalCard
                       game={leftSemi}
@@ -4910,33 +3874,23 @@ function App() {
                   </div>
                 </section>
               </div>
-              {(visibleMainView === "leaderboard" || hasLoadedDesktopLeaderboard) && (
-                <div style={{ display: visibleMainView === "leaderboard" ? undefined : "none" }}>
-                  <Suspense fallback={<DeferredViewFallback />}>
-                    <LeaderboardFullWidth
-                      isVisible={visibleMainView === "leaderboard"}
-                      refreshKey={leaderboardRefreshKey}
-                      onClose={() => setMainView("bracket")}
-                    />
-                  </Suspense>
-                </div>
+              <div style={{ display: mainView === "leaderboard" ? undefined : "none" }}>
+                <LeaderboardFullWidth
+                  isVisible={mainView === "leaderboard"}
+                  refreshKey={leaderboardRefreshKey}
+                  onClose={() => setMainView("bracket")}
+                />
+              </div>
+              {mainView === "conferences" && (
+                <ConferenceTournaments displayMode={displayMode} isMobile={isMobile} />
               )}
-              {SHOW_CONFERENCE_TOURNAMENTS && visibleMainView === "conferences" && (
-                <Suspense fallback={<DeferredViewFallback />}>
-                  <ConferenceTournaments displayMode={displayMode} isMobile={isMobile} />
-                </Suspense>
+              {mainView === "rankings" && (
+                <ExpandedRankings displayMode={displayMode} isMobile={isMobile} />
               )}
-              {visibleMainView === "rankings" && (
-                <Suspense fallback={<DeferredViewFallback />}>
-                  <ExpandedRankings displayMode={displayMode} isMobile={isMobile} />
-                </Suspense>
+              {mainView === "predictor" && (
+                <MatchupPredictor displayMode={displayMode} />
               )}
-              {visibleMainView === "predictor" && (
-                <Suspense fallback={<DeferredViewFallback />}>
-                  <MatchupPredictor displayMode={displayMode} />
-                </Suspense>
-              )}
-              <div style={{ display: visibleMainView === "futures" ? undefined : "none" }}>{futuresContent}</div>
+              <div style={{ display: mainView === "futures" ? undefined : "none" }}>{futuresContent}</div>
             </div>
           </section>
         )}
@@ -4963,103 +3917,15 @@ function App() {
         onCancel={() => setResetModalConfig(null)}
       />
 
-      {authModalOpen ? (
-        <AuthModal
-          isOpen={authModalOpen}
-          onClose={() => {
-            setAuthModalOpen(false);
-            setAuthModalContext("default");
-          }}
-          context={authModalContext}
-          onBeforeGoogleSignIn={preserveDraftForGoogleAuth}
-        />
-      ) : null}
+      <AuthModal isOpen={authModalOpen} onClose={() => setAuthModalOpen(false)} />
 
       <MyBracketsModal
         isOpen={myBracketsOpen}
         onClose={() => setMyBracketsOpen(false)}
         onLoadBracket={onLoadSavedBracket}
         onRenameSuccess={onBracketRenamed}
-        onBracketsChanged={onBracketsChanged}
-        currentPicks={sanitizedUserPicks}
+        currentPicks={sanitized}
         currentChaosScore={chaosScore ?? 0}
-      />
-
-      <GroupsHub
-        isOpen={groupsHubOpen}
-        refreshToken={groupsHubRefreshKey}
-        onClose={() => setGroupsHubOpen(false)}
-        onCreateGroup={() => {
-          setCreateGroupOpen(true);
-        }}
-        onJoinGroup={() => {
-          setJoinGroupOpen(true);
-        }}
-        onOpenGroup={(group) => {
-          setActiveGroup(group);
-        }}
-      />
-
-      <CreateGroupModal
-        isOpen={createGroupOpen}
-        onClose={() => setCreateGroupOpen(false)}
-        onGroupCreated={() => {
-          setGroupsHubOpen(true);
-          setGroupsHubRefreshKey((current) => current + 1);
-        }}
-      />
-
-      <JoinGroupModal
-        key={joinCode || ""}
-        isOpen={joinGroupOpen}
-        onClose={() => {
-          setJoinGroupOpen(false);
-          setJoinCode(null);
-          sessionStorage.removeItem("pendingJoinCode");
-        }}
-        onGroupJoined={(group, hadBracket) => {
-          setJoinCode(null);
-          sessionStorage.removeItem("pendingJoinCode");
-          if (hadBracket) {
-            setGroupsHubOpen(true);
-            setGroupsHubRefreshKey((current) => current + 1);
-          } else {
-            setGroupsHubOpen(false);
-            // Joined without a bracket — store pending group for auto-assign on submit
-            sessionStorage.setItem("pendingInviteGroup", JSON.stringify({ id: group.id, name: group.name }));
-          }
-        }}
-        initialCode={joinCode || undefined}
-        onRequestAuth={(pendingCode) => {
-          const extractedCode = extractInviteCode(pendingCode);
-          if (extractedCode) {
-            setJoinCode(extractedCode);
-            sessionStorage.setItem("pendingJoinCode", extractedCode);
-          }
-          setAuthModalContext("join");
-          setAuthModalOpen(true);
-        }}
-      />
-
-      {groupAssignmentPrompt ? (
-        <GroupAssignmentPrompt
-          bracketName={groupAssignmentPrompt.bracket.bracket_name}
-          groups={groupAssignmentPrompt.groups}
-          savingGroupId={groupAssignmentSavingId}
-          error={groupAssignmentError}
-          onAssign={(groupId) => void assignBracketToGroup(groupId)}
-          onClose={closeGroupAssignmentPrompt}
-        />
-      ) : null}
-
-      <GroupDetailView
-        group={activeGroup}
-        isOpen={Boolean(activeGroup)}
-        onClose={() => {
-          setActiveGroup(null);
-          setGroupsHubRefreshKey((current) => current + 1);
-        }}
-        tournamentStarted={tournamentStarted}
       />
 
       {statsModalGame ? (
@@ -5086,8 +3952,8 @@ function App() {
             </div>
             <div className="chaos-scale">
               <div className="chaos-scale-bar">
-                <div className="chaos-scale-fill" style={{ width: `${chaosScalePct}%` }} />
-                <div className="chaos-scale-marker" style={{ left: `${chaosScalePct}%` }} />
+                <div className="chaos-scale-fill" style={{ width: `${chaosScaleInvertedPct}%` }} />
+                <div className="chaos-scale-marker" style={{ left: `${chaosScaleInvertedPct}%` }} />
               </div>
               <div className="chaos-scale-labels">
                 <span>🧊 Chalk</span>
@@ -5098,7 +3964,7 @@ function App() {
             <p className="chaos-desc">
               Your Chaos Score sums -ln(model win probability) across your picked winners. Higher means a more upset-heavy bracket.
             </p>
-            {chaosPercentile !== null && pickCount === SUBMIT_EXPECTED_PICK_COUNT ? (
+            {chaosPercentile !== null && pickCount === URL_EXPECTED_GAME_COUNT ? (
               <p className="chaos-pct">
                 More upset-heavy than <strong>{Math.round(chaosPercentile)}%</strong> of simulated full brackets.
               </p>
@@ -5114,44 +3980,6 @@ function App() {
           chaosEmoji={completionCelebrationData.chaosEmoji}
           onSave={onCompletionSave}
           onClose={() => setShowCompletionCelebration(false)}
-          wrappedSeen={wrappedSeen}
-          onWrapped={wrappedData ? () => {
-            trackEvent("wrapped_opened", { trigger: "completion", chaosLabel: wrappedData.identity.chaosLabel, champion: wrappedData.champion.teamName });
-            setShowCompletionCelebration(false);
-            setShowWrappedFlow(true);
-          } : undefined}
-          onShareCard={wrappedData ? () => {
-            trackEvent("wrapped_share_card_opened", { trigger: "completion", chaosLabel: wrappedData.identity.chaosLabel });
-            setShowCompletionCelebration(false);
-            setShowWrappedCard(true);
-          } : undefined}
-        />
-      ) : null}
-
-      {showWrappedFlow && wrappedData ? (
-        <BracketWrapped
-          data={wrappedData}
-          isBracketSubmitted={saveStatus === "saved"}
-          onSubmitBracket={async () => Boolean(await onSaveBracket())}
-          onClose={() => { setShowWrappedFlow(false); setWrappedSeen(true); }}
-        />
-      ) : null}
-
-      {showWrappedCard && wrappedData ? (
-        <BracketWrappedCard
-          data={wrappedData}
-          standalone
-          onClose={() => setShowWrappedCard(false)}
-          onSaveCard={async () => {
-            const { exportWrappedCard } = await import("./lib/wrappedExport");
-            try {
-              await exportWrappedCard();
-              trackEvent("wrapped_card_saved", { trigger: "standalone", chaosLabel: wrappedData.identity.chaosLabel, champion: wrappedData.champion.teamName });
-            } catch (err) {
-              console.error("Failed to export wrapped card:", err);
-            }
-          }}
-          onCopyLink={() => { navigator.clipboard.writeText(window.location.href); }}
         />
       ) : null}
 
@@ -5160,12 +3988,6 @@ function App() {
         onDismiss={handlePromoDismiss}
         onSignUp={handlePromoSignUp}
       />
-
-      {showMobileOnboarding ? (
-        <MobileOnboarding
-          onStartFirstFour={startMobileOnboardingFromFirstFour}
-        />
-      ) : null}
 
       {walkthroughActive && walkthroughCascadePhase === "animating" && walkthroughCascadeCaption ? (
         <div className="cascade-caption">{walkthroughCascadeCaption}</div>
@@ -5189,7 +4011,7 @@ function App() {
             onAdvance={() => {
               if (walkthroughCtaDisabled) return;
               const highlighted = walkthroughMatchup;
-              const pickedTeamId = highlighted?.id ? sanitizedUserPicks[highlighted.id] ?? null : null;
+              const pickedTeamId = highlighted?.id ? sanitized[highlighted.id] ?? null : null;
               const pickedTeam = pickedTeamId ? teamsById.get(pickedTeamId) ?? null : null;
               const opponentTeam =
                 highlighted && pickedTeamId && highlighted.teamAId && highlighted.teamBId
@@ -5223,6 +4045,23 @@ function App() {
         </Suspense>
       ) : null}
 
+      {showDesktopFirst && isMobile ? <DesktopFirstModal onDismiss={handleDismissDesktopFirst} /> : null}
+
+      {showFirstFourModal && onboardingFlowReady ? (
+        <FirstFourModal
+          playInGames={playInGames}
+          gameWinProbs={simResult.gameWinProbs}
+          onPick={(gameId, teamId) => {
+            const playInGame = gameById.get(gameId);
+            if (!playInGame || !teamId) return;
+            onPick(playInGame, teamId);
+          }}
+          onRandomize={handleRandomizeFirstFour}
+          onOpenMatchupStats={openMatchupStats}
+          onClose={() => setShowFirstFourModal(false)}
+        />
+      ) : null}
+
       {activeHint ? (
         <ContextualHint
           message={activeHint.message}
@@ -5232,7 +4071,6 @@ function App() {
       ) : null}
 
       {shareToastVisible ? <div className="share-toast">Image saved! Share it on social media.</div> : null}
-      {appToast ? <div className={`app-toast${appToast.tone === "success" ? " app-toast--success" : ""}`}>{appToast.message}</div> : null}
 
       {shareModalVisible ? (
         <>
@@ -5280,7 +4118,6 @@ function App() {
           </div>
         </>
       ) : null}
-
     </div>
   );
 }
@@ -5317,7 +4154,7 @@ function PromoCTA({
           Submit your bracket and compete against everyone on our leaderboard. The most accurate bracket wins $100
           after the championship.
         </p>
-        <p className="promo-cta-detail">Free to enter. Up to {MAX_SUBMITTED_BRACKETS} brackets per account.</p>
+        <p className="promo-cta-detail">Free to enter. Up to 25 brackets per account.</p>
         <button className="promo-cta-button" onClick={onSignUp}>
           Sign up &amp; save my bracket
         </button>
@@ -5329,65 +4166,142 @@ function PromoCTA({
   );
 }
 
-function GroupAssignmentPrompt({
-  bracketName,
-  groups,
-  savingGroupId,
-  error,
-  onAssign,
+function FirstFourModal({
+  playInGames,
+  gameWinProbs,
+  onPick,
+  onRandomize,
+  onOpenMatchupStats,
   onClose,
 }: {
-  bracketName: string;
-  groups: UserGroup[];
-  savingGroupId: string | null;
-  error: string | null;
-  onAssign: (groupId: string) => void;
+  playInGames: ResolvedGame[];
+  gameWinProbs: SimulationOutput["gameWinProbs"];
+  onPick: (gameId: string, teamId: string | null) => void;
+  onRandomize: () => void;
+  onOpenMatchupStats: (game: ResolvedGame) => void;
   onClose: () => void;
 }) {
+  const allDecided = playInGames.every((game) => Boolean(game.winnerId));
+  const decidedCount = playInGames.filter((game) => Boolean(game.winnerId)).length;
+
   return (
-    <div className="group-modal-overlay" onClick={onClose}>
-      <div className="group-modal group-modal--assignment" onClick={(event) => event.stopPropagation()}>
-        <button className="group-modal-close-btn" onClick={onClose}>
-          ✕
-        </button>
-        <div className="group-modal-header">
-          <span className="group-modal-icon">👥</span>
-          <h2 className="group-modal-title">Add this bracket to your groups?</h2>
-          <p className="group-modal-subtitle">
-            <strong>{bracketName}</strong> is submitted. Add it anywhere you have not picked a group bracket yet.
-          </p>
-        </div>
-
-        <div className="group-modal-body">
-          <div className="group-assignment-list">
-            {groups.map((group) => (
-              <div key={group.id} className="group-assignment-row">
-                <div className="group-assignment-info">
-                  <span className="group-assignment-name">
-                    <span className="group-assignment-emoji">{group.emoji ?? "👥"}</span>
-                    {group.name}
-                  </span>
-                  <span className="group-assignment-meta">
-                    {group.memberCount} {group.memberCount === 1 ? "member" : "members"}
-                  </span>
-                </div>
-                <button
-                  className="group-assignment-btn"
-                  disabled={savingGroupId !== null}
-                  onClick={() => onAssign(group.id)}
-                >
-                  {savingGroupId === group.id ? "Adding..." : "Add Bracket"}
-                </button>
-              </div>
-            ))}
+    <div className="ff-modal-overlay" onClick={onClose}>
+      <div className="ff-modal" onClick={(event) => event.stopPropagation()}>
+        <div className="ff-modal-header">
+          <div>
+            <h2 className="ff-modal-title">First Four</h2>
+            <p className="ff-modal-subtitle">
+              {allDecided
+                ? "All play-in games decided. These winners advance to the Round of 64."
+                : "Pick the winners of each play-in game to set the Round of 64 field."}
+            </p>
           </div>
-          {error ? <p className="group-error">{error}</p> : null}
+          {!allDecided ? (
+            <button className="ff-randomize-btn" onClick={onRandomize}>
+              🎲 Pick for me
+            </button>
+          ) : null}
+          <button className="ff-modal-close" onClick={onClose}>
+            ✕
+          </button>
         </div>
 
-        <button className="group-secondary-btn group-secondary-btn--full" onClick={onClose}>
-          Maybe later
+        <div className="ff-modal-games">
+          {playInGames.map((game) => (
+            <FirstFourGameCard
+              key={game.id}
+              game={game}
+              gameWinProbs={gameWinProbs}
+              onPick={(teamId) => onPick(game.id, teamId)}
+              onOpenMatchupStats={onOpenMatchupStats}
+            />
+          ))}
+        </div>
+
+        <div className="ff-modal-footer">
+          <button
+            className={`ff-modal-done ${allDecided ? "ff-modal-done--ready" : "ff-modal-done--partial"}`}
+            onClick={allDecided ? onClose : undefined}
+          >
+            {allDecided ? "Continue to Bracket →" : `${decidedCount}/${playInGames.length} decided`}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function FirstFourGameCard({
+  game,
+  gameWinProbs,
+  onPick,
+  onOpenMatchupStats,
+}: {
+  game: ResolvedGame;
+  gameWinProbs: SimulationOutput["gameWinProbs"];
+  onPick: (teamId: string) => void;
+  onOpenMatchupStats: (game: ResolvedGame) => void;
+}) {
+  const teamA = game.teamAId ? teamsById.get(game.teamAId) ?? null : null;
+  const teamB = game.teamBId ? teamsById.get(game.teamBId) ?? null : null;
+  if (!teamA || !teamB) return null;
+
+  const probA = getGameWinProb(game, teamA.id, gameWinProbs) ?? getModelGameWinProb(game, teamA.id) ?? 0.5;
+  const probB = 1 - probA;
+  const winner = game.winnerId;
+
+  return (
+    <div className="ff-game-card">
+      <div className="ff-game-header">
+        <span className="ff-game-label">PLAY-IN · {(teamA.region || "").toUpperCase()}</span>
+        <span className="ff-game-seed">Seed {seedLabel(teamA).replace(/[ab]$/i, "")}</span>
+        <button
+          type="button"
+          className="matchup-stats-icon matchup-stats-icon--ff matchup-stats-icon--ff-inline"
+          onClick={(event) => {
+            event.stopPropagation();
+            onOpenMatchupStats(game);
+          }}
+          title="View matchup stats"
+          aria-label="View matchup stats"
+        >
+          {"i"}
         </button>
       </div>
+
+      <div className="ff-game-matchup">
+        <button
+          type="button"
+          className={`ff-team-btn ${winner === teamA.id ? "ff-team-btn--winner" : ""} ${winner && winner !== teamA.id ? "ff-team-btn--loser" : ""}`}
+          onClick={() => onPick(teamA.id)}
+        >
+          <div className="ff-team-info">
+            <span className="ff-team-seed">{seedLabel(teamA)}</span>
+            <TeamLogo teamName={teamA.name} src={teamLogoUrl(teamA)} className="ff-team-logo" teamSeed={seedLabel(teamA)} />
+            <span className="ff-team-name">{teamA.name}</span>
+          </div>
+          <span className="ff-team-pct">{(probA * 100).toFixed(1)}%</span>
+          {winner === teamA.id ? <span className="ff-team-check">✓</span> : null}
+        </button>
+
+        <span className="ff-vs">vs</span>
+
+        <button
+          type="button"
+          className={`ff-team-btn ${winner === teamB.id ? "ff-team-btn--winner" : ""} ${winner && winner !== teamB.id ? "ff-team-btn--loser" : ""}`}
+          onClick={() => onPick(teamB.id)}
+        >
+          <div className="ff-team-info">
+            <span className="ff-team-seed">{seedLabel(teamB)}</span>
+            <TeamLogo teamName={teamB.name} src={teamLogoUrl(teamB)} className="ff-team-logo" teamSeed={seedLabel(teamB)} />
+            <span className="ff-team-name">{teamB.name}</span>
+          </div>
+          <span className="ff-team-pct">{(probB * 100).toFixed(1)}%</span>
+          {winner === teamB.id ? <span className="ff-team-check">✓</span> : null}
+        </button>
+      </div>
+
+      {winner ? <div className="ff-game-result">{winner === teamA.id ? teamA.name : teamB.name} advances to R64</div> : null}
     </div>
   );
 }
@@ -5398,22 +4312,13 @@ function BracketCompletionCelebration({
   chaosEmoji,
   onSave,
   onClose,
-  onWrapped,
-  onShareCard,
-  wrappedSeen,
 }: {
   championName: string;
   chaosLabel: string;
   chaosEmoji: string;
   onSave: () => void;
   onClose: () => void;
-  onWrapped?: () => void;
-  onShareCard?: () => void;
-  wrappedSeen?: boolean;
 }) {
-  const championTeam = Array.from(teamsById.values()).find((team) => team.name === championName) ?? null;
-  const championLogoSrc = championTeam ? teamLogoUrl(championTeam) : fallbackLogo(championName);
-
   return (
     <div className="completion-overlay" onClick={onClose}>
       <div className="completion-card" onClick={(event) => event.stopPropagation()}>
@@ -5432,28 +4337,16 @@ function BracketCompletionCelebration({
         </div>
         <span className="completion-trophy">🏆</span>
         <h2 className="completion-headline">Your bracket is set.</h2>
-        <div className="completion-champ-logo">
-          <img className="completion-champ-img" src={championLogoSrc} alt={championName} />
-        </div>
         <p className="completion-champ">{championName} wins it all.</p>
         <p className="completion-chaos">
           {chaosEmoji} {chaosLabel}
         </p>
 
         <div className="completion-actions">
-          {onWrapped && !wrappedSeen ? (
-            <button className="completion-btn-wrapped" onClick={onWrapped}>
-              🎁 See Your Bracket Wrapped
-            </button>
-          ) : onShareCard && wrappedSeen ? (
-            <button className="completion-btn-wrapped" onClick={onShareCard}>
-              View Share Card
-            </button>
-          ) : null}
-          <button className="completion-btn-submit" onClick={onSave}>
+          <button className="completion-btn-primary" onClick={onSave}>
             Submit Bracket
           </button>
-          <button className="completion-btn-keep-editing" onClick={onClose}>
+          <button className="completion-btn-secondary" onClick={onClose}>
             Keep editing
           </button>
         </div>
@@ -5752,8 +4645,7 @@ const differenceForStat = (teamAName: string, teamAValue: number | null, teamBNa
 };
 
 function getRegionRoundStatus(games: ResolvedGame[], region: Region, round: MobileRegionRound) {
-  const roundGames = getMobileRegionRoundGames(games, region, round);
-  if (roundGames.length === 0) return "available" as const;
+  const roundGames = gamesByRegionAndRound(games, region, round);
   if (roundGames.every((game) => game.winnerId)) return "complete" as const;
   if (roundGames.some((game) => game.winnerId)) return "in-progress" as const;
   return "available" as const;
@@ -5767,7 +4659,7 @@ function getRegionRoundMode(games: ResolvedGame[], region: Region, round: Mobile
     S16: "R32",
     E8: "S16",
   };
-  const priorGames = getMobileRegionRoundGames(games, region, previousRound[round]);
+  const priorGames = gamesByRegionAndRound(games, region, previousRound[round]);
   const prevComplete = priorGames.length > 0 && priorGames.every((game) => Boolean(game.winnerId));
   return prevComplete ? "interactive" : "probabilistic";
 }
@@ -5783,11 +4675,6 @@ function getPreferredMobileRegionRound(games: ResolvedGame[], region: Region): M
     if (mode === "interactive" && status !== "complete") return round;
   }
   return "E8";
-}
-
-function getMobileRegionRoundGames(games: ResolvedGame[], region: Region, round: MobileRegionRound) {
-  if (round === "FF") return games.filter((game) => game.round === "FF");
-  return gamesByRegionAndRound(games, region, round);
 }
 
 function getGameRowsForDisplay(
@@ -5967,6 +4854,13 @@ function MobileTabBar({
         <span className="mobile-tab-label">Futures</span>
       </button>
       <button
+        className={`mobile-tab ${activeTab === "conferences" ? "active" : ""}`}
+        onClick={() => onTabChange("conferences")}
+      >
+        <span className="mobile-tab-icon">🏀</span>
+        <span className="mobile-tab-label">Conf.</span>
+      </button>
+      <button
         className={`mobile-tab ${activeTab === "rankings" ? "active" : ""}`}
         onClick={() => onTabChange("rankings")}
       >
@@ -6046,6 +4940,7 @@ function MobileRegionView({
   onUndoPick,
   onEditProb,
   onOpenMatchupStats,
+  mobileChaosBadge,
 }: {
   region: Region;
   activeRound: MobileRegionRound;
@@ -6069,6 +4964,7 @@ function MobileRegionView({
   onUndoPick: (gameId: string) => void;
   onEditProb: (game: ResolvedGame, anchorEl: HTMLElement) => void;
   onOpenMatchupStats: (game: ResolvedGame) => void;
+  mobileChaosBadge?: React.ReactNode;
 }) {
   const roundOrder: Array<{ id: MobileRegionRound; label: string }> = [
     { id: "FF", label: "FF" },
@@ -6077,11 +4973,11 @@ function MobileRegionView({
     { id: "S16", label: "S16" },
     { id: "E8", label: "E8" },
   ];
-  const activeGames = getMobileRegionRoundGames(games, region, activeRound);
+  const activeGames = gamesByRegionAndRound(games, region, activeRound);
   const roundMode = getRegionRoundMode(games, region, activeRound);
 
   const handlePickForRound = (game: ResolvedGame, teamId: string) => {
-    const roundGames = getMobileRegionRoundGames(games, region, activeRound);
+    const roundGames = gamesByRegionAndRound(games, region, activeRound);
     const allCompleteAfterPick = roundGames.every((roundGame) => roundGame.id === game.id || Boolean(roundGame.winnerId));
     onPick(game, teamId);
     if (allCompleteAfterPick) {
@@ -6112,6 +5008,7 @@ function MobileRegionView({
         deltaByRound={roundDeltas}
         onRoundChange={(roundId) => onRoundChange(roundId as MobileRegionRound)}
       />
+      {mobileChaosBadge}
       <CascadeFirstPickNudge
         visible={firstPickNudgeVisible}
         changedRounds={firstPickChangedRounds}
@@ -6179,6 +5076,7 @@ function MobileFinalFourView({
   onUndoPick,
   onEditProb,
   onOpenMatchupStats,
+  mobileChaosBadge,
 }: {
   activeRound: MobileFfRound;
   pointsTrackingEnabled: boolean;
@@ -6196,6 +5094,7 @@ function MobileFinalFourView({
   onUndoPick: (gameId: string) => void;
   onEditProb: (game: ResolvedGame, anchorEl: HTMLElement) => void;
   onOpenMatchupStats: (game: ResolvedGame) => void;
+  mobileChaosBadge?: React.ReactNode;
 }) {
   const rounds: Array<{ id: MobileFfRound; label: string }> = [
     { id: "F4", label: "F4" },
@@ -6256,6 +5155,7 @@ function MobileFinalFourView({
         }}
         onRoundChange={(roundId) => onRoundChange(roundId as MobileFfRound)}
       />
+      {mobileChaosBadge}
       {activeRound === "F4"
         ? semifinals.map((game) => (
             <MobileMatchupCard
@@ -6292,6 +5192,24 @@ function MobileFinalFourView({
   );
 }
 
+function DesktopFirstModal({ onDismiss }: { onDismiss: () => void }) {
+  return (
+    <div className="dfm-overlay">
+      <div className="dfm-card">
+        <div className="dfm-icon">💻</div>
+        <h2 className="dfm-headline">Quick heads up.</h2>
+        <p className="dfm-body">
+          BracketLab was built for the big screen. You can absolutely use it here, but the full bracket view,
+          probability editor, and real-time odds cascades are way better on desktop.
+        </p>
+        <p className="dfm-sub">Grab your laptop when you can. You won&apos;t regret it.</p>
+        <button className="dfm-btn" onClick={onDismiss}>
+          Got it - continue on mobile
+        </button>
+      </div>
+    </div>
+  );
+}
 
 function MobileChampionCard({ titleGame }: { titleGame: ResolvedGame | null }) {
   const champion = titleGame?.winnerId ? teamsById.get(titleGame.winnerId) : null;
@@ -6395,6 +5313,18 @@ function MobileMatchupCard({
   return (
     <div className={`m-card ${isPicked ? "m-card--picked" : ""}`} ref={cardRef} data-game-id={game.id} data-seeds={dataSeeds}>
       <button
+        type="button"
+        className="matchup-stats-icon matchup-stats-icon--mobile"
+        onClick={(event) => {
+          event.stopPropagation();
+          onOpenMatchupStats(game);
+        }}
+        title="View matchup stats"
+        aria-label="View matchup stats"
+      >
+        {"i"}
+      </button>
+      <button
         className={`m-team ${game.winnerId === teamA.id ? "m-team--winner" : ""} ${
           game.winnerId && game.winnerId !== teamA.id ? "m-team--loser" : ""
         }`}
@@ -6443,41 +5373,14 @@ function MobileMatchupCard({
       <div className="m-card-footer">
         {isPicked ? (
           <>
-            <div className="m-card-footer-left">
-              <button
-                type="button"
-                className="matchup-stats-icon matchup-stats-icon--mobile"
-                onClick={(event) => {
-                  event.stopPropagation();
-                  onOpenMatchupStats(game);
-                }}
-                title="View matchup stats"
-                aria-label="View matchup stats"
-              >
-                {"i"}
-              </button>
-              <span className="m-winner-label">✓ {(game.winnerId === teamA.id ? teamA.name : teamB.name)} advances</span>
-            </div>
+            <span className="m-winner-label">✓ {(game.winnerId === teamA.id ? teamA.name : teamB.name)} advances</span>
             <button className="m-undo-btn" onClick={() => onUndoPick(game.id)}>
               Undo
             </button>
           </>
         ) : (
           <>
-            <div className="m-card-footer-left">
-              <button
-                type="button"
-                className="matchup-stats-icon matchup-stats-icon--mobile"
-                onClick={(event) => {
-                  event.stopPropagation();
-                  onOpenMatchupStats(game);
-                }}
-                title="View matchup stats"
-                aria-label="View matchup stats"
-              >
-                {"i"}
-              </button>
-            </div>
+            <span />
             <button
               className="m-edit-prob-btn"
               onClick={() => {
@@ -6670,7 +5573,7 @@ function FinalsSemifinalCard({
         />
       ) : (
         <div className="ff-panel ff-panel--ranking">
-          <div className="ff-panel-subheader">ODDS TO MAKE CHAMPIONSHIP</div>
+          <div className="ff-panel-subheader">CHAMPIONSHIP ODDS</div>
           <div className="ff-ranking-list">
             {ranked.map(({ team, prob }) => {
               const locked = prob >= 1;
@@ -6802,7 +5705,7 @@ function FinalsChampionshipCard({
         />
       ) : (
         <div className="ff-panel ff-panel--championship-ranking">
-          <div className="ff-panel-subheader">CHAMPIONSHIP ODDS</div>
+          <div className="ff-panel-subheader">TITLE ODDS</div>
           <div className="ff-ranking-list">
             {ranked.map(({ team, prob }) => {
               const locked = prob >= 1;
@@ -7217,52 +6120,6 @@ function GameCard({
     return null;
   }, [game.round, game.sourceGameIds, gamesById]);
 
-  const ffPending = Boolean(playInAttachment && !playInAttachment.ffGame.winnerId);
-  const ffNudgeCooldownRef = useRef(0);
-  const ffNudgeCardRef = useRef<HTMLElement | null>(null);
-  const showCompactGrid = !useShowdownCard && rows.length > 0 && game.round !== "R64";
-  const showCompactCardActions = showCompactGrid && Boolean(game.teamAId && game.teamBId);
-
-  const showFfNudgeTooltip = useCallback(() => {
-    if (!ffPending) return;
-    const card = ffNudgeCardRef.current;
-    if (!card) return;
-    if (Date.now() < ffNudgeCooldownRef.current) return;
-    if (document.querySelector(".ff-nudge-tooltip")) return;
-    ffNudgeCooldownRef.current = Date.now() + 5000;
-
-    const rect = card.getBoundingClientRect();
-    const tip = document.createElement("div");
-    tip.className = "ff-nudge-tooltip";
-    tip.style.position = "fixed";
-    tip.style.left = `${rect.left + rect.width / 2}px`;
-    tip.style.top = `${rect.top - 8}px`;
-    tip.style.transform = "translate(-50%, -100%)";
-    tip.innerHTML = `<span class="ff-nudge-tooltip-text">Complete the First Four to unlock this matchup</span><span class="ff-nudge-tooltip-link">Go to First Four ↑</span>`;
-    tip.addEventListener("click", (e) => e.stopPropagation());
-    tip.querySelector(".ff-nudge-tooltip-link")!.addEventListener("click", () => {
-      dismiss();
-      document.querySelector(".ff-bar-wrapper")?.scrollIntoView({ behavior: "smooth" });
-    });
-    document.body.appendChild(tip);
-
-    const dismiss = () => tip.remove();
-    const autoTimer = window.setTimeout(dismiss, 4000);
-    const clickTimer = window.setTimeout(() => {
-      window.addEventListener("click", (ev: MouseEvent) => {
-        if ((ev.target as HTMLElement).closest?.(".ff-nudge-tooltip")) return;
-        dismiss();
-      }, { capture: true, once: true });
-    }, 200);
-    return () => { window.clearTimeout(autoTimer); window.clearTimeout(clickTimer); tip.remove(); };
-  }, [ffPending]);
-
-  // Clean up any body-appended tooltip when ffPending becomes false or component unmounts
-  useEffect(() => {
-    if (ffPending) return;
-    document.querySelectorAll(".ff-nudge-tooltip").forEach((el) => el.remove());
-  }, [ffPending]);
-
   if (collapsed) {
     const compactTeams = [game.teamAId, game.teamBId]
       .map((teamId) => (teamId ? teamsById.get(teamId) ?? null : null))
@@ -7341,8 +6198,7 @@ function GameCard({
 
   return (
     <article
-      ref={ffPending ? ffNudgeCardRef as React.Ref<HTMLElement> : undefined}
-      className={`eg-game-card round-${game.round.toLowerCase()} ${useShowdownCard ? "eg-game-card--showdown" : ""} ${ffPending ? "eg-game-card--ff-pending" : ""} ${showCompactCardActions ? "eg-game-card--compact-actions" : ""}`}
+      className={`eg-game-card round-${game.round.toLowerCase()} ${useShowdownCard ? "eg-game-card--showdown" : ""}`}
       data-game-id={game.id}
       data-matchup-id={game.id}
       data-region={game.region}
@@ -7351,14 +6207,7 @@ function GameCard({
       onMouseEnter={() => setShowChaosTooltip(true)}
       onMouseLeave={() => setShowChaosTooltip(false)}
     >
-      {ffPending ? (
-        <div
-          className="ff-nudge-overlay"
-          onClick={(e) => { e.stopPropagation(); showFfNudgeTooltip(); }}
-          onMouseEnter={() => showFfNudgeTooltip()}
-        />
-      ) : null}
-      {game.teamAId && game.teamBId && !useShowdownCard && !showCompactCardActions ? (
+      {game.teamAId && game.teamBId && !useShowdownCard ? (
         <button
           type="button"
           className="matchup-stats-icon"
@@ -7371,36 +6220,6 @@ function GameCard({
         >
           {"i"}
         </button>
-      ) : null}
-      {showCompactCardActions ? (
-        <div className="matchup-card-actions">
-          {!game.winnerId ? (
-            <button
-              type="button"
-              className={`matchup-edit-icon matchup-edit-icon--card ${game.customProbA !== null ? "is-edited" : ""}`}
-              onClick={(event) => {
-                event.stopPropagation();
-                onOpenProbabilityPopup(game, event.currentTarget);
-              }}
-              title="Edit matchup probability"
-              aria-label="Edit matchup probability"
-            >
-              ✎
-            </button>
-          ) : null}
-          <button
-            type="button"
-            className="matchup-stats-icon matchup-stats-icon--card"
-            onClick={(event) => {
-              event.stopPropagation();
-              onOpenMatchupStats(game);
-            }}
-            title="View matchup stats"
-            aria-label="View matchup stats"
-          >
-            {"i"}
-          </button>
-        </div>
       ) : null}
       <div className="eg-game-list">
         {useShowdownCard ? (
@@ -7497,7 +6316,7 @@ function GameCard({
               className={`eg-compact-grid round-${game.round.toLowerCase()} density-${compactDensity}`}
               style={{ gridTemplateColumns: `repeat(${compactColumns}, minmax(0, 1fr))` }}
             >
-              {rows.map((candidate) => {
+              {rows.map((candidate, rowIndex) => {
                 const team = candidate.team!;
                 const canPick =
                   game.teamAId !== null &&
@@ -7507,8 +6326,7 @@ function GameCard({
                 const { primary, secondary } = formatOddsDisplay(candidate.prob, displayMode);
                 const showLogo = true;
                 const normalizedTeamName = normalizeTeamName(team.name);
-                const useEliteEightFullName = game.round === "E8";
-                const teamLabel = normalizedTeamName;
+                const teamLabel = game.round === "E8" ? abbreviationForTeam(normalizedTeamName) : normalizedTeamName;
                 const outcome =
                   game.lockedByUser && game.winnerId
                     ? game.winnerId === team.id
@@ -7564,17 +6382,32 @@ function GameCard({
                       </TeamHoverAnchor>
                     ) : null}
                     <TeamHoverAnchor teamName={team.name} logoSrc={teamLogoUrl(team)}>
-                      <span className={`chip-code-line ${showLogo ? "" : "no-logo"} ${useEliteEightFullName ? "chip-code-line--e8" : ""}`}>
-                        {useEliteEightFullName ? (
-                          <span className={`chip-code ${showLogo ? "" : "no-logo"} chip-code--e8`} title={teamLabel}>
-                            {teamLabel}
-                          </span>
-                    ) : (
-                      <AdaptiveTeamLabel className={`chip-code ${showLogo ? "" : "no-logo"}`} fullName={teamLabel} />
-                    )}
-                  </span>
-                </TeamHoverAnchor>
+                      <span className={`chip-code-line ${showLogo ? "" : "no-logo"}`}>
+                        <AdaptiveTeamLabel className={`chip-code ${showLogo ? "" : "no-logo"}`} fullName={teamLabel} />
+                      </span>
+                    </TeamHoverAnchor>
                     <span className="chip-odds-wrap">
+                      {game.teamAId && game.teamBId && rowIndex === 0 && !game.winnerId ? (
+                        <span
+                          role="button"
+                          tabIndex={0}
+                          className={`matchup-edit-icon ${game.customProbA !== null ? "is-edited" : ""}`}
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            onOpenProbabilityPopup(game, event.currentTarget as HTMLElement);
+                          }}
+                          onKeyDown={(event) => {
+                            if (event.key !== "Enter" && event.key !== " ") return;
+                            event.preventDefault();
+                            event.stopPropagation();
+                            onOpenProbabilityPopup(game, event.currentTarget as HTMLElement);
+                          }}
+                          title="Edit probability"
+                          aria-label="Edit matchup probability"
+                        >
+                          ✎
+                        </span>
+                      ) : null}
                       <span className="chip-odds">
                       {outcome ? (
                         <span className={`outcome-badge ${outcome}`}>{outcome === "win" ? "✓" : "✕"}</span>
@@ -7724,11 +6557,11 @@ function ShowdownCard({
         : 88
       : game.round === "F4"
         ? isMobileViewport
-          ? 64
-          : 108
+          ? 48
+          : 80
         : isMobileViewport
-          ? 64
-          : 112;
+          ? 40
+          : 64;
 
   return (
     <div className={`eg-showdown-card ${roundClass} ${isEntering ? "eg-showdown-card--entering" : ""} ${decided ? "decided" : ""}`}>
@@ -7785,11 +6618,11 @@ function ShowdownCard({
                   teamSeed={seedLabel(team)}
                 />
                 <span className="eg-showdown-name">{showdownTeamName(team.name)}</span>
-                {decided ? null : (
-                  <span className="eg-showdown-odds odds-value" data-team-id={team.id}>
-                    {primary}
-                  </span>
-                )}
+                <span className="eg-showdown-odds odds-value" data-team-id={team.id}>
+                  {decided
+                    ? formatOddsDisplay(outcome === "win" ? 1 : 0, displayMode).primary
+                    : primary}
+                </span>
                 {resultLabel ? <span className="eg-showdown-result">{resultLabel}</span> : null}
               </button>
             </Fragment>
@@ -8020,33 +6853,31 @@ function ShowdownTeamLogo({
   sizePx: number;
   teamSeed?: string | number | null;
 }) {
-  const [failed, setFailed] = useState(false);
   const size = `${sizePx}px`;
-  const boxStyle = {
-    width: size,
-    height: size,
-    minWidth: size,
-    minHeight: size,
-    maxWidth: size,
-    maxHeight: size,
-  } as const;
 
   return (
-    <span className="eg-showdown-logo-wrap" style={boxStyle}>
-      {failed || !src ? (
-        <span className="eg-showdown-logo-fallback" style={boxStyle}>
-          <span className="eg-showdown-logo-seed">{teamSeed ?? "?"}</span>
-        </span>
-      ) : (
-        <img
-          className="eg-showdown-logo-img"
-          src={src}
-          alt={`${teamName} logo`}
-          loading="lazy"
-          style={boxStyle}
-          onError={() => setFailed(true)}
-        />
-      )}
+    <span
+      className="eg-showdown-logo-wrap"
+      style={{
+        width: size,
+        height: size,
+        minWidth: size,
+        minHeight: size,
+        maxWidth: size,
+        maxHeight: size,
+        display: "inline-flex",
+        alignItems: "center",
+        justifyContent: "center",
+        flexShrink: 0,
+      }}
+    >
+      <TeamLogo
+        className="eg-showdown-logo-img"
+        teamName={teamName}
+        src={src}
+        sizePx={sizePx}
+        teamSeed={teamSeed}
+      />
     </span>
   );
 }
