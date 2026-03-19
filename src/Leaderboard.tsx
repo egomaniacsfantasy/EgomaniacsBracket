@@ -54,7 +54,7 @@ type TournamentPickState = "normal" | "eliminated" | "nailed";
 
 function formatBracketScore(value: number | null | undefined) {
   if (typeof value !== "number" || !Number.isFinite(value)) return "—";
-  return value.toFixed(1);
+  return `${Math.round(value)}`;
 }
 
 function parseBoldestPick(value: unknown): LeaderboardBoldestPick | null {
@@ -528,7 +528,7 @@ function PreTournamentLeaderboard({
               {isMe ? <span className="lb-you-badge">YOU</span> : null}
             </span>
             <span className="lb-col lb-col-bracket">{entry.bracket_name}</span>
-            <span className="lb-col lb-col-bracket-score">{formatBracketScore(entry.chaos_score)}</span>
+            <span className="lb-col lb-col-bracket-score">{formatBracketScore(entry.total_score)}</span>
             {renderChampion(entry, false, null)}
             {renderRunnerUp(entry, false, null)}
             {renderBoldestPick(entry.boldestParsed, false, null)}
@@ -741,32 +741,6 @@ export function LeaderboardFullWidth({
           const scoreB = Number(b.total_score ?? 0);
           const correctA = Number(a.correct_picks ?? 0);
           const correctB = Number(b.correct_picks ?? 0);
-          const hasTournamentScoring =
-            scoreA > 0 ||
-            scoreB > 0 ||
-            correctA > 0 ||
-            correctB > 0 ||
-            Number(a.r64_score ?? 0) > 0 ||
-            Number(b.r64_score ?? 0) > 0 ||
-            Number(a.r32_score ?? 0) > 0 ||
-            Number(b.r32_score ?? 0) > 0 ||
-            Number(a.s16_score ?? 0) > 0 ||
-            Number(b.s16_score ?? 0) > 0 ||
-            Number(a.e8_score ?? 0) > 0 ||
-            Number(b.e8_score ?? 0) > 0 ||
-            Number(a.f4_score ?? 0) > 0 ||
-            Number(b.f4_score ?? 0) > 0 ||
-            Number(a.champ_score ?? 0) > 0 ||
-            Number(b.champ_score ?? 0) > 0;
-
-          if (!hasTournamentScoring) {
-            const bracketScoreA = Number.isFinite(Number(a.chaos_score)) ? Number(a.chaos_score) : Number.NEGATIVE_INFINITY;
-            const bracketScoreB = Number.isFinite(Number(b.chaos_score)) ? Number(b.chaos_score) : Number.NEGATIVE_INFINITY;
-            if (bracketScoreB !== bracketScoreA) {
-              return bracketScoreB - bracketScoreA;
-            }
-          }
-
           const rankA = a.rank ?? Number.MAX_SAFE_INTEGER;
           const rankB = b.rank ?? Number.MAX_SAFE_INTEGER;
           if (rankA !== rankB) return rankA - rankB;
