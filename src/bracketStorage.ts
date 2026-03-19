@@ -4,10 +4,10 @@ import {
   getBracketCompletionSummary,
   resolveBracketWithKnownResults,
 } from "./lib/bracketCompletion";
-import { NCAA_KNOWN_RESULT_IDS } from "./data/ncaaKnownResults";
+import { NCAA_KNOWN_RESULT_IDS, NCAA_KNOWN_SCORING_RESULTS } from "./data/ncaaKnownResults";
 import { teamsById } from "./data/teams";
 import { teamLogoUrl } from "./lib/logo";
-import { buildScoringResultMap, type ScoringResult } from "./lib/bracketScoring";
+import { buildScoringResultMap, scoreBracketPicks, type ScoringResult } from "./lib/bracketScoring";
 
 export type LeaderboardFinalFourTeam = {
   name: string;
@@ -90,9 +90,9 @@ type SaveBracketOptions = {
 };
 
 const LEADERBOARD_QUERY_TIMEOUT_MS = 8000;
-const LEADERBOARD_CACHE_PREFIX = "og_leaderboard_cache_v1";
+const LEADERBOARD_CACHE_PREFIX = "og_leaderboard_cache_v2";
 const LEADERBOARD_PAGE_SIZE = 500;
-const TOURNAMENT_RESULTS_CACHE_KEY = "og_tournament_results_cache_v1";
+const TOURNAMENT_RESULTS_CACHE_KEY = "og_tournament_results_cache_v2";
 
 type CachedValue<T> = {
   savedAt: number;
@@ -134,7 +134,10 @@ export function getCachedLeaderboard(limit?: number | null): LeaderboardEntry[] 
 }
 
 export function getCachedTournamentResultMap(): Record<string, ScoringResult> {
-  return readCachedValue<Record<string, ScoringResult>>(TOURNAMENT_RESULTS_CACHE_KEY) ?? {};
+  return (
+    readCachedValue<Record<string, ScoringResult>>(TOURNAMENT_RESULTS_CACHE_KEY) ??
+    buildScoringResultMap(NCAA_KNOWN_SCORING_RESULTS)
+  );
 }
 
 type LeaderboardDisplayMeta = {
@@ -175,6 +178,7 @@ async function hydrateLeaderboardEntries(entries: LeaderboardEntry[]): Promise<L
   if (bracketIds.length === 0) return entries;
 
   try {
+    const { data: tournamentResultMap } = await getTournamentResultMap();
     const bracketResult = await withTimeout(
       supabase
         .from("brackets")
@@ -194,13 +198,15 @@ async function hydrateLeaderboardEntries(entries: LeaderboardEntry[]): Promise<L
       }>).map((bracket) => [bracket.id, bracket])
     );
 
-    return entries.map((entry) => {
+    const hydratedEntries = entries.map((entry) => {
       const bracket = bracketMap.get(entry.bracket_id);
       const picks = (bracket?.picks ?? null) as LockedPicks | null;
       const derivedMeta = deriveLeaderboardDisplayMeta(picks);
       const extractedMeta = picks ? extractBracketMeta(picks) : null;
+      const score = picks ? scoreBracketPicks(picks, tournamentResultMap) : null;
       return {
         ...entry,
+        rank: score ? null : entry.rank,
         picks,
         chaos_score: entry.chaos_score ?? bracket?.chaos_score ?? null,
         champion_name: entry.champion_name ?? extractedMeta?.champion_name ?? derivedMeta.champion_name,
@@ -211,7 +217,35 @@ async function hydrateLeaderboardEntries(entries: LeaderboardEntry[]): Promise<L
         runner_up_seed: entry.runner_up_seed ?? derivedMeta.runner_up_seed,
         runner_up_logo_url: entry.runner_up_logo_url ?? derivedMeta.runner_up_logo_url,
         boldest_pick: entry.boldest_pick ?? extractedMeta?.boldest_pick ?? null,
+        total_score: score?.totalScore ?? entry.total_score,
+        correct_picks: score?.correctPicks ?? entry.correct_picks,
+        possible_picks: score?.possiblePicks ?? entry.possible_picks,
+        max_remaining: score?.maxRemaining ?? entry.max_remaining,
+        r64_score: score?.roundScores[64] ?? entry.r64_score,
+        r32_score: score?.roundScores[32] ?? entry.r32_score,
+        s16_score: score?.roundScores[16] ?? entry.s16_score,
+        e8_score: score?.roundScores[8] ?? entry.e8_score,
+        f4_score: score?.roundScores[4] ?? entry.f4_score,
+        champ_score: score?.roundScores[2] ?? entry.champ_score,
       } satisfies LeaderboardEntry;
+    });
+
+    return hydratedEntries.sort((a, b) => {
+      const scoreA = Number(a.total_score ?? 0);
+      const scoreB = Number(b.total_score ?? 0);
+      if (scoreB !== scoreA) return scoreB - scoreA;
+
+      const correctA = Number(a.correct_picks ?? 0);
+      const correctB = Number(b.correct_picks ?? 0);
+      if (correctB !== correctA) return correctB - correctA;
+
+      const updatedAtA = Date.parse(a.updated_at ?? "");
+      const updatedAtB = Date.parse(b.updated_at ?? "");
+      if (Number.isFinite(updatedAtA) && Number.isFinite(updatedAtB) && updatedAtA !== updatedAtB) {
+        return updatedAtB - updatedAtA;
+      }
+
+      return a.bracket_id.localeCompare(b.bracket_id);
     });
   } catch {
     return entries;
@@ -758,13 +792,14 @@ export async function getTournamentResultMap() {
       return { data: cachedResults, error };
     }
 
-    const resultMap = buildScoringResultMap(
-      ((data ?? []) as Array<{
+    const resultMap = buildScoringResultMap([
+      ...(((data ?? []) as Array<{
         matchup_id: string;
         winner_team_id: string;
         round: number | string;
-      }>)
-    );
+      }>)),
+      ...NCAA_KNOWN_SCORING_RESULTS,
+    ]);
     writeCachedValue(TOURNAMENT_RESULTS_CACHE_KEY, resultMap);
     return { data: resultMap, error: null };
   } catch (error) {

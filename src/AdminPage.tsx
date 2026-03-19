@@ -5,6 +5,7 @@ import { supabase } from "./supabaseClient";
 import { useAuth } from "./AuthContext";
 import { hasElevatedAccess } from "./groupVisibility";
 import { buildScoringResultMap, scoreBracketPicks } from "./lib/bracketScoring";
+import { NCAA_KNOWN_SCORING_RESULTS } from "./data/ncaaKnownResults";
 
 const ROUND_TO_INT: Record<string, number> = { R64: 64, R32: 32, S16: 16, E8: 8, F4: 4, CHAMP: 2 };
 const TOTAL_GAMES = gameTemplates.length;
@@ -47,7 +48,7 @@ async function scoreAndRankAllBrackets(): Promise<ScoreAllBracketsResult> {
     return { ok: false, error: resultsError.message };
   }
 
-  const resultMap = buildScoringResultMap((results as ResultRow[] | null) ?? []);
+  const resultMap = buildScoringResultMap([...(((results as ResultRow[] | null) ?? [])), ...NCAA_KNOWN_SCORING_RESULTS]);
   const scoredResultCount = Object.keys(resultMap).length;
 
   const { data: brackets, error: bracketsError } = await supabase.from("brackets").select("id, user_id, picks");

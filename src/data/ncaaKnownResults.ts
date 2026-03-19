@@ -1,4 +1,6 @@
 import type { LockedPicks } from "../lib/bracket";
+import type { TournamentResultLike } from "../lib/bracketScoring";
+import { templatesById } from "./bracket";
 
 /**
  * Actual NCAA tournament results that should behave like immutable conference locks:
@@ -14,3 +16,22 @@ export const NCAA_KNOWN_RESULTS: LockedPicks = {
 };
 
 export const NCAA_KNOWN_RESULT_IDS = new Set(Object.keys(NCAA_KNOWN_RESULTS));
+
+const SCORING_ROUND_BY_BRACKET_ROUND: Record<string, number> = {
+  R64: 64,
+  R32: 32,
+  S16: 16,
+  E8: 8,
+  F4: 4,
+  CHAMP: 2,
+};
+
+export const NCAA_KNOWN_SCORING_RESULTS: TournamentResultLike[] = Object.entries(NCAA_KNOWN_RESULTS).flatMap(
+  ([matchup_id, winner_team_id]) => {
+    const template = templatesById.get(matchup_id);
+    if (!template) return [];
+    const round = SCORING_ROUND_BY_BRACKET_ROUND[template.round];
+    if (!round) return [];
+    return [{ matchup_id, winner_team_id, round }];
+  }
+);

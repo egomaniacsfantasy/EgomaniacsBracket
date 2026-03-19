@@ -1,10 +1,11 @@
 import { supabase } from "./supabaseClient";
 import { type LockedPicks } from "./lib/bracket";
 import { getBracketCompletionSummary, resolveBracketWithKnownResults } from "./lib/bracketCompletion";
+import { scoreBracketPicks } from "./lib/bracketScoring";
 import { teamsById } from "./data/teams";
 import { teamLogoUrl } from "./lib/logo";
 import { extractInviteCode } from "./lib/inviteCode";
-import { getGlobalBracketLockState } from "./bracketStorage";
+import { getGlobalBracketLockState, getTournamentResultMap } from "./bracketStorage";
 
 export type GroupRow = {
   id: string;
@@ -79,7 +80,7 @@ export type GroupMember = {
 const GROUP_QUERY_TIMEOUT_MS = 10000;
 const GROUP_COUNTS_QUERY_TIMEOUT_MS = 3500;
 const USER_GROUPS_CACHE_PREFIX = "og_user_groups_v2";
-const GROUP_STANDINGS_CACHE_PREFIX = "og_group_standings_v2";
+const GROUP_STANDINGS_CACHE_PREFIX = "og_group_standings_v3";
 const GROUP_MEMBERS_CACHE_PREFIX = "og_group_members_v2";
 export const GROUP_JOIN_LOCKED_MESSAGE =
   "Brackets are locked — you can no longer join groups with a new bracket. You can still view groups you're already a member of.";
@@ -536,6 +537,32 @@ export async function getGroupStandings(groupId: string) {
         // If the live bracket hydration fails, fall back to the standings view payload.
       }
     }
+
+    if (hydratedStandings.some((entry) => entry.picks)) {
+      try {
+        const { data: tournamentResultMap } = await getTournamentResultMap();
+        hydratedStandings = hydratedStandings.map((entry) => {
+          if (!entry.picks) return entry;
+          const score = scoreBracketPicks(entry.picks, tournamentResultMap);
+          return {
+            ...entry,
+            total_score: score.totalScore,
+            correct_picks: score.correctPicks,
+            possible_picks: score.possiblePicks,
+            max_remaining: score.maxRemaining,
+            r64_score: score.roundScores[64],
+            r32_score: score.roundScores[32],
+            s16_score: score.roundScores[16],
+            e8_score: score.roundScores[8],
+            f4_score: score.roundScores[4],
+            champ_score: score.roundScores[2],
+          } satisfies GroupStanding;
+        });
+      } catch {
+        // If tournament scoring hydration fails, fall back to the persisted standings scores.
+      }
+    }
+
     writeCachedValue(cacheKey, hydratedStandings);
     return { data: hydratedStandings, error: null };
   } catch (error) {
