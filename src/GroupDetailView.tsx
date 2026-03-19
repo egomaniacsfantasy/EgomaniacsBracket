@@ -16,7 +16,6 @@ import { GroupMembersTab } from "./GroupMembersTab";
 import { GroupStandingsTab } from "./GroupStandingsTab";
 import { GroupPicksTab } from "./GroupPicksTab";
 import { GroupChaosTab } from "./GroupChaosTab";
-import { BracketViewer } from "./BracketViewer";
 import { GROUP_EMOJIS } from "./constants";
 import { hasElevatedAccess } from "./groupVisibility";
 import { captureError } from "./lib/errorMonitoring";
@@ -47,11 +46,7 @@ export function GroupDetailView({
   const [members, setMembers] = useState<GroupMember[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState("");
-  const [viewingBracket, setViewingBracket] = useState<{
-    bracketId: string;
-    displayName: string;
-    bracketName: string;
-  } | null>(null);
+  const [selectedPicksBracketId, setSelectedPicksBracketId] = useState<string | null>(null);
   const [showSettings, setShowSettings] = useState(false);
 
   // Bracket picker state for members with no bracket
@@ -83,13 +78,20 @@ export function GroupDetailView({
     setShowBracketPicker(false);
     setSelectedBracket(null);
     setBracketPickerError("");
+    setSelectedPicksBracketId(null);
   }, [isOpen]);
 
   useEffect(() => {
     setShowBracketPicker(false);
     setSelectedBracket(null);
     setBracketPickerError("");
+    setSelectedPicksBracketId(null);
   }, [group?.id]);
+
+  function handleOpenBracketInPicks(info: { bracketId: string; displayName: string; bracketName: string }) {
+    setSelectedPicksBracketId(info.bracketId);
+    setActiveTab("picks");
+  }
 
   async function loadGroupData() {
     if (!group) return;
@@ -311,18 +313,6 @@ export function GroupDetailView({
 
   if (!isOpen || !group) return null;
 
-  if (viewingBracket) {
-    return (
-      <BracketViewer
-        bracketId={viewingBracket.bracketId}
-        displayName={viewingBracket.displayName}
-        bracketName={viewingBracket.bracketName}
-        onBack={() => setViewingBracket(null)}
-        tournamentResults={tournamentResults}
-      />
-    );
-  }
-
   return (
     <div className="group-detail-overlay">
       <div className="gd-header">
@@ -409,7 +399,7 @@ export function GroupDetailView({
                 currentUserId={user?.id}
                 tournamentStarted={tournamentStarted}
                 canPreviewHidden={canPreviewHidden}
-                onViewBracket={setViewingBracket}
+                onViewBracket={handleOpenBracketInPicks}
                 onRefresh={loadGroupData}
                 onSelectBracket={submissionsLocked ? undefined : handleOpenBracketPicker}
                 onInvite={() => void handleInvite()}
@@ -428,6 +418,8 @@ export function GroupDetailView({
                 members={members}
                 currentUserId={user?.id}
                 canPreviewHidden={canPreviewHidden}
+                selectedBracketId={selectedPicksBracketId}
+                onSelectedBracketChange={setSelectedPicksBracketId}
                 tournamentResults={tournamentResults}
               />
             )}

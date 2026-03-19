@@ -1308,11 +1308,11 @@ body {
     40px
     minmax(120px, 1fr)
     minmax(110px, 0.9fr)
-    92px
-    minmax(140px, 1.05fr)
-    minmax(130px, 1fr)
-    minmax(150px, 1.2fr)
-    90px;
+    122px
+    minmax(132px, 0.98fr)
+    minmax(122px, 0.92fr)
+    minmax(146px, 1.08fr)
+    82px;
   gap: 10px;
 }
 
@@ -1321,11 +1321,11 @@ body {
     40px
     minmax(110px, 0.95fr)
     minmax(100px, 0.82fr)
-    88px
-    minmax(130px, 0.96fr)
-    minmax(120px, 0.92fr)
-    minmax(140px, 1.08fr)
-    85px
+    116px
+    minmax(124px, 0.92fr)
+    minmax(118px, 0.88fr)
+    minmax(136px, 1.02fr)
+    80px
     110px;
 }
 

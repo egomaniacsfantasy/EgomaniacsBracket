@@ -218,12 +218,16 @@ export function GroupPicksTab({
   members = [],
   currentUserId,
   canPreviewHidden = false,
+  selectedBracketId: selectedBracketIdProp,
+  onSelectedBracketChange,
   tournamentResults,
 }: {
   standings: RankedStanding[];
   members?: GroupMember[];
   currentUserId: string | undefined;
   canPreviewHidden?: boolean;
+  selectedBracketId?: string | null;
+  onSelectedBracketChange?: (bracketId: string | null) => void;
   tournamentResults?: unknown;
 }) {
   const [viewMode, setViewMode] = useState<PicksViewMode>("brackets");
@@ -265,10 +269,15 @@ export function GroupPicksTab({
     [bracketEntries, currentUserId],
   );
 
+  const preferredBracketId =
+    selectedBracketIdProp && selectableBrackets.some((entry) => entry.bracketId === selectedBracketIdProp)
+      ? selectedBracketIdProp
+      : selectedBracketIdOverride && selectableBrackets.some((entry) => entry.bracketId === selectedBracketIdOverride)
+        ? selectedBracketIdOverride
+        : null;
+
   const selectedBracketId =
-    selectedBracketIdOverride && selectableBrackets.some((entry) => entry.bracketId === selectedBracketIdOverride)
-      ? selectedBracketIdOverride
-      : (selectableBrackets.find((entry) => entry.isCurrentUser) ?? selectableBrackets[0])?.bracketId ?? null;
+    preferredBracketId ?? (selectableBrackets.find((entry) => entry.isCurrentUser) ?? selectableBrackets[0])?.bracketId ?? null;
 
   const selectedBracket =
     selectableBrackets.find((entry) => entry.bracketId === selectedBracketId) ?? selectableBrackets[0] ?? null;
@@ -445,7 +454,10 @@ export function GroupPicksTab({
                   ]
                     .filter(Boolean)
                     .join(" ")}
-                  onClick={() => setSelectedBracketIdOverride(bracket.bracketId)}
+                  onClick={() => {
+                    setSelectedBracketIdOverride(bracket.bracketId);
+                    onSelectedBracketChange?.(bracket.bracketId);
+                  }}
                 >
                   {label}
                 </button>
