@@ -1,5 +1,5 @@
 import { gameTemplates, templatesById } from "../data/bracket";
-import { NCAA_KNOWN_RESULTS } from "../data/ncaaKnownResults";
+import { NCAA_KNOWN_ENTRANT_RESULTS } from "../data/ncaaKnownResults";
 import { resolveGames, type LockedPicks } from "./bracket";
 
 export const TOTAL_BRACKET_GAME_COUNT = gameTemplates.length;
@@ -17,7 +17,7 @@ export type BracketCompletionSummary = {
 
 export const mergeKnownNcaaResults = (picks: LockedPicks): LockedPicks => ({
   ...picks,
-  ...NCAA_KNOWN_RESULTS,
+  ...NCAA_KNOWN_ENTRANT_RESULTS,
 });
 
 const roundRank: Record<(typeof gameTemplates)[number]["round"], number> = {

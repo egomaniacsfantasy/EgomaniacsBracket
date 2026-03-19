@@ -21,6 +21,14 @@ export const NCAA_KNOWN_RESULTS: LockedPicks = {
 
 export const NCAA_KNOWN_RESULT_IDS = new Set(Object.keys(NCAA_KNOWN_RESULTS));
 
+/**
+ * Only the collapsed First Four winners should be injected into saved bracket
+ * resolution. Later-round actual results must never overwrite a user's pick.
+ */
+export const NCAA_KNOWN_ENTRANT_RESULTS: LockedPicks = Object.fromEntries(
+  Object.entries(NCAA_KNOWN_RESULTS).filter(([matchup_id]) => templatesById.get(matchup_id)?.round === "FF")
+) as LockedPicks;
+
 const SCORING_ROUND_BY_BRACKET_ROUND: Record<string, number> = {
   R64: 64,
   R32: 32,
