@@ -2127,7 +2127,7 @@ function App() {
   };
 
   const handleRandomizeFirstFour = () => {
-    const unresolved = playInGames.filter((game) => !game.winnerId && game.teamAId && game.teamBId);
+    const unresolved = visiblePlayInGames.filter((game) => !game.winnerId && game.teamAId && game.teamBId);
     if (unresolved.length === 0) return;
     cancelStaggeredSim();
     chaosScoreSourceRef.current = "manual";
@@ -2813,11 +2813,19 @@ function App() {
 
   const finalGames = finalRounds(games);
   const playInGames = useMemo(() => games.filter((game) => game.round === "FF"), [games]);
-  const decidedPlayInCount = useMemo(
-    () => playInGames.filter((game) => Boolean(game.winnerId)).length,
+  const hideFirstFourUi = useMemo(
+    () => playInGames.length > 0 && playInGames.every((game) => NCAA_KNOWN_RESULT_IDS.has(game.id)),
     [playInGames]
   );
-  const allPlayInDecided = playInGames.length === 0 || decidedPlayInCount === playInGames.length;
+  const visiblePlayInGames = useMemo(
+    () => (hideFirstFourUi ? [] : playInGames),
+    [hideFirstFourUi, playInGames]
+  );
+  const decidedPlayInCount = useMemo(
+    () => visiblePlayInGames.filter((game) => Boolean(game.winnerId)).length,
+    [visiblePlayInGames]
+  );
+  const allPlayInDecided = visiblePlayInGames.length === 0 || decidedPlayInCount === visiblePlayInGames.length;
   const pointsTrackingEnabled = false;
   const leftSemi = finalGames.find((g) => g.id === "F4-Left-0") ?? null;
   const rightSemi = finalGames.find((g) => g.id === "F4-Right-0") ?? null;
@@ -2858,8 +2866,8 @@ function App() {
     previousPlayInDecidedCountRef.current = decidedPlayInCount;
 
     if (!firstFourExpanded) return;
-    if (playInGames.length !== 4) return;
-    if (previous >= playInGames.length || decidedPlayInCount !== playInGames.length) return;
+    if (visiblePlayInGames.length !== 4) return;
+    if (previous >= visiblePlayInGames.length || decidedPlayInCount !== visiblePlayInGames.length) return;
 
     const timer = window.setTimeout(() => {
       setFirstFourExpanded(false);
@@ -2867,7 +2875,7 @@ function App() {
     }, 600);
 
     return () => window.clearTimeout(timer);
-  }, [decidedPlayInCount, firstFourExpanded, playInGames.length]);
+  }, [decidedPlayInCount, firstFourExpanded, visiblePlayInGames.length]);
 
   useEffect(() => {
     if (!firstFourPillHintActive) return;
@@ -3598,7 +3606,7 @@ function App() {
 
   const toggleFirstFourFromToolbar = () => {
     setOpenToolbarMenu(null);
-    if (playInGames.length === 0) return;
+    if (visiblePlayInGames.length === 0) return;
     setFirstFourPillHintActive(false);
 
     if (isMobile) {
@@ -3633,10 +3641,10 @@ function App() {
   };
 
   const showChaosInToolbar = !isMobile && chaosScore !== null;
-  const showToolbarFirstFour = playInGames.length > 0;
+  const showToolbarFirstFour = visiblePlayInGames.length > 0;
   const showToolbarSubmitAction = true;
-  const firstFourToolbarBadge = playInGames.length > 0
-    ? (allPlayInDecided ? "✓" : `${decidedPlayInCount}/${playInGames.length}`)
+  const firstFourToolbarBadge = visiblePlayInGames.length > 0
+    ? (allPlayInDecided ? "✓" : `${decidedPlayInCount}/${visiblePlayInGames.length}`)
     : null;
   const remainingPicks = SUBMIT_EXPECTED_PICK_COUNT - pickCount;
   const submitButtonTitle = !isAuthenticated
@@ -4615,9 +4623,9 @@ function App() {
   );
 
   const futuresContent = isMobile ? mobileFuturesContent : desktopFuturesContent;
-  const firstFourBar = playInGames.length > 0 ? (
+  const firstFourBar = visiblePlayInGames.length > 0 ? (
     <FirstFourBar
-      games={playInGames}
+      games={visiblePlayInGames}
       gameWinProbs={simResult.gameWinProbs}
       displayMode={displayMode}
       expanded={firstFourExpanded}
@@ -4705,6 +4713,7 @@ function App() {
                     <MobileRegionView
                       region={mobileSection}
                       activeRound={mobileRound}
+                      hideFirstFourRound={hideFirstFourUi}
                       pointsTrackingEnabled={pointsTrackingEnabled}
                       games={games}
                       gameWinProbs={simResult.gameWinProbs}
@@ -4777,7 +4786,7 @@ function App() {
                 <div className="bracket-lock-banner">🔒 Submissions locked at tip-off. Tournament is live — check the leaderboard.</div>
               ) : null}
               <div className="eg-bracket-stack" style={{ display: visibleMainView === "bracket" ? undefined : "none" }}>
-                {!isMobile && !allPlayInDecided && playInGames.length > 0 ? (
+                {!isMobile && !allPlayInDecided && visiblePlayInGames.length > 0 ? (
                   <div className="ff-nudge-banner">
                     <span className="ff-nudge-banner-arrow">↑</span>
                     <span className="ff-nudge-banner-text">Pick your First Four games above to unlock the full bracket</span>
@@ -6026,6 +6035,7 @@ function MobileRoundNav({
 function MobileRegionView({
   region,
   activeRound,
+  hideFirstFourRound,
   pointsTrackingEnabled,
   games,
   gameWinProbs,
@@ -6049,6 +6059,7 @@ function MobileRegionView({
 }: {
   region: Region;
   activeRound: MobileRegionRound;
+  hideFirstFourRound: boolean;
   pointsTrackingEnabled: boolean;
   games: ResolvedGame[];
   gameWinProbs: SimulationOutput["gameWinProbs"];
@@ -6071,14 +6082,17 @@ function MobileRegionView({
   onOpenMatchupStats: (game: ResolvedGame) => void;
 }) {
   const roundOrder: Array<{ id: MobileRegionRound; label: string }> = [
-    { id: "FF", label: "FF" },
     { id: "R64", label: "R64" },
     { id: "R32", label: "R32" },
     { id: "S16", label: "S16" },
     { id: "E8", label: "E8" },
   ];
+  if (!hideFirstFourRound) {
+    roundOrder.unshift({ id: "FF", label: "FF" });
+  }
   const activeGames = getMobileRegionRoundGames(games, region, activeRound);
   const roundMode = getRegionRoundMode(games, region, activeRound);
+  const entryRound: MobileRegionRound = hideFirstFourRound ? "R64" : "FF";
 
   const handlePickForRound = (game: ResolvedGame, teamId: string) => {
     const roundGames = getMobileRegionRoundGames(games, region, activeRound);
@@ -6131,8 +6145,11 @@ function MobileRegionView({
         <>
           <div className="m-prob-banner">
             <span>↻</span>
-            <span>These odds update live as you make picks. Tap FF/R64 to continue picking.</span>
-            <button onClick={() => onRoundChange("FF")}>Back to picks →</button>
+            <span>
+              These odds update live as you make picks. Tap {hideFirstFourRound ? "R64" : "FF/R64"} to continue
+              picking.
+            </span>
+            <button onClick={() => onRoundChange(entryRound)}>Back to picks →</button>
           </div>
           {activeGames.map((game) => (
             <MobileProbSlotCard
