@@ -24,6 +24,7 @@ function getChaosTier(score: number | null) {
 
 function getChampionPick(picks: LockedPicks | null): string | null {
   if (!picks || typeof picks !== "object") return null;
+  if (typeof picks["CHAMP-0"] === "string") return picks["CHAMP-0"];
   const { games } = resolveBracketWithKnownResults(picks);
   const champGame = games.find((game) => game.round === "CHAMP");
   return champGame?.winnerId ?? null;

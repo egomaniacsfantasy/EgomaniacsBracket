@@ -118,12 +118,27 @@ type CachedValue<T> = {
   value: T;
 };
 
+function getDirectChampionPickId(picks: LockedPicks | null | undefined): string | null {
+  if (!picks || typeof picks !== "object") return null;
+  return typeof picks["CHAMP-0"] === "string" ? picks["CHAMP-0"] : null;
+}
+
 function getChampionPreviewFromPicks(picks: LockedPicks | null | undefined) {
   if (!picks || typeof picks !== "object") {
     return {
       champion_name: null,
       champion_seed: null,
       champion_logo_url: null,
+    };
+  }
+
+  const directChampionId = getDirectChampionPickId(picks);
+  if (directChampionId) {
+    const directTeam = teamsById.get(directChampionId);
+    return {
+      champion_name: directTeam?.name ?? directChampionId,
+      champion_seed: directTeam?.seed ?? null,
+      champion_logo_url: directTeam ? teamLogoUrl(directTeam) : null,
     };
   }
 
