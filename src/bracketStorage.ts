@@ -724,44 +724,14 @@ export async function getLeaderboard(limit?: number | null) {
   }
 
   try {
-    const mapLeaderboardRow = (row: Record<string, unknown>) => {
-      const b = (row.brackets as Record<string, unknown>) ?? {};
-      const p = (row.profiles as Record<string, unknown>) ?? {};
-      return {
-        rank: row.rank as number | null | undefined,
-        bracket_id: String(row.bracket_id ?? ""),
-        user_id: String(row.user_id ?? ""),
-        display_name: String(p.display_name ?? "Anonymous"),
-        bracket_name: String(b.bracket_name ?? "Bracket"),
-        updated_at: (row.updated_at as string | null | undefined) ?? null,
-        chaos_score: (b.chaos_score as number | null | undefined) ?? null,
-        champion_name: normalizeOptionalText(b.champion_name),
-        champion_seed: (b.champion_seed as number | null | undefined) ?? null,
-        champion_logo_url: normalizeOptionalText(b.champion_logo_url),
-        champion_eliminated: Boolean(b.champion_eliminated),
-        final_four: (b.final_four as LeaderboardFinalFourTeam[] | string | null | undefined) ?? null,
-        boldest_pick: (b.boldest_pick as LeaderboardBoldestPick | string | null | undefined) ?? null,
-        total_score: Number(row.total_score ?? 0),
-        correct_picks: Number(row.correct_picks ?? 0),
-        possible_picks: (row.possible_picks as number | null | undefined) ?? null,
-        max_remaining: (row.max_remaining as number | null | undefined) ?? null,
-        r64_score: (row.r64_score as number | null | undefined) ?? null,
-        r32_score: (row.r32_score as number | null | undefined) ?? null,
-        s16_score: (row.s16_score as number | null | undefined) ?? null,
-        e8_score: (row.e8_score as number | null | undefined) ?? null,
-        f4_score: (row.f4_score as number | null | undefined) ?? null,
-        champ_score: (row.champ_score as number | null | undefined) ?? null,
-      } satisfies LeaderboardEntry;
-    };
-
-    const mapped: LeaderboardEntry[] = [];
+    const scoreRows: Array<Record<string, unknown>> = [];
     let offset = 0;
 
     while (true) {
-      const pageSize = getNextPageSize(mapped.length);
+      const pageSize = getNextPageSize(scoreRows.length);
       if (pageSize <= 0) break;
 
-      const primary = await withTimeout(
+      const scorePage = await withTimeout(
         supabase
           .from("bracket_scores")
           .select(
@@ -779,12 +749,9 @@ export async function getLeaderboard(limit?: number | null) {
             champ_score,
             bracket_id,
             user_id,
-            updated_at,
-            brackets!inner(bracket_name, chaos_score, champion_name, champion_seed, champion_logo_url, champion_eliminated, final_four, boldest_pick, submitted_at),
-            profiles!inner(display_name)
+            updated_at
             `
           )
-          .not("brackets.submitted_at", "is", null)
           .order("total_score", { ascending: false })
           .order("correct_picks", { ascending: false })
           .order("updated_at", { ascending: false })
@@ -793,15 +760,15 @@ export async function getLeaderboard(limit?: number | null) {
         "Timed out loading the leaderboard. Please try again."
       );
 
-      if (primary.error) {
+      if (scorePage.error) {
         return {
           data: cachedEntries ?? [],
-          error: primary.error,
+          error: scorePage.error,
         };
       }
 
-      const batch = ((primary.data as Array<Record<string, unknown>> | null) ?? []).map(mapLeaderboardRow);
-      mapped.push(...batch);
+      const batch = (scorePage.data as Array<Record<string, unknown>> | null) ?? [];
+      scoreRows.push(...batch);
 
       if (batch.length < pageSize) {
         break;
@@ -809,6 +776,97 @@ export async function getLeaderboard(limit?: number | null) {
 
       offset += pageSize;
     }
+
+    if (scoreRows.length === 0) {
+      writeCachedValue(cacheKey, []);
+      return { data: [], error: null };
+    }
+
+    const bracketIds = [...new Set(scoreRows.map((row) => String(row.bracket_id ?? "")).filter(Boolean))];
+    const userIds = [...new Set(scoreRows.map((row) => String(row.user_id ?? "")).filter(Boolean))];
+
+    const [bracketsResult, profilesResult] = await Promise.all([
+      withTimeout(
+        supabase
+          .from("brackets")
+          .select("id, bracket_name, chaos_score, picks, submitted_at, updated_at")
+          .in("id", bracketIds),
+        LEADERBOARD_QUERY_TIMEOUT_MS,
+        "Timed out loading leaderboard bracket details."
+      ),
+      withTimeout(
+        supabase
+          .from("profiles")
+          .select("id, display_name")
+          .in("id", userIds),
+        LEADERBOARD_QUERY_TIMEOUT_MS,
+        "Timed out loading leaderboard profile details."
+      ),
+    ]);
+
+    if (bracketsResult.error) {
+      return {
+        data: cachedEntries ?? [],
+        error: bracketsResult.error,
+      };
+    }
+
+    if (profilesResult.error) {
+      return {
+        data: cachedEntries ?? [],
+        error: profilesResult.error,
+      };
+    }
+
+    const bracketMap = new Map(
+      (((bracketsResult.data as Array<Record<string, unknown>> | null) ?? [])).map((row) => [
+        String(row.id ?? ""),
+        row,
+      ])
+    );
+    const profileMap = new Map(
+      (((profilesResult.data as Array<Record<string, unknown>> | null) ?? [])).map((row) => [
+        String(row.id ?? ""),
+        row,
+      ])
+    );
+
+    const mapped: LeaderboardEntry[] = scoreRows.flatMap((row) => {
+      const bracketId = String(row.bracket_id ?? "");
+      const userId = String(row.user_id ?? "");
+      const bracket = bracketMap.get(bracketId) ?? {};
+      const profile = profileMap.get(userId) ?? {};
+      if (!bracket || bracket.submitted_at == null) return [];
+
+      return [
+        {
+          rank: row.rank as number | null | undefined,
+          bracket_id: bracketId,
+          user_id: userId,
+          display_name: String(profile.display_name ?? "Anonymous"),
+          bracket_name: String(bracket.bracket_name ?? "Bracket"),
+          updated_at: ((row.updated_at as string | null | undefined) ?? (bracket.updated_at as string | null | undefined) ?? null),
+          picks: deserializePicks(bracket.picks),
+          chaos_score: (bracket.chaos_score as number | null | undefined) ?? null,
+          champion_name: null,
+          champion_seed: null,
+          champion_logo_url: null,
+          champion_eliminated: false,
+          final_four: null,
+          boldest_pick: null,
+          total_score: Number(row.total_score ?? 0),
+          correct_picks: Number(row.correct_picks ?? 0),
+          possible_picks: (row.possible_picks as number | null | undefined) ?? null,
+          max_remaining: (row.max_remaining as number | null | undefined) ?? null,
+          r64_score: (row.r64_score as number | null | undefined) ?? null,
+          r32_score: (row.r32_score as number | null | undefined) ?? null,
+          s16_score: (row.s16_score as number | null | undefined) ?? null,
+          e8_score: (row.e8_score as number | null | undefined) ?? null,
+          f4_score: (row.f4_score as number | null | undefined) ?? null,
+          champ_score: (row.champ_score as number | null | undefined) ?? null,
+        } satisfies LeaderboardEntry,
+      ];
+    });
 
     const hydratedEntries = await hydrateLeaderboardEntries(mapped);
     writeCachedValue(cacheKey, hydratedEntries);
