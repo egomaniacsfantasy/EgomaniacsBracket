@@ -1884,7 +1884,7 @@ function App() {
     [userBrackets]
   );
   const submissionsLocked = useMemo(
-    () => globalBracketsLocked || userBrackets.some((bracket) => bracket.is_locked),
+    () => globalBracketsLocked || NCAA_KNOWN_RESULT_IDS.size > 0 || userBrackets.some((bracket) => bracket.is_locked),
     [globalBracketsLocked, userBrackets]
   );
   const bracketComplete = pickCount >= SUBMIT_EXPECTED_PICK_COUNT;
@@ -3709,6 +3709,15 @@ function App() {
     setShowCompletionCelebration(false);
     setShowWrappedFlow(false);
     setShowWrappedCard(false);
+    setAuthModalOpen(false);
+    setMyBracketsOpen(false);
+    setCreateGroupOpen(false);
+    setJoinGroupOpen(false);
+    setJoinCode(null);
+    setResetModalConfig(null);
+    setStatsModalGameId(null);
+    setGroupAssignmentPrompt(null);
+    setProbPopup(null);
     setActiveHint(null);
     setLockPopupOpen(false);
     document.body.classList.remove("og-onboarding-open", "walkthrough-active", "walkthrough-step-make-pick");

@@ -7957,7 +7957,7 @@ body {
 .grp-hub-screen {
   position: fixed;
   inset: 0;
-  z-index: 11040;
+  z-index: 30000;
   display: flex;
   flex-direction: column;
   background: var(--bg-base, #0e0c09);
@@ -7978,7 +7978,13 @@ body.groups-hub-open .walkthrough-cutout,
 body.groups-hub-open .bracket-locked-overlay,
 body.groups-hub-open .promo-cta-backdrop,
 body.groups-hub-open .mob-onboard-overlay,
-body.groups-hub-open .cascade-caption {
+body.groups-hub-open .cascade-caption,
+body.groups-hub-open .auth-modal-backdrop,
+body.groups-hub-open .group-modal-overlay,
+body.groups-hub-open .share-modal-overlay,
+body.groups-hub-open .completion-overlay,
+body.groups-hub-open .bw-overlay,
+body.groups-hub-open .contextual-hint {
   pointer-events: none !important;
 }
 
