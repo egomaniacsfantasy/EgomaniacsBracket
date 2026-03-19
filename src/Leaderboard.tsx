@@ -18,6 +18,8 @@ import { teamLogoUrl } from "./lib/logo";
 import { abbreviationForTeam } from "./lib/abbreviation";
 import type { LockedPicks } from "./lib/bracket";
 import type { ScoringResult } from "./lib/bracketScoring";
+import { computeStandingsForecast, type StandingsForecastEntry, type StandingsForecastResult } from "./lib/standingsForecast";
+import { StandingsForecastHistogram } from "./StandingsForecastHistogram";
 
 type ParsedLeaderboardEntry = LeaderboardEntry & {
   boldestParsed: LeaderboardBoldestPick | null;
@@ -55,6 +57,21 @@ type TournamentPickState = "normal" | "eliminated" | "nailed";
 function formatBracketScore(value: number | null | undefined) {
   if (typeof value !== "number" || !Number.isFinite(value)) return "—";
   return `${Math.round(value)}`;
+}
+
+function formatForecastPercent(value: number | null | undefined) {
+  if (typeof value !== "number" || !Number.isFinite(value)) return "—";
+  return `${(value * 100).toFixed(value >= 0.1 ? 1 : 2)}%`;
+}
+
+function formatExpectedPoints(value: number | null | undefined) {
+  if (typeof value !== "number" || !Number.isFinite(value)) return "—";
+  return value.toFixed(1);
+}
+
+function formatExpectedRank(value: number | null | undefined) {
+  if (typeof value !== "number" || !Number.isFinite(value)) return "—";
+  return `#${value.toFixed(1)}`;
 }
 
 function parseBoldestPick(value: unknown): LeaderboardBoldestPick | null {
@@ -461,15 +478,50 @@ function LBEmptyState({
   );
 }
 
+function ForecastDetail({
+  forecast,
+  bins,
+}: {
+  forecast: StandingsForecastEntry;
+  bins: StandingsForecastResult["bins"];
+}) {
+  return (
+    <div className="lb-detail-forecast">
+      <div className="lb-detail-forecast-metrics">
+        <div className="lb-detail-forecast-stat">
+          <span className="lb-detail-forecast-label">Win odds</span>
+          <span className="lb-detail-forecast-value">{formatForecastPercent(forecast.finish1Prob)}</span>
+        </div>
+        <div className="lb-detail-forecast-stat">
+          <span className="lb-detail-forecast-label">Expected points</span>
+          <span className="lb-detail-forecast-value">{formatExpectedPoints(forecast.expectedPoints)}</span>
+        </div>
+        <div className="lb-detail-forecast-stat">
+          <span className="lb-detail-forecast-label">Expected rank</span>
+          <span className="lb-detail-forecast-value">{formatExpectedRank(forecast.expectedRank)}</span>
+        </div>
+      </div>
+      <div className="lb-detail-forecast-hist">
+        <span className="lb-detail-forecast-hist-label">Rank distribution</span>
+        <StandingsForecastHistogram bins={bins} values={forecast.rankHistogram} />
+      </div>
+    </div>
+  );
+}
+
 function RowDetail({
   canAdminDelete,
   deletingBracketId,
   entry,
+  forecast,
+  forecastBins,
   onDelete,
 }: {
   canAdminDelete: boolean;
   deletingBracketId: string | null;
   entry: LeaderboardEntry;
+  forecast: StandingsForecastEntry | null;
+  forecastBins: StandingsForecastResult["bins"];
   onDelete: (entry: LeaderboardEntry) => void;
 }) {
   const isDeleting = deletingBracketId === entry.bracket_id;
@@ -501,6 +553,7 @@ function RowDetail({
           <span className="lb-detail-round-score">{entry.champ_score ?? 0}</span>
         </div>
       </div>
+      {forecast ? <ForecastDetail forecast={forecast} bins={forecastBins} /> : null}
       {canAdminDelete ? (
         <div className="lb-detail-actions">
           <button
@@ -597,6 +650,8 @@ function TournamentLeaderboard({
   deletingBracketId,
   entries,
   currentUserId,
+  forecast,
+  forecastLoading,
   tournamentState,
   onDelete,
 }: {
@@ -604,6 +659,8 @@ function TournamentLeaderboard({
   deletingBracketId: string | null;
   entries: ParsedLeaderboardEntry[];
   currentUserId: string | null;
+  forecast: StandingsForecastResult | null;
+  forecastLoading: boolean;
   tournamentState: ReturnType<typeof buildTournamentState> | null;
   onDelete: (entry: LeaderboardEntry) => void;
 }) {
@@ -617,6 +674,7 @@ function TournamentLeaderboard({
         <span className="lb-col lb-col-bracket">BRACKET</span>
         <span className="lb-col lb-col-score">SCORE</span>
         <span className="lb-col lb-col-correct">CORRECT</span>
+        <span className="lb-col lb-col-win">WIN %</span>
         <span className="lb-col lb-col-champion">CHAMPION</span>
         <span className="lb-col lb-col-runner-up">RUNNER-UP</span>
         <span className="lb-col lb-col-boldest">BOLDEST PICK</span>
@@ -629,6 +687,7 @@ function TournamentLeaderboard({
         const key = entry.bracket_id ?? `${entry.user_id}-${entry.bracket_name}-${index}`;
         const expanded = expandedBracketId === key;
         const isDeleting = deletingBracketId === entry.bracket_id;
+        const forecastEntry = forecast?.rows[entry.bracket_id] ?? null;
         const toggleExpanded = () => setExpandedBracketId(expanded ? null : key);
         const handleKeyDown = (event: React.KeyboardEvent<HTMLDivElement>) => {
           if (event.key === "Enter" || event.key === " ") {
@@ -653,6 +712,9 @@ function TournamentLeaderboard({
               <span className="lb-col lb-col-bracket">{entry.bracket_name}</span>
               <span className="lb-col lb-col-score lb-score-value">{entry.total_score ?? 0}</span>
               <span className="lb-col lb-col-correct">{entry.correct_picks ?? 0}/{entry.possible_picks ?? 63}</span>
+              <span className="lb-col lb-col-win">
+                {forecastLoading && !forecastEntry ? "..." : formatForecastPercent(forecastEntry?.finish1Prob)}
+              </span>
               {renderChampion(entry, true, tournamentState)}
               {renderRunnerUp(entry, true, tournamentState)}
               {renderBoldestPick(entry.boldestParsed, true, tournamentState)}
@@ -679,6 +741,8 @@ function TournamentLeaderboard({
                 canAdminDelete={canAdminDelete}
                 deletingBracketId={deletingBracketId}
                 entry={entry}
+                forecast={forecastEntry}
+                forecastBins={forecast?.bins ?? []}
                 onDelete={onDelete}
               />
             ) : null}
@@ -709,6 +773,10 @@ export function LeaderboardFullWidth({
   const [loadError, setLoadError] = useState<string | null>(null);
   const [deletingBracketId, setDeletingBracketId] = useState<string | null>(null);
   const [loading, setLoading] = useState(entries.length === 0);
+  const [forecast, setForecast] = useState<StandingsForecastResult | null>(null);
+  const [forecastLoading, setForecastLoading] = useState(false);
+  const [forecastProgress, setForecastProgress] = useState(0);
+  const [forecastError, setForecastError] = useState<string | null>(null);
   const canAdminDelete = hasElevatedAccess(user?.email) && !submissionsLocked;
 
   const loadLeaderboard = useCallback(async () => {
@@ -806,7 +874,53 @@ export function LeaderboardFullWidth({
       Number(entry.f4_score ?? 0) > 0 ||
       Number(entry.champ_score ?? 0) > 0
   );
+  const showForecast = submissionsLocked && parsedEntries.some((entry) => entry.picks && entry.bracket_id);
+  const showTournamentLeaderboard = submissionsLocked || tournamentStarted;
+  const visibleForecast = showForecast ? forecast : null;
+  const visibleForecastLoading = showForecast ? forecastLoading : false;
+  const visibleForecastProgress = showForecast ? forecastProgress : 0;
+  const visibleForecastError = showForecast ? forecastError : null;
   const countLabel = `${parsedEntries.length} ${parsedEntries.length === 1 ? "bracket" : "brackets"} competing`;
+
+  useEffect(() => {
+    if (!isVisible || !showForecast) return;
+
+    const forecastParticipants = parsedEntries
+      .filter((entry) => entry.picks && entry.bracket_id)
+      .map((entry) => ({
+        id: entry.bracket_id,
+        picks: entry.picks,
+      }));
+
+    if (forecastParticipants.length === 0) return;
+
+    let cancelled = false;
+
+    void (async () => {
+      setForecastLoading(true);
+      setForecastProgress(0);
+      setForecastError(null);
+      try {
+        const nextForecast = await computeStandingsForecast(forecastParticipants, tournamentResultMap, {
+          scopeKey: "leaderboard",
+          onProgress: (completedRuns, totalRuns) => {
+            if (!cancelled) setForecastProgress(completedRuns / totalRuns);
+          },
+        });
+        if (cancelled) return;
+        setForecast(nextForecast);
+        setForecastLoading(false);
+      } catch (error) {
+        if (cancelled) return;
+        setForecastError((error as Error).message || "Could not compute leaderboard win odds.");
+        setForecastLoading(false);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [isVisible, parsedEntries, showForecast, tournamentResultMap]);
 
   return (
     <div className="leaderboard-full-wrapper">
@@ -831,6 +945,17 @@ export function LeaderboardFullWidth({
         {submissionsLocked ? (
           <div className="lb-lock-banner">Brackets are locked. Scores update as results come in.</div>
         ) : null}
+        {showForecast ? (
+          <div className="lb-forecast-banner">
+            {visibleForecastLoading ? (
+              <span>Simulating 10,000 seeded futures... {Math.round(Math.max(0, Math.min(1, visibleForecastProgress)) * 100)}%</span>
+            ) : visibleForecast ? (
+              <span>Leaderboard win odds updated from {visibleForecast.simCount.toLocaleString()} seeded simulations.</span>
+            ) : visibleForecastError ? (
+              <span>{visibleForecastError}</span>
+            ) : null}
+          </div>
+        ) : null}
 
         {!submissionsLocked ? <LBPrizeHero /> : null}
 
@@ -838,12 +963,14 @@ export function LeaderboardFullWidth({
           <div className="lb-loading">Loading leaderboard...</div>
         ) : parsedEntries.length === 0 ? (
           <LBEmptyState submissionsLocked={submissionsLocked} onClose={onClose} onSubmitBracket={onSubmitBracket} />
-        ) : tournamentStarted ? (
+        ) : showTournamentLeaderboard ? (
           <TournamentLeaderboard
             canAdminDelete={canAdminDelete}
             deletingBracketId={deletingBracketId}
             entries={parsedEntries}
             currentUserId={user?.id ?? null}
+            forecast={visibleForecast}
+            forecastLoading={visibleForecastLoading}
             tournamentState={tournamentState}
             onDelete={handleAdminDelete}
           />

@@ -6,6 +6,8 @@ import { resolveBracketWithKnownResults } from "./lib/bracketCompletion";
 import { teamLogoUrl } from "./lib/logo";
 import { canSeeDetails } from "./groupVisibility";
 import type { GroupStanding } from "./groupStorage";
+import { StandingsForecastHistogram } from "./StandingsForecastHistogram";
+import type { StandingsForecastResult } from "./lib/standingsForecast";
 
 type RankedStanding = GroupStanding & { groupRank: number };
 
@@ -40,28 +42,55 @@ function getTeamInfo(teamId: string) {
   };
 }
 
+function formatForecastPercent(value: number | null | undefined) {
+  if (typeof value !== "number" || !Number.isFinite(value)) return "—";
+  return `${(value * 100).toFixed(value >= 0.1 ? 1 : 2)}%`;
+}
+
+function formatExpectedPoints(value: number | null | undefined) {
+  if (typeof value !== "number" || !Number.isFinite(value)) return "—";
+  return value.toFixed(1);
+}
+
+function formatExpectedRank(value: number | null | undefined) {
+  if (typeof value !== "number" || !Number.isFinite(value)) return "—";
+  return `#${value.toFixed(1)}`;
+}
+
 export function GroupStandingsTab({
+  groupId,
   standings,
   groupMemberCount,
   soleLeader,
   currentUserId,
   tournamentStarted,
+  submissionsLocked = false,
   canPreviewHidden = false,
   onViewBracket,
   onRefresh,
   onSelectBracket,
   onInvite,
+  forecast,
+  forecastLoading = false,
+  forecastProgress = 0,
+  forecastError = "",
 }: {
+  groupId: string;
   standings: RankedStanding[];
   groupMemberCount: number;
   soleLeader: string | null;
   currentUserId: string | undefined;
   tournamentStarted: boolean;
+  submissionsLocked?: boolean;
   canPreviewHidden?: boolean;
   onViewBracket: (info: { bracketId: string; displayName: string; bracketName: string }) => void;
   onRefresh: () => void;
   onSelectBracket?: () => void;
   onInvite: () => void;
+  forecast?: StandingsForecastResult | null;
+  forecastLoading?: boolean;
+  forecastProgress?: number;
+  forecastError?: string;
 }) {
   const orderedStandings = useMemo(
     () =>
@@ -74,9 +103,35 @@ export function GroupStandingsTab({
   );
 
   const standingsCount = orderedStandings.length;
+  const showForecast = submissionsLocked && orderedStandings.some((entry) => entry.bracket_id && entry.picks);
 
   return (
     <div className="gd-standings">
+      {showForecast ? (
+        <div className="gd-forecast-banner">
+          {forecastLoading ? (
+            <>
+              <span className="gd-forecast-banner-label">Win Odds</span>
+              <span className="gd-forecast-banner-value">
+                Simulating 10,000 seeded futures... {Math.round(Math.max(0, Math.min(1, forecastProgress)) * 100)}%
+              </span>
+            </>
+          ) : forecast ? (
+            <>
+              <span className="gd-forecast-banner-label">Win Odds</span>
+              <span className="gd-forecast-banner-value">
+                Updated from {forecast.simCount.toLocaleString()} seeded simulations
+              </span>
+            </>
+          ) : forecastError ? (
+            <>
+              <span className="gd-forecast-banner-label">Win Odds</span>
+              <span className="gd-forecast-banner-value gd-forecast-banner-value--error">{forecastError}</span>
+            </>
+          ) : null}
+        </div>
+      ) : null}
+
       {groupMemberCount <= 3 && (
         <div className="gd-invite-prompt">
           <div className="gd-invite-prompt-left">
@@ -125,10 +180,11 @@ export function GroupStandingsTab({
               : null;
           const chaosTier = getChaosTier(chaosScore);
           const canOpenBracket = Boolean(hasBracket && canSee);
+          const forecastEntry = forecast?.rows[entry.user_id] ?? null;
 
           return (
             <div
-              key={entry.user_id}
+              key={`${groupId}:${entry.user_id}`}
               className={`gd-player-card ${isCurrentUser ? "gd-player-card--you" : ""} ${isLeader ? "gd-player-card--leader" : ""} ${canOpenBracket ? "gd-player-card--clickable" : ""}`}
               onClick={() => {
                 if (!canOpenBracket) return;
@@ -230,6 +286,29 @@ export function GroupStandingsTab({
                   </div>
                 </div>
               )}
+
+              {hasBracket && canSee && forecastEntry ? (
+                <div className="gd-player-forecast">
+                  <div className="gd-player-forecast-stats">
+                    <div className="gd-player-forecast-stat">
+                      <span className="gd-player-forecast-label">Win</span>
+                      <span className="gd-player-forecast-value">{formatForecastPercent(forecastEntry.finish1Prob)}</span>
+                    </div>
+                    <div className="gd-player-forecast-stat">
+                      <span className="gd-player-forecast-label">Exp Pts</span>
+                      <span className="gd-player-forecast-value">{formatExpectedPoints(forecastEntry.expectedPoints)}</span>
+                    </div>
+                    <div className="gd-player-forecast-stat">
+                      <span className="gd-player-forecast-label">Exp Rank</span>
+                      <span className="gd-player-forecast-value">{formatExpectedRank(forecastEntry.expectedRank)}</span>
+                    </div>
+                  </div>
+                  <div className="gd-player-forecast-hist">
+                    <span className="gd-player-forecast-hist-label">Rank distribution</span>
+                    <StandingsForecastHistogram bins={forecast?.bins ?? []} values={forecastEntry.rankHistogram} compact />
+                  </div>
+                </div>
+              ) : null}
             </div>
           );
         })}

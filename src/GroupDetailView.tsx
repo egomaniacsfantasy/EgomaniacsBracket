@@ -11,7 +11,7 @@ import {
   type GroupStanding,
   type UserGroup,
 } from "./groupStorage";
-import { getUserBrackets, type SavedBracket } from "./bracketStorage";
+import { getTournamentResultMap, getUserBrackets, type SavedBracket } from "./bracketStorage";
 import { GroupMembersTab } from "./GroupMembersTab";
 import { GroupStandingsTab } from "./GroupStandingsTab";
 import { GroupPicksTab } from "./GroupPicksTab";
@@ -20,6 +20,7 @@ import { GROUP_EMOJIS } from "./constants";
 import { hasElevatedAccess } from "./groupVisibility";
 import { captureError } from "./lib/errorMonitoring";
 import { getBracketCompletionSummary } from "./lib/bracketCompletion";
+import { computeStandingsForecast, type StandingsForecastResult } from "./lib/standingsForecast";
 
 type RankedStanding = GroupStanding & { groupRank: number };
 
@@ -48,6 +49,10 @@ export function GroupDetailView({
   const [loadError, setLoadError] = useState("");
   const [selectedPicksBracketId, setSelectedPicksBracketId] = useState<string | null>(null);
   const [showSettings, setShowSettings] = useState(false);
+  const [groupForecast, setGroupForecast] = useState<StandingsForecastResult | null>(null);
+  const [groupForecastLoading, setGroupForecastLoading] = useState(false);
+  const [groupForecastProgress, setGroupForecastProgress] = useState(0);
+  const [groupForecastError, setGroupForecastError] = useState("");
 
   // Bracket picker state for members with no bracket
   const [showBracketPicker, setShowBracketPicker] = useState(false);
@@ -86,6 +91,10 @@ export function GroupDetailView({
     setSelectedBracket(null);
     setBracketPickerError("");
     setSelectedPicksBracketId(null);
+    setGroupForecast(null);
+    setGroupForecastLoading(false);
+    setGroupForecastProgress(0);
+    setGroupForecastError("");
   }, [group?.id]);
 
   function handleOpenBracketInPicks(info: { bracketId: string; displayName: string; bracketName: string }) {
@@ -291,6 +300,16 @@ export function GroupDetailView({
     const leaders = rankedStandings.filter((s) => s.groupRank === 1);
     return leaders.length === 1 ? leaders[0].user_id : null;
   }, [rankedStandings]);
+  const forecastParticipants = useMemo(
+    () =>
+      rankedStandings
+        .filter((entry) => entry.bracket_id && entry.picks)
+        .map((entry) => ({
+          id: entry.user_id,
+          picks: entry.picks,
+        })),
+    [rankedStandings],
+  );
   const displayedMemberCount = members.length > 0 ? members.length : Math.max(group?.memberCount ?? 0, standings.length);
   const currentMember = useMemo(
     () => members.find((member) => member.user_id === user?.id) ?? null,
@@ -310,6 +329,59 @@ export function GroupDetailView({
     }, 3500);
     return () => window.clearTimeout(timeoutId);
   }, [bracketPickerError, showBracketPicker]);
+
+  useEffect(() => {
+    if (!isOpen || !group || !submissionsLocked) {
+      setGroupForecast(null);
+      setGroupForecastLoading(false);
+      setGroupForecastProgress(0);
+      setGroupForecastError("");
+      return;
+    }
+
+    if (forecastParticipants.length === 0) {
+      setGroupForecast(null);
+      setGroupForecastLoading(false);
+      setGroupForecastProgress(0);
+      setGroupForecastError("");
+      return;
+    }
+
+    let cancelled = false;
+    setGroupForecastLoading(true);
+    setGroupForecastProgress(0);
+    setGroupForecastError("");
+
+    void (async () => {
+      const { data: tournamentResultMap, error } = await getTournamentResultMap();
+      if (cancelled) return;
+      if (error && Object.keys(tournamentResultMap ?? {}).length === 0) {
+        setGroupForecastError(error.message || "Could not compute group win odds.");
+        setGroupForecastLoading(false);
+        return;
+      }
+
+      try {
+        const forecast = await computeStandingsForecast(forecastParticipants, tournamentResultMap ?? {}, {
+          scopeKey: `group:${group.id}`,
+          onProgress: (completedRuns, totalRuns) => {
+            if (!cancelled) setGroupForecastProgress(completedRuns / totalRuns);
+          },
+        });
+        if (cancelled) return;
+        setGroupForecast(forecast);
+        setGroupForecastLoading(false);
+      } catch (forecastError) {
+        if (cancelled) return;
+        setGroupForecastError((forecastError as Error).message || "Could not compute group win odds.");
+        setGroupForecastLoading(false);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [forecastParticipants, group, isOpen, submissionsLocked]);
 
   if (!isOpen || !group) return null;
 
@@ -393,16 +465,22 @@ export function GroupDetailView({
           <>
             {activeTab === "standings" && (
               <GroupStandingsTab
+                groupId={group.id}
                 standings={rankedStandings}
                 groupMemberCount={displayedMemberCount}
                 soleLeader={soleLeader}
                 currentUserId={user?.id}
                 tournamentStarted={tournamentStarted}
+                submissionsLocked={submissionsLocked}
                 canPreviewHidden={canPreviewHidden}
                 onViewBracket={handleOpenBracketInPicks}
                 onRefresh={loadGroupData}
                 onSelectBracket={submissionsLocked ? undefined : handleOpenBracketPicker}
                 onInvite={() => void handleInvite()}
+                forecast={groupForecast}
+                forecastLoading={groupForecastLoading}
+                forecastProgress={groupForecastProgress}
+                forecastError={groupForecastError}
               />
             )}
             {activeTab === "members" && (

@@ -1444,12 +1444,33 @@ body {
 
 .lb-row--tournament {
   display: grid;
-  grid-template-columns: 40px minmax(120px, 1fr) minmax(110px, 0.88fr) 70px 90px minmax(140px, 1.02fr) minmax(130px, 0.98fr) minmax(150px, 1.2fr) 70px;
+  grid-template-columns:
+    40px
+    minmax(120px, 1fr)
+    minmax(110px, 0.88fr)
+    70px
+    90px
+    82px
+    minmax(140px, 1.02fr)
+    minmax(130px, 0.98fr)
+    minmax(150px, 1.2fr)
+    70px;
   gap: 10px;
 }
 
 .lb-row--tournament.lb-row--admin {
-  grid-template-columns: 40px minmax(110px, 0.95fr) minmax(100px, 0.82fr) 70px 90px minmax(130px, 0.95fr) minmax(120px, 0.9fr) minmax(140px, 1.08fr) 70px 110px;
+  grid-template-columns:
+    40px
+    minmax(110px, 0.95fr)
+    minmax(100px, 0.82fr)
+    70px
+    90px
+    82px
+    minmax(130px, 0.95fr)
+    minmax(120px, 0.9fr)
+    minmax(140px, 1.08fr)
+    70px
+    110px;
 }
 
 button.lb-row {
@@ -1687,6 +1708,13 @@ button.lb-row {
   text-align: center;
 }
 
+.lb-col-win {
+  text-align: right;
+  font-family: var(--font-mono);
+  font-weight: 700;
+  color: var(--text-amber);
+}
+
 .lb-col-max {
   text-align: right;
 }
@@ -1784,13 +1812,62 @@ button.lb-row {
   }
   to {
     opacity: 1;
-    max-height: 80px;
+    max-height: 320px;
   }
 }
 
 .lb-detail-rounds {
   display: flex;
+  flex-wrap: wrap;
   gap: 16px;
+}
+
+.lb-detail-forecast {
+  margin-top: 16px;
+  padding-top: 14px;
+  border-top: 1px solid rgba(171, 138, 69, 0.12);
+  display: flex;
+  flex-wrap: wrap;
+  gap: 20px;
+  align-items: flex-end;
+}
+
+.lb-detail-forecast-metrics {
+  display: flex;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+
+.lb-detail-forecast-stat {
+  min-width: 98px;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.lb-detail-forecast-label,
+.lb-detail-forecast-hist-label {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text-tertiary);
+}
+
+.lb-detail-forecast-value {
+  font-family: var(--font-mono);
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.lb-detail-forecast-hist {
+  flex: 1;
+  min-width: 240px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
 }
 
 .lb-detail-actions {
@@ -1812,6 +1889,72 @@ button.lb-row {
   letter-spacing: 0.1em;
   color: var(--text-tertiary);
   text-transform: uppercase;
+}
+
+.lb-forecast-banner {
+  margin: 0 0 16px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  border: 1px solid rgba(184, 125, 24, 0.12);
+  background: rgba(184, 125, 24, 0.04);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--text-secondary);
+  text-align: center;
+}
+
+.sfh {
+  display: flex;
+  align-items: flex-end;
+  gap: 6px;
+  min-height: 76px;
+}
+
+.sfh--compact {
+  min-height: 56px;
+  gap: 5px;
+}
+
+.sfh-bin {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  flex: 1 1 0;
+  min-width: 0;
+}
+
+.sfh--compact .sfh-bin {
+  gap: 4px;
+}
+
+.sfh-bar-wrap {
+  width: 100%;
+  height: 54px;
+  border-radius: 6px 6px 3px 3px;
+  background: rgba(184, 125, 24, 0.08);
+  border: 1px solid rgba(184, 125, 24, 0.08);
+  display: flex;
+  align-items: flex-end;
+  overflow: hidden;
+}
+
+.sfh--compact .sfh-bar-wrap {
+  height: 38px;
+}
+
+.sfh-bar {
+  width: 100%;
+  border-radius: 4px 4px 0 0;
+  background: linear-gradient(180deg, rgba(231, 191, 114, 0.95), rgba(184, 125, 24, 0.7));
+}
+
+.sfh-label {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  letter-spacing: 0.06em;
+  color: var(--text-tertiary);
+  white-space: nowrap;
 }
 
 .lb-detail-round-score {
@@ -1973,6 +2116,7 @@ button.lb-row {
   .lb-col-runner-up,
   .lb-col-boldest,
   .lb-col-max,
+  .lb-col-win,
   .lb-col-score,
   .lb-col-correct,
   .lb-col-chaos {
@@ -1996,6 +2140,15 @@ button.lb-row {
 
   .lb-row {
     padding: 10px 8px;
+  }
+
+  .lb-detail-forecast {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .lb-detail-forecast-hist {
+    min-width: 0;
   }
 
   .lb-close {
@@ -9264,6 +9417,86 @@ body.groups-hub-open .grp-hub-screen * {
   margin-top: 4px;
 }
 
+.gd-forecast-banner {
+  margin-bottom: 12px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid rgba(184, 125, 24, 0.12);
+  background: rgba(184, 125, 24, 0.04);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.gd-forecast-banner-label {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text-amber);
+}
+
+.gd-forecast-banner-value {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--text-secondary);
+  text-align: right;
+}
+
+.gd-forecast-banner-value--error {
+  color: #fca5a5;
+}
+
+.gd-player-forecast {
+  width: 100%;
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid rgba(171, 138, 69, 0.12);
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+}
+
+.gd-player-forecast-stats {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.gd-player-forecast-stat {
+  min-width: 84px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.gd-player-forecast-label,
+.gd-player-forecast-hist-label {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: rgba(240, 230, 208, 0.42);
+}
+
+.gd-player-forecast-value {
+  font-family: var(--font-mono);
+  font-size: 17px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.gd-player-forecast-hist {
+  flex: 1;
+  min-width: 220px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
 .gd-player-score {
   display: flex;
   flex-wrap: wrap;
@@ -15525,6 +15758,24 @@ body.walkthrough-active .odds-value--changed::after {
   .gd-player-score-meta {
     align-items: flex-start;
     text-align: left;
+  }
+
+  .gd-forecast-banner {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .gd-forecast-banner-value {
+    text-align: left;
+  }
+
+  .gd-player-forecast {
+    gap: 12px;
+  }
+
+  .gd-player-forecast-hist {
+    min-width: 0;
+    width: 100%;
   }
 
   .leaderboard-full {
