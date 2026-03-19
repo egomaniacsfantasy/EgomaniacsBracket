@@ -90,7 +90,7 @@ type SaveBracketOptions = {
 };
 
 const LEADERBOARD_QUERY_TIMEOUT_MS = 8000;
-const LEADERBOARD_CACHE_PREFIX = "og_leaderboard_cache_v2";
+const LEADERBOARD_CACHE_PREFIX = "og_leaderboard_cache_v3";
 const LEADERBOARD_PAGE_SIZE = 500;
 const TOURNAMENT_RESULTS_CACHE_KEY = "og_tournament_results_cache_v2";
 
@@ -122,6 +122,12 @@ function writeCachedValue<T>(key: string, value: T) {
   } catch {
     // Ignore storage failures.
   }
+}
+
+function normalizeOptionalText(value: unknown): string | null {
+  if (typeof value !== "string") return null;
+  const trimmed = value.trim();
+  return trimmed.length > 0 ? trimmed : null;
 }
 
 export function getCachedLeaderboard(limit?: number | null): LeaderboardEntry[] {
@@ -204,18 +210,22 @@ async function hydrateLeaderboardEntries(entries: LeaderboardEntry[]): Promise<L
       const derivedMeta = deriveLeaderboardDisplayMeta(picks);
       const extractedMeta = picks ? extractBracketMeta(picks) : null;
       const score = picks ? scoreBracketPicks(picks, tournamentResultMap) : null;
+      const storedChampionName = normalizeOptionalText(entry.champion_name);
+      const storedChampionLogoUrl = normalizeOptionalText(entry.champion_logo_url);
+      const storedRunnerUpName = normalizeOptionalText(entry.runner_up_name);
+      const storedRunnerUpLogoUrl = normalizeOptionalText(entry.runner_up_logo_url);
       return {
         ...entry,
         rank: score ? null : entry.rank,
         picks,
         chaos_score: entry.chaos_score ?? bracket?.chaos_score ?? null,
-        champion_name: entry.champion_name ?? extractedMeta?.champion_name ?? derivedMeta.champion_name,
+        champion_name: storedChampionName ?? extractedMeta?.champion_name ?? derivedMeta.champion_name,
         champion_seed: entry.champion_seed ?? extractedMeta?.champion_seed ?? derivedMeta.champion_seed,
-        champion_logo_url: entry.champion_logo_url ?? extractedMeta?.champion_logo_url ?? derivedMeta.champion_logo_url,
+        champion_logo_url: storedChampionLogoUrl ?? extractedMeta?.champion_logo_url ?? derivedMeta.champion_logo_url,
         champion_eliminated: entry.champion_eliminated ?? extractedMeta?.champion_eliminated ?? false,
-        runner_up_name: entry.runner_up_name ?? derivedMeta.runner_up_name,
+        runner_up_name: storedRunnerUpName ?? derivedMeta.runner_up_name,
         runner_up_seed: entry.runner_up_seed ?? derivedMeta.runner_up_seed,
-        runner_up_logo_url: entry.runner_up_logo_url ?? derivedMeta.runner_up_logo_url,
+        runner_up_logo_url: storedRunnerUpLogoUrl ?? derivedMeta.runner_up_logo_url,
         boldest_pick: entry.boldest_pick ?? extractedMeta?.boldest_pick ?? null,
         total_score: score?.totalScore ?? entry.total_score,
         correct_picks: score?.correctPicks ?? entry.correct_picks,
@@ -692,9 +702,9 @@ export async function getLeaderboard(limit?: number | null) {
         bracket_name: String(b.bracket_name ?? "Bracket"),
         updated_at: (row.updated_at as string | null | undefined) ?? null,
         chaos_score: (b.chaos_score as number | null | undefined) ?? null,
-        champion_name: (b.champion_name as string | null | undefined) ?? null,
+        champion_name: normalizeOptionalText(b.champion_name),
         champion_seed: (b.champion_seed as number | null | undefined) ?? null,
-        champion_logo_url: (b.champion_logo_url as string | null | undefined) ?? null,
+        champion_logo_url: normalizeOptionalText(b.champion_logo_url),
         champion_eliminated: Boolean(b.champion_eliminated),
         final_four: (b.final_four as LeaderboardFinalFourTeam[] | string | null | undefined) ?? null,
         boldest_pick: (b.boldest_pick as LeaderboardBoldestPick | string | null | undefined) ?? null,

@@ -130,7 +130,17 @@ function getRunnerUpDisplay(entry: LeaderboardEntry): PickDisplay | null {
 }
 
 function getChampionDisplay(entry: LeaderboardEntry): PickDisplay | null {
-  return buildPickDisplay(entry.champion_name, entry.champion_seed, entry.champion_logo_url);
+  const storedChampion = buildPickDisplay(entry.champion_name, entry.champion_seed, entry.champion_logo_url);
+  if (storedChampion) return storedChampion;
+
+  const picks = entry.picks ?? null;
+  if (!picks) return null;
+  const { games } = resolveBracketWithKnownResults(picks);
+  const champGame = games.find((game) => game.round === "CHAMP");
+  if (!champGame?.winnerId) return null;
+  const championTeam = teams.find((team) => team.id === champGame.winnerId);
+  if (!championTeam) return null;
+  return buildPickDisplay(championTeam.name, championTeam.seed, teamLogoUrl(championTeam));
 }
 
 function getBoldestTargetRound(round: string | null | undefined): string | null {
