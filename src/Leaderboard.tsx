@@ -4,33 +4,53 @@ import {
   deleteBracketAsAdmin,
   getChaosTierEmoji,
   getCachedLeaderboard,
+  getCachedTournamentResultMap,
   type LeaderboardBoldestPick,
   type LeaderboardEntry,
-  type LeaderboardFinalFourTeam,
   getLeaderboard,
+  getTournamentResultMap,
 } from "./bracketStorage";
+import { teams } from "./data/teams";
 import { hasElevatedAccess } from "./groupVisibility";
+import { resolveBracketWithKnownResults } from "./lib/bracketCompletion";
 import { captureError } from "./lib/errorMonitoring";
+import { teamLogoUrl } from "./lib/logo";
+import { abbreviationForTeam } from "./lib/abbreviation";
+import type { LockedPicks } from "./lib/bracket";
+import type { ScoringResult } from "./lib/bracketScoring";
 
 type ParsedLeaderboardEntry = LeaderboardEntry & {
-  finalFourParsed: LeaderboardFinalFourTeam[];
   boldestParsed: LeaderboardBoldestPick | null;
 };
 
-function parseFinalFour(value: unknown): LeaderboardFinalFourTeam[] {
-  const raw = typeof value === "string" ? safeJsonParse(value) : value;
-  if (!Array.isArray(raw)) return [];
-  return raw
-    .map((item) => {
-      const row = item as Record<string, unknown>;
-      const name = typeof row.name === "string" ? row.name : null;
-      const seed = typeof row.seed === "number" ? row.seed : typeof row.seed === "string" ? Number(row.seed) : null;
-      const logoUrl = typeof row.logoUrl === "string" ? row.logoUrl : null;
-      if (!name || !Number.isFinite(seed ?? NaN)) return null;
-      return { name, seed: Number(seed), logoUrl };
-    })
-    .filter((row): row is LeaderboardFinalFourTeam => Boolean(row));
-}
+const teamsByName = new Map(teams.map((team) => [team.name, team]));
+const ADVANCEMENT_LABEL_BY_ROUND: Record<string, string | null> = {
+  FF: "R64",
+  R64: "R32",
+  R32: "S16",
+  S16: "E8",
+  E8: "F4",
+  F4: "CHAMP",
+  CHAMP: "CHAMP",
+};
+const ADVANCEMENT_RANK: Record<string, number> = {
+  R64: 1,
+  R32: 2,
+  S16: 3,
+  E8: 4,
+  F4: 5,
+  CHAMP: 6,
+};
+
+type PickDisplay = {
+  name: string;
+  shortName: string;
+  seed: number | null;
+  logoUrl: string | null;
+  teamId: string | null;
+};
+
+type TournamentPickState = "normal" | "eliminated" | "nailed";
 
 function parseBoldestPick(value: unknown): LeaderboardBoldestPick | null {
   const raw = typeof value === "string" ? safeJsonParse(value) : value;
@@ -71,6 +91,97 @@ function safeJsonParse(value: string): unknown {
   }
 }
 
+function buildPickDisplay(
+  name?: string | null,
+  seed?: number | null,
+  logoUrl?: string | null
+): PickDisplay | null {
+  const trimmedName = name?.trim();
+  if (!trimmedName) return null;
+  const team = teamsByName.get(trimmedName);
+  return {
+    name: trimmedName,
+    shortName: abbreviationForTeam(trimmedName),
+    seed: seed ?? team?.seed ?? null,
+    logoUrl: logoUrl ?? (team ? teamLogoUrl(team) : null),
+    teamId: team?.id ?? null,
+  };
+}
+
+function getRunnerUpDisplay(entry: LeaderboardEntry): PickDisplay | null {
+  if (entry.runner_up_name) {
+    return buildPickDisplay(entry.runner_up_name, entry.runner_up_seed, entry.runner_up_logo_url);
+  }
+
+  const picks = entry.picks ?? null;
+  if (!picks) return null;
+  const { games } = resolveBracketWithKnownResults(picks);
+  const champGame = games.find((game) => game.round === "CHAMP");
+  if (!champGame?.winnerId || !champGame.teamAId || !champGame.teamBId) return null;
+  const runnerUpId = champGame.winnerId === champGame.teamAId ? champGame.teamBId : champGame.teamAId;
+  const runnerUpTeam = teams.find((team) => team.id === runnerUpId);
+  if (!runnerUpTeam) return null;
+  return buildPickDisplay(runnerUpTeam.name, runnerUpTeam.seed, teamLogoUrl(runnerUpTeam));
+}
+
+function getChampionDisplay(entry: LeaderboardEntry): PickDisplay | null {
+  return buildPickDisplay(entry.champion_name, entry.champion_seed, entry.champion_logo_url);
+}
+
+function getBoldestTargetRound(round: string | null | undefined): string | null {
+  if (!round) return null;
+  return ADVANCEMENT_LABEL_BY_ROUND[round] ?? null;
+}
+
+function buildTournamentState(resultMap: Record<string, ScoringResult>) {
+  const actualPicks = Object.fromEntries(
+    Object.entries(resultMap).map(([matchupId, result]) => [matchupId, result.winner])
+  ) as LockedPicks;
+  const { games } = resolveBracketWithKnownResults(actualPicks);
+  const eliminatedTeamIds = new Set<string>();
+  const advancementByTeamId = new Map<string, number>();
+
+  games.forEach((game) => {
+    if (!game.teamAId || !game.teamBId || !game.winnerId) return;
+    if (game.teamAId !== game.winnerId) eliminatedTeamIds.add(game.teamAId);
+    if (game.teamBId !== game.winnerId) eliminatedTeamIds.add(game.teamBId);
+
+    const advancementLabel = ADVANCEMENT_LABEL_BY_ROUND[game.round];
+    if (!advancementLabel) return;
+    const advancementRank = ADVANCEMENT_RANK[advancementLabel] ?? 0;
+    const existingRank = advancementByTeamId.get(game.winnerId) ?? 0;
+    if (advancementRank > existingRank) {
+      advancementByTeamId.set(game.winnerId, advancementRank);
+    }
+  });
+
+  return { eliminatedTeamIds, advancementByTeamId };
+}
+
+function getPickEliminationState(
+  pick: PickDisplay | null,
+  tournamentState: ReturnType<typeof buildTournamentState> | null
+): TournamentPickState {
+  if (!pick?.teamId || !tournamentState) return "normal";
+  return tournamentState.eliminatedTeamIds.has(pick.teamId) ? "eliminated" : "normal";
+}
+
+function getBoldestState(
+  pick: LeaderboardBoldestPick | null,
+  tournamentState: ReturnType<typeof buildTournamentState> | null
+): TournamentPickState {
+  if (!pick || !tournamentState) return "normal";
+  const team = teamsByName.get(pick.winner_name);
+  if (!team) return "normal";
+
+  const targetRound = getBoldestTargetRound(pick.round);
+  const targetRank = targetRound ? ADVANCEMENT_RANK[targetRound] ?? 0 : 0;
+  const reachedRank = tournamentState.advancementByTeamId.get(team.id) ?? 0;
+  if (targetRank > 0 && reachedRank >= targetRank) return "nailed";
+  if (tournamentState.eliminatedTeamIds.has(team.id)) return "eliminated";
+  return "normal";
+}
+
 function LeaderboardTeamLogo({
   src,
   seed,
@@ -98,23 +209,165 @@ function LeaderboardTeamLogo({
   );
 }
 
-function renderChampion(entry: LeaderboardEntry, showElimination: boolean) {
-  const champName = entry.champion_name ?? "—";
-  const champSeed = entry.champion_seed ?? null;
+function renderChampion(
+  entry: LeaderboardEntry,
+  showElimination: boolean,
+  tournamentState: ReturnType<typeof buildTournamentState> | null = null
+) {
+  const champion = getChampionDisplay(entry);
+  const championState = showElimination ? getPickEliminationState(champion, tournamentState) : "normal";
   return (
     <span className="lb-col lb-col-champion">
       <LeaderboardTeamLogo
-        src={entry.champion_logo_url}
-        seed={champSeed}
-        name={champName}
+        src={champion?.logoUrl}
+        seed={champion?.seed ?? null}
+        name={champion?.name ?? "—"}
         className="lb-champion-logo"
         fallbackClassName="lb-champion-logo-fallback"
       />
-      {champSeed !== null ? <span className="lb-champion-seed">#{champSeed}</span> : null}
-      <span className={`lb-champion-name ${showElimination && entry.champion_eliminated ? "lb-champion-name--eliminated" : ""}`}>
-        {champName}
+      {champion?.seed !== null && champion?.seed !== undefined ? <span className="lb-champion-seed">#{champion.seed}</span> : null}
+      <span className={`lb-champion-name ${championState === "eliminated" ? "lb-pick-name--eliminated" : ""}`}>
+        {champion?.name ?? "—"}
       </span>
-      {showElimination && entry.champion_eliminated ? <span className="lb-champion-elim">✗</span> : null}
+      {championState === "eliminated" ? <span className="lb-champion-elim">✗</span> : null}
+    </span>
+  );
+}
+
+function renderRunnerUp(
+  entry: LeaderboardEntry,
+  showElimination: boolean,
+  tournamentState: ReturnType<typeof buildTournamentState> | null = null
+) {
+  const runnerUp = getRunnerUpDisplay(entry);
+  const runnerUpState = showElimination ? getPickEliminationState(runnerUp, tournamentState) : "normal";
+
+  return (
+    <span className="lb-col lb-col-runner-up">
+      {runnerUp ? (
+        <>
+          <LeaderboardTeamLogo
+            src={runnerUp.logoUrl}
+            seed={runnerUp.seed}
+            name={runnerUp.name}
+            className="lb-runner-logo"
+            fallbackClassName="lb-runner-logo-fallback"
+          />
+          <span className={`lb-runner-name ${runnerUpState === "eliminated" ? "lb-pick-name--eliminated" : ""}`}>
+            {runnerUp.shortName}
+          </span>
+          {runnerUp.seed !== null ? <span className="lb-runner-seed">#{runnerUp.seed}</span> : null}
+          {runnerUpState === "eliminated" ? <span className="lb-runner-elim">✗</span> : null}
+        </>
+      ) : (
+        <span className="lb-muted-dash">—</span>
+      )}
+    </span>
+  );
+}
+
+function renderBoldestPick(
+  boldestPick: LeaderboardBoldestPick | null,
+  showStatus: boolean,
+  tournamentState: ReturnType<typeof buildTournamentState> | null = null
+) {
+  const boldestState = showStatus ? getBoldestState(boldestPick, tournamentState) : "normal";
+  const winnerTeam = boldestPick ? teamsByName.get(boldestPick.winner_name) : null;
+  const targetRound = getBoldestTargetRound(boldestPick?.round);
+
+  return (
+    <span className={`lb-col lb-col-boldest ${boldestState !== "normal" ? `lb-col-boldest--${boldestState}` : ""}`}>
+      {boldestPick && winnerTeam ? (
+        <>
+          <LeaderboardTeamLogo
+            src={teamLogoUrl(winnerTeam)}
+            seed={winnerTeam.seed}
+            name={winnerTeam.name}
+            className="lb-boldest-logo"
+            fallbackClassName="lb-boldest-logo-fallback"
+          />
+          <span className={`lb-boldest-text ${boldestState !== "normal" ? `lb-boldest-text--${boldestState}` : ""}`}>
+            #{boldestPick.winner_seed} {abbreviationForTeam(boldestPick.winner_name)}
+          </span>
+          {targetRound ? <span className="lb-boldest-arrow">→ {targetRound}</span> : null}
+        </>
+      ) : (
+        <span className="lb-muted-dash">—</span>
+      )}
+    </span>
+  );
+}
+
+function renderMobileStory(
+  entry: LeaderboardEntry,
+  showTournamentStates: boolean,
+  tournamentState: ReturnType<typeof buildTournamentState> | null = null
+) {
+  const champion = getChampionDisplay(entry);
+  const runnerUp = getRunnerUpDisplay(entry);
+  const championState = showTournamentStates ? getPickEliminationState(champion, tournamentState) : "normal";
+  const runnerUpState = showTournamentStates ? getPickEliminationState(runnerUp, tournamentState) : "normal";
+  const boldestPick = parseBoldestPick(entry.boldest_pick);
+  const boldestState = showTournamentStates ? getBoldestState(boldestPick, tournamentState) : "normal";
+  const boldestWinner = boldestPick ? teamsByName.get(boldestPick.winner_name) : null;
+  const targetRound = getBoldestTargetRound(boldestPick?.round);
+
+  return (
+    <span className="lb-col lb-col-mobile-story">
+      <span className="lb-mobile-title-matchup">
+        {champion ? (
+          <span className="lb-mobile-team">
+            <LeaderboardTeamLogo
+              src={champion.logoUrl}
+              seed={champion.seed}
+              name={champion.name}
+              className="lb-mobile-team-logo"
+              fallbackClassName="lb-mobile-team-fallback"
+            />
+            <span className={`lb-mobile-team-name ${championState === "eliminated" ? "lb-pick-name--eliminated" : ""}`}>
+              {champion.shortName}
+            </span>
+          </span>
+        ) : (
+          <span className="lb-muted-dash">—</span>
+        )}
+        <span className="lb-mobile-vs">vs</span>
+        {runnerUp ? (
+          <span className="lb-mobile-team">
+            <LeaderboardTeamLogo
+              src={runnerUp.logoUrl}
+              seed={runnerUp.seed}
+              name={runnerUp.name}
+              className="lb-mobile-team-logo"
+              fallbackClassName="lb-mobile-team-fallback"
+            />
+            <span className={`lb-mobile-team-name ${runnerUpState === "eliminated" ? "lb-pick-name--eliminated" : ""}`}>
+              {runnerUp.shortName}
+            </span>
+          </span>
+        ) : (
+          <span className="lb-muted-dash">—</span>
+        )}
+      </span>
+      <span className={`lb-mobile-boldest ${boldestState !== "normal" ? `lb-mobile-boldest--${boldestState}` : ""}`}>
+        {boldestPick && boldestWinner ? (
+          <>
+            <LeaderboardTeamLogo
+              src={teamLogoUrl(boldestWinner)}
+              seed={boldestWinner.seed}
+              name={boldestWinner.name}
+              className="lb-mobile-boldest-logo"
+              fallbackClassName="lb-mobile-boldest-fallback"
+            />
+            <span className={`lb-mobile-boldest-text ${boldestState !== "normal" ? `lb-boldest-text--${boldestState}` : ""}`}>
+              #{boldestPick.winner_seed} {abbreviationForTeam(boldestPick.winner_name)}
+            </span>
+            {targetRound ? <span className="lb-mobile-boldest-arrow">→ {targetRound}</span> : null}
+          </>
+        ) : (
+          <span className="lb-muted-dash">—</span>
+        )}
+      </span>
     </span>
   );
 }
@@ -249,9 +502,10 @@ function PreTournamentLeaderboard({
         <span className="lb-col lb-col-player">PLAYER</span>
         <span className="lb-col lb-col-bracket">BRACKET</span>
         <span className="lb-col lb-col-champion">CHAMPION</span>
-        <span className="lb-col lb-col-f4">FINAL FOUR</span>
-        <span className="lb-col lb-col-chaos">CHAOS</span>
+        <span className="lb-col lb-col-runner-up">RUNNER-UP</span>
         <span className="lb-col lb-col-boldest">BOLDEST PICK</span>
+        <span className="lb-col lb-col-chaos">CHAOS</span>
+        <span className="lb-col lb-col-mobile-story">PICKS</span>
         {canAdminDelete ? <span className="lb-col lb-col-admin">ADMIN</span> : null}
       </div>
       {entries.map((entry, index) => {
@@ -268,27 +522,9 @@ function PreTournamentLeaderboard({
               {isMe ? <span className="lb-you-badge">YOU</span> : null}
             </span>
             <span className="lb-col lb-col-bracket">{entry.bracket_name}</span>
-            {renderChampion(entry, false)}
-            <span className="lb-col lb-col-f4">
-              {entry.finalFourParsed.length > 0 ? (
-                <div className="lb-f4-logos">
-                  {entry.finalFourParsed.slice(0, 4).map((team, logoIndex) => (
-                    <img
-                      key={`${entry.bracket_id ?? index}-f4-${logoIndex}`}
-                      src={team.logoUrl ?? ""}
-                      alt={team.name}
-                      className="lb-f4-logo"
-                      title={`#${team.seed} ${team.name}`}
-                      onError={(event) => {
-                        event.currentTarget.style.display = "none";
-                      }}
-                    />
-                  ))}
-                </div>
-              ) : (
-                "—"
-              )}
-            </span>
+            {renderChampion(entry, false, null)}
+            {renderRunnerUp(entry, false, null)}
+            {renderBoldestPick(entry.boldestParsed, false, null)}
             <span className="lb-col lb-col-chaos">
               {entry.chaos_score !== null && entry.chaos_score !== undefined ? (
                 <>
@@ -299,17 +535,7 @@ function PreTournamentLeaderboard({
                 "—"
               )}
             </span>
-            <span className="lb-col lb-col-boldest">
-              {entry.boldestParsed ? (
-                <span className="lb-boldest-text">
-                  #{entry.boldestParsed.winner_seed} {entry.boldestParsed.winner_name}
-                  <span className="lb-boldest-over"> over </span>#{entry.boldestParsed.loser_seed}{" "}
-                  {entry.boldestParsed.loser_name}
-                </span>
-              ) : (
-                "—"
-              )}
-            </span>
+            {renderMobileStory(entry, false, null)}
             {canAdminDelete ? (
               <span className="lb-col lb-col-admin">
                 <button
@@ -334,12 +560,14 @@ function TournamentLeaderboard({
   deletingBracketId,
   entries,
   currentUserId,
+  tournamentState,
   onDelete,
 }: {
   canAdminDelete: boolean;
   deletingBracketId: string | null;
   entries: ParsedLeaderboardEntry[];
   currentUserId: string | null;
+  tournamentState: ReturnType<typeof buildTournamentState> | null;
   onDelete: (entry: LeaderboardEntry) => void;
 }) {
   const [expandedBracketId, setExpandedBracketId] = useState<string | null>(null);
@@ -353,8 +581,10 @@ function TournamentLeaderboard({
         <span className="lb-col lb-col-score">SCORE</span>
         <span className="lb-col lb-col-correct">CORRECT</span>
         <span className="lb-col lb-col-champion">CHAMPION</span>
-        <span className="lb-col lb-col-chaos">CHAOS</span>
+        <span className="lb-col lb-col-runner-up">RUNNER-UP</span>
+        <span className="lb-col lb-col-boldest">BOLDEST PICK</span>
         <span className="lb-col lb-col-max">MAX</span>
+        <span className="lb-col lb-col-mobile-story">PICKS</span>
         {canAdminDelete ? <span className="lb-col lb-col-admin">ADMIN</span> : null}
       </div>
       {entries.map((entry, index) => {
@@ -386,18 +616,11 @@ function TournamentLeaderboard({
               <span className="lb-col lb-col-bracket">{entry.bracket_name}</span>
               <span className="lb-col lb-col-score lb-score-value">{entry.total_score ?? 0}</span>
               <span className="lb-col lb-col-correct">{entry.correct_picks ?? 0}/{entry.possible_picks ?? 63}</span>
-              {renderChampion(entry, true)}
-              <span className="lb-col lb-col-chaos">
-                {entry.chaos_score !== null && entry.chaos_score !== undefined ? (
-                  <>
-                    <span className="lb-chaos-emoji">{getChaosTierEmoji(entry.chaos_score)}</span>
-                    <span className="lb-chaos-score">{Math.round(entry.chaos_score)}</span>
-                  </>
-                ) : (
-                  "—"
-                )}
-              </span>
+              {renderChampion(entry, true, tournamentState)}
+              {renderRunnerUp(entry, true, tournamentState)}
+              {renderBoldestPick(entry.boldestParsed, true, tournamentState)}
               <span className="lb-col lb-col-max">{entry.max_remaining ?? "—"}</span>
+              {renderMobileStory(entry, true, tournamentState)}
               {canAdminDelete ? (
                 <span className="lb-col lb-col-admin">
                   <button
@@ -444,6 +667,7 @@ export function LeaderboardFullWidth({
 }) {
   const { user } = useAuth();
   const [entries, setEntries] = useState<LeaderboardEntry[]>(() => getCachedLeaderboard());
+  const [tournamentResultMap, setTournamentResultMap] = useState<Record<string, ScoringResult>>(() => getCachedTournamentResultMap());
   const [adminDeleteError, setAdminDeleteError] = useState<string | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [deletingBracketId, setDeletingBracketId] = useState<string | null>(null);
@@ -456,14 +680,21 @@ export function LeaderboardFullWidth({
       setEntries((current) => (current.length > 0 ? current : cachedEntries));
     }
     setLoading(cachedEntries.length === 0);
-    const { data, error } = await getLeaderboard();
+    const [{ data, error }, { data: resultsData, error: resultsError }] = await Promise.all([
+      getLeaderboard(),
+      getTournamentResultMap(),
+    ]);
     if (error) {
       captureError("leaderboard_load", error);
       setLoadError((error as { message?: string })?.message ?? "Leaderboard is taking longer than expected.");
     } else {
       setLoadError(null);
     }
+    if (resultsError) {
+      captureError("leaderboard_results_load", resultsError);
+    }
     setEntries(data ?? []);
+    setTournamentResultMap(resultsData ?? {});
     setLoading(false);
   }, []);
 
@@ -517,11 +748,11 @@ export function LeaderboardFullWidth({
         })
         .map((entry) => ({
           ...entry,
-          finalFourParsed: parseFinalFour(entry.final_four),
           boldestParsed: parseBoldestPick(entry.boldest_pick),
         })),
     [entries]
   );
+  const tournamentState = useMemo(() => buildTournamentState(tournamentResultMap), [tournamentResultMap]);
 
   const tournamentStarted = parsedEntries.some(
     (entry) =>
@@ -572,6 +803,7 @@ export function LeaderboardFullWidth({
             deletingBracketId={deletingBracketId}
             entries={parsedEntries}
             currentUserId={user?.id ?? null}
+            tournamentState={tournamentState}
             onDelete={handleAdminDelete}
           />
         ) : (

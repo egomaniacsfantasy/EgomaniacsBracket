@@ -6,6 +6,8 @@ import {
 } from "./lib/bracketCompletion";
 import { NCAA_KNOWN_RESULT_IDS } from "./data/ncaaKnownResults";
 import { teamsById } from "./data/teams";
+import { teamLogoUrl } from "./lib/logo";
+import { buildScoringResultMap, type ScoringResult } from "./lib/bracketScoring";
 
 export type LeaderboardFinalFourTeam = {
   name: string;
@@ -47,11 +49,15 @@ export type LeaderboardEntry = {
   bracket_name: string;
   display_name: string;
   updated_at?: string | null;
+  picks?: LockedPicks | null;
   chaos_score?: number | null;
   champion_name?: string | null;
   champion_seed?: number | null;
   champion_logo_url?: string | null;
   champion_eliminated?: boolean | null;
+  runner_up_name?: string | null;
+  runner_up_seed?: number | null;
+  runner_up_logo_url?: string | null;
   final_four?: LeaderboardFinalFourTeam[] | string | null;
   boldest_pick?: LeaderboardBoldestPick | string | null;
   total_score: number;
@@ -86,6 +92,7 @@ type SaveBracketOptions = {
 const LEADERBOARD_QUERY_TIMEOUT_MS = 8000;
 const LEADERBOARD_CACHE_PREFIX = "og_leaderboard_cache_v1";
 const LEADERBOARD_PAGE_SIZE = 500;
+const TOURNAMENT_RESULTS_CACHE_KEY = "og_tournament_results_cache_v1";
 
 type CachedValue<T> = {
   savedAt: number;
@@ -124,6 +131,93 @@ export function getCachedLeaderboard(limit?: number | null): LeaderboardEntry[] 
       : null;
   const cacheKey = `${LEADERBOARD_CACHE_PREFIX}:${normalizedLimit ?? "all"}`;
   return readCachedValue<LeaderboardEntry[]>(cacheKey) ?? [];
+}
+
+export function getCachedTournamentResultMap(): Record<string, ScoringResult> {
+  return readCachedValue<Record<string, ScoringResult>>(TOURNAMENT_RESULTS_CACHE_KEY) ?? {};
+}
+
+type LeaderboardDisplayMeta = {
+  champion_name: string | null;
+  champion_seed: number | null;
+  champion_logo_url: string | null;
+  runner_up_name: string | null;
+  runner_up_seed: number | null;
+  runner_up_logo_url: string | null;
+};
+
+function deriveLeaderboardDisplayMeta(picks: LockedPicks | null | undefined): LeaderboardDisplayMeta {
+  const { games } = resolveBracketWithKnownResults(picks ?? {});
+  const champGame = games.find((game) => game.round === "CHAMP");
+  const championId = champGame?.winnerId ?? null;
+  const runnerUpId =
+    championId && champGame?.teamAId && champGame?.teamBId
+      ? champGame.teamAId === championId
+        ? champGame.teamBId
+        : champGame.teamAId
+      : null;
+
+  const champion = championId ? teamsById.get(championId) ?? null : null;
+  const runnerUp = runnerUpId ? teamsById.get(runnerUpId) ?? null : null;
+
+  return {
+    champion_name: champion?.name ?? null,
+    champion_seed: champion?.seed ?? null,
+    champion_logo_url: champion ? teamLogoUrl(champion) : null,
+    runner_up_name: runnerUp?.name ?? null,
+    runner_up_seed: runnerUp?.seed ?? null,
+    runner_up_logo_url: runnerUp ? teamLogoUrl(runnerUp) : null,
+  };
+}
+
+async function hydrateLeaderboardEntries(entries: LeaderboardEntry[]): Promise<LeaderboardEntry[]> {
+  const bracketIds = [...new Set(entries.map((entry) => entry.bracket_id).filter(Boolean))];
+  if (bracketIds.length === 0) return entries;
+
+  try {
+    const bracketResult = await withTimeout(
+      supabase
+        .from("brackets")
+        .select("id, picks, champion_name, champion_seed, champion_logo_url, champion_eliminated, boldest_pick")
+        .in("id", bracketIds),
+      LEADERBOARD_QUERY_TIMEOUT_MS,
+      "Timed out loading leaderboard bracket details."
+    );
+
+    if (bracketResult.error) return entries;
+
+    const bracketMap = new Map(
+      ((bracketResult.data ?? []) as Array<{
+        id: string;
+        picks?: LockedPicks | null;
+        champion_name?: string | null;
+        champion_seed?: number | null;
+        champion_logo_url?: string | null;
+        champion_eliminated?: boolean | null;
+        boldest_pick?: LeaderboardBoldestPick | string | null;
+      }>).map((bracket) => [bracket.id, bracket])
+    );
+
+    return entries.map((entry) => {
+      const bracket = bracketMap.get(entry.bracket_id);
+      const picks = (bracket?.picks ?? null) as LockedPicks | null;
+      const derivedMeta = deriveLeaderboardDisplayMeta(picks);
+      return {
+        ...entry,
+        picks,
+        champion_name: entry.champion_name ?? bracket?.champion_name ?? derivedMeta.champion_name,
+        champion_seed: entry.champion_seed ?? bracket?.champion_seed ?? derivedMeta.champion_seed,
+        champion_logo_url: entry.champion_logo_url ?? bracket?.champion_logo_url ?? derivedMeta.champion_logo_url,
+        champion_eliminated: entry.champion_eliminated ?? bracket?.champion_eliminated ?? false,
+        runner_up_name: entry.runner_up_name ?? derivedMeta.runner_up_name,
+        runner_up_seed: entry.runner_up_seed ?? derivedMeta.runner_up_seed,
+        runner_up_logo_url: entry.runner_up_logo_url ?? derivedMeta.runner_up_logo_url,
+        boldest_pick: entry.boldest_pick ?? bracket?.boldest_pick ?? null,
+      } satisfies LeaderboardEntry;
+    });
+  } catch {
+    return entries;
+  }
 }
 
 async function withTimeout<T>(promiseLike: PromiseLike<T>, timeoutMs: number, message: string): Promise<T> {
@@ -540,8 +634,9 @@ export async function getLeaderboard(limit?: number | null) {
       entries.push(...batch);
 
       if (batch.length < pageSize) {
-        writeCachedValue(cacheKey, entries);
-        return { data: entries, error: null };
+        const hydratedEntries = await hydrateLeaderboardEntries(entries);
+        writeCachedValue(cacheKey, hydratedEntries);
+        return { data: hydratedEntries, error: null };
       }
 
       offset += pageSize;
@@ -640,11 +735,43 @@ export async function getLeaderboard(limit?: number | null) {
       offset += pageSize;
     }
 
-    writeCachedValue(cacheKey, mapped);
-    return { data: mapped, error: null };
+    const hydratedEntries = await hydrateLeaderboardEntries(mapped);
+    writeCachedValue(cacheKey, hydratedEntries);
+    return { data: hydratedEntries, error: null };
   } catch (error) {
     return {
       data: cachedEntries ?? [],
+      error: { message: (error as Error).message },
+    };
+  }
+}
+
+export async function getTournamentResultMap() {
+  const cachedResults = getCachedTournamentResultMap();
+
+  try {
+    const { data, error } = await withTimeout(
+      supabase.from("tournament_results").select("matchup_id, winner_team_id, round"),
+      LEADERBOARD_QUERY_TIMEOUT_MS,
+      "Timed out loading tournament results."
+    );
+
+    if (error) {
+      return { data: cachedResults, error };
+    }
+
+    const resultMap = buildScoringResultMap(
+      ((data ?? []) as Array<{
+        matchup_id: string;
+        winner_team_id: string;
+        round: number | string;
+      }>)
+    );
+    writeCachedValue(TOURNAMENT_RESULTS_CACHE_KEY, resultMap);
+    return { data: resultMap, error: null };
+  } catch (error) {
+    return {
+      data: cachedResults,
       error: { message: (error as Error).message },
     };
   }
