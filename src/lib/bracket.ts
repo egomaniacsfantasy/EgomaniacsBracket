@@ -7,11 +7,6 @@ import type { Region, ResolvedGame, Round } from "../types";
 export type LockedPicks = Record<string, string>;
 export type CustomProbByGame = Record<string, number | null | undefined>;
 
-// Actual First Four results — these are hard-locked and cannot be changed by users.
-export const BRACKET_KNOWN_RESULTS: LockedPicks = {
-  "South-FF-16": "South-16a",   // Prairie View beat Lehigh
-  "Midwest-FF-11": "Midwest-11a", // Miami OH beat SMU
-};
 
 const roundRank: Record<Round, number> = {
   FF: 0,

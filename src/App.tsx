@@ -13,7 +13,6 @@ import {
   resetRegionPicks,
   resolveGames,
   sanitizeLockedPicks,
-  BRACKET_KNOWN_RESULTS,
   type CustomProbByGame,
   type LockedPicks,
 } from "./lib/bracket";
@@ -505,7 +504,7 @@ const getOnboardingPathByRound = (startGameId: string | null): Record<"R32" | "S
 
 function App() {
   const { user, profile, isAuthenticated, signOut, loading: authLoading } = useAuth();
-  const [lockedPicks, setLockedPicks] = useState<LockedPicks>(BRACKET_KNOWN_RESULTS);
+  const [lockedPicks, setLockedPicks] = useState<LockedPicks>({});
   const [customProbByGame, setCustomProbByGame] = useState<CustomProbByGame>({});
   const [undoStack, setUndoStack] = useState<LockedPicks[]>([]);
   const [displayMode, setDisplayMode] = useState<OddsDisplayMode>(() => {
@@ -1595,7 +1594,6 @@ function App() {
   const onPick = (game: ResolvedGame, teamId: string | null) => {
     if (!teamId) return;
     if (teamId !== game.teamAId && teamId !== game.teamBId) return;
-    if (game.id in BRACKET_KNOWN_RESULTS) return;
     if (walkthroughActive && currentWalkthroughStep?.id === "upset-pick" && walkthroughCascadePhase === "pick") {
       const pickedTeam = teamsById.get(teamId);
       const isForcedUpsetPick =
@@ -1779,7 +1777,7 @@ function App() {
     setMajorShiftNudgeVisible(false);
     pushUndo(lockedPicks);
     simGeneratedGameIdsRef.current.clear();
-    setLockedPicks(BRACKET_KNOWN_RESULTS);
+    setLockedPicks({});
     setCustomProbByGame({});
     setProbPopup(null);
   };
