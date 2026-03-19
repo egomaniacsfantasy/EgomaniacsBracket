@@ -206,9 +206,11 @@ function BracketLoadingOverlay({
             {message}
           </span>
         </div>
-        <div className="bl-load-progress" aria-hidden="true">
-          <div className="bl-load-progress-fill" style={{ width: `${Math.max(0, Math.min(progress, 1)) * 100}%` }} />
-        </div>
+        {!isMobile ? (
+          <div className="bl-load-progress" aria-hidden="true">
+            <div className="bl-load-progress-fill" style={{ width: `${Math.max(0, Math.min(progress, 1)) * 100}%` }} />
+          </div>
+        ) : null}
       </div>
     </div>
   );
