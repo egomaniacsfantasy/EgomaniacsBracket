@@ -1716,6 +1716,7 @@ function App() {
     const existing = simulationCacheRef.current.get(key);
     let active = true;
     let idleHandle: number | null = null;
+    const prioritizeInitialSimulation = initialBracketLoadEnabled && !initialSimulationReady;
 
     if (existing) {
       setSimResult(existing);
@@ -1737,6 +1738,11 @@ function App() {
     };
 
     const scheduleSimulation = () => {
+      if (prioritizeInitialSimulation) {
+        idleHandle = window.setTimeout(run, 0);
+        return;
+      }
+
       const w = window as Window & {
         requestIdleCallback?: (callback: IdleRequestCallback, options?: IdleRequestOptions) => number;
         cancelIdleCallback?: (handle: number) => void;
@@ -1767,7 +1773,7 @@ function App() {
         }
       }
     };
-  }, [sanitized, simRuns, customProbByGame]);
+  }, [customProbByGame, initialBracketLoadEnabled, initialSimulationReady, sanitized, simRuns]);
 
   useEffect(() => {
     let active = true;
