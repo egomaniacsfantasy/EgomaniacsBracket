@@ -7957,11 +7957,33 @@ body {
 .grp-hub-screen {
   position: fixed;
   inset: 0;
-  z-index: 10900;
+  z-index: 11040;
   display: flex;
   flex-direction: column;
   background: var(--bg-base, #0e0c09);
   isolation: isolate;
+  pointer-events: auto;
+}
+
+body.groups-hub-open {
+  overflow: hidden;
+}
+
+body.groups-hub-open .onboarding-flow,
+body.groups-hub-open .walkthrough-layer,
+body.groups-hub-open .walkthrough-mask,
+body.groups-hub-open .walkthrough-shade,
+body.groups-hub-open .walkthrough-tooltip,
+body.groups-hub-open .walkthrough-cutout,
+body.groups-hub-open .bracket-locked-overlay,
+body.groups-hub-open .promo-cta-backdrop,
+body.groups-hub-open .mob-onboard-overlay,
+body.groups-hub-open .cascade-caption {
+  pointer-events: none !important;
+}
+
+body.groups-hub-open .grp-hub-screen,
+body.groups-hub-open .grp-hub-screen * {
   pointer-events: auto;
 }
 

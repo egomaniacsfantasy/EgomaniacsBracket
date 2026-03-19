@@ -3698,9 +3698,23 @@ function App() {
     setWelcomeGateOpen(false);
     setShowMobileOnboarding(false);
     setWalkthroughActive(false);
+    setWalkthroughTargetEl(null);
+    setWalkthroughTargetRect(null);
+    setWalkthroughMatchupId(null);
+    setWalkthroughCascadePhase("idle");
+    setWalkthroughCascadeCaption(null);
+    setPromoCTAVisible(false);
+    setShareModalVisible(false);
+    setShowChaosModal(false);
+    setShowCompletionCelebration(false);
+    setShowWrappedFlow(false);
+    setShowWrappedCard(false);
+    setActiveHint(null);
+    setLockPopupOpen(false);
     document.body.classList.remove("og-onboarding-open", "walkthrough-active", "walkthrough-step-make-pick");
     const topValue = Math.abs(parseInt(document.body.style.top || "0", 10));
     document.body.style.top = "";
+    document.body.classList.add("groups-hub-open");
     if (topValue > 0) window.scrollTo(0, topValue);
 
     setActiveGroup(null);
@@ -5069,6 +5083,7 @@ function App() {
       <GroupsHub
         isOpen={groupsHubOpen}
         refreshToken={groupsHubRefreshKey}
+        submissionsLocked={submissionsLocked}
         onClose={() => setGroupsHubOpen(false)}
         onCreateGroup={() => {
           setCreateGroupOpen(true);

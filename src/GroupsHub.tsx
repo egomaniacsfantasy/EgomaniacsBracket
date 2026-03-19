@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
+import { createPortal } from "react-dom";
 import { useAuth } from "./AuthContext";
 import { BRACKET_PREDS_2026 } from "./data/bracketPreds2026";
 import { teams } from "./data/teams";
@@ -59,6 +60,7 @@ function GroupChampionLogo({ preview }: { preview: ChampionPreview }) {
 export function GroupsHub({
   isOpen,
   refreshToken = 0,
+  submissionsLocked = false,
   onClose,
   onCreateGroup,
   onJoinGroup,
@@ -66,6 +68,7 @@ export function GroupsHub({
 }: {
   isOpen: boolean;
   refreshToken?: number;
+  submissionsLocked?: boolean;
   onClose: () => void;
   onCreateGroup: () => void;
   onJoinGroup: () => void;
@@ -114,9 +117,19 @@ export function GroupsHub({
     return () => window.clearTimeout(timer);
   }, [isOpen, refreshToken, user, loadGroups]);
 
+  useEffect(() => {
+    if (!isOpen || typeof document === "undefined") return;
+    document.body.classList.add("groups-hub-open");
+    return () => {
+      document.body.classList.remove("groups-hub-open");
+    };
+  }, [isOpen]);
+
   if (!isOpen) return null;
 
-  return (
+  const showEntryCtas = !submissionsLocked;
+
+  const content = (
     <section className="grp-hub-screen" aria-labelledby="groups-hub-title">
       <div className="grp-hub-scroll">
         <div className="grp-hub-shell">
@@ -124,23 +137,25 @@ export function GroupsHub({
             ← Bracket
           </button>
 
-          <div className="grp-hub-hero">
-            <h1 className="grp-hub-title" id="groups-hub-title">
-              Compete with your friends.
-            </h1>
-            <p className="grp-hub-subtitle">
-              Create a group, invite your crew, and see who really knows their stuff - standings, picks, and chaos ratings for your whole squad.
-            </p>
+          {showEntryCtas ? (
+            <div className="grp-hub-hero">
+              <h1 className="grp-hub-title" id="groups-hub-title">
+                Compete with your friends.
+              </h1>
+              <p className="grp-hub-subtitle">
+                Create a group, invite your crew, and see who really knows their stuff - standings, picks, and chaos ratings for your whole squad.
+              </p>
 
-            <div className="grp-hub-cta-row">
-              <button className="grp-hub-cta" onClick={onCreateGroup} type="button">
-                Create Group
-              </button>
-              <button className="grp-hub-cta grp-hub-cta--secondary" onClick={onJoinGroup} type="button">
-                Join with Code
-              </button>
+              <div className="grp-hub-cta-row">
+                <button className="grp-hub-cta" onClick={onCreateGroup} type="button">
+                  Create Group
+                </button>
+                <button className="grp-hub-cta grp-hub-cta--secondary" onClick={onJoinGroup} type="button">
+                  Join with Code
+                </button>
+              </div>
             </div>
-          </div>
+          ) : null}
 
           {errorMsg ? <p className="group-error grp-hub-error">{errorMsg}</p> : null}
 
@@ -158,20 +173,24 @@ export function GroupsHub({
               <div className="grp-hub-empty-emoji" aria-hidden="true">🏆</div>
               <h2 className="grp-hub-empty-title">No groups yet</h2>
               <p className="grp-hub-empty-body">
-                Create a group and share the invite code, or ask a friend for theirs.
+                {submissionsLocked
+                  ? "Brackets are locked, so new group entries are closed. You'll still be able to view any groups you've already joined."
+                  : "Create a group and share the invite code, or ask a friend for theirs."}
               </p>
-              <div className="grp-hub-empty-actions">
-                <button className="grp-hub-cta grp-hub-cta--compact" onClick={onCreateGroup} type="button">
-                  Create Group
-                </button>
-                <button
-                  className="grp-hub-cta grp-hub-cta--secondary grp-hub-cta--compact"
-                  onClick={onJoinGroup}
-                  type="button"
-                >
-                  Join with Code
-                </button>
-              </div>
+              {showEntryCtas ? (
+                <div className="grp-hub-empty-actions">
+                  <button className="grp-hub-cta grp-hub-cta--compact" onClick={onCreateGroup} type="button">
+                    Create Group
+                  </button>
+                  <button
+                    className="grp-hub-cta grp-hub-cta--secondary grp-hub-cta--compact"
+                    onClick={onJoinGroup}
+                    type="button"
+                  >
+                    Join with Code
+                  </button>
+                </div>
+              ) : null}
             </div>
           ) : (
             <div className="grp-hub-grid">
@@ -223,6 +242,12 @@ export function GroupsHub({
       </div>
     </section>
   );
+
+  if (typeof document === "undefined") {
+    return content;
+  }
+
+  return createPortal(content, document.body);
 }
 
 export function GroupsHubInline({
