@@ -78,9 +78,9 @@ export type GroupMember = {
 
 const GROUP_QUERY_TIMEOUT_MS = 10000;
 const GROUP_COUNTS_QUERY_TIMEOUT_MS = 3500;
-const USER_GROUPS_CACHE_PREFIX = "og_user_groups_v1";
+const USER_GROUPS_CACHE_PREFIX = "og_user_groups_v2";
 const GROUP_STANDINGS_CACHE_PREFIX = "og_group_standings_v2";
-const GROUP_MEMBERS_CACHE_PREFIX = "og_group_members_v1";
+const GROUP_MEMBERS_CACHE_PREFIX = "og_group_members_v2";
 export const GROUP_JOIN_LOCKED_MESSAGE =
   "Brackets are locked — you can no longer join groups with a new bracket. You can still view groups you're already a member of.";
 
