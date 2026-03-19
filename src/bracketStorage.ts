@@ -4,6 +4,7 @@ import {
   getBracketCompletionSummary,
   resolveBracketWithKnownResults,
 } from "./lib/bracketCompletion";
+import { NCAA_KNOWN_RESULT_IDS } from "./data/ncaaKnownResults";
 import { teamsById } from "./data/teams";
 
 export type LeaderboardFinalFourTeam = {
@@ -376,6 +377,13 @@ export async function getUserBrackets(userId: string) {
 }
 
 export async function getGlobalBracketLockState() {
+  // Once real NCAA results are hardcoded into the client, the season is live.
+  // We need this fallback because regular users cannot always read arbitrary
+  // locked bracket rows under RLS, which makes the DB-only check unreliable.
+  if (NCAA_KNOWN_RESULT_IDS.size > 0) {
+    return { data: true, error: null };
+  }
+
   const exact = await supabase
     .from("brackets")
     .select("id", { count: "exact", head: true })
