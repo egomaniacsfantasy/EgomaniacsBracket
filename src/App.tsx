@@ -178,6 +178,42 @@ function DeferredViewFallback() {
   );
 }
 
+function BracketLoadingOverlay({
+  isMobile,
+  phase,
+  message,
+  progress,
+}: {
+  isMobile: boolean;
+  phase: "visible" | "fading" | "hidden";
+  message: string;
+  progress: number;
+}) {
+  if (phase === "hidden") return null;
+
+  return (
+    <div
+      className={`bl-load-screen ${isMobile ? "bl-load-screen--mobile" : ""} ${phase === "fading" ? "bl-load-screen--fading" : ""}`}
+      aria-live="polite"
+      aria-busy="true"
+    >
+      <div className="bl-load-content">
+        <p className="bl-load-brand">ODDS GODS</p>
+        <h2 className="bl-load-title">The Bracket Lab</h2>
+        <p className="bl-load-tagline">the bracket that thinks back.</p>
+        <div className="bl-load-status" aria-atomic="true">
+          <span key={message} className="bl-load-status-text">
+            {message}
+          </span>
+        </div>
+        <div className="bl-load-progress" aria-hidden="true">
+          <div className="bl-load-progress-fill" style={{ width: `${Math.max(0, Math.min(progress, 1)) * 100}%` }} />
+        </div>
+      </div>
+    </div>
+  );
+}
+
 const URL_REGION_ORDER: Region[] = ["South", "West", "East", "Midwest"];
 const URL_ROUND_ORDER: ResolvedGame["round"][] = ["FF", "R64", "R32", "S16", "E8", "F4", "CHAMP"];
 const URL_EXPECTED_GAME_COUNT = gameTemplates.length;
@@ -207,6 +243,25 @@ const MOBILE_BODY_CLASSES_BY_TAB: Record<
   rankings: ["mobile-tab-rankings", "mobile-tab-ranks"],
   predictor: ["mobile-tab-predictor"],
 };
+
+const BRACKET_LOADING_MESSAGES = [
+  "Loading 68 teams...",
+  "Building the bracket tree...",
+  "Mapping 67 games across 6 rounds...",
+  "Initializing Monte Carlo engine...",
+  "Running 10,000 simulations...",
+  "Computing advancement probabilities...",
+  "Pricing championship futures...",
+  "Resolving conditional matchup odds...",
+  "Calibrating upset probabilities...",
+  "Assembling your bracket...",
+] as const;
+
+const BRACKET_LOADING_MIN_DISPLAY_MS = 2000;
+const BRACKET_LOADING_MESSAGE_INTERVAL_MS = 800;
+const BRACKET_LOADING_PROGRESS_RAMP_MS = 1800;
+const BRACKET_LOADING_COMPLETE_HOLD_MS = 400;
+const BRACKET_LOADING_FADE_MS = 600;
 
 const canonicalGameTemplates = (() => {
   const regional: typeof gameTemplates = [];
@@ -647,6 +702,12 @@ const getOnboardingPathByRound = (startGameId: string | null): Record<"R32" | "S
 
 function App() {
   const { user, profile, isAuthenticated, signOut, loading: authLoading } = useAuth();
+  const initialBracketLoadEnabledRef = useRef(
+    typeof window !== "undefined" && window.location.pathname === "/"
+  );
+  const bracketLoadStartedAtRef = useRef(
+    typeof performance !== "undefined" ? performance.now() : Date.now()
+  );
   const [lockedPicks, setLockedPicks] = useState<LockedPicks>({});
   const [firstFourExpanded, setFirstFourExpanded] = useState(() => getInitialFirstFourExpanded());
   const [firstFourPillHintActive, setFirstFourPillHintActive] = useState(false);
@@ -773,6 +834,13 @@ function App() {
     likelihoodSimulation: 0,
   });
   const [chaosDistribution, setChaosDistribution] = useState<SimulationOutput["chaosDistribution"] | null>(null);
+  const [initialSimulationReady, setInitialSimulationReady] = useState(!initialBracketLoadEnabledRef.current);
+  const [bracketDomReady, setBracketDomReady] = useState(!initialBracketLoadEnabledRef.current);
+  const [bracketLoadPhase, setBracketLoadPhase] = useState<"visible" | "fading" | "hidden">(
+    initialBracketLoadEnabledRef.current ? "visible" : "hidden"
+  );
+  const [bracketLoadMessageIndex, setBracketLoadMessageIndex] = useState(0);
+  const [bracketLoadProgress, setBracketLoadProgress] = useState(0);
 
   const simulationCacheRef = useRef<Map<string, SimulationOutput>>(new Map());
   const previousFuturesRef = useRef<SimulationOutput["futures"] | null>(null);
@@ -816,6 +884,8 @@ function App() {
 
   const visibleMainView = !SHOW_CONFERENCE_TOURNAMENTS && mainView === "conferences" ? "bracket" : mainView;
   const visibleMobileTab = !SHOW_CONFERENCE_TOURNAMENTS && mobileTab === "conferences" ? "bracket" : mobileTab;
+  const initialBracketLoadEnabled = initialBracketLoadEnabledRef.current;
+  const bracketLoadingReady = initialBracketLoadEnabled && initialSimulationReady && bracketDomReady;
   const effectiveLockedPicks = useMemo(() => mergeNcaaKnownResults(lockedPicks), [lockedPicks]);
 
   const { games, sanitized } = useMemo(
@@ -848,6 +918,93 @@ function App() {
   useEffect(() => {
     staggeredDelayRef.current = staggeredSimDelayMs;
   }, [staggeredSimDelayMs]);
+
+  useEffect(() => {
+    if (!initialBracketLoadEnabled || initialSimulationReady) return;
+    if (simResult.futures.length === 0 || Object.keys(simResult.gameWinProbs).length === 0) return;
+    setInitialSimulationReady(true);
+  }, [initialBracketLoadEnabled, initialSimulationReady, simResult]);
+
+  useEffect(() => {
+    if (!initialBracketLoadEnabled || bracketDomReady || bracketLoadPhase === "hidden") return;
+    const bracketViewVisible = isMobile ? visibleMobileTab === "bracket" : visibleMainView === "bracket";
+    if (!bracketViewVisible) return;
+
+    let rafId = 0;
+    const checkRenderedCards = () => {
+      if (document.querySelectorAll(".eg-game-card[data-game-id]").length > 0) {
+        setBracketDomReady(true);
+        return;
+      }
+      rafId = window.requestAnimationFrame(checkRenderedCards);
+    };
+
+    rafId = window.requestAnimationFrame(checkRenderedCards);
+    return () => window.cancelAnimationFrame(rafId);
+  }, [
+    bracketDomReady,
+    bracketLoadPhase,
+    initialBracketLoadEnabled,
+    isMobile,
+    visibleMainView,
+    visibleMobileTab,
+    games.length,
+  ]);
+
+  useEffect(() => {
+    if (!initialBracketLoadEnabled || bracketLoadPhase !== "visible" || bracketLoadingReady) return;
+    const intervalId = window.setInterval(() => {
+      setBracketLoadMessageIndex((current) =>
+        current < BRACKET_LOADING_MESSAGES.length - 1 ? current + 1 : current
+      );
+    }, BRACKET_LOADING_MESSAGE_INTERVAL_MS);
+
+    return () => window.clearInterval(intervalId);
+  }, [bracketLoadPhase, bracketLoadingReady, initialBracketLoadEnabled]);
+
+  useEffect(() => {
+    if (!initialBracketLoadEnabled || bracketLoadPhase === "hidden") return;
+    if (bracketLoadingReady) {
+      setBracketLoadProgress(1);
+      return;
+    }
+
+    let rafId = 0;
+    const updateProgress = () => {
+      const now = typeof performance !== "undefined" ? performance.now() : Date.now();
+      const elapsed = now - bracketLoadStartedAtRef.current;
+      const nextProgress = Math.min(0.9, (elapsed / BRACKET_LOADING_PROGRESS_RAMP_MS) * 0.9);
+      setBracketLoadProgress((current) => (nextProgress > current ? nextProgress : current));
+      rafId = window.requestAnimationFrame(updateProgress);
+    };
+
+    rafId = window.requestAnimationFrame(updateProgress);
+    return () => window.cancelAnimationFrame(rafId);
+  }, [bracketLoadPhase, bracketLoadingReady, initialBracketLoadEnabled]);
+
+  useEffect(() => {
+    if (!initialBracketLoadEnabled || bracketLoadPhase !== "visible" || !bracketLoadingReady) return;
+
+    setBracketLoadMessageIndex(BRACKET_LOADING_MESSAGES.length - 1);
+    setBracketLoadProgress(1);
+
+    const now = typeof performance !== "undefined" ? performance.now() : Date.now();
+    const elapsed = now - bracketLoadStartedAtRef.current;
+    const remainingToMin = Math.max(0, BRACKET_LOADING_MIN_DISPLAY_MS - elapsed);
+
+    const fadeTimer = window.setTimeout(() => {
+      setBracketLoadPhase("fading");
+    }, remainingToMin + BRACKET_LOADING_COMPLETE_HOLD_MS);
+
+    const hideTimer = window.setTimeout(() => {
+      setBracketLoadPhase("hidden");
+    }, remainingToMin + BRACKET_LOADING_COMPLETE_HOLD_MS + BRACKET_LOADING_FADE_MS);
+
+    return () => {
+      window.clearTimeout(fadeTimer);
+      window.clearTimeout(hideTimer);
+    };
+  }, [bracketLoadPhase, bracketLoadingReady, initialBracketLoadEnabled]);
 
   useEffect(() => {
     if (simGeneratedGameIdsRef.current.size === 0) return;
@@ -5410,6 +5567,13 @@ function App() {
           </div>
         </div>
       ) : null}
+
+      <BracketLoadingOverlay
+        isMobile={isMobile}
+        phase={bracketLoadPhase}
+        message={BRACKET_LOADING_MESSAGES[bracketLoadMessageIndex]}
+        progress={bracketLoadProgress}
+      />
 
     </div>
   );
