@@ -1,8 +1,9 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useAuth } from "./AuthContext";
 import {
   deleteBracketAsAdmin,
   getChaosTierEmoji,
+  getCachedLeaderboard,
   type LeaderboardBoldestPick,
   type LeaderboardEntry,
   type LeaderboardFinalFourTeam,
@@ -442,15 +443,19 @@ export function LeaderboardFullWidth({
   submissionsLocked?: boolean;
 }) {
   const { user } = useAuth();
-  const [entries, setEntries] = useState<LeaderboardEntry[]>([]);
+  const [entries, setEntries] = useState<LeaderboardEntry[]>(() => getCachedLeaderboard());
   const [adminDeleteError, setAdminDeleteError] = useState<string | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [deletingBracketId, setDeletingBracketId] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(entries.length === 0);
   const canAdminDelete = hasElevatedAccess(user?.email) && !submissionsLocked;
 
-  const loadLeaderboard = async () => {
-    setLoading(entries.length === 0);
+  const loadLeaderboard = useCallback(async () => {
+    const cachedEntries = getCachedLeaderboard();
+    if (cachedEntries.length > 0) {
+      setEntries((current) => (current.length > 0 ? current : cachedEntries));
+    }
+    setLoading(cachedEntries.length === 0);
     const { data, error } = await getLeaderboard();
     if (error) {
       captureError("leaderboard_load", error);
@@ -460,7 +465,7 @@ export function LeaderboardFullWidth({
     }
     setEntries(data ?? []);
     setLoading(false);
-  };
+  }, []);
 
   const handleAdminDelete = async (entry: LeaderboardEntry) => {
     if (!canAdminDelete) return;
@@ -484,8 +489,11 @@ export function LeaderboardFullWidth({
 
   useEffect(() => {
     if (!isVisible) return;
-    void loadLeaderboard();
-  }, [isVisible, refreshKey]);
+    const timer = window.setTimeout(() => {
+      void loadLeaderboard();
+    }, 0);
+    return () => window.clearTimeout(timer);
+  }, [isVisible, refreshKey, loadLeaderboard]);
 
   const parsedEntries = useMemo<ParsedLeaderboardEntry[]>(
     () =>

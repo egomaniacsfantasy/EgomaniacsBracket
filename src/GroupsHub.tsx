@@ -1,8 +1,8 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useAuth } from "./AuthContext";
 import { BRACKET_PREDS_2026 } from "./data/bracketPreds2026";
 import { teams } from "./data/teams";
-import { getUserGroups, type UserGroup } from "./groupStorage";
+import { getCachedUserGroups, getUserGroups, type UserGroup } from "./groupStorage";
 import { captureError } from "./lib/errorMonitoring";
 import { teamLogoUrl } from "./lib/logo";
 
@@ -73,24 +73,13 @@ export function GroupsHub({
 }) {
   const { user } = useAuth();
   const [groups, setGroups] = useState<UserGroup[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
 
-  useEffect(() => {
-    if (!isOpen) return;
-    if (!user) {
-      setGroups([]);
-      setLoading(false);
-      setErrorMsg("");
-      return;
-    }
-    void loadGroups();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isOpen, refreshToken, user]);
-
-  async function loadGroups() {
+  const loadGroups = useCallback(async () => {
     if (!user) return;
-    setLoading(true);
+    const cachedGroups = getCachedUserGroups(user.id);
+    setLoading(cachedGroups.length === 0);
     setErrorMsg("");
     try {
       const { data, error } = await getUserGroups(user.id);
@@ -106,7 +95,24 @@ export function GroupsHub({
     } finally {
       setLoading(false);
     }
-  }
+  }, [user]);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    if (!user) {
+      setGroups([]);
+      setLoading(false);
+      setErrorMsg("");
+      return;
+    }
+    const cachedGroups = getCachedUserGroups(user.id);
+    setGroups(cachedGroups);
+    setLoading(cachedGroups.length === 0);
+    const timer = window.setTimeout(() => {
+      void loadGroups();
+    }, 0);
+    return () => window.clearTimeout(timer);
+  }, [isOpen, refreshToken, user, loadGroups]);
 
   if (!isOpen) return null;
 

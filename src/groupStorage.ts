@@ -169,6 +169,10 @@ function writeCachedValue<T>(key: string, value: T) {
   }
 }
 
+export function getCachedUserGroups(userId: string): UserGroup[] {
+  return readCachedValue<UserGroup[]>(`${USER_GROUPS_CACHE_PREFIX}:${userId}`) ?? [];
+}
+
 async function withTimeout<T>(promiseLike: PromiseLike<T>, timeoutMs: number, message: string): Promise<T> {
   let timer: ReturnType<typeof setTimeout> | null = null;
   try {
@@ -400,7 +404,7 @@ export async function getUserGroups(userId: string) {
       const bracketsResult = await withTimeout(
         supabase
           .from("brackets")
-          .select("id, picks")
+          .select("id, champion_name, champion_seed, champion_logo_url")
           .in("id", bracketIds),
         GROUP_COUNTS_QUERY_TIMEOUT_MS,
         "Timed out loading bracket previews."
@@ -409,13 +413,44 @@ export async function getUserGroups(userId: string) {
       if (!bracketsResult.error) {
         ((bracketsResult.data ?? []) as Array<{
           id: string;
-          picks?: LockedPicks | null;
+          champion_name?: string | null;
+          champion_seed?: number | null;
+          champion_logo_url?: string | null;
         }>).forEach((bracket) => {
-          bracketMetaMap[bracket.id] = getChampionPreviewFromPicks(bracket.picks ?? null);
+          bracketMetaMap[bracket.id] = {
+            champion_name: bracket.champion_name ?? bracketMetaMap[bracket.id]?.champion_name ?? null,
+            champion_seed: bracket.champion_seed ?? bracketMetaMap[bracket.id]?.champion_seed ?? null,
+            champion_logo_url: bracket.champion_logo_url ?? bracketMetaMap[bracket.id]?.champion_logo_url ?? null,
+          };
         });
       }
     } catch {
       // Champion preview is optional. Keep groups visible even if this lookup fails.
+    }
+
+    const missingChampionIds = bracketIds.filter((bracketId) => !bracketMetaMap[bracketId]?.champion_name);
+    if (missingChampionIds.length > 0) {
+      try {
+        const fallbackResult = await withTimeout(
+          supabase
+            .from("brackets")
+            .select("id, picks")
+            .in("id", missingChampionIds),
+          GROUP_COUNTS_QUERY_TIMEOUT_MS,
+          "Timed out loading bracket previews."
+        );
+
+        if (!fallbackResult.error) {
+          ((fallbackResult.data ?? []) as Array<{
+            id: string;
+            picks?: LockedPicks | null;
+          }>).forEach((bracket) => {
+            bracketMetaMap[bracket.id] = getChampionPreviewFromPicks(bracket.picks ?? null);
+          });
+        }
+      } catch {
+        // Champion preview is optional. Keep groups visible even if this lookup fails.
+      }
     }
   }
 

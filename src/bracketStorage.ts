@@ -117,6 +117,15 @@ function writeCachedValue<T>(key: string, value: T) {
   }
 }
 
+export function getCachedLeaderboard(limit?: number | null): LeaderboardEntry[] {
+  const normalizedLimit =
+    typeof limit === "number" && Number.isFinite(limit) && limit > 0
+      ? Math.floor(limit)
+      : null;
+  const cacheKey = `${LEADERBOARD_CACHE_PREFIX}:${normalizedLimit ?? "all"}`;
+  return readCachedValue<LeaderboardEntry[]>(cacheKey) ?? [];
+}
+
 async function withTimeout<T>(promiseLike: PromiseLike<T>, timeoutMs: number, message: string): Promise<T> {
   let timer: ReturnType<typeof setTimeout> | null = null;
   try {
