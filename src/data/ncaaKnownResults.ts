@@ -23,6 +23,7 @@ export const NCAA_KNOWN_RESULTS: LockedPicks = {
   "South-R64-7": "South-2", // Houston (2) def Idaho (15)
   "Midwest-R64-0": "Midwest-1", // Michigan (1) def Howard (16)
   "Midwest-R64-1": "Midwest-9", // St Louis (9) def Georgia (8)
+  "Midwest-R64-4": "Midwest-6", // Tennessee (6) def Miami OH (11)
   "West-R64-2": "West-12", // High Point (12) def Wisconsin (5)
   "West-R64-3": "West-4", // Arkansas (4) def Hawaii (13)
   "West-R64-4": "West-11b", // Texas (11) def BYU (6)
