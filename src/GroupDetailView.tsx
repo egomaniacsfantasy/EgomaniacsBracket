@@ -12,10 +12,8 @@ import {
   type UserGroup,
 } from "./groupStorage";
 import { getTournamentResultMap, getUserBrackets, type SavedBracket } from "./bracketStorage";
-import { GroupMembersTab } from "./GroupMembersTab";
 import { GroupStandingsTab } from "./GroupStandingsTab";
 import { GroupPicksTab } from "./GroupPicksTab";
-import { GroupChaosTab } from "./GroupChaosTab";
 import { GROUP_EMOJIS } from "./constants";
 import { hasElevatedAccess } from "./groupVisibility";
 import { captureError } from "./lib/errorMonitoring";
@@ -23,6 +21,26 @@ import { getBracketCompletionSummary } from "./lib/bracketCompletion";
 import { computeStandingsForecast, type StandingsForecastResult } from "./lib/standingsForecast";
 
 type RankedStanding = GroupStanding & { groupRank: number };
+const GROUP_SCENE_ODDS = [
+  "93.5%",
+  "68.8%",
+  "35.0%",
+  "19.4%",
+  "47.2%",
+  "74.8%",
+  "53.6%",
+  "26.1%",
+  "58.4%",
+  "85.1%",
+  "41.6%",
+  "75.7%",
+  "21.0%",
+  "54.3%",
+  "39.8%",
+  "63.2%",
+  "17.5%",
+  "88.4%",
+] as const;
 
 export function GroupDetailView({
   group,
@@ -42,7 +60,7 @@ export function GroupDetailView({
   onGroupUpdated?: (updated: { name: string; emoji: string }) => void;
 }) {
   const { user } = useAuth();
-  const [activeTab, setActiveTab] = useState<"standings" | "members" | "picks" | "chaos">("standings");
+  const [activeTab, setActiveTab] = useState<"standings" | "picks">("standings");
   const [standings, setStandings] = useState<GroupStanding[]>([]);
   const [members, setMembers] = useState<GroupMember[]>([]);
   const [loading, setLoading] = useState(true);
@@ -386,35 +404,52 @@ export function GroupDetailView({
   if (!isOpen || !group) return null;
 
   return (
-    <div className="group-detail-overlay">
-      <div className="gd-header">
-        <button className="gd-back" onClick={onClose}>
-          ← Groups
-        </button>
-
-        <div className="gd-header-center">
-          <div className="gd-header-title">
-            <span className="gd-header-emoji">{group.emoji ?? "👥"}</span>
-            <h1 className="gd-header-name">{group.name}</h1>
+    <div className={`group-detail-overlay ${activeTab === "standings" ? "group-detail-overlay--standings" : ""}`}>
+      {activeTab === "standings" ? (
+        <div className="gd-scene" aria-hidden="true">
+          <div className="gd-scene-glow gd-scene-glow--left" />
+          <div className="gd-scene-glow gd-scene-glow--right" />
+          <div className="gd-scene-grid">
+            {GROUP_SCENE_ODDS.map((value, index) => (
+              <span key={`${value}-${index}`} className="gd-scene-grid-cell">
+                {value}
+              </span>
+            ))}
           </div>
-          <span className="gd-header-members">
-            {displayedMemberCount} {displayedMemberCount === 1 ? "member" : "members"}
-          </span>
+          <span className="gd-scene-bolt gd-scene-bolt--left">⚡</span>
+          <span className="gd-scene-bolt gd-scene-bolt--right">⚡</span>
         </div>
+      ) : null}
+      <div className="gd-header">
+        <div className="gd-header-inner">
+          <button className="gd-back" onClick={onClose}>
+            ← Groups
+          </button>
 
-        <div className="gd-header-actions">
-          <button className="gd-invite-btn" onClick={() => void handleInvite()}>
-            🔗 Invite
-          </button>
-          <button className="gd-settings-btn" onClick={() => setShowSettings(!showSettings)} aria-label="Group settings">
-            ⚙️
-          </button>
-          {showInviteToast && (
-            <div className="invite-toast">
-              <span className="invite-toast-check">✓</span>
-              <span className="invite-toast-text">Invite message copied to clipboard</span>
+          <div className="gd-header-center">
+            <div className="gd-header-title">
+              <span className="gd-header-emoji">{group.emoji ?? "👥"}</span>
+              <h1 className="gd-header-name">{group.name}</h1>
             </div>
-          )}
+            <span className="gd-header-members">
+              {displayedMemberCount} {displayedMemberCount === 1 ? "member" : "members"}
+            </span>
+          </div>
+
+          <div className="gd-header-actions">
+            <button className="gd-invite-btn" onClick={() => void handleInvite()}>
+              🔗 Invite
+            </button>
+            <button className="gd-settings-btn" onClick={() => setShowSettings(!showSettings)} aria-label="Group settings">
+              ⚙️
+            </button>
+            {showInviteToast && (
+              <div className="invite-toast">
+                <span className="invite-toast-check">✓</span>
+                <span className="invite-toast-text">Invite message copied to clipboard</span>
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
@@ -443,73 +478,61 @@ export function GroupDetailView({
       )}
 
       <div className="gd-tabs">
-        {(["standings", "members", "picks", "chaos"] as const).map((tab) => (
-          <button
-            key={tab}
-            className={`gd-tab ${activeTab === tab ? "gd-tab--active" : ""}`}
-            onClick={() => setActiveTab(tab)}
-          >
-            {tab === "standings" && "Standings"}
-            {tab === "members" && "Members"}
-            {tab === "picks" && "Picks"}
-            {tab === "chaos" && "Chaos"}
-          </button>
-        ))}
+        <div className="gd-tabs-inner">
+          {(["standings", "picks"] as const).map((tab) => (
+            <button
+              key={tab}
+              className={`gd-tab ${activeTab === tab ? "gd-tab--active" : ""}`}
+              onClick={() => setActiveTab(tab)}
+            >
+              {tab === "standings" && "Standings"}
+              {tab === "picks" && "Picks"}
+            </button>
+          ))}
+        </div>
       </div>
 
       <div className="group-detail-content">
-        {loadError ? <p className="group-error">{loadError}</p> : null}
-        {loading ? (
-          <div className="group-detail-loading">Loading group data...</div>
-        ) : (
-          <>
-            {activeTab === "standings" && (
-              <GroupStandingsTab
-                groupId={group.id}
-                standings={rankedStandings}
-                groupMemberCount={displayedMemberCount}
-                soleLeader={soleLeader}
-                currentUserId={user?.id}
-                tournamentStarted={tournamentStarted}
-                submissionsLocked={submissionsLocked}
-                canPreviewHidden={canPreviewHidden}
-                onViewBracket={handleOpenBracketInPicks}
-                onRefresh={loadGroupData}
-                onSelectBracket={submissionsLocked ? undefined : handleOpenBracketPicker}
-                onInvite={() => void handleInvite()}
-                forecast={groupForecast}
-                forecastLoading={groupForecastLoading}
-                forecastProgress={groupForecastProgress}
-                forecastError={groupForecastError}
-              />
-            )}
-            {activeTab === "members" && (
-              <GroupMembersTab
-                members={members}
-                currentUserId={user?.id}
-                onSelectBracket={submissionsLocked ? undefined : handleOpenBracketPicker}
-              />
-            )}
-            {activeTab === "picks" && (
-              <GroupPicksTab
-                standings={rankedStandings}
-                members={members}
-                currentUserId={user?.id}
-                canPreviewHidden={canPreviewHidden}
-                selectedBracketId={selectedPicksBracketId}
-                onSelectedBracketChange={setSelectedPicksBracketId}
-                tournamentResults={tournamentResults}
-              />
-            )}
-            {activeTab === "chaos" && (
-              <GroupChaosTab
-                standings={rankedStandings}
-                currentUserId={user?.id}
-                canPreviewHidden={canPreviewHidden}
-              />
-            )}
-          </>
-        )}
+        <div className={`group-detail-frame ${activeTab === "standings" ? "group-detail-frame--standings" : ""}`}>
+          {loadError ? <p className="group-error">{loadError}</p> : null}
+          {loading ? (
+            <div className="group-detail-loading">Loading group data...</div>
+          ) : (
+            <>
+              {activeTab === "standings" && (
+                <GroupStandingsTab
+                  groupId={group.id}
+                  standings={rankedStandings}
+                  groupMemberCount={displayedMemberCount}
+                  soleLeader={soleLeader}
+                  currentUserId={user?.id}
+                  tournamentStarted={tournamentStarted}
+                  submissionsLocked={submissionsLocked}
+                  canPreviewHidden={canPreviewHidden}
+                  onViewBracket={handleOpenBracketInPicks}
+                  onRefresh={loadGroupData}
+                  onSelectBracket={submissionsLocked ? undefined : handleOpenBracketPicker}
+                  onInvite={() => void handleInvite()}
+                  forecast={groupForecast}
+                  forecastLoading={groupForecastLoading}
+                  forecastProgress={groupForecastProgress}
+                  forecastError={groupForecastError}
+                />
+              )}
+              {activeTab === "picks" && (
+                <GroupPicksTab
+                  standings={rankedStandings}
+                  members={members}
+                  currentUserId={user?.id}
+                  canPreviewHidden={canPreviewHidden}
+                  selectedBracketId={selectedPicksBracketId}
+                  onSelectedBracketChange={setSelectedPicksBracketId}
+                  tournamentResults={tournamentResults}
+                />
+              )}
+            </>
+          )}
+        </div>
       </div>
 
       {showBracketPicker && (

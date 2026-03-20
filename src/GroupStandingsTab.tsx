@@ -62,6 +62,11 @@ function formatExpectedRank(value: number | null | undefined) {
   return `#${value.toFixed(1)}`;
 }
 
+function formatChaosScore(value: number | null | undefined) {
+  if (typeof value !== "number" || !Number.isFinite(value)) return "—";
+  return `${Math.round(value)}`;
+}
+
 function compareByScore(left: RankedStanding, right: RankedStanding) {
   if ((right.total_score || 0) !== (left.total_score || 0)) return (right.total_score || 0) - (left.total_score || 0);
   if ((right.correct_picks || 0) !== (left.correct_picks || 0)) return (right.correct_picks || 0) - (left.correct_picks || 0);
@@ -256,7 +261,7 @@ export function GroupStandingsTab({
         <div className="gd-empty-state">
           <span className="gd-empty-state-icon">📋</span>
           <h3>No brackets in the standings yet</h3>
-          <p>Members can still be in the group before their brackets show up here. Check the Members tab to see everyone in the room.</p>
+          <p>Members can still be in the group before their brackets show up here. Once they attach a bracket, they&apos;ll land in the standings automatically.</p>
         </div>
       ) : null}
 
@@ -360,35 +365,47 @@ export function GroupStandingsTab({
                       <span className="gd-standing-panel-label">Max Remaining</span>
                       <span className="gd-standing-panel-value">{entry.max_remaining ?? "—"}</span>
                     </div>
-                    {canOpenBracket ? (
-                      <button
-                        type="button"
-                        className="gd-standing-open"
-                        onClick={(event) => {
-                          event.stopPropagation();
-                          onViewBracket({
-                            bracketId: entry.bracket_id!,
-                            displayName: entry.display_name,
-                            bracketName: entry.bracket_name,
-                          });
-                        }}
-                      >
-                        View Bracket →
-                      </button>
-                    ) : null}
-                    {!hasBracket && isCurrentUser && onSelectBracket ? (
-                      <button
-                        type="button"
-                        className="gd-standing-open"
-                        onClick={(event) => {
-                          event.stopPropagation();
-                          onSelectBracket();
-                        }}
-                      >
-                        Select Bracket →
-                      </button>
-                    ) : null}
+                    <div className="gd-standing-panel-stat">
+                      <span className="gd-standing-panel-label">Chaos</span>
+                      <span className="gd-standing-panel-value">{formatChaosScore(chaosScore)}</span>
+                      <span className="gd-standing-panel-meta">
+                        {chaosScore !== null ? `${chaosTier.emoji} ${chaosTier.label}` : "No bracket"}
+                      </span>
+                    </div>
                   </div>
+
+                  {canOpenBracket || (!hasBracket && isCurrentUser && onSelectBracket) ? (
+                    <div className="gd-standing-panel-actions">
+                      {canOpenBracket ? (
+                        <button
+                          type="button"
+                          className="gd-standing-open"
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            onViewBracket({
+                              bracketId: entry.bracket_id!,
+                              displayName: entry.display_name,
+                              bracketName: entry.bracket_name,
+                            });
+                          }}
+                        >
+                          View Bracket →
+                        </button>
+                      ) : null}
+                      {!hasBracket && isCurrentUser && onSelectBracket ? (
+                        <button
+                          type="button"
+                          className="gd-standing-open"
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            onSelectBracket();
+                          }}
+                        >
+                          Select Bracket →
+                        </button>
+                      ) : null}
+                    </div>
+                  ) : null}
 
                   {forecastEntry ? (
                     <div className="gd-standing-panel-hist">
