@@ -703,7 +703,9 @@ const getOnboardingPathByRound = (startGameId: string | null): Record<"R32" | "S
 function App() {
   const { user, profile, isAuthenticated, signOut, loading: authLoading } = useAuth();
   const initialBracketLoadEnabledRef = useRef(
-    typeof window !== "undefined" && window.location.pathname === "/"
+    typeof window !== "undefined" &&
+      window.location.pathname === "/" &&
+      !window.matchMedia("(max-width: 767px)").matches
   );
   const bracketLoadStartedAtRef = useRef(
     typeof performance !== "undefined" ? performance.now() : Date.now()
@@ -887,6 +889,15 @@ function App() {
   const initialBracketLoadEnabled = initialBracketLoadEnabledRef.current;
   const bracketLoadingReady = initialBracketLoadEnabled && initialSimulationReady && bracketDomReady;
   const effectiveLockedPicks = useMemo(() => mergeNcaaKnownResults(lockedPicks), [lockedPicks]);
+
+  useEffect(() => {
+    if (!isMobile) return;
+    initialBracketLoadEnabledRef.current = false;
+    setInitialSimulationReady(true);
+    setBracketDomReady(true);
+    setBracketLoadProgress(1);
+    setBracketLoadPhase("hidden");
+  }, [isMobile]);
 
   const { games, sanitized } = useMemo(
     () => resolveGames(effectiveLockedPicks, customProbByGame),
@@ -5574,12 +5585,14 @@ function App() {
         </div>
       ) : null}
 
-      <BracketLoadingOverlay
-        isMobile={isMobile}
-        phase={bracketLoadPhase}
-        message={BRACKET_LOADING_MESSAGES[bracketLoadMessageIndex]}
-        progress={bracketLoadProgress}
-      />
+      {!isMobile ? (
+        <BracketLoadingOverlay
+          isMobile={isMobile}
+          phase={bracketLoadPhase}
+          message={BRACKET_LOADING_MESSAGES[bracketLoadMessageIndex]}
+          progress={bracketLoadProgress}
+        />
+      ) : null}
 
     </div>
   );
