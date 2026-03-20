@@ -23300,25 +23300,11 @@ body.br-modal-open {
   text-align: center;
 }
 
-.sfh-tooltip-wrap {
-  position: absolute;
-  left: 50%;
-  bottom: 100%;
-  transform: translateX(-50%);
-  padding-bottom: 12px;
-  z-index: 50;
+.sfh-tooltip-layer {
+  position: fixed;
+  z-index: 500;
   pointer-events: none;
-}
-
-.sfh-tooltip-wrap--left {
-  left: 0;
-  transform: none;
-}
-
-.sfh-tooltip-wrap--right {
-  left: auto;
-  right: 0;
-  transform: none;
+  transform: translateY(calc(-100% - 12px));
 }
 
 .sfh-tooltip {
@@ -23327,6 +23313,7 @@ body.br-modal-open {
   flex-direction: column;
   gap: 4px;
   max-width: 260px;
+  width: min(260px, calc(100vw - 24px));
   padding: 10px 14px;
   border-radius: var(--radius-md, 12px);
   border: 1px solid var(--line-strong, rgba(171, 138, 69, 0.22));
@@ -23360,7 +23347,7 @@ body.br-modal-open {
 
 .sfh-tooltip-caret {
   position: absolute;
-  left: 50%;
+  left: var(--sfh-tooltip-caret-left, 50%);
   top: 100%;
   transform: translateX(-50%);
   width: 0;
@@ -23368,17 +23355,6 @@ body.br-modal-open {
   border-left: 6px solid transparent;
   border-right: 6px solid transparent;
   border-top: 6px solid rgba(0, 0, 0, 0.92);
-}
-
-.sfh-tooltip-wrap--left .sfh-tooltip-caret {
-  left: 24px;
-  transform: none;
-}
-
-.sfh-tooltip-wrap--right .sfh-tooltip-caret {
-  left: auto;
-  right: 24px;
-  transform: none;
 }
 
 .lb-header-left {
