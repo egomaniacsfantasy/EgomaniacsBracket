@@ -22138,7 +22138,16 @@ body.br-modal-open {
 
 .grp-bv-team-check {
   font-size: 9px;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
+.grp-bv-team-check--win {
   color: #4ade80;
+}
+
+.grp-bv-team-check--loss {
+  color: #f87171;
 }
 
 .grp-bv-finals {
@@ -22453,7 +22462,15 @@ body.br-modal-open {
 }
 
 .grp-bv-m-team-check {
+  font-weight: 700;
+}
+
+.grp-bv-m-team-check--win {
   color: #4ade80;
+}
+
+.grp-bv-m-team-check--loss {
+  color: #f87171;
 }
 
 .grp-bv-m-team-arrow {
@@ -22631,6 +22648,16 @@ body.br-modal-open {
   margin-bottom: 8px;
 }
 
+.grp-sp-team-row--correct .grp-sp-team-name {
+  color: #4ade80;
+}
+
+.grp-sp-team-row--incorrect .grp-sp-team-name {
+  color: #f87171;
+  text-decoration: line-through;
+  text-decoration-color: #f87171;
+}
+
 .grp-sp-team-copy {
   display: flex;
   align-items: center;
@@ -22666,6 +22693,21 @@ body.br-modal-open {
   font-size: 14px;
   font-weight: 600;
   color: var(--text-primary);
+}
+
+.grp-sp-team-result {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
+.grp-sp-team-result--win {
+  color: #4ade80;
+}
+
+.grp-sp-team-result--loss {
+  color: #f87171;
 }
 
 .grp-sp-unanimous {

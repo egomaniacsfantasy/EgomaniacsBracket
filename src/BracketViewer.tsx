@@ -182,10 +182,10 @@ function normalizeTournamentResults(tournamentResults: unknown) {
   return resultsByGame;
 }
 
-function getPickedRowState(game: ResolvedGame, actualWinnerId: string | null): TeamRowState {
-  if (!game.winnerId) return "missing";
+function getActualRowState(teamId: string | null, actualWinnerId: string | null): TeamRowState {
+  if (!teamId) return "missing";
   if (!actualWinnerId) return "default";
-  return actualWinnerId === game.winnerId ? "correct" : "incorrect";
+  return actualWinnerId === teamId ? "correct" : "incorrect";
 }
 
 function getSlotTone(round: Round): SlotTone {
@@ -286,7 +286,8 @@ function TeamRow({
       <span className="grp-bv-team-name" title={team.name}>
         {team.abbr}
       </span>
-      {isPicked && rowState === "correct" ? <span className="grp-bv-team-check">✓</span> : null}
+      {rowState === "correct" ? <span className="grp-bv-team-check grp-bv-team-check--win">✓</span> : null}
+      {rowState === "incorrect" ? <span className="grp-bv-team-check grp-bv-team-check--loss">✕</span> : null}
     </div>
   );
 }
@@ -314,7 +315,6 @@ function GameSlot({
   const teamA = getTeamDisplay(game.teamAId);
   const teamB = getTeamDisplay(game.teamBId);
   const actualWinnerId = resultsByGame.get(game.id) ?? null;
-  const pickedRowState = getPickedRowState(game, actualWinnerId);
   const hasPick = Boolean(game.winnerId);
   const slotTone = getSlotTone(game.round);
 
@@ -332,14 +332,14 @@ function GameSlot({
       <TeamRow
         team={teamA}
         isPicked={game.winnerId === game.teamAId}
-        rowState={hasPick ? (game.winnerId === game.teamAId ? pickedRowState : "default") : "missing"}
-        faded={hasPick && game.winnerId !== game.teamAId}
+        rowState={getActualRowState(game.teamAId, actualWinnerId)}
+        faded={!actualWinnerId && hasPick && game.winnerId !== game.teamAId}
       />
       <TeamRow
         team={teamB}
         isPicked={game.winnerId === game.teamBId}
-        rowState={hasPick ? (game.winnerId === game.teamBId ? pickedRowState : "default") : "missing"}
-        faded={hasPick && game.winnerId !== game.teamBId}
+        rowState={getActualRowState(game.teamBId, actualWinnerId)}
+        faded={!actualWinnerId && hasPick && game.winnerId !== game.teamBId}
       />
     </div>
   );
@@ -393,7 +393,7 @@ function ChampionBadge({
 }) {
   const championTeam = getTeamDisplay(championship?.winnerId ?? null);
   const actualWinnerId = championship ? resultsByGame.get(championship.id) ?? null : null;
-  const state = championship ? getPickedRowState(championship, actualWinnerId) : "missing";
+  const state = championship ? getActualRowState(championship.winnerId ?? null, actualWinnerId) : "missing";
 
   return (
     <div
@@ -496,7 +496,8 @@ function MobileTeamRow({
       <span className="grp-bv-m-team-name" title={team.name}>
         {team.name}
       </span>
-      {isPicked && rowState === "correct" ? <span className="grp-bv-m-team-check">✓</span> : null}
+      {rowState === "correct" ? <span className="grp-bv-m-team-check grp-bv-m-team-check--win">✓</span> : null}
+      {rowState === "incorrect" ? <span className="grp-bv-m-team-check grp-bv-m-team-check--loss">✕</span> : null}
       {isPicked ? <span className="grp-bv-m-team-arrow">→</span> : null}
     </div>
   );
@@ -516,7 +517,6 @@ function MobileGameCard({
   const teamA = getTeamDisplay(game.teamAId);
   const teamB = getTeamDisplay(game.teamBId);
   const actualWinnerId = resultsByGame.get(game.id) ?? null;
-  const pickedRowState = getPickedRowState(game, actualWinnerId);
   const hasPick = Boolean(game.winnerId);
   const slotTone = getSlotTone(game.round);
   const cardTone = championship ? "championship" : slotTone;
@@ -535,15 +535,15 @@ function MobileGameCard({
       <MobileTeamRow
         team={teamA}
         isPicked={game.winnerId === game.teamAId}
-        rowState={hasPick ? (game.winnerId === game.teamAId ? pickedRowState : "default") : "missing"}
-        faded={hasPick && game.winnerId !== game.teamAId}
+        rowState={getActualRowState(game.teamAId, actualWinnerId)}
+        faded={!actualWinnerId && hasPick && game.winnerId !== game.teamAId}
         large={championship}
       />
       <MobileTeamRow
         team={teamB}
         isPicked={game.winnerId === game.teamBId}
-        rowState={hasPick ? (game.winnerId === game.teamBId ? pickedRowState : "default") : "missing"}
-        faded={hasPick && game.winnerId !== game.teamBId}
+        rowState={getActualRowState(game.teamBId, actualWinnerId)}
+        faded={!actualWinnerId && hasPick && game.winnerId !== game.teamBId}
         large={championship}
       />
     </article>
@@ -559,7 +559,7 @@ function MobileChampionCard({
 }) {
   const championTeam = getTeamDisplay(championship?.winnerId ?? null);
   const actualWinnerId = championship ? resultsByGame.get(championship.id) ?? null : null;
-  const state = championship ? getPickedRowState(championship, actualWinnerId) : "missing";
+  const state = championship ? getActualRowState(championship.winnerId ?? null, actualWinnerId) : "missing";
 
   return (
     <div

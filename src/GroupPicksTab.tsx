@@ -50,6 +50,7 @@ type SlotTeamGroup = {
   teamSeedLabel: string | null;
   logoUrl: string | null;
   members: MemberPick[];
+  resultState: "default" | "correct" | "incorrect";
 };
 
 type SlotCardData = {
@@ -99,6 +100,78 @@ const SLOT_SEED_MATCHUPS: Array<[number, number]> = [
   [7, 10],
   [2, 15],
 ];
+
+function normalizeTournamentResults(tournamentResults: unknown) {
+  const resultsByGame = new Map<string, string>();
+
+  if (tournamentResults instanceof Map) {
+    tournamentResults.forEach((winnerTeamId, matchupId) => {
+      if (typeof matchupId !== "string" || typeof winnerTeamId !== "string") return;
+      resultsByGame.set(matchupId, winnerTeamId);
+    });
+    return resultsByGame;
+  }
+
+  if (Array.isArray(tournamentResults)) {
+    tournamentResults.forEach((entry) => {
+      if (!entry || typeof entry !== "object") return;
+      const row = entry as {
+        matchup_id?: unknown;
+        winner_team_id?: unknown;
+        winner?: unknown;
+        winnerTeamId?: unknown;
+      };
+      const matchupId = typeof row.matchup_id === "string" ? row.matchup_id : null;
+      const winnerTeamId =
+        typeof row.winner_team_id === "string"
+          ? row.winner_team_id
+          : typeof row.winner === "string"
+            ? row.winner
+            : typeof row.winnerTeamId === "string"
+              ? row.winnerTeamId
+              : null;
+      if (!matchupId || !winnerTeamId) return;
+      resultsByGame.set(matchupId, winnerTeamId);
+    });
+    return resultsByGame;
+  }
+
+  if (!tournamentResults || typeof tournamentResults !== "object") {
+    return resultsByGame;
+  }
+
+  if ("results" in (tournamentResults as Record<string, unknown>)) {
+    return normalizeTournamentResults((tournamentResults as { results?: unknown }).results);
+  }
+
+  Object.entries(tournamentResults as Record<string, unknown>).forEach(([gameId, value]) => {
+    if (typeof value === "string") {
+      resultsByGame.set(gameId, value);
+      return;
+    }
+
+    if (!value || typeof value !== "object") return;
+    const row = value as {
+      matchup_id?: unknown;
+      winner_team_id?: unknown;
+      winner?: unknown;
+      winnerTeamId?: unknown;
+    };
+    const matchupId = typeof row.matchup_id === "string" ? row.matchup_id : gameId;
+    const winnerTeamId =
+      typeof row.winner_team_id === "string"
+        ? row.winner_team_id
+        : typeof row.winner === "string"
+          ? row.winner
+          : typeof row.winnerTeamId === "string"
+            ? row.winnerTeamId
+            : null;
+    if (!matchupId || !winnerTeamId) return;
+    resultsByGame.set(matchupId, winnerTeamId);
+  });
+
+  return resultsByGame;
+}
 
 function compareTeams(teamAId: string, teamBId: string) {
   const teamA = teamsById.get(teamAId);
@@ -181,7 +254,11 @@ function getGridVariant(regionTab: RegionTab, roundTab: RoundTab) {
   return "single";
 }
 
-function buildSlotTeamGroup(teamId: string, members: MemberPick[]): SlotTeamGroup {
+function buildSlotTeamGroup(
+  teamId: string,
+  members: MemberPick[],
+  actualWinnerId: string | null,
+): SlotTeamGroup {
   const team = teamsById.get(teamId);
   return {
     teamId,
@@ -189,6 +266,7 @@ function buildSlotTeamGroup(teamId: string, members: MemberPick[]): SlotTeamGrou
     teamSeedLabel: team?.seedLabel ?? (team?.seed ? String(team.seed) : null),
     logoUrl: team ? teamLogoUrl(team) : null,
     members: [...members].sort(sortMemberPicks),
+    resultState: !actualWinnerId ? "default" : actualWinnerId === teamId ? "correct" : "incorrect",
   };
 }
 
@@ -325,12 +403,15 @@ export function GroupPicksTab({
     [bracketEntries],
   );
 
+  const resultsByGame = useMemo(() => normalizeTournamentResults(tournamentResults), [tournamentResults]);
+
   const slotTemplates = useMemo(() => getSlotTemplates(selectedRegion, selectedRound), [selectedRegion, selectedRound]);
 
   const slotCards = useMemo<SlotCardData[]>(
     () =>
       slotTemplates.map((template) => {
         const groupsByTeam = new Map<string, MemberPick[]>();
+        const actualWinnerId = resultsByGame.get(template.id) ?? null;
 
         resolvedBracketEntries.forEach(({ entry, gamesById }) => {
           const winnerId = gamesById.get(template.id)?.winnerId;
@@ -351,7 +432,7 @@ export function GroupPicksTab({
         });
 
         const groups = [...groupsByTeam.entries()]
-          .map(([teamId, groupMembers]) => buildSlotTeamGroup(teamId, groupMembers))
+          .map(([teamId, groupMembers]) => buildSlotTeamGroup(teamId, groupMembers, actualWinnerId))
           .sort((groupA, groupB) => {
             const memberDiff = groupB.members.length - groupA.members.length;
             if (memberDiff !== 0) return memberDiff;
@@ -371,7 +452,7 @@ export function GroupPicksTab({
             resolvedBracketEntries.length > 1,
         };
       }),
-    [currentUserId, resolvedBracketEntries, slotTemplates],
+    [currentUserId, resolvedBracketEntries, resultsByGame, slotTemplates],
   );
 
   const roundOptions = selectedRegion === "finalfour" ? FINAL_FOUR_ROUNDS : REGIONAL_ROUNDS;
@@ -543,12 +624,21 @@ export function GroupPicksTab({
                       <div key={`${slotCard.id}-${group.teamId}`} className="grp-sp-team-group">
                         {index > 0 ? <div className="grp-sp-divider" /> : null}
 
-                        <div className="grp-sp-team-row">
+                        <div
+                          className={[
+                            "grp-sp-team-row",
+                            group.resultState !== "default" ? `grp-sp-team-row--${group.resultState}` : "",
+                          ]
+                            .filter(Boolean)
+                            .join(" ")}
+                        >
                           <SlotTeamLogo group={group} />
                           <div className="grp-sp-team-copy">
                             <span className="grp-sp-team-name">{group.teamName}</span>
                             {slotCard.isUnanimous ? <span className="grp-sp-unanimous">UNANIMOUS</span> : null}
                           </div>
+                          {group.resultState === "correct" ? <span className="grp-sp-team-result grp-sp-team-result--win">✓</span> : null}
+                          {group.resultState === "incorrect" ? <span className="grp-sp-team-result grp-sp-team-result--loss">✕</span> : null}
                           {group.teamSeedLabel ? <span className="grp-sp-team-seed">#{group.teamSeedLabel}</span> : null}
                         </div>
 
