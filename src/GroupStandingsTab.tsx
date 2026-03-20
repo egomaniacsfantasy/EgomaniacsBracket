@@ -1,8 +1,13 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { computeChaosScoreForPicks } from "./bracketStorage";
 import { teamsById } from "./data/teams";
-import { type LockedPicks } from "./lib/bracket";
+import type { LockedPicks } from "./lib/bracket";
 import { resolveBracketWithKnownResults } from "./lib/bracketCompletion";
+import { abbreviationForTeam } from "./lib/abbreviation";
+import {
+  formatForecastProbability,
+  type ForecastOddsFormat,
+} from "./lib/forecastDisplay";
 import { teamLogoUrl } from "./lib/logo";
 import { canSeeDetails } from "./groupVisibility";
 import type { GroupStanding } from "./groupStorage";
@@ -11,6 +16,7 @@ import type { StandingsForecastResult } from "./lib/standingsForecast";
 
 type RankedStanding = GroupStanding & { groupRank: number };
 type GroupSortMode = "score" | "winPct";
+type WinTone = "top" | "middle" | "bottom";
 
 const CHAOS_TIERS = [
   { min: 80, label: "Chaos Agent", emoji: "🌪️" },
@@ -19,6 +25,8 @@ const CHAOS_TIERS = [
   { min: 20, label: "Mild Chalk", emoji: "📊" },
   { min: 0, label: "Chalk City", emoji: "🏛️" },
 ] as const;
+
+const SORT_FADE_OUT_MS = 100;
 
 function getChaosTier(score: number | null) {
   if (score === null || score === undefined) return CHAOS_TIERS[CHAOS_TIERS.length - 1];
@@ -38,14 +46,10 @@ function getTeamInfo(teamId: string) {
   if (!team) return null;
   return {
     name: team.name,
+    shortName: abbreviationForTeam(team.name),
     seed: team.seed,
     logoUrl: teamLogoUrl(team),
   };
-}
-
-function formatForecastPercent(value: number | null | undefined) {
-  if (typeof value !== "number" || !Number.isFinite(value)) return "—";
-  return `${(value * 100).toFixed(value >= 0.1 ? 1 : 2)}%`;
 }
 
 function formatExpectedPoints(value: number | null | undefined) {
@@ -58,13 +62,26 @@ function formatExpectedRank(value: number | null | undefined) {
   return `#${value.toFixed(1)}`;
 }
 
+function compareByScore(left: RankedStanding, right: RankedStanding) {
+  if ((right.total_score || 0) !== (left.total_score || 0)) return (right.total_score || 0) - (left.total_score || 0);
+  if ((right.correct_picks || 0) !== (left.correct_picks || 0)) return (right.correct_picks || 0) - (left.correct_picks || 0);
+  return (left.groupRank || Number.MAX_SAFE_INTEGER) - (right.groupRank || Number.MAX_SAFE_INTEGER);
+}
+
+function getWinTone(index: number, count: number): WinTone {
+  if (count <= 1) return "top";
+  const topCutoff = Math.max(1, Math.ceil(count * 0.25));
+  const bottomStart = Math.max(topCutoff + 1, Math.ceil(count * 0.75));
+  if (index < topCutoff) return "top";
+  if (index >= bottomStart) return "bottom";
+  return "middle";
+}
+
 export function GroupStandingsTab({
   groupId,
   standings,
   groupMemberCount,
-  soleLeader,
   currentUserId,
-  tournamentStarted,
   submissionsLocked = false,
   canPreviewHidden = false,
   onViewBracket,
@@ -93,24 +110,72 @@ export function GroupStandingsTab({
   forecastProgress?: number;
   forecastError?: string;
 }) {
-  const [sortMode, setSortMode] = useState<GroupSortMode>("score");
+  const [sortMode, setSortMode] = useState<GroupSortMode>("winPct");
+  const [oddsFormat, setOddsFormat] = useState<ForecastOddsFormat>("percent");
+  const [expandedUserId, setExpandedUserId] = useState<string | null>(null);
+  const [listFading, setListFading] = useState(false);
+  const sortTimersRef = useRef<number[]>([]);
   const canSortByWin = submissionsLocked && standings.some((entry) => entry.bracket_id && entry.picks);
-  const orderedStandings = useMemo(
+
+  useEffect(() => {
+    return () => {
+      sortTimersRef.current.forEach((timer) => window.clearTimeout(timer));
+      sortTimersRef.current = [];
+    };
+  }, []);
+
+  const orderedStandings = useMemo(() => {
+    const base = [...standings];
+    if (sortMode === "score" || !canSortByWin) {
+      return base.sort(compareByScore);
+    }
+
+    return base.sort((left, right) => {
+      const leftProb = forecast?.rows[left.user_id]?.finish1Prob ?? -1;
+      const rightProb = forecast?.rows[right.user_id]?.finish1Prob ?? -1;
+      if (rightProb !== leftProb) return rightProb - leftProb;
+      return compareByScore(left, right);
+    });
+  }, [canSortByWin, forecast, sortMode, standings]);
+
+  const leaderboardWinOrder = useMemo(
     () =>
-      [...standings].sort((a, b) => {
-        if (sortMode === "winPct" && canSortByWin) {
-          const winA = forecast?.rows[a.user_id]?.finish1Prob;
-          const winB = forecast?.rows[b.user_id]?.finish1Prob;
-          const safeWinA = Number.isFinite(winA ?? NaN) ? Number(winA) : -1;
-          const safeWinB = Number.isFinite(winB ?? NaN) ? Number(winB) : -1;
-          if (safeWinB !== safeWinA) return safeWinB - safeWinA;
-        }
-        if ((b.total_score || 0) !== (a.total_score || 0)) return (b.total_score || 0) - (a.total_score || 0);
-        if ((b.correct_picks || 0) !== (a.correct_picks || 0)) return (b.correct_picks || 0) - (a.correct_picks || 0);
-        return (a.groupRank || Number.MAX_SAFE_INTEGER) - (b.groupRank || Number.MAX_SAFE_INTEGER);
+      [...orderedStandings].sort((left, right) => {
+        const leftProb = forecast?.rows[left.user_id]?.finish1Prob ?? -1;
+        const rightProb = forecast?.rows[right.user_id]?.finish1Prob ?? -1;
+        if (rightProb !== leftProb) return rightProb - leftProb;
+        return compareByScore(left, right);
       }),
-    [canSortByWin, forecast, sortMode, standings]
+    [forecast, orderedStandings],
   );
+
+  const winToneByUserId = useMemo(() => {
+    const map = new Map<string, WinTone>();
+    leaderboardWinOrder.forEach((entry, index) => {
+      map.set(entry.user_id, getWinTone(index, leaderboardWinOrder.length));
+    });
+    return map;
+  }, [leaderboardWinOrder]);
+
+  const activeExpandedUserId = useMemo(
+    () => (expandedUserId && standings.some((entry) => entry.user_id === expandedUserId) ? expandedUserId : null),
+    [expandedUserId, standings],
+  );
+
+  const handleSortModeChange = (nextMode: GroupSortMode) => {
+    if (nextMode === sortMode) return;
+    sortTimersRef.current.forEach((timer) => window.clearTimeout(timer));
+    sortTimersRef.current = [];
+    setListFading(true);
+
+    const swapTimer = window.setTimeout(() => {
+      setSortMode(nextMode);
+      const revealTimer = window.setTimeout(() => setListFading(false), 16);
+      sortTimersRef.current = [revealTimer];
+    }, SORT_FADE_OUT_MS);
+
+    sortTimersRef.current = [swapTimer];
+  };
 
   const standingsCount = orderedStandings.length;
   const showForecast = canSortByWin;
@@ -119,26 +184,48 @@ export function GroupStandingsTab({
     <div className="gd-standings">
       {showForecast ? (
         <div className="gd-forecast-banner">
-          {forecastLoading ? (
-            <>
+          <div className="gd-forecast-banner-main">
+            <div className="gd-forecast-banner-copy">
               <span className="gd-forecast-banner-label">Win Odds</span>
-              <span className="gd-forecast-banner-value">
-                Simulating 10,000 seeded futures... {Math.round(Math.max(0, Math.min(1, forecastProgress)) * 100)}%
-              </span>
-            </>
-          ) : forecast ? (
-            <>
-              <span className="gd-forecast-banner-label">Win Odds</span>
-              <span className="gd-forecast-banner-value">
-                Updated from {forecast.simCount.toLocaleString()} seeded simulations
-              </span>
-            </>
-          ) : forecastError ? (
-            <>
-              <span className="gd-forecast-banner-label">Win Odds</span>
-              <span className="gd-forecast-banner-value gd-forecast-banner-value--error">{forecastError}</span>
-            </>
-          ) : null}
+              {forecastLoading ? (
+                <span className="gd-forecast-banner-value">
+                  Simulating 10,000 seeded futures... {Math.round(Math.max(0, Math.min(1, forecastProgress)) * 100)}%
+                </span>
+              ) : forecast ? (
+                <span className="gd-forecast-banner-value">
+                  Updated from {forecast.simCount.toLocaleString()} seeded simulations
+                </span>
+              ) : forecastError ? (
+                <span className="gd-forecast-banner-value gd-forecast-banner-value--error">{forecastError}</span>
+              ) : null}
+            </div>
+            <div className="gd-forecast-controls">
+              <div className="gd-segmented-toggle" role="group" aria-label="Group standings sort">
+                <button
+                  type="button"
+                  className={`gd-segmented-toggle-btn ${sortMode === "winPct" ? "gd-segmented-toggle-btn--active" : ""}`}
+                  onClick={() => handleSortModeChange("winPct")}
+                >
+                  By Odds
+                </button>
+                <button
+                  type="button"
+                  className={`gd-segmented-toggle-btn ${sortMode === "score" ? "gd-segmented-toggle-btn--active" : ""}`}
+                  onClick={() => handleSortModeChange("score")}
+                >
+                  By Score
+                </button>
+              </div>
+              <button
+                type="button"
+                className="gd-format-toggle"
+                onClick={() => setOddsFormat((current) => (current === "percent" ? "american" : "percent"))}
+                aria-label={oddsFormat === "percent" ? "Show American win odds" : "Show implied win percentage"}
+              >
+                {oddsFormat === "percent" ? "US" : "%"}
+              </button>
+            </div>
+          </div>
         </div>
       ) : null}
 
@@ -173,16 +260,15 @@ export function GroupStandingsTab({
         </div>
       ) : null}
 
-      <div className="gd-standings-list">
-        {orderedStandings.map((entry) => {
+      <div className={`gd-standings-list ${listFading ? "gd-standings-list--fading" : ""}`}>
+        {orderedStandings.map((entry, index) => {
           const isCurrentUser = entry.user_id === currentUserId;
           const hasBracket = entry.bracket_id != null;
           const canSee = canSeeDetails(entry, currentUserId, canPreviewHidden);
-          const isLeader = Boolean(tournamentStarted && hasBracket && soleLeader === entry.user_id);
           const championId = hasBracket && canSee ? getChampionPick(entry.picks) : null;
           const championInfo = championId ? getTeamInfo(championId) : null;
           const championLogoUrl = championInfo?.logoUrl ?? entry.champion_logo_url ?? null;
-          const championName = championInfo?.name ?? entry.champion_name ?? championId ?? "Champion pending";
+          const championName = championInfo?.shortName ?? championInfo?.name ?? entry.champion_name ?? championId ?? "Champion pending";
           const championSeed = championInfo?.seed ?? entry.champion_seed ?? null;
           const chaosScore =
             hasBracket && canSee && entry.picks && Object.keys(entry.picks).length > 0
@@ -191,156 +277,132 @@ export function GroupStandingsTab({
           const chaosTier = getChaosTier(chaosScore);
           const canOpenBracket = Boolean(hasBracket && canSee);
           const forecastEntry = forecast?.rows[entry.user_id] ?? null;
+          const isExpanded = activeExpandedUserId === entry.user_id;
+          const winTone = winToneByUserId.get(entry.user_id) ?? "middle";
+          const scoreValue = entry.total_score ?? 0;
+          const correctLabel = `${entry.correct_picks ?? 0}/${entry.possible_picks ?? 0}`;
+          const winDisplay =
+            forecastLoading && !forecastEntry ? "..." : formatForecastProbability(forecastEntry?.finish1Prob ?? null, oddsFormat);
 
           return (
             <div
               key={`${groupId}:${entry.user_id}`}
-              className={`gd-player-card ${isCurrentUser ? "gd-player-card--you" : ""} ${isLeader ? "gd-player-card--leader" : ""} ${canOpenBracket ? "gd-player-card--clickable" : ""}`}
-              onClick={() => {
-                if (!canOpenBracket) return;
-                onViewBracket({
-                  bracketId: entry.bracket_id!,
-                  displayName: entry.display_name,
-                  bracketName: entry.bracket_name,
-                });
-              }}
-              onKeyDown={(event) => {
-                if (!canOpenBracket) return;
-                if (event.key === "Enter" || event.key === " ") {
-                  event.preventDefault();
-                  onViewBracket({
-                    bracketId: entry.bracket_id!,
-                    displayName: entry.display_name,
-                    bracketName: entry.bracket_name,
-                  });
-                }
-              }}
-              role={canOpenBracket ? "button" : undefined}
-              tabIndex={canOpenBracket ? 0 : undefined}
+              className={`gd-standing-card ${isCurrentUser ? "gd-standing-card--you" : ""} ${index === 0 ? "gd-standing-card--leader" : ""} ${winTone === "bottom" ? "gd-standing-card--long-shot" : ""} ${isExpanded ? "gd-standing-card--expanded" : ""}`}
             >
-              <div className="gd-player-left">
-                <div className="gd-player-rank">
-                  {isLeader ? "👑" : hasBracket ? entry.groupRank : "—"}
-                </div>
+              <div
+                className="gd-standing-card-row"
+                onClick={() => setExpandedUserId((current) => (current === entry.user_id ? null : entry.user_id))}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter" || event.key === " ") {
+                    event.preventDefault();
+                    setExpandedUserId((current) => (current === entry.user_id ? null : entry.user_id));
+                  }
+                }}
+                role="button"
+                tabIndex={0}
+              >
+                <div className="gd-standing-rank">{index + 1}</div>
 
-                <div className="gd-player-identity">
-                  <div className="gd-player-name-row">
-                    <span className="gd-player-name">{entry.display_name}</span>
-                    {isCurrentUser && <span className="gd-player-you">YOU</span>}
+                <div className="gd-standing-player">
+                  <div className="gd-standing-player-row">
+                    <span className="gd-standing-player-name">{entry.display_name}</span>
+                    {isCurrentUser ? <span className="gd-standing-you">YOU</span> : null}
                   </div>
-
-                  <span className="gd-player-bracket-name">
+                  <span className="gd-standing-bracket-name">
                     {hasBracket ? entry.bracket_name || "Bracket submitted" : "No bracket yet"}
                   </span>
+                  <span className="gd-standing-chaos">
+                    {hasBracket && canSee && chaosScore !== null ? `${chaosTier.emoji} ${chaosTier.label}` : "No bracket yet"}
+                  </span>
+                </div>
 
-                  {hasBracket && canSee && chaosScore !== null && (
-                    <span className="gd-player-chaos">
-                      {chaosTier.emoji} {chaosTier.label}
-                    </span>
+                <div className="gd-standing-champion">
+                  {hasBracket && canSee ? (
+                    <>
+                      {championLogoUrl ? <img src={championLogoUrl} className="gd-standing-champion-logo" alt="" /> : null}
+                      <div className="gd-standing-champion-copy">
+                        <span className="gd-standing-champion-name">{championName}</span>
+                        <span className="gd-standing-champion-seed">{championSeed ? `#${championSeed}` : "Champion pick"}</span>
+                      </div>
+                    </>
+                  ) : hasBracket ? (
+                    <span className="gd-standing-hidden">🔒 Hidden until tipoff</span>
+                  ) : (
+                    <span className="gd-standing-hidden">No bracket yet</span>
                   )}
                 </div>
-              </div>
 
-              <div className="gd-player-right">
-                {!hasBracket ? (
-                  isCurrentUser ? (
-                    <button
-                      className="gd-select-bracket-btn"
-                      onClick={(event) => {
-                        event.stopPropagation();
-                        onSelectBracket?.();
-                      }}
-                    >
-                      Select Bracket →
-                    </button>
-                  ) : (
-                    <span className="gd-no-bracket">No bracket yet</span>
-                  )
-                ) : canSee ? (
-                  <div className="gd-player-champion">
-                    {championLogoUrl ? (
-                      <img
-                        src={championLogoUrl}
-                        className="gd-champion-logo"
-                        alt=""
-                        onError={(event) => {
-                          (event.target as HTMLImageElement).style.display = "none";
-                        }}
-                      />
-                    ) : null}
-
-                    <div className="gd-champion-info">
-                      <span className="gd-champion-name">{championName}</span>
-                      <span className="gd-champion-seed">
-                        {championSeed ? `#${championSeed} seed` : "Champion pick"}
-                      </span>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="gd-player-hidden">
-                    <span className="gd-hidden-icon">🔒</span>
-                    <span className="gd-hidden-text">Hidden until tipoff</span>
-                  </div>
-                )}
-              </div>
-
-              {hasBracket && canSee && tournamentStarted && (
-                <div className="gd-player-stats">
-                  <div className="gd-player-score-main">
-                    <span className="gd-player-score-label">Score</span>
-                    <span className="gd-player-score-value">{entry.total_score ?? 0}</span>
-                  </div>
-                  <div className="gd-player-score-meta">
-                    <span>{entry.correct_picks ?? 0}/{entry.possible_picks ?? 63} correct</span>
-                    <span>Max remaining: {entry.max_remaining ?? 0}</span>
-                  </div>
+                <div className="gd-standing-score">
+                  <span className="gd-standing-score-value">{scoreValue}</span>
+                  <span className="gd-standing-score-meta">{correctLabel}</span>
                 </div>
-              )}
 
-              {hasBracket && canSee && forecastEntry ? (
-                <div className="gd-player-forecast">
-                  <div className="gd-player-forecast-stats">
-                    <div className="gd-player-forecast-stat">
+                <div className={`gd-standing-win gd-standing-win--${winTone}`}>
+                  <span className="gd-standing-win-label">Win</span>
+                  <span className="gd-standing-win-value">{winDisplay}</span>
+                </div>
+
+                <div className={`gd-standing-chevron ${isExpanded ? "gd-standing-chevron--open" : ""}`}>⌄</div>
+              </div>
+
+              <div className={`gd-standing-panel ${isExpanded ? "gd-standing-panel--open" : ""}`}>
+                <div className="gd-standing-panel-inner">
+                  <div className="gd-standing-panel-stats">
+                    <div className="gd-standing-panel-stat">
+                      <span className="gd-standing-panel-label">Exp Pts</span>
+                      <span className="gd-standing-panel-value">{formatExpectedPoints(forecastEntry?.expectedPoints)}</span>
+                    </div>
+                    <div className="gd-standing-panel-stat">
+                      <span className="gd-standing-panel-label">Exp Rank</span>
+                      <span className="gd-standing-panel-value">{formatExpectedRank(forecastEntry?.expectedRank)}</span>
+                    </div>
+                    <div className="gd-standing-panel-stat">
+                      <span className="gd-standing-panel-label">Max Remaining</span>
+                      <span className="gd-standing-panel-value">{entry.max_remaining ?? "—"}</span>
+                    </div>
+                    {canOpenBracket ? (
                       <button
                         type="button"
-                        className="gd-player-forecast-label"
+                        className="gd-standing-open"
                         onClick={(event) => {
                           event.stopPropagation();
-                          setSortMode((mode) => (mode === "winPct" ? "score" : "winPct"));
-                        }}
-                        onKeyDown={(event) => {
-                          event.stopPropagation();
-                        }}
-                        title={sortMode === "winPct" ? "Sorting by win percentage (click to reset)" : "Sort by win percentage"}
-                        style={{
-                          background: "none",
-                          border: "none",
-                          padding: 0,
-                          margin: 0,
-                          font: "inherit",
-                          color: "inherit",
-                          cursor: "pointer",
+                          onViewBracket({
+                            bracketId: entry.bracket_id!,
+                            displayName: entry.display_name,
+                            bracketName: entry.bracket_name,
+                          });
                         }}
                       >
-                        Win {sortMode === "winPct" ? "↓" : ""}
+                        View Bracket →
                       </button>
-                      <span className="gd-player-forecast-value">{formatForecastPercent(forecastEntry.finish1Prob)}</span>
-                    </div>
-                    <div className="gd-player-forecast-stat">
-                      <span className="gd-player-forecast-label">Exp Pts</span>
-                      <span className="gd-player-forecast-value">{formatExpectedPoints(forecastEntry.expectedPoints)}</span>
-                    </div>
-                    <div className="gd-player-forecast-stat">
-                      <span className="gd-player-forecast-label">Exp Rank</span>
-                      <span className="gd-player-forecast-value">{formatExpectedRank(forecastEntry.expectedRank)}</span>
-                    </div>
+                    ) : null}
+                    {!hasBracket && isCurrentUser && onSelectBracket ? (
+                      <button
+                        type="button"
+                        className="gd-standing-open"
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          onSelectBracket();
+                        }}
+                      >
+                        Select Bracket →
+                      </button>
+                    ) : null}
                   </div>
-                  <div className="gd-player-forecast-hist">
-                    <span className="gd-player-forecast-hist-label">Rank distribution</span>
-                    <StandingsForecastHistogram bins={forecast?.bins ?? []} values={forecastEntry.rankHistogram} compact />
-                  </div>
+
+                  {forecastEntry ? (
+                    <div className="gd-standing-panel-hist">
+                      <span className="gd-standing-panel-hist-label">Rank Distribution</span>
+                      <StandingsForecastHistogram
+                        bins={forecast?.bins ?? []}
+                        values={forecastEntry.rankHistogram}
+                        format={oddsFormat}
+                        simCount={forecast?.simCount ?? 10_000}
+                      />
+                    </div>
+                  ) : null}
                 </div>
-              ) : null}
+              </div>
             </div>
           );
         })}
