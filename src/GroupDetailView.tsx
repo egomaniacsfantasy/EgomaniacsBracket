@@ -21,26 +21,6 @@ import { getBracketCompletionSummary } from "./lib/bracketCompletion";
 import { computeStandingsForecast, type StandingsForecastResult } from "./lib/standingsForecast";
 
 type RankedStanding = GroupStanding & { groupRank: number };
-const GROUP_SCENE_ODDS = [
-  "93.5%",
-  "68.8%",
-  "35.0%",
-  "19.4%",
-  "47.2%",
-  "74.8%",
-  "53.6%",
-  "26.1%",
-  "58.4%",
-  "85.1%",
-  "41.6%",
-  "75.7%",
-  "21.0%",
-  "54.3%",
-  "39.8%",
-  "63.2%",
-  "17.5%",
-  "88.4%",
-] as const;
 
 export function GroupDetailView({
   group,
@@ -407,17 +387,9 @@ export function GroupDetailView({
     <div className={`group-detail-overlay ${activeTab === "standings" ? "group-detail-overlay--standings" : ""}`}>
       {activeTab === "standings" ? (
         <div className="gd-scene" aria-hidden="true">
-          <div className="gd-scene-glow gd-scene-glow--left" />
-          <div className="gd-scene-glow gd-scene-glow--right" />
-          <div className="gd-scene-grid">
-            {GROUP_SCENE_ODDS.map((value, index) => (
-              <span key={`${value}-${index}`} className="gd-scene-grid-cell">
-                {value}
-              </span>
-            ))}
-          </div>
-          <span className="gd-scene-bolt gd-scene-bolt--left">⚡</span>
-          <span className="gd-scene-bolt gd-scene-bolt--right">⚡</span>
+          <div className="bg-shape bg-top gd-scene-shape" />
+          <div className="bg-shape bg-bottom gd-scene-shape" />
+          <div className="gd-scene-scrim" />
         </div>
       ) : null}
       <div className="gd-header">

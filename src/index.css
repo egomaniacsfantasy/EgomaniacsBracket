@@ -9295,77 +9295,31 @@ body.groups-hub-open .grp-hub-screen * {
 
 .group-detail-overlay--standings {
   background:
-    radial-gradient(900px 380px at 16% 0%, rgba(184, 125, 24, 0.14), transparent 58%),
-    radial-gradient(820px 360px at 88% 0%, rgba(173, 78, 12, 0.18), transparent 60%),
-    linear-gradient(180deg, #120d08 0%, #0e0c09 32%);
+    linear-gradient(180deg, rgba(10, 8, 6, 0.72) 0%, rgba(10, 8, 6, 0.86) 100%),
+    radial-gradient(1100px 600px at 0% 0%, rgba(202, 167, 40, 0.42), transparent 58%),
+    radial-gradient(850px 530px at 100% 0%, rgba(189, 83, 8, 0.42), transparent 56%),
+    linear-gradient(180deg, #1a1308 0%, #191204 100%);
 }
 
 .gd-scene {
   position: absolute;
-  inset: 0 0 auto;
-  height: min(360px, 44vh);
+  inset: 0;
   overflow: hidden;
   pointer-events: none;
   z-index: 0;
 }
 
-.gd-scene-glow {
+.gd-scene-shape {
+  opacity: 0.38;
+  filter: blur(72px);
+}
+
+.gd-scene-scrim {
   position: absolute;
-  border-radius: 999px;
-  filter: blur(74px);
-  opacity: 0.72;
-}
-
-.gd-scene-glow--left {
-  top: -90px;
-  left: -120px;
-  width: 420px;
-  height: 260px;
-  background: radial-gradient(circle at center, rgba(231, 191, 114, 0.22), transparent 70%);
-}
-
-.gd-scene-glow--right {
-  top: -110px;
-  right: -120px;
-  width: 420px;
-  height: 280px;
-  background: radial-gradient(circle at center, rgba(194, 94, 22, 0.24), transparent 72%);
-}
-
-.gd-scene-grid {
-  position: absolute;
-  inset: 8px 0 auto;
-  display: grid;
-  grid-template-columns: repeat(9, minmax(0, 1fr));
-  gap: 22px 28px;
-  padding: 0 40px;
-  opacity: 0.12;
-}
-
-.gd-scene-grid-cell {
-  font-family: var(--font-mono);
-  font-size: 12px;
-  letter-spacing: 0.05em;
-  color: rgba(239, 228, 207, 0.35);
-  text-align: center;
-}
-
-.gd-scene-bolt {
-  position: absolute;
-  top: 108px;
-  font-size: 64px;
-  color: rgba(231, 191, 114, 0.1);
-  text-shadow: 0 0 32px rgba(231, 191, 114, 0.12);
-}
-
-.gd-scene-bolt--left {
-  left: 10%;
-  transform: rotate(-8deg);
-}
-
-.gd-scene-bolt--right {
-  right: 12%;
-  transform: rotate(10deg);
+  inset: 0;
+  background:
+    linear-gradient(180deg, rgba(10, 8, 6, 0.48) 0%, rgba(10, 8, 6, 0.72) 28%, rgba(10, 8, 6, 0.82) 100%),
+    radial-gradient(ellipse 68% 36% at 50% 0%, rgba(255, 205, 99, 0.08), transparent 62%);
 }
 
 .group-detail-header {
@@ -10929,19 +10883,8 @@ body.groups-hub-open .grp-hub-screen * {
 }
 
 @media (max-width: 767px) {
-  .gd-scene {
-    height: 220px;
-  }
-
-  .gd-scene-grid {
-    grid-template-columns: repeat(4, minmax(0, 1fr));
-    gap: 16px 14px;
-    padding: 0 18px;
-  }
-
-  .gd-scene-bolt {
-    top: 82px;
-    font-size: 44px;
+  .gd-scene-shape {
+    opacity: 0.28;
   }
 
   .group-modal-overlay {
