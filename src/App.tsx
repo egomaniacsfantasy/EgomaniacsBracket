@@ -8010,6 +8010,8 @@ function CompactTeamRow({
   team: NonNullable<ReturnType<typeof teamsById.get>>;
   isWinner: boolean;
 }) {
+  const compactLabel = abbreviationForTeam(normalizeTeamName(team.name));
+
   return (
     <div
       className={`compact-team-row ${isWinner ? "compact-team-row--winner" : "compact-team-row--loser"}`}
@@ -8018,6 +8020,7 @@ function CompactTeamRow({
     >
       <span className="compact-seed">{seedLabel(team)}</span>
       <TeamLogo teamName={team.name} src={teamLogoUrl(team)} className="compact-logo" teamSeed={seedLabel(team)} />
+      <span className="compact-name">{compactLabel}</span>
       <span className="compact-result">{isWinner ? "✓" : "✕"}</span>
     </div>
   );
@@ -8066,8 +8069,8 @@ function ShowdownCard({
           ? 64
           : 108
         : isMobileViewport
-          ? 64
-          : 112;
+          ? 56
+          : 76;
 
   return (
     <div className={`eg-showdown-card ${roundClass} ${isEntering ? "eg-showdown-card--entering" : ""} ${decided ? "decided" : ""}`}>

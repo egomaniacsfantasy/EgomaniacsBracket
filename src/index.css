@@ -4451,6 +4451,7 @@ button.lb-row {
   padding: 5px 4px;
   border-radius: 4px;
   position: relative;
+  min-width: 0;
 }
 
 .compact-team-row--winner {
@@ -4475,6 +4476,19 @@ button.lb-row {
   height: 18px;
   object-fit: contain;
   flex-shrink: 0;
+}
+
+.compact-name {
+  min-width: 0;
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 1;
+  color: var(--text-primary);
 }
 
 .compact-result {
@@ -11579,6 +11593,7 @@ body.groups-hub-open .grp-hub-screen * {
   flex-direction: column;
   align-items: center;
   gap: 16px;
+  overflow: hidden;
 }
 
 .eg-showdown-label {
@@ -11617,6 +11632,25 @@ body.groups-hub-open .grp-hub-screen * {
 
 .eg-showdown-card.round-e8 .eg-showdown-team {
   justify-content: flex-start;
+  max-width: none;
+  min-width: 0;
+  gap: 6px;
+  padding: 8px 4px;
+}
+
+.eg-showdown-card.round-e8 {
+  min-height: 154px;
+  padding: 18px 14px;
+  gap: 12px;
+}
+
+.eg-showdown-card.round-e8 .eg-showdown-matchup {
+  gap: 12px;
+}
+
+.eg-showdown-card.round-e8 .eg-showdown-name {
+  font-size: 13px;
+  min-height: 2.2em;
 }
 
 .eg-showdown-team:hover {
@@ -11679,7 +11713,7 @@ body.groups-hub-open .grp-hub-screen * {
 }
 
 .eg-showdown-card.round-e8 .eg-showdown-odds {
-  font-size: 20px;
+  font-size: 16px;
 }
 
 .eg-showdown-vs {
@@ -11688,6 +11722,10 @@ body.groups-hub-open .grp-hub-screen * {
   letter-spacing: 1px;
   color: rgba(171, 138, 69, 0.5);
   flex-shrink: 0;
+}
+
+.eg-showdown-card.round-e8 .eg-showdown-vs {
+  font-size: 11px;
 }
 
 .eg-showdown-result {
