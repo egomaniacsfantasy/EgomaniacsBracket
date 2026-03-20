@@ -25,6 +25,8 @@ type ParsedLeaderboardEntry = LeaderboardEntry & {
   boldestParsed: LeaderboardBoldestPick | null;
 };
 
+type TournamentSortMode = "default" | "winPct";
+
 const teamsByName = new Map(teams.map((team) => [team.name, team]));
 const ADVANCEMENT_LABEL_BY_ROUND: Record<string, string | null> = {
   FF: "R64",
@@ -653,6 +655,8 @@ function TournamentLeaderboard({
   forecast,
   forecastLoading,
   tournamentState,
+  sortMode,
+  onToggleWinSort,
   onDelete,
 }: {
   canAdminDelete: boolean;
@@ -662,9 +666,35 @@ function TournamentLeaderboard({
   forecast: StandingsForecastResult | null;
   forecastLoading: boolean;
   tournamentState: ReturnType<typeof buildTournamentState> | null;
+  sortMode: TournamentSortMode;
+  onToggleWinSort: () => void;
   onDelete: (entry: LeaderboardEntry) => void;
 }) {
   const [expandedBracketId, setExpandedBracketId] = useState<string | null>(null);
+  const orderedEntries = useMemo(() => {
+    if (sortMode !== "winPct") return entries;
+    return [...entries].sort((a, b) => {
+      const winA = forecast?.rows[a.bracket_id]?.finish1Prob;
+      const winB = forecast?.rows[b.bracket_id]?.finish1Prob;
+      const safeWinA = Number.isFinite(winA ?? NaN) ? Number(winA) : -1;
+      const safeWinB = Number.isFinite(winB ?? NaN) ? Number(winB) : -1;
+      if (safeWinB !== safeWinA) return safeWinB - safeWinA;
+
+      const scoreA = Number(a.total_score ?? 0);
+      const scoreB = Number(b.total_score ?? 0);
+      if (scoreB !== scoreA) return scoreB - scoreA;
+
+      const correctA = Number(a.correct_picks ?? 0);
+      const correctB = Number(b.correct_picks ?? 0);
+      if (correctB !== correctA) return correctB - correctA;
+
+      const rankA = a.rank ?? Number.MAX_SAFE_INTEGER;
+      const rankB = b.rank ?? Number.MAX_SAFE_INTEGER;
+      if (rankA !== rankB) return rankA - rankB;
+
+      return a.bracket_id.localeCompare(b.bracket_id);
+    });
+  }, [entries, forecast, sortMode]);
 
   return (
     <div className="lb-table">
@@ -674,7 +704,22 @@ function TournamentLeaderboard({
         <span className="lb-col lb-col-bracket">BRACKET</span>
         <span className="lb-col lb-col-score">SCORE</span>
         <span className="lb-col lb-col-correct">CORRECT</span>
-        <span className="lb-col lb-col-win">WIN %</span>
+        <span
+          className="lb-col lb-col-win"
+          role="button"
+          tabIndex={0}
+          onClick={onToggleWinSort}
+          onKeyDown={(event) => {
+            if (event.key === "Enter" || event.key === " ") {
+              event.preventDefault();
+              onToggleWinSort();
+            }
+          }}
+          title={sortMode === "winPct" ? "Sorting by win percentage (click to reset)" : "Sort by win percentage"}
+          aria-label="Sort by win percentage"
+        >
+          WIN % {sortMode === "winPct" ? "↓" : ""}
+        </span>
         <span className="lb-col lb-col-champion">CHAMPION</span>
         <span className="lb-col lb-col-runner-up">RUNNER-UP</span>
         <span className="lb-col lb-col-boldest">BOLDEST PICK</span>
@@ -682,7 +727,7 @@ function TournamentLeaderboard({
         <span className="lb-col lb-col-mobile-story">PICKS</span>
         {canAdminDelete ? <span className="lb-col lb-col-admin">ADMIN</span> : null}
       </div>
-      {entries.map((entry, index) => {
+      {orderedEntries.map((entry, index) => {
         const isMe = currentUserId !== null && entry.user_id === currentUserId;
         const key = entry.bracket_id ?? `${entry.user_id}-${entry.bracket_name}-${index}`;
         const expanded = expandedBracketId === key;
@@ -777,6 +822,7 @@ export function LeaderboardFullWidth({
   const [forecastLoading, setForecastLoading] = useState(false);
   const [forecastProgress, setForecastProgress] = useState(0);
   const [forecastError, setForecastError] = useState<string | null>(null);
+  const [tournamentSortMode, setTournamentSortMode] = useState<TournamentSortMode>("default");
   const canAdminDelete = hasElevatedAccess(user?.email) && !submissionsLocked;
 
   const loadLeaderboard = useCallback(async () => {
@@ -972,6 +1018,8 @@ export function LeaderboardFullWidth({
             forecast={visibleForecast}
             forecastLoading={visibleForecastLoading}
             tournamentState={tournamentState}
+            sortMode={tournamentSortMode}
+            onToggleWinSort={() => setTournamentSortMode((mode) => (mode === "winPct" ? "default" : "winPct"))}
             onDelete={handleAdminDelete}
           />
         ) : (

@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { computeChaosScoreForPicks } from "./bracketStorage";
 import { teamsById } from "./data/teams";
 import { type LockedPicks } from "./lib/bracket";
@@ -10,6 +10,7 @@ import { StandingsForecastHistogram } from "./StandingsForecastHistogram";
 import type { StandingsForecastResult } from "./lib/standingsForecast";
 
 type RankedStanding = GroupStanding & { groupRank: number };
+type GroupSortMode = "score" | "winPct";
 
 const CHAOS_TIERS = [
   { min: 80, label: "Chaos Agent", emoji: "🌪️" },
@@ -92,18 +93,27 @@ export function GroupStandingsTab({
   forecastProgress?: number;
   forecastError?: string;
 }) {
+  const [sortMode, setSortMode] = useState<GroupSortMode>("score");
+  const canSortByWin = submissionsLocked && standings.some((entry) => entry.bracket_id && entry.picks);
   const orderedStandings = useMemo(
     () =>
       [...standings].sort((a, b) => {
+        if (sortMode === "winPct" && canSortByWin) {
+          const winA = forecast?.rows[a.user_id]?.finish1Prob;
+          const winB = forecast?.rows[b.user_id]?.finish1Prob;
+          const safeWinA = Number.isFinite(winA ?? NaN) ? Number(winA) : -1;
+          const safeWinB = Number.isFinite(winB ?? NaN) ? Number(winB) : -1;
+          if (safeWinB !== safeWinA) return safeWinB - safeWinA;
+        }
         if ((b.total_score || 0) !== (a.total_score || 0)) return (b.total_score || 0) - (a.total_score || 0);
         if ((b.correct_picks || 0) !== (a.correct_picks || 0)) return (b.correct_picks || 0) - (a.correct_picks || 0);
         return (a.groupRank || Number.MAX_SAFE_INTEGER) - (b.groupRank || Number.MAX_SAFE_INTEGER);
       }),
-    [standings]
+    [canSortByWin, forecast, sortMode, standings]
   );
 
   const standingsCount = orderedStandings.length;
-  const showForecast = submissionsLocked && orderedStandings.some((entry) => entry.bracket_id && entry.picks);
+  const showForecast = canSortByWin;
 
   return (
     <div className="gd-standings">
@@ -291,7 +301,29 @@ export function GroupStandingsTab({
                 <div className="gd-player-forecast">
                   <div className="gd-player-forecast-stats">
                     <div className="gd-player-forecast-stat">
-                      <span className="gd-player-forecast-label">Win</span>
+                      <button
+                        type="button"
+                        className="gd-player-forecast-label"
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          setSortMode((mode) => (mode === "winPct" ? "score" : "winPct"));
+                        }}
+                        onKeyDown={(event) => {
+                          event.stopPropagation();
+                        }}
+                        title={sortMode === "winPct" ? "Sorting by win percentage (click to reset)" : "Sort by win percentage"}
+                        style={{
+                          background: "none",
+                          border: "none",
+                          padding: 0,
+                          margin: 0,
+                          font: "inherit",
+                          color: "inherit",
+                          cursor: "pointer",
+                        }}
+                      >
+                        Win {sortMode === "winPct" ? "↓" : ""}
+                      </button>
                       <span className="gd-player-forecast-value">{formatForecastPercent(forecastEntry.finish1Prob)}</span>
                     </div>
                     <div className="gd-player-forecast-stat">
