@@ -2192,60 +2192,6 @@ button.lb-row {
   text-align: center;
 }
 
-.sfh {
-  display: flex;
-  align-items: flex-end;
-  gap: 6px;
-  min-height: 76px;
-}
-
-.sfh--compact {
-  min-height: 56px;
-  gap: 5px;
-}
-
-.sfh-bin {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 6px;
-  flex: 1 1 0;
-  min-width: 0;
-}
-
-.sfh--compact .sfh-bin {
-  gap: 4px;
-}
-
-.sfh-bar-wrap {
-  width: 100%;
-  height: 54px;
-  border-radius: 6px 6px 3px 3px;
-  background: rgba(184, 125, 24, 0.08);
-  border: 1px solid rgba(184, 125, 24, 0.08);
-  display: flex;
-  align-items: flex-end;
-  overflow: hidden;
-}
-
-.sfh--compact .sfh-bar-wrap {
-  height: 38px;
-}
-
-.sfh-bar {
-  width: 100%;
-  border-radius: 4px 4px 0 0;
-  background: linear-gradient(180deg, rgba(231, 191, 114, 0.95), rgba(184, 125, 24, 0.7));
-}
-
-.sfh-label {
-  font-family: var(--font-mono);
-  font-size: 9px;
-  letter-spacing: 0.06em;
-  color: var(--text-tertiary);
-  white-space: nowrap;
-}
-
 .lb-admin-delete {
   display: inline-flex;
   align-items: center;
@@ -23305,13 +23251,16 @@ body.br-modal-open {
   display: flex;
   flex-direction: column;
   gap: 10px;
+  width: 100%;
 }
 
 .sfh {
   position: relative;
   display: flex;
   flex-direction: column;
+  align-items: stretch;
   gap: 12px;
+  width: 100%;
   min-height: 0;
   overflow: hidden;
 }
@@ -23329,13 +23278,14 @@ body.br-modal-open {
 }
 
 .sfh-tooltip-slot {
-  min-height: 78px;
+  min-height: 64px;
   display: flex;
   align-items: flex-start;
+  width: 100%;
 }
 
 .sfh-tooltip-slot:empty {
-  min-height: 18px;
+  min-height: 64px;
 }
 
 .sfh-chart {
@@ -23344,6 +23294,7 @@ body.br-modal-open {
   align-items: end;
   gap: 10px;
   min-height: 134px;
+  width: 100%;
 }
 
 .sfh-axis {
@@ -23366,6 +23317,7 @@ body.br-modal-open {
 .sfh-plot {
   position: relative;
   min-width: 0;
+  width: 100%;
   overflow: hidden;
 }
 
@@ -23387,6 +23339,7 @@ body.br-modal-open {
   display: flex;
   align-items: flex-end;
   gap: 4px;
+  width: 100%;
   min-height: 134px;
   border-bottom: 1px solid rgba(171, 138, 69, 0.14);
   overflow: hidden;
@@ -23466,8 +23419,8 @@ body.br-modal-open {
   display: flex;
   flex-direction: column;
   gap: 5px;
-  max-width: 420px;
-  width: min(420px, 100%);
+  max-width: 360px;
+  width: min(360px, 100%);
   padding: 12px 14px;
   border-radius: var(--radius-md, 12px);
   border: 1px solid rgba(184, 125, 24, 0.26);
@@ -23619,7 +23572,7 @@ body.br-modal-open {
   }
 
   .sfh-tooltip-slot {
-    min-height: 94px;
+    min-height: 72px;
   }
 
   .sfh-chart {
