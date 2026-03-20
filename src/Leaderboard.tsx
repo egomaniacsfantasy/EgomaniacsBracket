@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useAuth } from "./AuthContext";
 import {
   deleteBracketAsAdmin,
@@ -18,14 +18,25 @@ import { teamLogoUrl } from "./lib/logo";
 import { abbreviationForTeam } from "./lib/abbreviation";
 import type { LockedPicks } from "./lib/bracket";
 import type { ScoringResult } from "./lib/bracketScoring";
-import { computeStandingsForecast, type StandingsForecastEntry, type StandingsForecastResult } from "./lib/standingsForecast";
-import { StandingsForecastHistogram } from "./StandingsForecastHistogram";
+import { computeStandingsForecast, type RankHistogramBin, type StandingsForecastEntry, type StandingsForecastResult } from "./lib/standingsForecast";
 
 type ParsedLeaderboardEntry = LeaderboardEntry & {
   boldestParsed: LeaderboardBoldestPick | null;
 };
 
-type TournamentSortMode = "default" | "winPct";
+type LeaderboardSortMode = "odds" | "score";
+
+const WIN_PCT_TIER = {
+  CONTENDER: 0.01,
+  IN_THE_MIX: 0.001,
+} as const;
+
+const WIN_PCT_EMPHASIS = {
+  AMBER: 0.01,
+  PRIMARY: 0.003,
+} as const;
+
+const SORT_FADE_OUT_MS = 100;
 
 const teamsByName = new Map(teams.map((team) => [team.name, team]));
 const ADVANCEMENT_LABEL_BY_ROUND: Record<string, string | null> = {
@@ -74,6 +85,30 @@ function formatExpectedPoints(value: number | null | undefined) {
 function formatExpectedRank(value: number | null | undefined) {
   if (typeof value !== "number" || !Number.isFinite(value)) return "—";
   return `#${value.toFixed(1)}`;
+}
+
+function compareScoreEntries(left: LeaderboardEntry, right: LeaderboardEntry) {
+  const scoreDiff = Number(right.total_score ?? 0) - Number(left.total_score ?? 0);
+  if (scoreDiff !== 0) return scoreDiff;
+  const rankDiff = Number(left.rank ?? Number.MAX_SAFE_INTEGER) - Number(right.rank ?? Number.MAX_SAFE_INTEGER);
+  if (rankDiff !== 0) return rankDiff;
+  const correctDiff = Number(right.correct_picks ?? 0) - Number(left.correct_picks ?? 0);
+  if (correctDiff !== 0) return correctDiff;
+  return left.bracket_id.localeCompare(right.bracket_id);
+}
+
+function getWinTier(probability: number | null | undefined) {
+  if (typeof probability !== "number" || !Number.isFinite(probability)) return "mix" as const;
+  if (probability >= WIN_PCT_TIER.CONTENDER) return "contender" as const;
+  if (probability < WIN_PCT_TIER.IN_THE_MIX) return "long-shot" as const;
+  return "mix" as const;
+}
+
+function getWinTone(probability: number | null | undefined) {
+  if (typeof probability !== "number" || !Number.isFinite(probability)) return "muted" as const;
+  if (probability >= WIN_PCT_EMPHASIS.AMBER) return "amber" as const;
+  if (probability >= WIN_PCT_EMPHASIS.PRIMARY) return "primary" as const;
+  return "muted" as const;
 }
 
 function parseBoldestPick(value: unknown): LeaderboardBoldestPick | null {
@@ -426,6 +461,110 @@ function renderMobileStory(
   );
 }
 
+function LeaderboardWinCell({
+  forecast,
+  maxWinProb,
+}: {
+  forecast: StandingsForecastEntry | null;
+  maxWinProb: number;
+}) {
+  const probability = forecast?.finish1Prob ?? null;
+  const relativeWidth =
+    typeof probability === "number" && Number.isFinite(probability) && maxWinProb > 0
+      ? Math.max(0, Math.min(100, (probability / maxWinProb) * 100))
+      : 0;
+  const tone = getWinTone(probability);
+
+  return (
+    <span className="lb-col lb-col-win">
+      <span className="lb-win-bar">
+        <span className="lb-win-bar-fill" style={{ width: `${relativeWidth}%` }} />
+        <span className={`lb-win-value lb-win-value--${tone}`}>
+          {formatForecastPercent(probability)}
+        </span>
+      </span>
+    </span>
+  );
+}
+
+function LeaderboardDetailLine({
+  label,
+  logoSrc,
+  fallbackSeed,
+  primary,
+  secondary,
+  state = "normal",
+}: {
+  label: string;
+  logoSrc: string | null | undefined;
+  fallbackSeed: number | null;
+  primary: string;
+  secondary?: string | null;
+  state?: TournamentPickState;
+}) {
+  return (
+    <div className="lb-detail-line">
+      <span className="lb-detail-line-label">{label}</span>
+      <div className="lb-detail-line-body">
+        <LeaderboardTeamLogo
+          src={logoSrc}
+          seed={fallbackSeed}
+          name={primary}
+          className="lb-detail-line-logo"
+          fallbackClassName="lb-detail-line-fallback"
+        />
+        <span className={`lb-detail-line-primary ${state === "eliminated" ? "lb-pick-name--eliminated" : ""} ${state === "nailed" ? "lb-detail-line-primary--nailed" : ""}`}>
+          {primary}
+        </span>
+        {secondary ? <span className="lb-detail-line-secondary">{secondary}</span> : null}
+        {state === "eliminated" ? <span className="lb-detail-line-state">✗</span> : null}
+      </div>
+    </div>
+  );
+}
+
+function LeaderboardForecastHistogram({
+  bins,
+  values,
+}: {
+  bins: RankHistogramBin[];
+  values: number[];
+}) {
+  const displayBins = bins.map((bin, index) => ({
+    ...bin,
+    value: values[index] ?? 0,
+  }));
+  const maxValue = Math.max(...displayBins.map((bin) => bin.value), 0);
+
+  return (
+    <div className="lb-rank-hist">
+      <div className="lb-rank-hist-bars">
+        {displayBins.map((bin) => {
+          const height = maxValue > 0 ? Math.max((bin.value / maxValue) * 100, bin.value > 0 ? 8 : 0) : 0;
+          const tone =
+            bin.start === 1
+              ? "win"
+              : bin.end <= 3
+                ? "podium"
+                : "field";
+
+          return (
+            <div key={bin.label} className="lb-rank-hist-bin">
+              <div className="lb-rank-hist-value">
+                {bin.start === 1 && bin.value > 0 ? formatForecastPercent(bin.value) : null}
+              </div>
+              <div className="lb-rank-hist-bar-wrap">
+                <div className={`lb-rank-hist-bar lb-rank-hist-bar--${tone}`} style={{ height: `${height}%` }} />
+              </div>
+              <div className="lb-rank-hist-label">{bin.label}</div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 function LBPrizeHero() {
   return (
     <div className="lb-prize-hero">
@@ -481,31 +620,66 @@ function LBEmptyState({
 }
 
 function ForecastDetail({
+  entry,
   forecast,
   bins,
+  tournamentState,
 }: {
+  entry: LeaderboardEntry;
   forecast: StandingsForecastEntry;
   bins: StandingsForecastResult["bins"];
+  tournamentState: ReturnType<typeof buildTournamentState> | null;
 }) {
+  const runnerUp = getRunnerUpDisplay(entry);
+  const runnerUpState = getPickEliminationState(runnerUp, tournamentState);
+  const boldestPick = parseBoldestPick(entry.boldest_pick);
+  const boldestTeam = boldestPick ? teamsByName.get(boldestPick.winner_name) : null;
+  const boldestState = getBoldestState(boldestPick, tournamentState);
+  const boldestRound = getBoldestTargetRound(boldestPick?.round);
+
   return (
     <div className="lb-detail-forecast">
-      <div className="lb-detail-forecast-metrics">
-        <div className="lb-detail-forecast-stat">
-          <span className="lb-detail-forecast-label">Win odds</span>
-          <span className="lb-detail-forecast-value">{formatForecastPercent(forecast.finish1Prob)}</span>
+      <div className="lb-detail-forecast-left">
+        <div className="lb-detail-forecast-metrics">
+          <div className="lb-detail-forecast-stat">
+            <span className="lb-detail-forecast-label">Win</span>
+            <span className="lb-detail-forecast-value lb-detail-forecast-value--win">{formatForecastPercent(forecast.finish1Prob)}</span>
+          </div>
+          <div className="lb-detail-forecast-stat">
+            <span className="lb-detail-forecast-label">Exp Pts</span>
+            <span className="lb-detail-forecast-value">{formatExpectedPoints(forecast.expectedPoints)}</span>
+          </div>
+          <div className="lb-detail-forecast-stat">
+            <span className="lb-detail-forecast-label">Exp Rank</span>
+            <span className="lb-detail-forecast-value">{formatExpectedRank(forecast.expectedRank)}</span>
+          </div>
         </div>
-        <div className="lb-detail-forecast-stat">
-          <span className="lb-detail-forecast-label">Expected points</span>
-          <span className="lb-detail-forecast-value">{formatExpectedPoints(forecast.expectedPoints)}</span>
-        </div>
-        <div className="lb-detail-forecast-stat">
-          <span className="lb-detail-forecast-label">Expected rank</span>
-          <span className="lb-detail-forecast-value">{formatExpectedRank(forecast.expectedRank)}</span>
+        <div className="lb-detail-lines">
+          {runnerUp ? (
+            <LeaderboardDetailLine
+              label="Runner-up"
+              logoSrc={runnerUp.logoUrl}
+              fallbackSeed={runnerUp.seed}
+              primary={runnerUp.name}
+              secondary={runnerUp.seed !== null ? `#${runnerUp.seed}` : null}
+              state={runnerUpState}
+            />
+          ) : null}
+          {boldestPick && boldestTeam ? (
+            <LeaderboardDetailLine
+              label="Boldest pick"
+              logoSrc={teamLogoUrl(boldestTeam)}
+              fallbackSeed={boldestTeam.seed}
+              primary={`#${boldestPick.winner_seed} ${abbreviationForTeam(boldestPick.winner_name)}`}
+              secondary={boldestRound ? `→ ${boldestRound}` : null}
+              state={boldestState}
+            />
+          ) : null}
         </div>
       </div>
       <div className="lb-detail-forecast-hist">
         <span className="lb-detail-forecast-hist-label">Rank distribution</span>
-        <StandingsForecastHistogram bins={bins} values={forecast.rankHistogram} />
+        <LeaderboardForecastHistogram bins={bins} values={forecast.rankHistogram} />
       </div>
     </div>
   );
@@ -517,6 +691,7 @@ function RowDetail({
   entry,
   forecast,
   forecastBins,
+  tournamentState,
   onDelete,
 }: {
   canAdminDelete: boolean;
@@ -524,38 +699,13 @@ function RowDetail({
   entry: LeaderboardEntry;
   forecast: StandingsForecastEntry | null;
   forecastBins: StandingsForecastResult["bins"];
+  tournamentState: ReturnType<typeof buildTournamentState> | null;
   onDelete: (entry: LeaderboardEntry) => void;
 }) {
   const isDeleting = deletingBracketId === entry.bracket_id;
   return (
     <div className="lb-row-detail">
-      <div className="lb-detail-rounds">
-        <div className="lb-detail-round">
-          <span className="lb-detail-round-label">R64</span>
-          <span className="lb-detail-round-score">{entry.r64_score ?? 0}</span>
-        </div>
-        <div className="lb-detail-round">
-          <span className="lb-detail-round-label">R32</span>
-          <span className="lb-detail-round-score">{entry.r32_score ?? 0}</span>
-        </div>
-        <div className="lb-detail-round">
-          <span className="lb-detail-round-label">S16</span>
-          <span className="lb-detail-round-score">{entry.s16_score ?? 0}</span>
-        </div>
-        <div className="lb-detail-round">
-          <span className="lb-detail-round-label">E8</span>
-          <span className="lb-detail-round-score">{entry.e8_score ?? 0}</span>
-        </div>
-        <div className="lb-detail-round">
-          <span className="lb-detail-round-label">F4</span>
-          <span className="lb-detail-round-score">{entry.f4_score ?? 0}</span>
-        </div>
-        <div className="lb-detail-round">
-          <span className="lb-detail-round-label">CHAMP</span>
-          <span className="lb-detail-round-score">{entry.champ_score ?? 0}</span>
-        </div>
-      </div>
-      {forecast ? <ForecastDetail forecast={forecast} bins={forecastBins} /> : null}
+      {forecast ? <ForecastDetail entry={entry} forecast={forecast} bins={forecastBins} tournamentState={tournamentState} /> : null}
       {canAdminDelete ? (
         <div className="lb-detail-actions">
           <button
@@ -654,9 +804,10 @@ function TournamentLeaderboard({
   currentUserId,
   forecast,
   forecastLoading,
-  tournamentState,
   sortMode,
-  onToggleWinSort,
+  onSortModeChange,
+  tableBodyFading,
+  tournamentState,
   onDelete,
 }: {
   canAdminDelete: boolean;
@@ -665,135 +816,151 @@ function TournamentLeaderboard({
   currentUserId: string | null;
   forecast: StandingsForecastResult | null;
   forecastLoading: boolean;
+  sortMode: LeaderboardSortMode;
+  onSortModeChange: (mode: LeaderboardSortMode) => void;
+  tableBodyFading: boolean;
   tournamentState: ReturnType<typeof buildTournamentState> | null;
-  sortMode: TournamentSortMode;
-  onToggleWinSort: () => void;
   onDelete: (entry: LeaderboardEntry) => void;
 }) {
   const [expandedBracketId, setExpandedBracketId] = useState<string | null>(null);
-  const orderedEntries = useMemo(() => {
-    if (sortMode !== "winPct") return entries;
-    return [...entries].sort((a, b) => {
-      const winA = forecast?.rows[a.bracket_id]?.finish1Prob;
-      const winB = forecast?.rows[b.bracket_id]?.finish1Prob;
-      const safeWinA = Number.isFinite(winA ?? NaN) ? Number(winA) : -1;
-      const safeWinB = Number.isFinite(winB ?? NaN) ? Number(winB) : -1;
-      if (safeWinB !== safeWinA) return safeWinB - safeWinA;
-
-      const scoreA = Number(a.total_score ?? 0);
-      const scoreB = Number(b.total_score ?? 0);
-      if (scoreB !== scoreA) return scoreB - scoreA;
-
-      const correctA = Number(a.correct_picks ?? 0);
-      const correctB = Number(b.correct_picks ?? 0);
-      if (correctB !== correctA) return correctB - correctA;
-
-      const rankA = a.rank ?? Number.MAX_SAFE_INTEGER;
-      const rankB = b.rank ?? Number.MAX_SAFE_INTEGER;
-      if (rankA !== rankB) return rankA - rankB;
-
-      return a.bracket_id.localeCompare(b.bracket_id);
-    });
-  }, [entries, forecast, sortMode]);
+  const maxWinProb = useMemo(
+    () =>
+      entries.reduce((maxValue, entry) => {
+        const value = forecast?.rows[entry.bracket_id]?.finish1Prob ?? 0;
+        return value > maxValue ? value : maxValue;
+      }, 0),
+    [entries, forecast],
+  );
 
   return (
     <div className="lb-table">
       <div className={`lb-row lb-row--header lb-row--tournament ${canAdminDelete ? "lb-row--admin" : ""}`}>
         <span className="lb-col lb-col-rank">#</span>
         <span className="lb-col lb-col-player">PLAYER</span>
-        <span className="lb-col lb-col-bracket">BRACKET</span>
-        <span className="lb-col lb-col-score">SCORE</span>
-        <span className="lb-col lb-col-correct">CORRECT</span>
-        <span
-          className="lb-col lb-col-win"
-          role="button"
-          tabIndex={0}
-          onClick={onToggleWinSort}
-          onKeyDown={(event) => {
-            if (event.key === "Enter" || event.key === " ") {
-              event.preventDefault();
-              onToggleWinSort();
-            }
-          }}
-          title={sortMode === "winPct" ? "Sorting by win percentage (click to reset)" : "Sort by win percentage"}
-          aria-label="Sort by win percentage"
-        >
-          WIN % {sortMode === "winPct" ? "↓" : ""}
-        </span>
         <span className="lb-col lb-col-champion">CHAMPION</span>
-        <span className="lb-col lb-col-runner-up">RUNNER-UP</span>
-        <span className="lb-col lb-col-boldest">BOLDEST PICK</span>
+        <span className="lb-col lb-col-score">
+          <button
+            type="button"
+            className={`lb-header-sort-btn ${sortMode === "score" ? "lb-header-sort-btn--active" : ""}`}
+            onClick={() => onSortModeChange("score")}
+          >
+            SCORE {sortMode === "score" ? <span className="lb-header-sort-arrow">▼</span> : null}
+          </button>
+        </span>
+        <span className="lb-col lb-col-correct">CORRECT</span>
+        <span className="lb-col lb-col-win">
+          <button
+            type="button"
+            className={`lb-header-sort-btn ${sortMode === "odds" ? "lb-header-sort-btn--active" : ""}`}
+            onClick={() => onSortModeChange("odds")}
+          >
+            WIN % {sortMode === "odds" ? <span className="lb-header-sort-arrow">▼</span> : null}
+          </button>
+        </span>
         <span className="lb-col lb-col-max">MAX</span>
-        <span className="lb-col lb-col-mobile-story">PICKS</span>
         {canAdminDelete ? <span className="lb-col lb-col-admin">ADMIN</span> : null}
       </div>
-      {orderedEntries.map((entry, index) => {
-        const isMe = currentUserId !== null && entry.user_id === currentUserId;
-        const key = entry.bracket_id ?? `${entry.user_id}-${entry.bracket_name}-${index}`;
-        const expanded = expandedBracketId === key;
-        const isDeleting = deletingBracketId === entry.bracket_id;
-        const forecastEntry = forecast?.rows[entry.bracket_id] ?? null;
-        const toggleExpanded = () => setExpandedBracketId(expanded ? null : key);
-        const handleKeyDown = (event: React.KeyboardEvent<HTMLDivElement>) => {
-          if (event.key === "Enter" || event.key === " ") {
-            event.preventDefault();
-            toggleExpanded();
-          }
-        };
-        return (
-          <div key={key}>
-            <div
-              className={`lb-row lb-row--tournament ${canAdminDelete ? "lb-row--admin" : ""} ${isMe ? "lb-row--me" : ""} lb-row--interactive`}
-              onClick={toggleExpanded}
-              onKeyDown={handleKeyDown}
-              role="button"
-              tabIndex={0}
-            >
-              <span className="lb-col lb-col-rank">{entry.rank ?? index + 1}</span>
-              <span className="lb-col lb-col-player">
-                {entry.display_name}
-                {isMe ? <span className="lb-you-badge">YOU</span> : null}
-              </span>
-              <span className="lb-col lb-col-bracket">{entry.bracket_name}</span>
-              <span className="lb-col lb-col-score lb-score-value">{entry.total_score ?? 0}</span>
-              <span className="lb-col lb-col-correct">{entry.correct_picks ?? 0}/{entry.possible_picks ?? 63}</span>
-              <span className="lb-col lb-col-win">
-                {forecastLoading && !forecastEntry ? "..." : formatForecastPercent(forecastEntry?.finish1Prob)}
-              </span>
-              {renderChampion(entry, true, tournamentState)}
-              {renderRunnerUp(entry, true, tournamentState)}
-              {renderBoldestPick(entry.boldestParsed, true, tournamentState)}
-              <span className="lb-col lb-col-max">{entry.max_remaining ?? "—"}</span>
-              {renderMobileStory(entry, true, tournamentState)}
-              {canAdminDelete ? (
-                <span className="lb-col lb-col-admin">
-                  <button
-                    type="button"
-                    className="lb-admin-delete"
-                    onClick={(event) => {
-                      event.stopPropagation();
-                      onDelete(entry);
-                    }}
-                    disabled={isDeleting}
-                  >
-                    {isDeleting ? "Deleting..." : "Delete"}
-                  </button>
+      <div className={`lb-table-body ${tableBodyFading ? "lb-table-body--fading" : ""}`}>
+        {entries.map((entry, index) => {
+          const isMe = currentUserId !== null && entry.user_id === currentUserId;
+          const key = entry.bracket_id ?? `${entry.user_id}-${entry.bracket_name}-${index}`;
+          const expanded = expandedBracketId === key;
+          const isDeleting = deletingBracketId === entry.bracket_id;
+          const forecastEntry = forecast?.rows[entry.bracket_id] ?? null;
+          const toggleExpanded = () => setExpandedBracketId(expanded ? null : key);
+          const handleKeyDown = (event: React.KeyboardEvent<HTMLDivElement>) => {
+            if (event.key === "Enter" || event.key === " ") {
+              event.preventDefault();
+              toggleExpanded();
+            }
+          };
+          const winProb = forecastEntry?.finish1Prob ?? null;
+          const tier = getWinTier(winProb);
+          const champion = getChampionDisplay(entry);
+          const championState = getPickEliminationState(champion, tournamentState);
+
+          return (
+            <div key={key}>
+              <div
+                className={`lb-row lb-row--tournament ${canAdminDelete ? "lb-row--admin" : ""} ${isMe ? "lb-row--me" : ""} ${tier === "contender" ? "lb-row--contender" : ""} ${tier === "long-shot" ? "lb-row--long-shot" : ""} lb-row--interactive`}
+                onClick={toggleExpanded}
+                onKeyDown={handleKeyDown}
+                role="button"
+                tabIndex={0}
+              >
+                <span className="lb-col lb-col-rank">{index + 1}</span>
+                <span className="lb-col lb-col-player">
+                  <span className="lb-player-stack">
+                    <span className="lb-player-name">
+                      {entry.display_name}
+                      {isMe ? <span className="lb-you-badge">YOU</span> : null}
+                    </span>
+                    <span className="lb-player-bracket">{entry.bracket_name}</span>
+                  </span>
                 </span>
+                <span className="lb-col lb-col-champion">
+                  <LeaderboardTeamLogo
+                    src={champion?.logoUrl}
+                    seed={champion?.seed ?? null}
+                    name={champion?.name ?? "—"}
+                    className="lb-champion-logo"
+                    fallbackClassName="lb-champion-logo-fallback"
+                  />
+                  <span className="lb-champion-copy">
+                    <span className={`lb-champion-name ${championState === "eliminated" ? "lb-pick-name--eliminated" : ""}`}>
+                      {champion?.shortName ?? champion?.name ?? "—"}
+                    </span>
+                    {champion?.seed !== null && champion?.seed !== undefined ? (
+                      <span className="lb-champion-seed">#{champion.seed}</span>
+                    ) : null}
+                  </span>
+                  {championState === "eliminated" ? <span className="lb-champion-elim">✗</span> : null}
+                </span>
+                <span className={`lb-col lb-col-score ${sortMode === "score" ? "lb-col-score--active" : "lb-col-score--muted"}`}>
+                  <span className="lb-score-value">{entry.total_score ?? 0}</span>
+                </span>
+                <span className="lb-col lb-col-correct">{entry.correct_picks ?? 0}/{entry.possible_picks ?? 63}</span>
+                {forecastLoading && !forecastEntry ? (
+                  <span className="lb-col lb-col-win">
+                    <span className="lb-win-bar">
+                      <span className="lb-win-value lb-win-value--muted">...</span>
+                    </span>
+                  </span>
+                ) : (
+                  <LeaderboardWinCell forecast={forecastEntry} maxWinProb={maxWinProb} />
+                )}
+                <span className="lb-col lb-col-max">{entry.max_remaining ?? "—"}</span>
+                {canAdminDelete ? (
+                  <span className="lb-col lb-col-admin">
+                    <button
+                      type="button"
+                      className="lb-admin-delete"
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        onDelete(entry);
+                      }}
+                      disabled={isDeleting}
+                    >
+                      {isDeleting ? "Deleting..." : "Delete"}
+                    </button>
+                  </span>
+                ) : null}
+              </div>
+              {expanded ? (
+                <RowDetail
+                  canAdminDelete={canAdminDelete}
+                  deletingBracketId={deletingBracketId}
+                  entry={entry}
+                  forecast={forecastEntry}
+                  forecastBins={forecast?.bins ?? []}
+                  tournamentState={tournamentState}
+                  onDelete={onDelete}
+                />
               ) : null}
             </div>
-            {expanded ? (
-              <RowDetail
-                canAdminDelete={canAdminDelete}
-                deletingBracketId={deletingBracketId}
-                entry={entry}
-                forecast={forecastEntry}
-                forecastBins={forecast?.bins ?? []}
-                onDelete={onDelete}
-              />
-            ) : null}
-          </div>
-        );
-      })}
+          );
+        })}
+      </div>
     </div>
   );
 }
@@ -822,8 +989,10 @@ export function LeaderboardFullWidth({
   const [forecastLoading, setForecastLoading] = useState(false);
   const [forecastProgress, setForecastProgress] = useState(0);
   const [forecastError, setForecastError] = useState<string | null>(null);
-  const [tournamentSortMode, setTournamentSortMode] = useState<TournamentSortMode>("default");
+  const [sortMode, setSortMode] = useState<LeaderboardSortMode>("odds");
+  const [tableBodyFading, setTableBodyFading] = useState(false);
   const canAdminDelete = hasElevatedAccess(user?.email) && !submissionsLocked;
+  const sortTimersRef = useRef<number[]>([]);
 
   const loadLeaderboard = useCallback(async () => {
     const cachedEntries = getCachedLeaderboard();
@@ -877,34 +1046,19 @@ export function LeaderboardFullWidth({
     return () => window.clearTimeout(timer);
   }, [isVisible, refreshKey, loadLeaderboard]);
 
+  useEffect(() => {
+    return () => {
+      sortTimersRef.current.forEach((timer) => window.clearTimeout(timer));
+      sortTimersRef.current = [];
+    };
+  }, []);
+
   const parsedEntries = useMemo<ParsedLeaderboardEntry[]>(
     () =>
-      [...entries]
-        .sort((a, b) => {
-          const scoreA = Number(a.total_score ?? 0);
-          const scoreB = Number(b.total_score ?? 0);
-          const correctA = Number(a.correct_picks ?? 0);
-          const correctB = Number(b.correct_picks ?? 0);
-          const rankA = a.rank ?? Number.MAX_SAFE_INTEGER;
-          const rankB = b.rank ?? Number.MAX_SAFE_INTEGER;
-          if (rankA !== rankB) return rankA - rankB;
-          if (scoreB !== scoreA) {
-            return scoreB - scoreA;
-          }
-          if (correctB !== correctA) {
-            return correctB - correctA;
-          }
-          const updatedAtA = Date.parse(a.updated_at ?? "");
-          const updatedAtB = Date.parse(b.updated_at ?? "");
-          if (Number.isFinite(updatedAtA) && Number.isFinite(updatedAtB) && updatedAtA !== updatedAtB) {
-            return updatedAtB - updatedAtA;
-          }
-          return a.bracket_id.localeCompare(b.bracket_id);
-        })
-        .map((entry) => ({
-          ...entry,
-          boldestParsed: parseBoldestPick(entry.boldest_pick),
-        })),
+      entries.map((entry) => ({
+        ...entry,
+        boldestParsed: parseBoldestPick(entry.boldest_pick),
+      })),
     [entries]
   );
   const tournamentState = useMemo(() => buildTournamentState(tournamentResultMap), [tournamentResultMap]);
@@ -927,6 +1081,41 @@ export function LeaderboardFullWidth({
   const visibleForecastProgress = showForecast ? forecastProgress : 0;
   const visibleForecastError = showForecast ? forecastError : null;
   const countLabel = `${parsedEntries.length} ${parsedEntries.length === 1 ? "bracket" : "brackets"} competing`;
+
+  const scoreSortedEntries = useMemo(
+    () => [...parsedEntries].sort(compareScoreEntries),
+    [parsedEntries],
+  );
+
+  const displayedTournamentEntries = useMemo(() => {
+    if (sortMode === "score") {
+      return scoreSortedEntries;
+    }
+
+    return [...parsedEntries].sort((left, right) => {
+      const leftProb = visibleForecast?.rows[left.bracket_id]?.finish1Prob ?? -1;
+      const rightProb = visibleForecast?.rows[right.bracket_id]?.finish1Prob ?? -1;
+      if (rightProb !== leftProb) return rightProb - leftProb;
+      return compareScoreEntries(left, right);
+    });
+  }, [parsedEntries, scoreSortedEntries, sortMode, visibleForecast]);
+
+  const handleSortModeChange = useCallback((nextMode: LeaderboardSortMode) => {
+    if (nextMode === sortMode) return;
+    sortTimersRef.current.forEach((timer) => window.clearTimeout(timer));
+    sortTimersRef.current = [];
+    setTableBodyFading(true);
+
+    const swapTimer = window.setTimeout(() => {
+      setSortMode(nextMode);
+      const revealTimer = window.setTimeout(() => {
+        setTableBodyFading(false);
+      }, 16);
+      sortTimersRef.current = [revealTimer];
+    }, SORT_FADE_OUT_MS);
+
+    sortTimersRef.current = [swapTimer];
+  }, [sortMode]);
 
   useEffect(() => {
     if (!isVisible || !showForecast) return;
@@ -974,10 +1163,30 @@ export function LeaderboardFullWidth({
         <div className="lb-header-row">
           <div className="lb-header-left">
             <h2 className="lb-title">LEADERBOARD</h2>
-            <span className="lb-count">{countLabel}</span>
-            <button className="lb-refresh" onClick={loadLeaderboard} title="Refresh leaderboard">
-              ↻
-            </button>
+            <div className="lb-header-meta">
+              <span className="lb-count">{countLabel}</span>
+              {showTournamentLeaderboard ? (
+                <div className="lb-sort-toggle" role="group" aria-label="Leaderboard sort">
+                  <button
+                    type="button"
+                    className={`lb-sort-toggle-btn ${sortMode === "odds" ? "lb-sort-toggle-btn--active" : ""}`}
+                    onClick={() => handleSortModeChange("odds")}
+                  >
+                    By Odds
+                  </button>
+                  <button
+                    type="button"
+                    className={`lb-sort-toggle-btn ${sortMode === "score" ? "lb-sort-toggle-btn--active" : ""}`}
+                    onClick={() => handleSortModeChange("score")}
+                  >
+                    By Score
+                  </button>
+                </div>
+              ) : null}
+              <button className="lb-refresh" onClick={loadLeaderboard} title="Refresh leaderboard">
+                ↻
+              </button>
+            </div>
           </div>
           {onClose ? (
             <button className="lb-close" onClick={onClose}>
@@ -1013,20 +1222,21 @@ export function LeaderboardFullWidth({
           <TournamentLeaderboard
             canAdminDelete={canAdminDelete}
             deletingBracketId={deletingBracketId}
-            entries={parsedEntries}
+            entries={displayedTournamentEntries}
             currentUserId={user?.id ?? null}
             forecast={visibleForecast}
             forecastLoading={visibleForecastLoading}
+            sortMode={sortMode}
+            onSortModeChange={handleSortModeChange}
+            tableBodyFading={tableBodyFading}
             tournamentState={tournamentState}
-            sortMode={tournamentSortMode}
-            onToggleWinSort={() => setTournamentSortMode((mode) => (mode === "winPct" ? "default" : "winPct"))}
             onDelete={handleAdminDelete}
           />
         ) : (
           <PreTournamentLeaderboard
             canAdminDelete={canAdminDelete}
             deletingBracketId={deletingBracketId}
-            entries={parsedEntries}
+            entries={scoreSortedEntries}
             currentUserId={user?.id ?? null}
             onDelete={handleAdminDelete}
           />
