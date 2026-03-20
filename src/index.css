@@ -23003,6 +23003,12 @@ body.br-modal-open {
   transition: background 150ms ease, border-color 150ms ease, opacity 150ms ease;
 }
 
+.gd-standing-card--expanded {
+  overflow: visible;
+  position: relative;
+  z-index: 3;
+}
+
 .gd-standing-card:hover {
   background: rgba(34, 26, 16, 0.94);
 }
@@ -23216,6 +23222,7 @@ body.br-modal-open {
 .gd-standing-panel--open {
   max-height: 360px;
   opacity: 1;
+  overflow: visible;
 }
 
 .gd-standing-panel-inner {
@@ -23302,16 +23309,16 @@ body.br-modal-open {
 
 .sfh {
   position: relative;
-  display: flex;
-  align-items: flex-end;
-  gap: 4px;
-  min-height: 108px;
-  padding-top: 10px;
-  border-bottom: 1px solid rgba(171, 138, 69, 0.14);
+  display: grid;
+  grid-template-columns: 42px minmax(0, 1fr);
+  align-items: end;
+  gap: 10px;
+  min-height: 156px;
+  overflow: visible;
 }
 
 .sfh--compact {
-  min-height: 88px;
+  min-height: 136px;
 }
 
 .sfh--spotlight .sfh-bin {
@@ -23320,6 +23327,66 @@ body.br-modal-open {
 
 .sfh--spotlight .sfh-bin--active {
   opacity: 1;
+}
+
+.sfh-axis {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  align-self: stretch;
+  padding: 74px 6px 18px 0;
+  border-right: 1px solid rgba(171, 138, 69, 0.12);
+}
+
+.sfh-axis-label {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--text-tertiary);
+  text-align: right;
+  line-height: 1;
+}
+
+.sfh-plot {
+  position: relative;
+  min-width: 0;
+  overflow: visible;
+}
+
+.sfh-gridlines {
+  position: absolute;
+  inset: 74px 0 18px;
+  pointer-events: none;
+}
+
+.sfh-gridline {
+  position: absolute;
+  left: 0;
+  right: 0;
+  border-top: 1px solid rgba(171, 138, 69, 0.1);
+}
+
+.sfh-bars {
+  position: relative;
+  display: flex;
+  align-items: flex-end;
+  gap: 4px;
+  min-height: 156px;
+  padding-top: 74px;
+  border-bottom: 1px solid rgba(171, 138, 69, 0.14);
+  overflow: visible;
+}
+
+.sfh--compact .sfh-axis {
+  padding-top: 60px;
+}
+
+.sfh--compact .sfh-gridlines {
+  inset: 60px 0 18px;
+}
+
+.sfh--compact .sfh-bars {
+  min-height: 136px;
+  padding-top: 60px;
 }
 
 .sfh-bin {
@@ -23391,9 +23458,9 @@ body.br-modal-open {
 .sfh-tooltip-wrap {
   position: absolute;
   left: 50%;
-  bottom: calc(100% + 8px);
+  bottom: calc(100% + 10px);
   transform: translateX(-50%);
-  z-index: 500;
+  z-index: 1200;
   pointer-events: none;
 }
 
@@ -23508,11 +23575,20 @@ body.br-modal-open {
 }
 
 .sfh--leaderboard {
-  min-height: 112px;
+  min-height: 164px;
 }
 
-.sfh--leaderboard .sfh-bar-wrap {
-  height: 80px;
+.sfh--leaderboard .sfh-axis {
+  padding-top: 74px;
+}
+
+.sfh--leaderboard .sfh-gridlines {
+  inset: 74px 0 18px;
+}
+
+.sfh--leaderboard .sfh-bars {
+  min-height: 164px;
+  padding-top: 74px;
 }
 
 @media (max-width: 767px) {
@@ -23571,6 +23647,43 @@ body.br-modal-open {
 
   .gd-standing-panel-actions {
     justify-content: flex-start;
+  }
+
+  .sfh {
+    grid-template-columns: 36px minmax(0, 1fr);
+    gap: 8px;
+    min-height: 144px;
+  }
+
+  .sfh-axis {
+    padding-top: 62px;
+    padding-bottom: 16px;
+  }
+
+  .sfh-gridlines {
+    inset: 62px 0 16px;
+  }
+
+  .sfh-bars {
+    min-height: 144px;
+    padding-top: 62px;
+  }
+
+  .sfh--compact {
+    min-height: 124px;
+  }
+
+  .sfh--compact .sfh-axis {
+    padding-top: 52px;
+  }
+
+  .sfh--compact .sfh-gridlines {
+    inset: 52px 0 16px;
+  }
+
+  .sfh--compact .sfh-bars {
+    min-height: 124px;
+    padding-top: 52px;
   }
 
   .lb-row--tournament,

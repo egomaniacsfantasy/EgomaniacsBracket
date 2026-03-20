@@ -13,6 +13,21 @@ function isTouchDevice() {
   return Boolean(window.matchMedia?.("(hover: none)").matches || "ontouchstart" in window);
 }
 
+function getAxisStep(maxValue: number) {
+  if (maxValue <= 0.02) return 0.01;
+  if (maxValue <= 0.05) return 0.02;
+  if (maxValue <= 0.12) return 0.05;
+  if (maxValue <= 0.25) return 0.1;
+  return 0.2;
+}
+
+function formatAxisProbability(probability: number) {
+  const percent = probability * 100;
+  if (percent >= 10) return `${Math.round(percent)}%`;
+  if (percent >= 1) return `${percent.toFixed(1)}%`;
+  return `${percent.toFixed(2)}%`;
+}
+
 export function StandingsForecastHistogram({
   bins,
   values,
@@ -43,6 +58,9 @@ export function StandingsForecastHistogram({
     [bins, values],
   );
   const maxValue = Math.max(...displayBins.map((bin) => bin.value), 0);
+  const axisStep = getAxisStep(maxValue);
+  const axisMax = maxValue > 0 ? Math.ceil(maxValue / axisStep) * axisStep : axisStep;
+  const axisTicks = [axisMax, axisMax / 2, 0];
   const fieldSize = bins[bins.length - 1]?.end ?? bins.length;
 
   useEffect(() => {
@@ -71,55 +89,80 @@ export function StandingsForecastHistogram({
       }}
       onClick={(event) => event.stopPropagation()}
     >
-      {displayBins.map((bin, index) => {
-        const height = maxValue > 0 ? Math.max((bin.value / maxValue) * 100, bin.value > 0 ? 8 : 0) : 0;
-        const tone = bin.start === 1 ? "win" : bin.end <= 3 ? "podium" : "field";
-        const isActive = activeIndex === index;
-        const isDimmed = activeIndex !== null && activeIndex !== index;
-        const tooltip = buildHistogramTooltipCopy({
-          bin,
-          probability: bin.value,
-          simCount,
-          fieldSize,
-          format,
-        });
-        const edgeClass =
-          index === 0 ? "sfh-tooltip-wrap--left" : index === displayBins.length - 1 ? "sfh-tooltip-wrap--right" : "";
+      <div className="sfh-axis" aria-hidden="true">
+        {axisTicks.map((tick, index) => (
+          <span key={`${tick}-${index}`} className="sfh-axis-label">
+            {formatAxisProbability(tick)}
+          </span>
+        ))}
+      </div>
 
-        return (
-          <button
-            key={`${bin.label}-${index}`}
-            type="button"
-            className={`sfh-bin ${isActive ? "sfh-bin--active" : ""} ${isDimmed ? "sfh-bin--dim" : ""}`}
-            onMouseEnter={() => setActiveIndex(index)}
-            onFocus={() => setActiveIndex(index)}
-            onBlur={() => setActiveIndex((current) => (current === index ? null : current))}
-            onClick={(event) => {
-              event.stopPropagation();
-              setActiveIndex((current) => (current === index ? null : index));
-            }}
-            aria-label={`${tooltip.headline}. ${tooltip.simCountEstimate}. ${tooltip.editorial}`}
-          >
-            <span className="sfh-value">
-              {showPrimaryLabel && bin.start === 1 && bin.value > 0 ? formatForecastProbability(bin.value, format) : null}
-            </span>
-            <span className={`sfh-bar-wrap sfh-bar-wrap--${tone}`}>
-              <span className={`sfh-bar sfh-bar--${tone}`} style={{ height: `${height}%` }} />
-              {isActive ? (
-                <span className={`sfh-tooltip-wrap ${edgeClass}`}>
-                  <span className="sfh-tooltip">
-                    <span className="sfh-tooltip-title">{tooltip.headline}</span>
-                    <span className="sfh-tooltip-count">{tooltip.simCountEstimate}</span>
-                    <span className="sfh-tooltip-note">{tooltip.editorial}</span>
-                    <span className="sfh-tooltip-caret" />
-                  </span>
+      <div className="sfh-plot">
+        <div className="sfh-gridlines" aria-hidden="true">
+          {axisTicks
+            .filter((tick) => tick > 0)
+            .map((tick, index) => (
+              <span
+                key={`${tick}-${index}`}
+                className="sfh-gridline"
+                style={{ bottom: `${(tick / axisMax) * 100}%` }}
+              />
+            ))}
+        </div>
+
+        <div className="sfh-bars">
+          {displayBins.map((bin, index) => {
+            const height = axisMax > 0 ? Math.max((bin.value / axisMax) * 100, bin.value > 0 ? 8 : 0) : 0;
+            const tone = bin.start === 1 ? "win" : bin.end <= 3 ? "podium" : "field";
+            const isActive = activeIndex === index;
+            const isDimmed = activeIndex !== null && activeIndex !== index;
+            const tooltip = buildHistogramTooltipCopy({
+              bin,
+              probability: bin.value,
+              simCount,
+              fieldSize,
+              format,
+            });
+            const edgeClass =
+              index === 0 ? "sfh-tooltip-wrap--left" : index === displayBins.length - 1 ? "sfh-tooltip-wrap--right" : "";
+
+            return (
+              <button
+                key={`${bin.label}-${index}`}
+                type="button"
+                className={`sfh-bin ${isActive ? "sfh-bin--active" : ""} ${isDimmed ? "sfh-bin--dim" : ""}`}
+                onMouseEnter={() => setActiveIndex(index)}
+                onFocus={() => setActiveIndex(index)}
+                onBlur={() => setActiveIndex((current) => (current === index ? null : current))}
+                onClick={(event) => {
+                  event.stopPropagation();
+                  setActiveIndex((current) => (current === index ? null : index));
+                }}
+                aria-label={`${tooltip.headline}. ${tooltip.simCountEstimate}. ${tooltip.editorial}`}
+                title={`${tooltip.headline}\n${tooltip.simCountEstimate}\n${tooltip.editorial}`}
+              >
+                <span className="sfh-value">
+                  {showPrimaryLabel && bin.start === 1 && bin.value > 0 ? formatForecastProbability(bin.value, format) : null}
                 </span>
-              ) : null}
-            </span>
-            <span className="sfh-label">{bin.label.replace(/^#/, "")}</span>
-          </button>
-        );
-      })}
+                <span className={`sfh-bar-wrap sfh-bar-wrap--${tone}`}>
+                  <span className={`sfh-bar sfh-bar--${tone}`} style={{ height: `${height}%` }} />
+                  {isActive ? (
+                    <span className={`sfh-tooltip-wrap ${edgeClass}`}>
+                      <span className="sfh-tooltip">
+                        <span className="sfh-tooltip-title">{tooltip.headline}</span>
+                        <span className="sfh-tooltip-count">{tooltip.simCountEstimate}</span>
+                        <span className="sfh-tooltip-note">{tooltip.editorial}</span>
+                        <span className="sfh-tooltip-caret" />
+                      </span>
+                    </span>
+                  ) : null}
+                </span>
+                <span className="sfh-label">{bin.label.replace(/^#/, "")}</span>
+              </button>
+            );
+          })}
+        </div>
+      </div>
     </div>
   );
 }
