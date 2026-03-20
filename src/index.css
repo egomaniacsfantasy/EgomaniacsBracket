@@ -23269,25 +23269,6 @@ body.br-modal-open {
   gap: 10px;
 }
 
-.sfh--spotlight .sfh-bin {
-  opacity: 0.5;
-}
-
-.sfh--spotlight .sfh-bin--active {
-  opacity: 1;
-}
-
-.sfh-tooltip-slot {
-  min-height: 64px;
-  display: flex;
-  align-items: flex-start;
-  width: 100%;
-}
-
-.sfh-tooltip-slot:empty {
-  min-height: 64px;
-}
-
 .sfh-chart {
   display: grid;
   grid-template-columns: 38px minmax(0, 1fr);
@@ -23357,12 +23338,6 @@ body.br-modal-open {
   flex-direction: column;
   align-items: center;
   gap: 8px;
-  border: none;
-  background: transparent;
-  padding: 0;
-  margin: 0;
-  cursor: pointer;
-  transition: opacity 150ms ease;
 }
 
 .sfh-value {
@@ -23389,7 +23364,6 @@ body.br-modal-open {
   width: 100%;
   min-height: 2px;
   border-radius: 3px 3px 0 0;
-  transition: opacity 150ms ease, filter 150ms ease;
 }
 
 .sfh-bar--win {
@@ -23404,67 +23378,11 @@ body.br-modal-open {
   background: rgba(240, 230, 208, 0.3);
 }
 
-.sfh-bin--active .sfh-bar {
-  filter: brightness(1.08);
-}
-
 .sfh-label {
   font-family: var(--font-mono);
   font-size: 10px;
   color: var(--text-tertiary);
   text-align: center;
-}
-
-.sfh-tooltip {
-  display: flex;
-  flex-direction: column;
-  gap: 5px;
-  max-width: 360px;
-  width: min(360px, 100%);
-  padding: 12px 14px;
-  border-radius: var(--radius-md, 12px);
-  border: 1px solid rgba(184, 125, 24, 0.26);
-  background: linear-gradient(180deg, rgba(27, 20, 10, 0.96), rgba(16, 12, 7, 0.98));
-  box-shadow: 0 14px 30px rgba(0, 0, 0, 0.28), inset 0 1px 0 rgba(231, 191, 114, 0.08);
-  animation: tooltip-fade-in 150ms ease-out both;
-  text-align: left;
-}
-
-.sfh-tooltip--inline {
-  position: relative;
-}
-
-.sfh-tooltip--inline::before {
-  content: "SIM OUTLOOK";
-  display: block;
-  margin-bottom: 2px;
-  font-family: var(--font-mono);
-  font-size: 9px;
-  font-weight: 700;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-  color: rgba(231, 191, 114, 0.72);
-}
-
-.sfh-tooltip-title {
-  font-family: var(--font-mono);
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--text-amber);
-}
-
-.sfh-tooltip-count {
-  font-family: var(--font-mono);
-  font-size: 11px;
-  color: var(--text-primary);
-}
-
-.sfh-tooltip-note {
-  font-family: var(--font-mono);
-  font-size: 11px;
-  color: var(--text-secondary);
-  font-style: italic;
-  line-height: 1.4;
 }
 
 .lb-header-left {
@@ -23571,10 +23489,6 @@ body.br-modal-open {
     gap: 10px;
   }
 
-  .sfh-tooltip-slot {
-    min-height: 72px;
-  }
-
   .sfh-chart {
     grid-template-columns: 34px minmax(0, 1fr);
     gap: 8px;
@@ -23603,11 +23517,6 @@ body.br-modal-open {
 
   .sfh--compact .sfh-bar-wrap {
     height: 62px;
-  }
-
-  .sfh-tooltip {
-    width: 100%;
-    max-width: none;
   }
 
   .lb-row--tournament,
