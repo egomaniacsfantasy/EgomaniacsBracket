@@ -17,6 +17,8 @@ export const NCAA_KNOWN_RESULTS: LockedPicks = {
   "East-R64-5": "East-3", // Michigan St (3) def N Dakota St (14)
   "South-R64-2": "South-5", // Vanderbilt (5) def McNeese St (12)
   "South-R64-3": "South-4", // Nebraska (4) def Troy (13)
+  "South-R64-4": "South-11", // VCU (11) def North Carolina (6)
+  "Midwest-R64-0": "Midwest-1", // Michigan (1) def Howard (16)
   "West-R64-2": "West-12", // High Point (12) def Wisconsin (5)
   "West-R64-3": "West-4", // Arkansas (4) def Hawaii (13)
 };
