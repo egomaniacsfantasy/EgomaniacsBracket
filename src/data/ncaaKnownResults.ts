@@ -26,6 +26,7 @@ export const NCAA_KNOWN_RESULTS: LockedPicks = {
   "West-R64-2": "West-12", // High Point (12) def Wisconsin (5)
   "West-R64-3": "West-4", // Arkansas (4) def Hawaii (13)
   "West-R64-4": "West-11b", // Texas (11) def BYU (6)
+  "West-R64-5": "West-3", // Gonzaga (3) def Kennesaw (14)
 };
 
 export const NCAA_KNOWN_RESULT_IDS = new Set(Object.keys(NCAA_KNOWN_RESULTS));
