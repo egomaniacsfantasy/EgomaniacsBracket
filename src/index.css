@@ -22019,6 +22019,8 @@ body.br-modal-open {
   min-height: 22px;
   padding: 3px 4px;
   border-radius: 4px;
+  border: 1px solid transparent;
+  transition: background 150ms ease, border-color 150ms ease, box-shadow 150ms ease, opacity 150ms ease;
 }
 
 .grp-bv-slot--f4 .grp-bv-team-row {
@@ -22046,14 +22048,31 @@ body.br-modal-open {
   font-weight: 600;
 }
 
+.grp-bv-team-row--correct {
+  background: linear-gradient(180deg, rgba(74, 222, 128, 0.16), rgba(74, 222, 128, 0.08));
+  border-color: rgba(74, 222, 128, 0.22);
+  box-shadow: inset 0 0 0 1px rgba(74, 222, 128, 0.08);
+}
+
+.grp-bv-team-row--correct .grp-bv-team-seed {
+  color: #86efac;
+}
+
 .grp-bv-team-row--incorrect {
-  opacity: 0.5;
+  opacity: 1;
+  background: linear-gradient(180deg, rgba(248, 113, 113, 0.14), rgba(248, 113, 113, 0.06));
+  border-color: rgba(248, 113, 113, 0.18);
+  box-shadow: inset 0 0 0 1px rgba(248, 113, 113, 0.05);
 }
 
 .grp-bv-team-row--incorrect .grp-bv-team-name {
   color: #f87171;
   text-decoration: line-through;
   text-decoration-color: #f87171;
+}
+
+.grp-bv-team-row--incorrect .grp-bv-team-seed {
+  color: #fca5a5;
 }
 
 .grp-bv-team-row--missing .grp-bv-team-name {
@@ -22137,6 +22156,12 @@ body.br-modal-open {
 }
 
 .grp-bv-team-check {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 16px;
+  height: 16px;
+  border-radius: 999px;
   font-size: 9px;
   font-weight: 700;
   flex-shrink: 0;
@@ -22144,10 +22169,12 @@ body.br-modal-open {
 
 .grp-bv-team-check--win {
   color: #4ade80;
+  background: rgba(74, 222, 128, 0.14);
 }
 
 .grp-bv-team-check--loss {
   color: #f87171;
+  background: rgba(248, 113, 113, 0.14);
 }
 
 .grp-bv-finals {
@@ -22366,6 +22393,8 @@ body.br-modal-open {
   align-items: center;
   gap: 10px;
   padding: 8px 0;
+  border: 1px solid transparent;
+  transition: background 150ms ease, border-color 150ms ease, box-shadow 150ms ease, opacity 150ms ease;
 }
 
 .grp-bv-m-team-row + .grp-bv-m-team-row {
@@ -22395,14 +22424,37 @@ body.br-modal-open {
   color: #4ade80;
 }
 
+.grp-bv-m-team-row--correct {
+  margin: 0 -10px;
+  padding: 8px 10px;
+  border-radius: 6px;
+  background: linear-gradient(180deg, rgba(74, 222, 128, 0.16), rgba(74, 222, 128, 0.08));
+  border-color: rgba(74, 222, 128, 0.2);
+  box-shadow: inset 0 0 0 1px rgba(74, 222, 128, 0.08);
+}
+
+.grp-bv-m-team-row--correct .grp-bv-m-team-seed {
+  color: #86efac;
+}
+
 .grp-bv-m-team-row--incorrect {
-  opacity: 0.35;
+  opacity: 1;
+  margin: 0 -10px;
+  padding: 8px 10px;
+  border-radius: 6px;
+  background: linear-gradient(180deg, rgba(248, 113, 113, 0.14), rgba(248, 113, 113, 0.06));
+  border-color: rgba(248, 113, 113, 0.18);
+  box-shadow: inset 0 0 0 1px rgba(248, 113, 113, 0.05);
 }
 
 .grp-bv-m-team-row--incorrect .grp-bv-m-team-name {
   color: #f87171;
   text-decoration: line-through;
   text-decoration-color: #f87171;
+}
+
+.grp-bv-m-team-row--incorrect .grp-bv-m-team-seed {
+  color: #fca5a5;
 }
 
 .grp-bv-m-team-row--missing .grp-bv-m-team-name {
@@ -22462,15 +22514,23 @@ body.br-modal-open {
 }
 
 .grp-bv-m-team-check {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 18px;
+  height: 18px;
+  border-radius: 999px;
   font-weight: 700;
 }
 
 .grp-bv-m-team-check--win {
   color: #4ade80;
+  background: rgba(74, 222, 128, 0.14);
 }
 
 .grp-bv-m-team-check--loss {
   color: #f87171;
+  background: rgba(248, 113, 113, 0.14);
 }
 
 .grp-bv-m-team-arrow {
@@ -22646,16 +22706,41 @@ body.br-modal-open {
   align-items: center;
   gap: 10px;
   margin-bottom: 8px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  border: 1px solid transparent;
+  transition: background 150ms ease, border-color 150ms ease, box-shadow 150ms ease;
+}
+
+.grp-sp-team-row--correct {
+  background: linear-gradient(180deg, rgba(74, 222, 128, 0.16), rgba(74, 222, 128, 0.06));
+  border-color: rgba(74, 222, 128, 0.2);
+  box-shadow: inset 0 0 0 1px rgba(74, 222, 128, 0.06);
 }
 
 .grp-sp-team-row--correct .grp-sp-team-name {
   color: #4ade80;
+  font-weight: 700;
+}
+
+.grp-sp-team-row--correct .grp-sp-team-seed {
+  color: #86efac;
+}
+
+.grp-sp-team-row--incorrect {
+  background: linear-gradient(180deg, rgba(248, 113, 113, 0.14), rgba(248, 113, 113, 0.05));
+  border-color: rgba(248, 113, 113, 0.18);
+  box-shadow: inset 0 0 0 1px rgba(248, 113, 113, 0.05);
 }
 
 .grp-sp-team-row--incorrect .grp-sp-team-name {
   color: #f87171;
   text-decoration: line-through;
   text-decoration-color: #f87171;
+}
+
+.grp-sp-team-row--incorrect .grp-sp-team-seed {
+  color: #fca5a5;
 }
 
 .grp-sp-team-copy {
@@ -22696,6 +22781,12 @@ body.br-modal-open {
 }
 
 .grp-sp-team-result {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 18px;
+  height: 18px;
+  border-radius: 999px;
   font-family: var(--font-mono);
   font-size: 12px;
   font-weight: 700;
@@ -22704,10 +22795,12 @@ body.br-modal-open {
 
 .grp-sp-team-result--win {
   color: #4ade80;
+  background: rgba(74, 222, 128, 0.14);
 }
 
 .grp-sp-team-result--loss {
   color: #f87171;
+  background: rgba(248, 113, 113, 0.14);
 }
 
 .grp-sp-unanimous {
