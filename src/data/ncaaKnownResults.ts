@@ -14,9 +14,12 @@ export const NCAA_KNOWN_RESULTS: LockedPicks = {
   "East-R64-0": "East-1", // Duke (1) def Siena (16)
   "East-R64-1": "East-9", // TCU (9) def Ohio St (8)
   "East-R64-2": "East-5", // St John's (5) def Northern Iowa (12)
+  "East-R64-3": "East-4", // Kansas (4) def Cal Baptist (13)
   "East-R64-4": "East-6", // Louisville (6) def South Florida (11)
   "East-R64-5": "East-3", // Michigan St (3) def N Dakota St (14)
   "East-R64-6": "East-7", // UCLA (7) def UCF (10)
+  "East-R64-7": "East-2", // Connecticut (2) def Furman (15)
+  "South-R64-0": "South-1", // Florida (1) def Prairie View (16)
   "South-R64-1": "South-9", // Iowa (9) def Clemson (8)
   "South-R64-2": "South-5", // Vanderbilt (5) def McNeese St (12)
   "South-R64-3": "South-4", // Nebraska (4) def Troy (13)
@@ -38,6 +41,7 @@ export const NCAA_KNOWN_RESULTS: LockedPicks = {
   "West-R64-3": "West-4", // Arkansas (4) def Hawaii (13)
   "West-R64-4": "West-11b", // Texas (11) def BYU (6)
   "West-R64-5": "West-3", // Gonzaga (3) def Kennesaw (14)
+  "West-R64-6": "West-7", // Miami FL (7) def Missouri (10)
   "West-R64-7": "West-2", // Purdue (2) def Queens NC (15)
 };
 
