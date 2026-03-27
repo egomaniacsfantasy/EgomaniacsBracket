@@ -59,6 +59,10 @@ export const NCAA_KNOWN_RESULTS: LockedPicks = {
   "West-R32-1": "West-4", // Arkansas (4) def High Point (12)
   "West-R32-2": "West-11b", // Texas (11) def Gonzaga (3)
   "West-R32-3": "West-2", // Purdue (2) def Miami FL (7)
+  "South-S16-0": "South-9", // Iowa (9) def Nebraska (4)
+  "South-S16-1": "South-3", // Illinois (3) def Houston (2)
+  "West-S16-0": "West-1", // Arizona (1) def Arkansas (4)
+  "West-S16-1": "West-2", // Purdue (2) def Texas (11)
 };
 
 export const NCAA_KNOWN_RESULT_IDS = new Set(Object.keys(NCAA_KNOWN_RESULTS));
