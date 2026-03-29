@@ -67,6 +67,7 @@ export const NCAA_KNOWN_RESULTS: LockedPicks = {
   "West-E8-0": "West-1", // Arizona (1) def Purdue (2)
   "East-S16-0": "East-1", // Duke (1) def St John's (5)
   "East-S16-1": "East-2", // Connecticut (2) def Michigan St (3)
+  "East-E8-0": "East-2", // Connecticut (2) def Duke (1)
   "Midwest-S16-0": "Midwest-1", // Michigan (1) def Alabama (4)
   "Midwest-S16-1": "Midwest-6", // Tennessee (6) def Iowa St (2)
   "Midwest-E8-0": "Midwest-1", // Michigan (1) def Tennessee (6)
