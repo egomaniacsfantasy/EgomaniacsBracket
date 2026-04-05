@@ -71,6 +71,8 @@ export const NCAA_KNOWN_RESULTS: LockedPicks = {
   "Midwest-S16-0": "Midwest-1", // Michigan (1) def Alabama (4)
   "Midwest-S16-1": "Midwest-6", // Tennessee (6) def Iowa St (2)
   "Midwest-E8-0": "Midwest-1", // Michigan (1) def Tennessee (6)
+  "F4-Left-0": "East-2", // Connecticut (2) def Illinois (3)
+  "F4-Right-0": "Midwest-1", // Michigan (1) def Arizona (1)
 };
 
 export const NCAA_KNOWN_RESULT_IDS = new Set(Object.keys(NCAA_KNOWN_RESULTS));
