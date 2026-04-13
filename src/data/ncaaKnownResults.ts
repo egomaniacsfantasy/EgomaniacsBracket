@@ -73,9 +73,11 @@ export const NCAA_KNOWN_RESULTS: LockedPicks = {
   "Midwest-E8-0": "Midwest-1", // Michigan (1) def Tennessee (6)
   "F4-Left-0": "East-2", // Connecticut (2) def Illinois (3)
   "F4-Right-0": "Midwest-1", // Michigan (1) def Arizona (1)
+  "CHAMP-0": "Midwest-1", // Michigan (1) def Connecticut (2)
 };
 
 export const NCAA_KNOWN_RESULT_IDS = new Set(Object.keys(NCAA_KNOWN_RESULTS));
+export const NCAA_TOURNAMENT_COMPLETE = NCAA_KNOWN_RESULT_IDS.has("CHAMP-0");
 
 /**
  * Only the collapsed First Four winners should be injected into saved bracket

@@ -3,7 +3,7 @@ import { createPortal } from "react-dom";
 import html2canvas from "html2canvas";
 import { teamsById } from "./data/teams";
 import { BRACKET_HALVES, gameTemplates, regionRounds } from "./data/bracket";
-import { NCAA_KNOWN_RESULT_IDS, NCAA_KNOWN_RESULTS } from "./data/ncaaKnownResults";
+import { NCAA_KNOWN_RESULT_IDS, NCAA_KNOWN_RESULTS, NCAA_TOURNAMENT_COMPLETE } from "./data/ncaaKnownResults";
 import {
   finalRounds,
   gamesByRegionAndRound,
@@ -147,18 +147,27 @@ const MOBILE_ROUND_ORDER: Record<"FF" | "R64" | "R32" | "S16" | "E8", number> = 
   E8: 4,
 };
 
-const mergeNcaaKnownResults = (locks: LockedPicks): LockedPicks => ({
-  ...locks,
-  ...NCAA_KNOWN_RESULTS,
-});
+const mergeNcaaKnownResults = (locks: LockedPicks): LockedPicks =>
+  NCAA_TOURNAMENT_COMPLETE
+    ? {
+        ...NCAA_KNOWN_RESULTS,
+        ...locks,
+      }
+    : {
+        ...locks,
+        ...NCAA_KNOWN_RESULTS,
+      };
 
 const stripNcaaKnownResults = (locks: LockedPicks): LockedPicks => {
   const next = { ...locks };
-  for (const gameId of NCAA_KNOWN_RESULT_IDS) {
+  for (const [gameId, winnerId] of Object.entries(NCAA_KNOWN_RESULTS)) {
+    if (NCAA_TOURNAMENT_COMPLETE && next[gameId] && next[gameId] !== winnerId) continue;
     delete next[gameId];
   }
   return next;
 };
+
+const canEditKnownResultGame = (gameId: string) => NCAA_TOURNAMENT_COMPLETE && NCAA_KNOWN_RESULT_IDS.has(gameId);
 
 function DeferredViewFallback() {
   return (
@@ -2075,6 +2084,13 @@ function App() {
     const tipoff = new Date("2026-03-20T12:00:00-04:00");
     return new Date() >= tipoff;
   }, [globalBracketsLocked, userBrackets]);
+
+  useEffect(() => {
+    if (!submissionsLocked) return;
+    setCreateGroupOpen(false);
+    setGroupAssignmentPrompt(null);
+  }, [submissionsLocked]);
+
   const pickedChaosGameIds = useMemo(() => getPickedChaosGameIds(games), [games]);
   const chaosPercentile = useMemo(() => {
     if (chaosScore === null || pickedChaosGameIds.length === 0 || !chaosDistribution) return null;
@@ -2144,6 +2160,7 @@ function App() {
   );
 
   useEffect(() => {
+    if (NCAA_TOURNAMENT_COMPLETE) return;
     if (!bracketComplete || !currentBracketKey) {
       completionPromptArmedRef.current = true;
       return;
@@ -2293,7 +2310,7 @@ function App() {
 
   const onPick = (game: ResolvedGame, teamId: string | null) => {
     if (!teamId) return;
-    if (NCAA_KNOWN_RESULT_IDS.has(game.id)) return;
+    if (NCAA_KNOWN_RESULT_IDS.has(game.id) && !canEditKnownResultGame(game.id)) return;
     if (teamId !== game.teamAId && teamId !== game.teamBId) return;
     if (walkthroughActive && currentWalkthroughStep?.id === "upset-pick" && walkthroughCascadePhase === "pick") {
       const pickedTeam = teamsById.get(teamId);
@@ -2354,7 +2371,7 @@ function App() {
     const nextResolution = resolveGamesWithKnownResults(next, customProbByGame);
     const nextResolved = nextResolution.games;
     const nowComplete = nextResolved.every((resolvedGame) => Boolean(resolvedGame.winnerId));
-    if (!wasComplete && nowComplete && game.round === "CHAMP") {
+    if (!NCAA_TOURNAMENT_COMPLETE && !wasComplete && nowComplete && game.round === "CHAMP") {
       openCompletionCelebration(nextResolved, encodeBracketState(stripNcaaKnownResults(nextResolution.sanitized)));
     }
 
@@ -2424,6 +2441,7 @@ function App() {
 
   const onSwitchPick = (game: ResolvedGame, teamId: string) => {
     if (!game.teamAId || !game.teamBId) return;
+    if (NCAA_KNOWN_RESULT_IDS.has(game.id) && !canEditKnownResultGame(game.id)) return;
     if (teamId !== game.teamAId && teamId !== game.teamBId) return;
     if (game.winnerId === teamId) return;
     pendingPickMetaRef.current = {
@@ -3938,6 +3956,16 @@ function App() {
         : bracketComplete
           ? `Submit${isAuthenticated ? ` (${submittedBracketCount}/${MAX_SUBMITTED_BRACKETS})` : ""}`
           : `${pickCount}/${SUBMIT_EXPECTED_PICK_COUNT} picks`;
+  const postTournamentBanner = NCAA_TOURNAMENT_COMPLETE ? (
+    <div className="post-tournament-banner">
+      <span className="post-tournament-banner__eyebrow">Tournament complete</span>
+      <strong>Thank you for playing.</strong>
+      <span>
+        Michigan cut down the nets and LB won the leaderboard. The Lab stays open as a sandbox, so change picks,
+        rerun sims, and see what could have happened.
+      </span>
+    </div>
+  ) : null;
 
   const overflowPrimaryItems: OverflowMenuItem[] = [
     ...(isMobile
@@ -4951,8 +4979,13 @@ function App() {
           <section className="eg-mobile-shell">
             {showToolbar ? <div className="mobile-toolbar-wrapper">{toolbar}</div> : null}
             {isAuthenticated && submissionsLocked && showToolbar ? (
-              <div className="bracket-lock-banner">🔒 Submissions locked at tip-off. Tournament is live — check the leaderboard.</div>
+              <div className="bracket-lock-banner">
+                {NCAA_TOURNAMENT_COMPLETE
+                  ? "🏁 Tournament complete. Submissions are closed, but the bracket sandbox is open."
+                  : "🔒 Submissions locked at tip-off. Tournament is live — check the leaderboard."}
+              </div>
             ) : null}
+            {visibleMobileTab === "bracket" ? postTournamentBanner : null}
             {visibleMobileTab === "bracket" ? (
               <>
                 <MobileRegionTabs activeSection={mobileSection} onChange={setMobileSection} />
@@ -5051,8 +5084,13 @@ function App() {
               {visibleMainView === "bracket" ? firstFourBar : null}
               {showToolbar ? chaosTrackerBar : null}
               {isAuthenticated && submissionsLocked && showToolbar ? (
-                <div className="bracket-lock-banner">🔒 Submissions locked at tip-off. Tournament is live — check the leaderboard.</div>
+                <div className="bracket-lock-banner">
+                  {NCAA_TOURNAMENT_COMPLETE
+                    ? "🏁 Tournament complete. Submissions are closed, but the bracket sandbox is open."
+                    : "🔒 Submissions locked at tip-off. Tournament is live — check the leaderboard."}
+                </div>
               ) : null}
+              {visibleMainView === "bracket" ? postTournamentBanner : null}
               <div className="eg-bracket-stack" style={{ display: visibleMainView === "bracket" ? undefined : "none" }}>
                 {!isMobile && !allPlayInDecided && visiblePlayInGames.length > 0 ? (
                   <div className="ff-nudge-banner">
@@ -5271,10 +5309,18 @@ function App() {
         submissionsLocked={submissionsLocked}
         onClose={() => setGroupsHubOpen(false)}
         onCreateGroup={() => {
+          if (submissionsLocked) {
+            showAppToast("Groups are closed now that the tournament is complete.", 3200, "default");
+            return;
+          }
           setGroupsHubOpen(false);
           setCreateGroupOpen(true);
         }}
         onJoinGroup={() => {
+          if (submissionsLocked) {
+            showAppToast("New group entries are closed. Existing groups are still open to view.", 3200, "default");
+            return;
+          }
           setGroupsHubOpen(false);
           setJoinGroupOpen(true);
         }}
@@ -5573,9 +5619,13 @@ function App() {
         <div className="bracket-locked-overlay" role="dialog" aria-modal="true" aria-label="Brackets are locked">
           <div className="bracket-locked-overlay__card">
             <span className="bracket-locked-overlay__icon">🏀</span>
-            <h2 className="bracket-locked-overlay__title">Brackets are locked.</h2>
+            <h2 className="bracket-locked-overlay__title">
+              {NCAA_TOURNAMENT_COMPLETE ? "Thanks for playing." : "Brackets are locked."}
+            </h2>
             <p className="bracket-locked-overlay__body">
-              The tournament has tipped off — brackets can no longer be submitted. But the full Bracket Lab is still yours to explore. Pick outcomes, watch odds shift, and follow the tournament through Futures and the Matchup Predictor.
+              {NCAA_TOURNAMENT_COMPLETE
+                ? "March Madness is complete — Michigan is your champion, LB won the leaderboard, and submissions are closed. The full Bracket Lab is still open as a sandbox: change outcomes, watch odds shift, and explore alternate paths."
+                : "The tournament has tipped off — brackets can no longer be submitted. But the full Bracket Lab is still yours to explore. Pick outcomes, watch odds shift, and follow the tournament through Futures and the Matchup Predictor."}
             </p>
             <button className="bracket-locked-overlay__primary" onClick={dismissLockPopup}>
               Explore the Bracket

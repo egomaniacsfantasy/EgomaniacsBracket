@@ -23019,6 +23019,89 @@ body.br-modal-open {
   text-align: center;
 }
 
+.post-tournament-banner,
+.lb-winner-banner {
+  position: relative;
+  overflow: hidden;
+  margin: 0 0 16px;
+  border: 1px solid rgba(184, 125, 24, 0.28);
+  border-radius: 14px;
+  background:
+    radial-gradient(circle at 12% 0%, rgba(237, 193, 102, 0.14), transparent 34%),
+    linear-gradient(135deg, rgba(27, 19, 8, 0.94), rgba(13, 11, 8, 0.9));
+  box-shadow: inset 0 1px 0 rgba(255, 232, 178, 0.08), 0 18px 48px rgba(0, 0, 0, 0.24);
+  color: var(--text-primary);
+  font-family: var(--font-mono);
+}
+
+.post-tournament-banner::after,
+.lb-winner-banner::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(110deg, transparent 0%, rgba(237, 193, 102, 0.07) 44%, transparent 72%);
+  opacity: 0.8;
+}
+
+.post-tournament-banner {
+  display: grid;
+  gap: 6px;
+  padding: 16px 18px;
+}
+
+.post-tournament-banner__eyebrow,
+.lb-winner-banner__eyebrow {
+  display: block;
+  color: var(--text-amber);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.post-tournament-banner strong,
+.lb-winner-banner strong {
+  position: relative;
+  z-index: 1;
+  font-family: var(--font-serif);
+  font-size: clamp(24px, 3vw, 34px);
+  line-height: 1;
+}
+
+.post-tournament-banner span:last-child,
+.lb-winner-banner p {
+  position: relative;
+  z-index: 1;
+  margin: 0;
+  max-width: 840px;
+  color: var(--text-soft);
+  font-size: 12px;
+  line-height: 1.6;
+}
+
+.lb-winner-banner {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 18px 20px;
+}
+
+.lb-winner-banner__trophy {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  place-items: center;
+  width: 46px;
+  height: 46px;
+  flex: 0 0 auto;
+  border: 1px solid rgba(184, 125, 24, 0.32);
+  border-radius: 999px;
+  background: rgba(184, 125, 24, 0.1);
+  font-size: 24px;
+}
+
 /* Forecast standings + leaderboard controls overhaul */
 .lb-control-cluster,
 .gd-forecast-controls {

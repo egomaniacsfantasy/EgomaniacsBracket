@@ -11,6 +11,7 @@ import {
   getTournamentResultMap,
 } from "./bracketStorage";
 import { teams } from "./data/teams";
+import { NCAA_TOURNAMENT_COMPLETE } from "./data/ncaaKnownResults";
 import { hasElevatedAccess } from "./groupVisibility";
 import { resolveBracketWithKnownResults } from "./lib/bracketCompletion";
 import { captureError } from "./lib/errorMonitoring";
@@ -1215,8 +1216,23 @@ export function LeaderboardFullWidth({
         {adminDeleteError ? <div className="lb-admin-error">{adminDeleteError}</div> : null}
         {loadError ? <div className="lb-admin-error">{loadError}</div> : null}
 
+        {NCAA_TOURNAMENT_COMPLETE ? (
+          <div className="lb-winner-banner">
+            <span className="lb-winner-banner__trophy">🏆</span>
+            <div>
+              <span className="lb-winner-banner__eyebrow">Final leaderboard</span>
+              <strong>LB wins The Bracket Lab.</strong>
+              <p>Michigan finished the job. The board is final, and the bragging rights are official.</p>
+            </div>
+          </div>
+        ) : null}
+
         {submissionsLocked ? (
-          <div className="lb-lock-banner">Brackets are locked. Scores update as results come in.</div>
+          <div className="lb-lock-banner">
+            {NCAA_TOURNAMENT_COMPLETE
+              ? "Tournament complete. Final scores are locked in."
+              : "Brackets are locked. Scores update as results come in."}
+          </div>
         ) : null}
         {showForecast ? (
           <div className="lb-forecast-banner">

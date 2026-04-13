@@ -204,6 +204,17 @@ async function withTimeout<T>(promiseLike: PromiseLike<T>, timeoutMs: number, me
 }
 
 export async function createGroup(userId: string, groupName: string, emoji: string = "👥") {
+  const { data: globallyLocked, error: lockError } = await getGlobalBracketLockState();
+  if (lockError) return { data: null, error: lockError };
+  if (globallyLocked) {
+    return {
+      data: null,
+      error: {
+        message: "Groups are closed now that the tournament is complete. Existing groups are still available to view.",
+      },
+    };
+  }
+
   const { data: codeData, error: codeError } = await supabase.rpc("generate_invite_code");
   if (codeError) return { data: null, error: codeError };
 
