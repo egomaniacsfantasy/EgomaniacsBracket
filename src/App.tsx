@@ -3956,15 +3956,33 @@ function App() {
         : bracketComplete
           ? `Submit${isAuthenticated ? ` (${submittedBracketCount}/${MAX_SUBMITTED_BRACKETS})` : ""}`
           : `${pickCount}/${SUBMIT_EXPECTED_PICK_COUNT} picks`;
+  const tournamentChampion = teamsById.get("Midwest-1");
+  const tournamentChampionName = tournamentChampion?.name ?? "Michigan";
+  const tournamentChampionLogoUrl = tournamentChampion ? teamLogoUrl(tournamentChampion) : fallbackLogo(tournamentChampionName);
   const postTournamentBanner = NCAA_TOURNAMENT_COMPLETE ? (
-    <div className="post-tournament-banner">
-      <span className="post-tournament-banner__eyebrow">Tournament complete</span>
-      <strong>Thank you for playing.</strong>
-      <span>
-        Michigan cut down the nets and LB won the leaderboard. The Lab stays open as a sandbox, so change picks,
-        rerun sims, and see what could have happened.
+    <section className="post-tournament-banner" aria-label="Tournament complete">
+      <span className="post-tournament-banner__kicker">🏆 Tournament complete</span>
+      <span className="post-tournament-banner__logo-shell" aria-hidden="true">
+        <img
+          className="post-tournament-banner__logo"
+          src={tournamentChampionLogoUrl}
+          alt=""
+          onError={(event) => {
+            event.currentTarget.src = fallbackLogo(tournamentChampionName);
+          }}
+        />
       </span>
-    </div>
+      <h2 className="post-tournament-banner__champion">{tournamentChampionName}</h2>
+      <p className="post-tournament-banner__subtitle">cut down the nets.</p>
+      <span className="post-tournament-banner__divider" aria-hidden="true" />
+      <p className="post-tournament-banner__sandbox">
+        The Lab stays open. Change picks, rerun sims, see what could have happened.
+      </p>
+      <button className="post-tournament-banner__cta" type="button" onClick={() => switchTopNavView("leaderboard")}>
+        View Leaderboard →
+      </button>
+      <p className="post-tournament-banner__prophecy">Football season. The gods return.</p>
+    </section>
   ) : null;
 
   const overflowPrimaryItems: OverflowMenuItem[] = [

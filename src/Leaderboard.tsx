@@ -467,24 +467,29 @@ function LeaderboardWinCell({
   forecast,
   maxWinProb,
   oddsFormat,
+  isFinalWinner = false,
 }: {
   forecast: StandingsForecastEntry | null;
   maxWinProb: number;
   oddsFormat: ForecastOddsFormat;
+  isFinalWinner?: boolean;
 }) {
-  const probability = forecast?.finish1Prob ?? null;
+  const probability = isFinalWinner ? 1 : forecast?.finish1Prob ?? null;
   const relativeWidth =
-    typeof probability === "number" && Number.isFinite(probability) && maxWinProb > 0
+    isFinalWinner
+      ? 100
+      : typeof probability === "number" && Number.isFinite(probability) && maxWinProb > 0
       ? Math.max(0, Math.min(100, (probability / maxWinProb) * 100))
       : 0;
-  const tone = getWinTone(probability);
+  const tone = isFinalWinner ? "amber" : getWinTone(probability);
 
   return (
     <span className="lb-col lb-col-win">
       <span className="lb-win-bar">
         <span className="lb-win-bar-fill" style={{ width: `${relativeWidth}%` }} />
         <span className={`lb-win-value lb-win-value--${tone}`}>
-          {formatForecastProbability(probability, oddsFormat)}
+          {isFinalWinner ? "100" : formatForecastProbability(probability, oddsFormat)}
+          {isFinalWinner ? <span className="lb-win-final-check">✓</span> : null}
         </span>
       </span>
     </span>
@@ -837,6 +842,7 @@ function TournamentLeaderboard({
       }, 0),
     [entries, forecast],
   );
+  const hasFinalRankWinner = NCAA_TOURNAMENT_COMPLETE && entries.some((entry) => Number(entry.rank) === 1);
 
   return (
     <div className="lb-table">
@@ -880,7 +886,8 @@ function TournamentLeaderboard({
               toggleExpanded();
             }
           };
-          const winProb = forecastEntry?.finish1Prob ?? null;
+          const isFinalWinner = NCAA_TOURNAMENT_COMPLETE && (Number(entry.rank) === 1 || (!hasFinalRankWinner && index === 0));
+          const winProb = isFinalWinner ? 1 : forecastEntry?.finish1Prob ?? null;
           const tier = getWinTier(winProb);
           const champion = getChampionDisplay(entry);
           const championState = getPickEliminationState(champion, tournamentState);
@@ -926,14 +933,19 @@ function TournamentLeaderboard({
                   <span className="lb-score-value">{entry.total_score ?? 0}</span>
                 </span>
                 <span className="lb-col lb-col-correct">{entry.correct_picks ?? 0}/{entry.possible_picks ?? 63}</span>
-                {forecastLoading && !forecastEntry ? (
+                {forecastLoading && !forecastEntry && !isFinalWinner ? (
                   <span className="lb-col lb-col-win">
                     <span className="lb-win-bar">
                       <span className="lb-win-value lb-win-value--muted">...</span>
                     </span>
                   </span>
                 ) : (
-                  <LeaderboardWinCell forecast={forecastEntry} maxWinProb={maxWinProb} oddsFormat={oddsFormat} />
+                  <LeaderboardWinCell
+                    forecast={forecastEntry}
+                    maxWinProb={maxWinProb}
+                    oddsFormat={oddsFormat}
+                    isFinalWinner={isFinalWinner}
+                  />
                 )}
                 <span className="lb-col lb-col-max">{entry.max_remaining ?? "—"}</span>
                 {canAdminDelete ? (
@@ -1102,8 +1114,12 @@ export function LeaderboardFullWidth({
     }
 
     return [...parsedEntries].sort((left, right) => {
-      const leftProb = visibleForecast?.rows[left.bracket_id]?.finish1Prob ?? -1;
-      const rightProb = visibleForecast?.rows[right.bracket_id]?.finish1Prob ?? -1;
+      const leftProb = NCAA_TOURNAMENT_COMPLETE
+        ? (Number(left.rank) === 1 ? 1 : 0)
+        : visibleForecast?.rows[left.bracket_id]?.finish1Prob ?? -1;
+      const rightProb = NCAA_TOURNAMENT_COMPLETE
+        ? (Number(right.rank) === 1 ? 1 : 0)
+        : visibleForecast?.rows[right.bracket_id]?.finish1Prob ?? -1;
       if (rightProb !== leftProb) return rightProb - leftProb;
       return compareScoreEntries(left, right);
     });

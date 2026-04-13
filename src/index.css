@@ -1859,9 +1859,19 @@ button.lb-row {
 .lb-win-value {
   position: relative;
   z-index: 1;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
   font-family: var(--font-mono);
   font-size: 14px;
   font-weight: 600;
+}
+
+.lb-win-final-check {
+  color: var(--text-amber);
+  font-family: var(--font-mono);
+  font-size: 13px;
+  line-height: 1;
 }
 
 .lb-win-value--amber {
@@ -23019,7 +23029,6 @@ body.br-modal-open {
   text-align: center;
 }
 
-.post-tournament-banner,
 .lb-winner-banner {
   position: relative;
   overflow: hidden;
@@ -23034,7 +23043,6 @@ body.br-modal-open {
   font-family: var(--font-mono);
 }
 
-.post-tournament-banner::after,
 .lb-winner-banner::after {
   content: "";
   position: absolute;
@@ -23044,13 +23052,64 @@ body.br-modal-open {
   opacity: 0.8;
 }
 
-.post-tournament-banner {
-  display: grid;
-  gap: 6px;
-  padding: 16px 18px;
+@keyframes tournamentBannerIn {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
-.post-tournament-banner__eyebrow,
+.post-tournament-banner {
+  position: relative;
+  max-width: 600px;
+  margin: 0 auto 24px;
+  padding: 40px 24px 36px;
+  border: none;
+  background: transparent;
+  box-shadow: none;
+  color: var(--text-primary);
+  text-align: center;
+  animation: tournamentBannerIn 600ms ease forwards;
+}
+
+.post-tournament-banner::before {
+  content: "";
+  position: absolute;
+  top: 30px;
+  left: 50%;
+  width: 200px;
+  height: 200px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(184, 125, 24, 0.08) 0%, transparent 70%);
+  pointer-events: none;
+  transform: translateX(-50%);
+  z-index: 0;
+}
+
+.post-tournament-banner > * {
+  position: relative;
+  z-index: 1;
+}
+
+.post-tournament-banner__kicker {
+  display: block;
+  color: var(--text-amber);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.post-tournament-banner__kicker {
+  margin-bottom: 16px;
+}
+
 .lb-winner-banner__eyebrow {
   display: block;
   color: var(--text-amber);
@@ -23061,7 +23120,93 @@ body.br-modal-open {
   text-transform: uppercase;
 }
 
-.post-tournament-banner strong,
+.post-tournament-banner__logo-shell {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 96px;
+  height: 96px;
+  margin: 0 auto 16px;
+  border: 1.5px solid rgba(184, 125, 24, 0.3);
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(184, 125, 24, 0.12) 0%, transparent 70%);
+}
+
+.post-tournament-banner__logo {
+  width: 80px;
+  height: 80px;
+  object-fit: contain;
+}
+
+.post-tournament-banner__champion {
+  margin: 0 0 4px;
+  color: var(--text-primary);
+  font-family: var(--font-serif);
+  font-size: clamp(28px, 4vw, 36px);
+  font-weight: 400;
+  line-height: 1.15;
+}
+
+.post-tournament-banner__subtitle {
+  margin: 0 0 24px;
+  color: var(--text-secondary);
+  font-family: var(--font-serif);
+  font-size: clamp(16px, 2.2vw, 19px);
+  font-style: italic;
+}
+
+.post-tournament-banner__divider {
+  display: block;
+  width: 60px;
+  height: 1px;
+  margin: 0 auto 20px;
+  background: linear-gradient(90deg, transparent 0%, rgba(184, 125, 24, 0.5) 50%, transparent 100%);
+}
+
+.post-tournament-banner__sandbox {
+  max-width: 420px;
+  margin: 0 auto;
+  color: var(--text-tertiary);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  letter-spacing: 0.02em;
+  line-height: 1.6;
+  text-align: center;
+}
+
+.post-tournament-banner__cta {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin: 20px auto 0;
+  padding: 8px 20px;
+  border: 1px solid rgba(184, 125, 24, 0.35);
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text-amber);
+  cursor: pointer;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  transition: background 200ms ease, border-color 200ms ease;
+}
+
+.post-tournament-banner__cta:hover {
+  border-color: rgba(184, 125, 24, 0.55);
+  background: rgba(184, 125, 24, 0.08);
+}
+
+.post-tournament-banner__prophecy {
+  margin: 32px 0 0;
+  color: var(--text-amber);
+  font-family: var(--font-serif);
+  font-size: 14px;
+  font-style: italic;
+  letter-spacing: 0.03em;
+  opacity: 0.7;
+}
+
 .lb-winner-banner strong {
   position: relative;
   z-index: 1;
@@ -23070,7 +23215,6 @@ body.br-modal-open {
   line-height: 1;
 }
 
-.post-tournament-banner span:last-child,
 .lb-winner-banner p {
   position: relative;
   z-index: 1;
